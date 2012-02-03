@@ -8,6 +8,7 @@
 #include <QSettings>
 
 class ConnectionManager;
+class DatabaseThread;
 
 /**
  * The Witgap server application.
@@ -47,10 +48,18 @@ public slots:
      */
     void idle ();
 
+    /**
+     * Called just before exiting.
+     */
+    void cleanup ();
+
 protected:
 
     /** The connection manager. */
     ConnectionManager* _connectionManager;
+
+    /** The database thread. */
+    DatabaseThread* _databaseThread;
 };
 
 #endif // SERVER_APP

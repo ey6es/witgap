@@ -105,6 +105,7 @@ public class ClientApp extends Sprite {
         if (!_socket.connected) {
             return;
         }
+        _socket.writeShort(6);
         _socket.writeShort(event.type == KeyboardEvent.KEY_DOWN ? 0 : 1);
         _socket.writeUnsignedInt(getQtKeyCode(event));
     }

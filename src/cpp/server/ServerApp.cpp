@@ -4,11 +4,11 @@
 #include <signal.h>
 
 #include <QTimer>
+#include <QtDebug>
 
 #include "ServerApp.h"
+#include "db/DatabaseThread.h"
 #include "net/ConnectionManager.h"
-
-using namespace std;
 
 volatile int pendingSignal = 0;
 
@@ -30,8 +30,17 @@ ServerApp::ServerApp (int& argc, char** argv, const QString& configFile) :
     connect(timer, SIGNAL(timeout()), SLOT(idle()));
     timer->start(100);
 
-    // create the connection manager, policy server
+    // create the database thread
+    _databaseThread = new DatabaseThread(this);
+
+    // create the connection manager
     _connectionManager = new ConnectionManager(this);
+
+    // start the database thread
+    _databaseThread->start();
+
+    // connect the cleanup signal
+    connect(this, SIGNAL(aboutToQuit()), SLOT(cleanup()));
 }
 
 ServerApp::~ServerApp ()
@@ -48,4 +57,11 @@ void ServerApp::idle ()
 
         pendingSignal = 0;
     }
+}
+
+void ServerApp::cleanup ()
+{
+    // shut down the database thread
+    _databaseThread->exit();
+    _databaseThread->wait();
 }

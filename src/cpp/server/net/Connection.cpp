@@ -63,16 +63,16 @@ void Connection::readMessages ()
     // read as many messages as are available
     while (true) {
         qint64 available = _socket->bytesAvailable();
-        if (available < 4) {
+        if (available < 2) {
             return; // wait until we have the rest of the header
         }
-        char sbuf[4];
-        _socket->peek(sbuf, 4);
-        quint32 size = qFromBigEndian<quint32>((uchar*)sbuf);
+        char sbuf[2];
+        _socket->peek(sbuf, 2);
+        quint16 size = qFromBigEndian<quint16>((uchar*)sbuf);
         if (available < size + 4) {
             return; // wait until we have the rest of the size
         }
-        _socket->read(sbuf, 4); // consume the size we already read
+        _socket->read(sbuf, 2); // consume the size we already read
         QByteArray message = _socket->read(size);
     }
 }
