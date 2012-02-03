@@ -36,6 +36,27 @@ protected:
 
     /** The server application. */
     ServerApp* _app;
+
+    /** The connection type. */
+    QString _type;
+
+    /** The host to connect to. */
+    QString _hostname;
+
+    /** The port to connect on. */
+    int _port;
+
+    /** The database name. */
+    QString _databaseName;
+
+    /** The username. */
+    QString _username;
+
+    /** The user's password. */
+    QString _password;
+
+    /** The options to use when connecting. */
+    QString _connectOptions;
 };
 
 #endif // DATABASE_THREAD

@@ -10,7 +10,14 @@
 
 DatabaseThread::DatabaseThread (ServerApp* app) :
     QThread(app),
-    _app(app)
+    _app(app),
+    _type(app->config.value("database_type").toString()),
+    _hostname(app->config.value("database_hostname").toString()),
+    _port(app->config.value("database_port").toInt()),
+    _databaseName(app->config.value("database_name").toString()),
+    _username(app->config.value("database_username").toString()),
+    _password(app->config.value("database_password").toString()),
+    _connectOptions(app->config.value("database_connect_options").toString())
 {
 }
 
@@ -21,16 +28,14 @@ DatabaseThread::~DatabaseThread ()
 void DatabaseThread::run ()
 {
     // connect to the configured database
-    const QSettings& config = _app->config;
     {
-        QSqlDatabase db = QSqlDatabase::addDatabase(
-            config.value("database_type").toString(), "db");
-        db.setHostName(config.value("database_hostname").toString());
-        db.setPort(config.value("database_port").toInt());
-        db.setDatabaseName(config.value("database_name").toString());
-        db.setUserName(config.value("database_username").toString());
-        db.setPassword(config.value("database_password").toString());
-        db.setConnectOptions(config.value("database_connect_options").toString());
+        QSqlDatabase db = QSqlDatabase::addDatabase(_type, "db");
+        db.setHostName(_hostname);
+        db.setPort(_port);
+        db.setDatabaseName(_databaseName);
+        db.setUserName(_username);
+        db.setPassword(_password);
+        db.setConnectOptions(_connectOptions);
         if (db.open()) {
             // enter event loop
             exec();
