@@ -1,0 +1,73 @@
+<html>
+    <head>
+        <title>witgap</title>
+        <meta name="description" content="..."/>
+        <meta name="keywords" content="ASCII,online,game,sandbox,MMO"/>
+        <meta name="author" content="Andrzej Kapolka"/>
+    </head>
+
+    <body style="background-color: #000000;">
+        <pre id="field"></pre>
+
+        <form>
+            <select id="color">
+                <option>White</option>
+                <option>Green</option>
+                <option>Amber</option>
+            </select>
+        </form>
+
+        <script type="text/javascript">
+            function setCookie (key, value) {
+                var expires = new Date();
+                expires.setFullYear(expires.getFullYear() + 5);
+                document.cookie = key + "=" + escape(value) + "; expires=" + expires.toUTCString();
+            }
+            function getCookie (key, def) {
+                var cookie = document.cookie;
+                var values = cookie.split(";");
+                for (ii = 0; ii < values.length; ii++) {
+                    var value = values[ii];
+                    var idx = value.indexOf("=");
+                    if (value.substring(0, idx).replace(/\s+/, "") == key) {
+                        return unescape(value.substring(idx + 1));
+                    }
+                }
+                return def;
+            }
+            function setColor (color) {
+                var rgb = "#00FF00";
+                var idx = 1;
+                if (color == "White") {
+                    rgb = "#FFFFFF";
+                    idx = 0;
+                } else if (color == "Amber") {
+                    rgb = "#FFAF00";
+                    idx = 2;
+                }
+                document.getElementById("field").style.color = rgb;
+                document.getElementById("color").selectedIndex = idx;
+            }
+
+            var field = document.getElementById("field");
+            var content = "";
+            var line = "";
+            for (ii = 0; ii < 80; ii++) {
+                line += "0";
+            }
+            line += "\n";
+            for (ii = 0; ii < 25; ii++) {
+                content += line;
+            }
+            field.innerHTML = content;
+
+            var color = document.getElementById("color");
+            color.onchange = function () {
+                var text = color.options[color.selectedIndex].text;
+                setCookie("color", text);
+                setColor(text);
+            };
+            setColor(getCookie("color", "Green"));
+        </script>
+    </body>
+</html>
