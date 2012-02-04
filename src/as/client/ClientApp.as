@@ -82,7 +82,7 @@ public class ClientApp extends Sprite {
         contextMenu.hideBuiltInItems();
         contextMenu.customItems = [ ];
         var captions :Array = [ "White", "Green", "Amber" ];
-        var colors :Array = [ 0xFFFFFF, 0x00FF00, 0xFFFF00 ];
+        var colors :Array = [ 0xFFFFFF, 0x00FF00, 0xFFAF00 ];
         var setColor :Function = function (caption :String) :void {
             _prefs.setProperty("color", caption);
             for (var kk :int = 0; kk < captions.length; kk++) {
