@@ -12,9 +12,10 @@ import flash.events.KeyboardEvent;
 import flash.events.ProgressEvent;
 import flash.events.SecurityErrorEvent;
 
+import flash.external.ExternalInterface;
+
 import flash.geom.Rectangle;
 
-import flash.net.SharedObject;
 import flash.net.Socket;
 
 import flash.text.TextField;
@@ -74,9 +75,6 @@ public class ClientApp extends Sprite {
         _field.x = (loaderInfo.width - _field.width) / 2;
         _field.y = (loaderInfo.height - _field.height) / 2;
 
-        // get the preferences
-        _prefs = SharedObject.getLocal("prefs");
-
         // add the context menu to change colors
         contextMenu = new ContextMenu();
         contextMenu.hideBuiltInItems();
@@ -84,7 +82,7 @@ public class ClientApp extends Sprite {
         var captions :Array = [ "White", "Green", "Amber" ];
         var colors :Array = [ 0xFFFFFF, 0x00FF00, 0xFFAF00 ];
         var setColor :Function = function (caption :String) :void {
-            _prefs.setProperty("color", caption);
+            setCookie("color", caption);
             for (var kk :int = 0; kk < captions.length; kk++) {
                 if (captions[kk] == caption) {
                     _field.textColor = colors[kk];
@@ -102,7 +100,7 @@ public class ClientApp extends Sprite {
             contextMenu.customItems.push(item);
             item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, updateColor);
         }
-        setColor(_prefs.data["color"] == undefined ? "Green" : _prefs.data["color"]);
+        setColor(getCookie("color", "Green"));
 
         // listen for key events
         addEventListener(KeyboardEvent.KEY_DOWN, sendKeyMessage);
@@ -132,6 +130,30 @@ public class ClientApp extends Sprite {
         // attempt to connect to the server
         var params :Object = loaderInfo.parameters;
         _socket.connect(String(params["server_host"]), int(params["server_port"]));
+    }
+
+    /**
+     * Sets a cookie value in the containing context.
+     */
+    protected function setCookie (name :String, value :String) :void
+    {
+        ExternalInterface.call("setCookie", name + "=" + escape(value));
+    }
+
+    /**
+     * Retrieves a cookie value from the containing context.
+     */
+    protected function getCookie (name :String, def :String) :String
+    {
+        var values :Array = ExternalInterface.call("getCookie").split(";");
+        for (var ii :int = 0; ii < values.length; ii++) {
+            var value :String = values[ii];
+            var idx :int = value.indexOf("=");
+            if (value.substring(0, idx).replace(/\s+/,"") == name) {
+                return unescape(value.substring(idx + 1));
+            }
+        }
+        return def;
     }
 
     /**
@@ -278,9 +300,6 @@ public class ClientApp extends Sprite {
             default: return 0x01ffffff; // Key_unknown
         }
     }
-
-    /** Persistent preferences. */
-    protected var _prefs :SharedObject;
 
     /** Our gigantic text field. */
     protected var _field :TextField;
