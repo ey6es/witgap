@@ -5,6 +5,7 @@ package {
 
 import flash.display.Sprite;
 
+import flash.events.ContextMenuEvent;
 import flash.events.Event;
 import flash.events.IOErrorEvent;
 import flash.events.KeyboardEvent;
@@ -13,14 +14,20 @@ import flash.events.SecurityErrorEvent;
 
 import flash.geom.Rectangle;
 
+import flash.net.SharedObject;
 import flash.net.Socket;
 
 import flash.text.TextField;
 import flash.text.TextFieldAutoSize;
 import flash.text.TextFormat;
 
+import flash.ui.ContextMenu;
+import flash.ui.ContextMenuItem;
 import flash.ui.Keyboard;
 
+/**
+ * The Witgap client application.
+ */
 [SWF(frameRate="60", width=800, height=600, backgroundColor="#000000")]
 public class ClientApp extends Sprite {
 
@@ -66,6 +73,36 @@ public class ClientApp extends Sprite {
         _field.setTextFormat(format);
         _field.x = (loaderInfo.width - _field.width) / 2;
         _field.y = (loaderInfo.height - _field.height) / 2;
+
+        // get the preferences
+        _prefs = SharedObject.getLocal("prefs");
+
+        // add the context menu to change colors
+        contextMenu = new ContextMenu();
+        contextMenu.hideBuiltInItems();
+        contextMenu.customItems = [ ];
+        var captions :Array = [ "White", "Green", "Amber" ];
+        var colors :Array = [ 0xFFFFFF, 0x00FF00, 0xFFFF00 ];
+        var setColor :Function = function (caption :String) :void {
+            _prefs.setProperty("color", caption);
+            for (var kk :int = 0; kk < captions.length; kk++) {
+                if (captions[kk] == caption) {
+                    _field.textColor = colors[kk];
+                    contextMenu.customItems[kk].enabled = false;
+                } else {
+                    contextMenu.customItems[kk].enabled = true;
+                }
+            }
+        };
+        var updateColor :Function = function (event :ContextMenuEvent) :void {
+            setColor(ContextMenuItem(event.target).caption);
+        };
+        for (var kk :int = 0; kk < captions.length; kk++) {
+            var item :ContextMenuItem = new ContextMenuItem(captions[kk]);
+            contextMenu.customItems.push(item);
+            item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, updateColor);
+        }
+        setColor(_prefs.data["color"] == undefined ? "Green" : _prefs.data["color"]);
 
         // listen for key events
         addEventListener(KeyboardEvent.KEY_DOWN, sendKeyMessage);
@@ -241,6 +278,9 @@ public class ClientApp extends Sprite {
             default: return 0x01ffffff; // Key_unknown
         }
     }
+
+    /** Persistent preferences. */
+    protected var _prefs :SharedObject;
 
     /** Our gigantic text field. */
     protected var _field :TextField;
