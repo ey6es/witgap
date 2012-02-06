@@ -53,7 +53,6 @@ public class ClientApp extends Sprite {
         _field.textColor = 0x00FF00;
         _field.text = " ";
         _field.selectable = false;
-        _field.multiline = true;
         var format :TextFormat = new TextFormat();
         format.font = "_typewriter";
         _field.setTextFormat(format);
@@ -186,9 +185,21 @@ public class ClientApp extends Sprite {
     }
 
     /**
+     * Updates the portion of the text field covered by the given bounds.
+     */
+    protected function updateField (bounds :Rectangle) :void
+    {
+        for (var ii :int = 0; ii < _windows.length; ii++) {
+            var window :Window = _windows[ii];
+            var isect :Rectangle = window.bounds.intersection(bounds);
+
+        }
+    }
+
+    /**
      * Converts an ActionScript key code to a Qt one.
      */
-    protected function getQtKeyCode (event :KeyboardEvent) :uint
+    protected static function getQtKeyCode (event :KeyboardEvent) :uint
     {
         switch (event.keyCode) {
             case Keyboard.ESCAPE: return 0x01000000;
@@ -309,5 +320,44 @@ public class ClientApp extends Sprite {
 
     /** The socket via which we communicate with the server. */
     protected var _socket :Socket;
+
+    /** The list of windows (sorted by layer). */
+    protected var _windows :Array = [ ];
 }
+}
+
+import flash.geom.Rectangle;
+
+/**
+ * A managed window.
+ */
+class Window
+{
+    /** The window identifier. */
+    public var id :int;
+
+    /** The window layer.  Higher layers render on top of lower ones. */
+    public var layer :int;
+
+    /** The window bounds. */
+    public var bounds :Rectangle;
+
+    /** The window contents. */
+    public var contents :Array;
+
+    /**
+     * Creates a new, empty window.
+     */
+    public function Window (id :int, layer :int, bounds :Rectangle)
+    {
+        this.id = id;
+        this.layer = layer;
+        this.bounds = bounds.clone();
+
+        var size :int = bounds.width * bounds.height;
+        contents = new Array(size);
+        for (var ii :int = 0; ii < size; ii++) {
+            contents[ii] = 0x20;
+        }
+    }
 }

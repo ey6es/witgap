@@ -179,7 +179,23 @@
             };
             setColor(getCookie("color", "Green"));
 
+            var socket;
+            if ("WebSocket" in window) {
+                socket = new WebSocket("ws://localhost:4015");
+            } else if ("MozWebSocket" in window) {
+                socket = new MozWebSocket("ws://localhost:4015");
+            }
+            socket.onopen = function () {
+            };
+            socket.onerror = function () {
+                field.innerHTML = "whoops!";
+            };
+            socket.onmessage = function (event) {
+            };
+
             document.onkeydown = function (event) {
+            };
+            document.onkeyup = function (event) {
 
             };
         </script>
