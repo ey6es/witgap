@@ -29,6 +29,8 @@ import flash.ui.ContextMenu;
 import flash.ui.ContextMenuItem;
 import flash.ui.Keyboard;
 
+import flash.utils.ByteArray;
+
 /**
  * The Witgap client application.
  */
@@ -179,6 +181,7 @@ public class ClientApp extends Sprite {
         _socket.writeShort(6);
         _socket.writeShort(event.type == KeyboardEvent.KEY_DOWN ? KEY_PRESSED : KEY_RELEASED);
         _socket.writeUnsignedInt(getQtKeyCode(event));
+        _socket.flush();
     }
 
     /**
@@ -186,6 +189,81 @@ public class ClientApp extends Sprite {
      */
     protected function readMessages (event :ProgressEvent) :void
     {
+        while (true) {
+            if (_messageLength == 0) {
+                if (_socket.bytesAvailable < 2) {
+                    return;
+                }
+                _messageLength = _socket.readUnsignedShort();
+
+            } else {
+                if (_socket.bytesAvailable < _messageLength) {
+                    return;
+                }
+                var bytes :ByteArray = new ByteArray();
+                _socket.readBytes(bytes, 0, _messageLength);
+                _messageLength = 0;
+
+                bytes.position = 0;
+                decodeMessage(bytes);
+            }
+        }
+        updateDisplay();
+    }
+
+    /**
+     * Decodes the message contained in the provided byte array.
+     */
+    protected function decodeMessage (bytes :ByteArray) :void
+    {
+        var type :int = bytes.readUnsignedShort();
+        switch (type) {
+            case ADD_WINDOW:
+                addWindow(new Window(bytes.readInt(), bytes.readInt(),
+                    readRectangle(bytes), bytes.readInt()));
+                break;
+
+            case REMOVE_WINDOW:
+                removeWindow(bytes.readInt());
+                break;
+
+            case UPDATE_WINDOW:
+                updateWindow(bytes.readInt(), bytes.readInt(),
+                    readRectangle(bytes), bytes.readInt());
+                break;
+
+            case SET_CONTENTS:
+                var id :int = bytes.readInt();
+                var bounds :Rectangle = readRectangle(bytes);
+                var contents :Array = new Array(bounds.width * bounds.height);
+                for (var ii :int = 0; ii < contents.length; ii++) {
+                    contents[ii] = bytes.readInt();
+                }
+                setWindowContents(id, bounds, contents);
+                break;
+
+            case MOVE_CONTENTS:
+                moveWindowContents(bytes.readInt(), readRectangle(bytes),
+                    new Point(bytes.readInt(), bytes.readInt()), bytes.readInt());
+                break;
+
+            case COMPOUND:
+                for (var count :int = bytes.readInt(); count >= 0; count--) {
+                    decodeMessage(bytes);
+                }
+                break;
+
+            default:
+                trace("Unknown message type.", type);
+        }
+    }
+
+    /**
+     * Reads and returns a rectangle from the provided array.
+     */
+    protected function readRectangle (bytes :ByteArray) :Rectangle
+    {
+        return new Rectangle(bytes.readInt(), bytes.readInt(), bytes.readInt(), bytes.readInt());
     }
 
     /**
@@ -527,6 +605,9 @@ public class ClientApp extends Sprite {
     /** The socket via which we communicate with the server. */
     protected var _socket :Socket;
 
+    /** The length of the current server message. */
+    protected var _messageLength :int = 0;
+
     /** The list of windows (sorted by layer). */
     protected var _windows :Array = [ ];
 
@@ -556,6 +637,9 @@ public class ClientApp extends Sprite {
 
     /** Incoming message: move contents. */
     protected static var MOVE_CONTENTS :int = 5;
+
+    /** Incoming message: compound. */
+    protected static var COMPOUND :int = 6;
 }
 }
 
