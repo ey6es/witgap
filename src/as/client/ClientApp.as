@@ -16,6 +16,7 @@ import flash.events.SecurityErrorEvent;
 
 import flash.external.ExternalInterface;
 
+import flash.geom.Point;
 import flash.geom.Rectangle;
 
 import flash.net.Socket;
@@ -124,13 +125,13 @@ public class ClientApp extends Sprite {
         _socket = new Socket();
         _socket.addEventListener(Event.CONNECT, function (event :Event) :void {
             // write the magic number, version, screen dimensions
-            _socket.writeUnsignedInt(0x57544750);
+            _socket.writeUnsignedInt(0x57544750); // "WTGP"
             _socket.writeUnsignedInt(0x00000001);
             _socket.writeShort(_width);
             _socket.writeShort(_height);
         });
         _socket.addEventListener(IOErrorEvent.IO_ERROR, function (event :IOErrorEvent) :void {
-            fatalError("Couldn't connect to server.  Please try again later.");
+            fatalError("Couldn't connect to server.  Please wait a while, then reload the page.");
         });
         _socket.addEventListener(SecurityErrorEvent.SECURITY_ERROR,
                 function (event :SecurityErrorEvent) :void {
@@ -176,7 +177,7 @@ public class ClientApp extends Sprite {
             return;
         }
         _socket.writeShort(6);
-        _socket.writeShort(event.type == KeyboardEvent.KEY_DOWN ? 0 : 1);
+        _socket.writeShort(event.type == KeyboardEvent.KEY_DOWN ? KEY_PRESSED : KEY_RELEASED);
         _socket.writeUnsignedInt(getQtKeyCode(event));
     }
 
@@ -196,12 +197,12 @@ public class ClientApp extends Sprite {
         text = " " + text + " ";
         var bounds :Rectangle = new Rectangle(
             int((_width - text.length - 2) / 2), int(_height/2), text.length + 2, 3);
-        var window :Window = new Window(int.MAX_VALUE, int.MAX_VALUE, bounds, "#");
+        var window :Window = new Window(int.MAX_VALUE, int.MAX_VALUE, bounds, "#".charCodeAt(0));
         for (var ii :int = 0; ii < text.length; ii++) {
             window.contents[text.length + 3 + ii] = int(text.charCodeAt(ii));
         }
         addWindow(window);
-        updateDisplay(bounds);
+        updateDisplay();
     }
 
     /**
@@ -209,6 +210,7 @@ public class ClientApp extends Sprite {
      */
     protected function addWindow (window :Window) :void
     {
+        addDirtyRegion(window.bounds);
         for (var ii :int = _windows.length - 1; ii >= 0; ii--) {
             if (window.layer >= _windows[ii].layer) {
                 _windows.splice(ii + 1, 0, window);
@@ -223,19 +225,111 @@ public class ClientApp extends Sprite {
      */
     protected function removeWindow (id :int) :void
     {
-        for (var ii :int = 0; ii < _windows.length; ii++) {
-            if (_windows[ii].id == id) {
-                _windows.splice(ii, 1);
-                return;
-            }
+        var idx :int = getWindowIndex(id);
+        if (idx != -1) {
+            addDirtyRegion(_windows[idx].bounds);
+            _windows.splice(idx, 1);
         }
     }
 
     /**
-     * Updates the portion of the display covered by the given bounds.
+     * Updates the identified window.
      */
-    protected function updateDisplay (bounds :Rectangle) :void
+    protected function updateWindow (id :int, layer :int, bounds :Rectangle, fill :int) :void
     {
+        var idx :int = getWindowIndex(id);
+        if (idx == -1) {
+            return;
+        }
+        var window :Window = _windows[idx];
+        if (window.layer != layer) {
+            // remove and reinsert
+            _windows.splice(idx, 1);
+            window.layer = layer;
+            addWindow(window);
+        }
+        addDirtyRegion(window.bounds);
+        if (!window.bounds.equals(bounds)) {
+            addDirtyRegion(bounds);
+            if (!window.bounds.size.equals(bounds.size)) {
+                window.resizeContents(bounds.size, fill);
+            }
+            window.bounds.copyFrom(bounds);
+        }
+    }
+
+    /**
+     * Sets part of a window's contents.
+     */
+    protected function setWindowContents (id :int, bounds :Rectangle, contents :Array) :void
+    {
+        var window :Window = getWindow(id);
+        if (window != null) {
+            addDirtyRegion(new Rectangle(window.bounds.x + bounds.x, window.bounds.y + bounds.y,
+                bounds.width, bounds.height));
+            window.setContents(bounds, contents);
+        }
+    }
+
+    /**
+     * Moves part of a window's contents.
+     */
+    protected function moveWindowContents (
+        id :int, source :Rectangle, dest :Point, fill :int) :void
+    {
+        var window :Window = getWindow(id);
+        if (window != null) {
+            addDirtyRegion(new Rectangle(window.bounds.x + source.x, window.bounds.y + source.y,
+                source.width, source.height));
+            addDirtyRegion(new Rectangle(window.bounds.x + dest.x, window.bounds.y + dest.y,
+                source.width, source.height));
+            window.moveContents(source, dest, fill);
+        }
+    }
+
+    /**
+     * Returns a reference to the window with the specified id, or null if not found.
+     */
+    protected function getWindow (id :int) :Window
+    {
+        var idx :int = getWindowIndex(id);
+        return (idx == -1) ? null : _windows[idx];
+    }
+
+    /**
+     * Returns the index of the window with the specified id, or -1 if not found.
+     */
+    protected function getWindowIndex (id :int) :int
+    {
+        for (var ii :int = 0; ii < _windows.length; ii++) {
+            if (_windows[ii].id == id) {
+                return ii;
+            }
+        }
+        trace("Window not found.", id);
+        return -1;
+    }
+
+    /**
+     * Adds a region to the rectangle that will need updating.
+     */
+    protected function addDirtyRegion (region :Rectangle) :void
+    {
+        _dirty = _dirty.union(region);
+    }
+
+    /**
+     * Updates the portion of the display covered by the dirty region.
+     */
+    protected function updateDisplay () :void
+    {
+        // get the intersection of the screen bounds and the dirty region
+        var bounds :Rectangle = _dirty.intersection(new Rectangle(0, 0, _width, _height));
+        _dirty.setEmpty();
+        if (bounds.isEmpty()) {
+            return;
+        }
+
         // first, combine the contents of all intersecting windows
         var combined :Array = new Array(bounds.width * bounds.height);
         for (var ii :int = 0; ii < _windows.length; ii++) {
@@ -280,11 +374,11 @@ public class ClientApp extends Sprite {
                         // assuming the text is centered within the field
                         var highlight :Bitmap = new Bitmap(_highlightData);
                         addChildAt(_highlights[idx] = highlight, 0);
-                        var bounds :Rectangle = _field.getCharBoundaries(0);
-                        highlight.x = _field.x + bounds.width*xx +
-                            (_field.width - bounds.width*_width)/2;
-                        highlight.y = _field.y + bounds.height*yy +
-                            (_field.height - bounds.height*_height)/2;
+                        var cbounds :Rectangle = _field.getCharBoundaries(0);
+                        highlight.x = _field.x + cbounds.width*xx +
+                            (_field.width - cbounds.width*_width)/2;
+                        highlight.y = _field.y + cbounds.height*yy +
+                            (_field.height - cbounds.height*_height)/2;
                        _field.setTextFormat(_litFormat, tidx, tidx + 1);
                     } else {
                         removeChild(_highlights[idx]);
@@ -436,11 +530,36 @@ public class ClientApp extends Sprite {
     /** The list of windows (sorted by layer). */
     protected var _windows :Array = [ ];
 
+    /** The current dirty region. */
+    protected var _dirty :Rectangle = new Rectangle();
+
     /** Flag indicating that the character should be highlighted. */
     protected static var HIGHLIGHT_FLAG :int = 0x10000;
+
+    /** Outgoing message: key pressed. */
+    protected static var KEY_PRESSED :int = 1;
+
+    /** Outgoing message: key released. */
+    protected static var KEY_RELEASED :int = 2;
+
+    /** Incoming message: add window. */
+    protected static var ADD_WINDOW :int = 1;
+
+    /** Incoming message: remove window. */
+    protected static var REMOVE_WINDOW :int = 2;
+
+    /** Incoming message: update window. */
+    protected static var UPDATE_WINDOW :int = 3;
+
+    /** Incoming message: set contents. */
+    protected static var SET_CONTENTS :int = 4;
+
+    /** Incoming message: move contents. */
+    protected static var MOVE_CONTENTS :int = 5;
 }
 }
 
+import flash.geom.Point;
 import flash.geom.Rectangle;
 
 /**
@@ -463,7 +582,7 @@ class Window
     /**
      * Creates a new, empty window.
      */
-    public function Window (id :int, layer :int, bounds :Rectangle, fill :String = " ")
+    public function Window (id :int, layer :int, bounds :Rectangle, fill :int = 0x20)
     {
         this.id = id;
         this.layer = layer;
@@ -471,9 +590,55 @@ class Window
 
         var size :int = bounds.width * bounds.height;
         contents = new Array(size);
-        var fchar :int = int(fill.charCodeAt(0));
         for (var ii :int = 0; ii < size; ii++) {
-            contents[ii] = fchar;
+            contents[ii] = fill;
         }
+    }
+
+    /**
+     * Resizes the contents to the specified dimensions.
+     */
+    public function resizeContents (size :Point, fill :int = 0x20) :void
+    {
+        var osize :Point = bounds.size;
+        var ocontents :Array = contents;
+        contents = new Array(size.x * size.y);
+        for (var yy :int = 0; yy < size.y; yy++) {
+            for (var xx :int = 0; xx < size.x; xx++) {
+                contents[yy*size.x + xx] = (xx < osize.x && yy < osize.y) ?
+                    ocontents[yy*osize.x + xx] : fill;
+            }
+        }
+    }
+
+    /**
+     * Sets part of the window's contents.
+     */
+    public function setContents (rect :Rectangle, values :Array) :void
+    {
+        for (var yy :int = 0; yy < rect.height; yy++) {
+            for (var xx :int = 0; xx < rect.width; xx++) {
+                contents[(rect.y + yy)*bounds.width + (rect.x + xx)] = values[yy*rect.width + xx];
+            }
+        }
+    }
+
+    /**
+     * Moves part of a window's contents.
+     */
+    public function moveContents (source :Rectangle, dest :Point, fill :int = 0x20) :void
+    {
+        // copy the source to a temporary buffer and clear it
+        var values :Array = new Array(source.width * source.height);
+        for (var yy :int = 0; yy < source.height; yy++) {
+            for (var xx :int = 0; xx < source.width; xx++) {
+                var cidx :int = (source.y + yy)*bounds.width + (source.x + xx);
+                values[yy*source.width + xx] = contents[cidx];
+                contents[cidx] = fill;
+            }
+        }
+
+        // then set it in the main one
+        setContents(new Rectangle(dest.x, dest.y, source.width, source.height), values);
     }
 }
