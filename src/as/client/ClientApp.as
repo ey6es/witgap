@@ -70,13 +70,19 @@ public class ClientApp extends Sprite {
             line += " ";
         }
         line += '\n';
-        for (var jj :int = 0; jj < _height; jj++) {
+        for (ii = 0; ii < _height; ii++) {
             text += line;
         }
         _field.text = text;
         _field.setTextFormat(_unlitFormat);
         _field.x = (loaderInfo.width - _field.width) / 2;
         _field.y = (loaderInfo.height - _field.height) / 2;
+
+        // create and initialize the combined contents array
+        _contents = new Array(_width * _height);
+        for (ii = 0; ii < _contents.length; ii++) {
+            _contents[ii] = 0x20;
+        }
 
         // create the highlight bitmap data and highlight array
         _highlightData = new BitmapData(bounds.width, bounds.height, false);
@@ -124,10 +130,7 @@ public class ClientApp extends Sprite {
             _socket.writeShort(_height);
         });
         _socket.addEventListener(IOErrorEvent.IO_ERROR, function (event :IOErrorEvent) :void {
-            // TODO: display error
-
-            var str :String = "Connect error";
-            drawString(str, (_width - str.length) / 2, _height/2);
+            fatalError("Couldn't connect to server.  Please try again later.");
         });
         _socket.addEventListener(SecurityErrorEvent.SECURITY_ERROR,
                 function (event :SecurityErrorEvent) :void {
@@ -185,53 +188,111 @@ public class ClientApp extends Sprite {
     }
 
     /**
-     * Draws a string at the specified x and y positions.
+     * Creates a new centered window with the supplied text, indicating a fatal error
+     * (unable to connect to or disconnected from the server).
      */
-    protected function drawString (str :String, x :int, y :int) :void
+    protected function fatalError (text :String) :void
     {
-        var begin :int = y*(_width + 1) + x;
-        _field.replaceText(begin, begin + str.length, str);
+        text = " " + text + " ";
+        var bounds :Rectangle = new Rectangle(
+            int((_width - text.length - 2) / 2), int(_height/2), text.length + 2, 3);
+        var window :Window = new Window(int.MAX_VALUE, int.MAX_VALUE, bounds, "#");
+        for (var ii :int = 0; ii < text.length; ii++) {
+            window.contents[text.length + 3 + ii] = int(text.charCodeAt(ii));
+        }
+        addWindow(window);
+        updateDisplay(bounds);
+    }
 
-        for (var ii :int = 0; ii < str.length; ii++) {
-            setHighlight(x + ii, y, true);
+    /**
+     * Adds a window to the list.
+     */
+    protected function addWindow (window :Window) :void
+    {
+        for (var ii :int = _windows.length - 1; ii >= 0; ii--) {
+            if (window.layer >= _windows[ii].layer) {
+                _windows.splice(ii + 1, 0, window);
+                return;
+            }
+        }
+        _windows.splice(0, 0, window);
+    }
+
+    /**
+     * Removes the window with the specified id from the list.
+     */
+    protected function removeWindow (id :int) :void
+    {
+        for (var ii :int = 0; ii < _windows.length; ii++) {
+            if (_windows[ii].id == id) {
+                _windows.splice(ii, 1);
+                return;
+            }
         }
     }
 
     /**
-     * Sets or clears the highlight at the specified location.
+     * Updates the portion of the display covered by the given bounds.
      */
-    protected function setHighlight (x :int, y :int, lit :Boolean) :void
+    protected function updateDisplay (bounds :Rectangle) :void
     {
-        var idx :int = y*_width + x;
-        var highlight :Bitmap = _highlights[idx];
-        if ((highlight != null) == lit) {
-            return;
-        }
-        var tidx :int = y*(_width + 1) + x;
-        if (lit) {
-            // the char boundaries might not be valid yet, so we compute the location assuming the
-            // text is centered within the field
-            addChildAt(_highlights[idx] = highlight = new Bitmap(_highlightData), 0);
-            var bounds :Rectangle = _field.getCharBoundaries(0);
-            highlight.x = _field.x + bounds.width*x + (_field.width - bounds.width*_width)/2;
-            highlight.y = _field.y + bounds.height*y + (_field.height - bounds.height*_height)/2;
-            _field.setTextFormat(_litFormat, tidx, tidx + 1);
-        } else {
-            removeChild(_highlights[idx]);
-            _highlights[idx] = null;
-            _field.setTextFormat(_unlitFormat, tidx, tidx + 1);
-        }
-    }
-
-    /**
-     * Updates the portion of the text field covered by the given bounds.
-     */
-    protected function updateField (bounds :Rectangle) :void
-    {
+        // first, combine the contents of all intersecting windows
+        var combined :Array = new Array(bounds.width * bounds.height);
         for (var ii :int = 0; ii < _windows.length; ii++) {
             var window :Window = _windows[ii];
             var isect :Rectangle = window.bounds.intersection(bounds);
+            trace(isect);
+            if (isect.isEmpty()) {
+                continue;
+            }
+            for (var yy :int = isect.top; yy < isect.bottom; yy++) {
+                for (var xx :int = isect.left; xx < isect.right; xx++) {
+                    var value :int = window.contents[
+                        (yy - window.bounds.y)*window.bounds.width + (xx - window.bounds.x)];
+                    if (value != 0x0) { // zero = "transparent"
+                        combined[(yy - bounds.y)*bounds.width + (xx - bounds.x)] = value;
+                    }
+                }
+            }
+        }
 
+        // now update the field/highlights with the new contents
+        for (yy = bounds.top; yy < bounds.bottom; yy++) {
+            for (xx = bounds.left; xx < bounds.right; xx++) {
+                var obj :Object = combined[(yy - bounds.y) * bounds.width + (xx - bounds.x)];
+                var nvalue :int = (obj == null) ? 0x20 : int(obj);
+                var idx :int = yy*_width + xx;
+                var ovalue :int = _contents[idx];
+                if (ovalue == nvalue) {
+                    continue;
+                }
+                _contents[idx] = nvalue;
+
+                var tidx :int = yy*(_width + 1) + xx;
+                var nchar :int = nvalue & 0xFFFF;
+                if ((ovalue & 0xFFFF) != nchar) {
+                    _field.replaceText(tidx, tidx + 1, String.fromCharCode(nchar));
+                }
+                var nlit :int = (nvalue & HIGHLIGHT_FLAG);
+                if ((ovalue & HIGHLIGHT_FLAG) != nlit) {
+                    if (nlit == HIGHLIGHT_FLAG) {
+                        // the char boundaries might not be valid yet, so we compute the location
+                        // assuming the text is centered within the field
+                        var highlight :Bitmap = new Bitmap(_highlightData);
+                        addChildAt(_highlights[idx] = highlight, 0);
+                        var bounds :Rectangle = _field.getCharBoundaries(0);
+                        highlight.x = _field.x + bounds.width*xx +
+                            (_field.width - bounds.width*_width)/2;
+                        highlight.y = _field.y + bounds.height*yy +
+                            (_field.height - bounds.height*_height)/2;
+                       _field.setTextFormat(_litFormat, tidx, tidx + 1);
+                    } else {
+                        removeChild(_highlights[idx]);
+                        _highlights[idx] = null;
+                        _field.setTextFormat(_unlitFormat, tidx, tidx + 1);
+                    }
+                }
+            }
         }
     }
 
@@ -354,6 +415,9 @@ public class ClientApp extends Sprite {
     /** Our gigantic text field. */
     protected var _field :TextField;
 
+    /** The contents of our field as integers. */
+    protected var _contents :Array;
+
     /** Formats for unlit and lit text. */
     protected var _unlitFormat :TextFormat, _litFormat :TextFormat;
 
@@ -371,6 +435,9 @@ public class ClientApp extends Sprite {
 
     /** The list of windows (sorted by layer). */
     protected var _windows :Array = [ ];
+
+    /** Flag indicating that the character should be highlighted. */
+    protected static var HIGHLIGHT_FLAG :int = 0x10000;
 }
 }
 
@@ -396,7 +463,7 @@ class Window
     /**
      * Creates a new, empty window.
      */
-    public function Window (id :int, layer :int, bounds :Rectangle)
+    public function Window (id :int, layer :int, bounds :Rectangle, fill :String = " ")
     {
         this.id = id;
         this.layer = layer;
@@ -404,8 +471,9 @@ class Window
 
         var size :int = bounds.width * bounds.height;
         contents = new Array(size);
+        var fchar :int = int(fill.charCodeAt(0));
         for (var ii :int = 0; ii < size; ii++) {
-            contents[ii] = 0x20;
+            contents[ii] = fchar;
         }
     }
 }
