@@ -129,6 +129,8 @@ public class ClientApp extends Sprite {
             // write the magic number, version, screen dimensions
             _socket.writeUnsignedInt(0x57544750); // "WTGP"
             _socket.writeUnsignedInt(0x00000001);
+            writeHexString(getCookie("sessionId", "0000000000000000"));
+            writeHexString(getCookie("sessionToken", "00000000000000000000000000000000"));
             _socket.writeShort(_width);
             _socket.writeShort(_height);
         });
@@ -247,6 +249,11 @@ public class ClientApp extends Sprite {
                     new Point(bytes.readInt(), bytes.readInt()), bytes.readInt());
                 break;
 
+            case SET_SESSION:
+                setCookie("sessionId", readHexString(bytes, 8));
+                setCookie("sessionToken", readHexString(bytes, 16));
+                break;
+
             case COMPOUND:
                 for (var count :int = bytes.readInt(); count >= 0; count--) {
                     decodeMessage(bytes);
@@ -264,6 +271,31 @@ public class ClientApp extends Sprite {
     protected function readRectangle (bytes :ByteArray) :Rectangle
     {
         return new Rectangle(bytes.readInt(), bytes.readInt(), bytes.readInt(), bytes.readInt());
+    }
+
+    /**
+     * Reads the specified number of bytes from the provided array and returns them as a hex
+     * string.
+     */
+    protected function readHexString (bytes :ByteArray, length :int) :String
+    {
+        var result :String = "";
+        for (var ii :int = 0; ii < length; ii++) {
+            // make sure each byte becomes two characters
+            var value :uint = bytes.readUnsignedByte();
+            result += (value / 16).toString(16) + (value % 16).toString(16);
+        }
+        return result;
+    }
+
+    /**
+     * Writes the specified hex string to the socket as binary data.
+     */
+    protected function writeHexString (string :String) :void
+    {
+        for (var ii :int = 0; ii < string.length; ii += 2) {
+            _socket.writeByte(parseInt(string.substr(ii, 2), 16));
+        }
     }
 
     /**
@@ -638,8 +670,11 @@ public class ClientApp extends Sprite {
     /** Incoming message: move contents. */
     protected static var MOVE_CONTENTS :int = 5;
 
+    /** Incoming message: set session id/token. */
+    protected static var SET_SESSION :int = 6;
+
     /** Incoming message: compound. */
-    protected static var COMPOUND :int = 6;
+    protected static var COMPOUND :int = 7;
 }
 }
 
