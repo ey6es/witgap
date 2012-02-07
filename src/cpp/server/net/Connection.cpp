@@ -27,7 +27,7 @@ Connection::~Connection ()
 void Connection::readHeader ()
 {
     // if we don't have the full header, wait until we do
-    if (_socket->bytesAvailable() < 12) {
+    if (_socket->bytesAvailable() < 36) {
         return;
     }
     // check the magic number and version
@@ -45,6 +45,10 @@ void Connection::readHeader ()
         _socket->close();
         return;
     }
+    quint64 sessionId;
+    stream >> sessionId;
+    char sessionToken[16];
+    stream.readRawData(sessionToken, 16);
     quint16 width, height;
     stream >> width;
     stream >> height;
