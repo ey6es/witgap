@@ -3,6 +3,8 @@
 
 package {
 
+import flash.display.Bitmap;
+import flash.display.BitmapData;
 import flash.display.Sprite;
 
 import flash.events.ContextMenuEvent;
@@ -53,9 +55,11 @@ public class ClientApp extends Sprite {
         _field.textColor = 0x00FF00;
         _field.text = " ";
         _field.selectable = false;
-        var format :TextFormat = new TextFormat();
-        format.font = "_typewriter";
-        _field.setTextFormat(format);
+        _unlitFormat = new TextFormat();
+        _litFormat = new TextFormat();
+        _litFormat.color = 0x000000;
+        _unlitFormat.font = _litFormat.font = "_typewriter";
+        _field.setTextFormat(_unlitFormat);
 
         // get the size of a character and use it to determine the char width/height
         var bounds :Rectangle = _field.getCharBoundaries(0);
@@ -70,9 +74,13 @@ public class ClientApp extends Sprite {
             text += line;
         }
         _field.text = text;
-        _field.setTextFormat(format);
+        _field.setTextFormat(_unlitFormat);
         _field.x = (loaderInfo.width - _field.width) / 2;
         _field.y = (loaderInfo.height - _field.height) / 2;
+
+        // create the highlight bitmap data and highlight array
+        _highlightData = new BitmapData(bounds.width, bounds.height, false);
+        _highlights = new Array(_width * _height);
 
         // add the context menu to change colors
         contextMenu = new ContextMenu();
@@ -85,6 +93,7 @@ public class ClientApp extends Sprite {
             for (var kk :int = 0; kk < captions.length; kk++) {
                 if (captions[kk] == caption) {
                     _field.textColor = colors[kk];
+                    _highlightData.fillRect(_highlightData.rect, colors[kk]);
                     contextMenu.customItems[kk].enabled = false;
                 } else {
                     contextMenu.customItems[kk].enabled = true;
@@ -182,6 +191,36 @@ public class ClientApp extends Sprite {
     {
         var begin :int = y*(_width + 1) + x;
         _field.replaceText(begin, begin + str.length, str);
+
+        for (var ii :int = 0; ii < str.length; ii++) {
+            setHighlight(x + ii, y, true);
+        }
+    }
+
+    /**
+     * Sets or clears the highlight at the specified location.
+     */
+    protected function setHighlight (x :int, y :int, lit :Boolean) :void
+    {
+        var idx :int = y*_width + x;
+        var highlight :Bitmap = _highlights[idx];
+        if ((highlight != null) == lit) {
+            return;
+        }
+        var tidx :int = y*(_width + 1) + x;
+        if (lit) {
+            // the char boundaries might not be valid yet, so we compute the location assuming the
+            // text is centered within the field
+            addChildAt(_highlights[idx] = highlight = new Bitmap(_highlightData), 0);
+            var bounds :Rectangle = _field.getCharBoundaries(0);
+            highlight.x = _field.x + bounds.width*x + (_field.width - bounds.width*_width)/2;
+            highlight.y = _field.y + bounds.height*y + (_field.height - bounds.height*_height)/2;
+            _field.setTextFormat(_litFormat, tidx, tidx + 1);
+        } else {
+            removeChild(_highlights[idx]);
+            _highlights[idx] = null;
+            _field.setTextFormat(_unlitFormat, tidx, tidx + 1);
+        }
     }
 
     /**
@@ -314,6 +353,15 @@ public class ClientApp extends Sprite {
 
     /** Our gigantic text field. */
     protected var _field :TextField;
+
+    /** Formats for unlit and lit text. */
+    protected var _unlitFormat :TextFormat, _litFormat :TextFormat;
+
+    /** The highlight bitmap data. */
+    protected var _highlightData :BitmapData;
+
+    /** The highlight bitmaps for each location (if active). */
+    protected var _highlights :Array;
 
     /** The width and height of the display in characters. */
     protected var _width :int, _height :int;
