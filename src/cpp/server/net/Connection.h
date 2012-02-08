@@ -32,7 +32,7 @@ public:
      */
     QTcpSocket* socket () const { return _socket; };
 
-public slots:
+protected slots:
 
     /**
      * Reads a chunk of incoming header (before transitioning to messages).
