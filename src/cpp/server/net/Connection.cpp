@@ -6,6 +6,8 @@
 #include <QtDebug>
 #include <QtEndian>
 
+#include "Protocol.h"
+
 #include "ServerApp.h"
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
@@ -34,13 +36,13 @@ void Connection::readHeader ()
     QDataStream stream(_socket);
     quint32 magic, version;
     stream >> magic;
-    if (magic != 0x57544750) { // "WTGP"
+    if (magic != PROTOCOL_MAGIC) {
         qWarning() << "Invalid protocol magic number:" << magic << _socket->peerAddress();
         _socket->close();
         return;
     }
     stream >> version;
-    if (version != 0x00000001) {
+    if (version != PROTOCOL_VERSION) {
         qWarning() << "Wrong protocol version:" << version << _socket->peerAddress();
         _socket->close();
         return;

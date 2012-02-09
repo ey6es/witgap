@@ -127,8 +127,8 @@ public class ClientApp extends Sprite {
         _socket = new Socket();
         _socket.addEventListener(Event.CONNECT, function (event :Event) :void {
             // write the magic number, version, screen dimensions
-            _socket.writeUnsignedInt(0x57544750); // "WTGP"
-            _socket.writeUnsignedInt(0x00000001);
+            _socket.writeUnsignedInt(PROTOCOL_MAGIC);
+            _socket.writeUnsignedInt(PROTOCOL_VERSION);
             writeHexString(getCookie("sessionId", "0000000000000000"));
             writeHexString(getCookie("sessionToken", "00000000000000000000000000000000"));
             _socket.writeShort(_width);
@@ -181,7 +181,8 @@ public class ClientApp extends Sprite {
             return;
         }
         _socket.writeShort(6);
-        _socket.writeShort(event.type == KeyboardEvent.KEY_DOWN ? KEY_PRESSED : KEY_RELEASED);
+        _socket.writeShort(event.type == KeyboardEvent.KEY_DOWN ?
+            KEY_PRESSED_MSG : KEY_RELEASED_MSG);
         _socket.writeUnsignedInt(getQtKeyCode(event));
         _socket.flush();
     }
@@ -220,21 +221,21 @@ public class ClientApp extends Sprite {
     {
         var type :int = bytes.readUnsignedShort();
         switch (type) {
-            case ADD_WINDOW:
+            case ADD_WINDOW_MSG:
                 addWindow(new Window(bytes.readInt(), bytes.readInt(),
                     readRectangle(bytes), bytes.readInt()));
                 break;
 
-            case REMOVE_WINDOW:
+            case REMOVE_WINDOW_MSG:
                 removeWindow(bytes.readInt());
                 break;
 
-            case UPDATE_WINDOW:
+            case UPDATE_WINDOW_MSG:
                 updateWindow(bytes.readInt(), bytes.readInt(),
                     readRectangle(bytes), bytes.readInt());
                 break;
 
-            case SET_CONTENTS:
+            case SET_CONTENTS_MSG:
                 var id :int = bytes.readInt();
                 var bounds :Rectangle = readRectangle(bytes);
                 var contents :Array = new Array(bounds.width * bounds.height);
@@ -244,17 +245,17 @@ public class ClientApp extends Sprite {
                 setWindowContents(id, bounds, contents);
                 break;
 
-            case MOVE_CONTENTS:
+            case MOVE_CONTENTS_MSG:
                 moveWindowContents(bytes.readInt(), readRectangle(bytes),
                     new Point(bytes.readInt(), bytes.readInt()), bytes.readInt());
                 break;
 
-            case SET_SESSION:
+            case SET_SESSION_MSG:
                 setCookie("sessionId", readHexString(bytes, 8));
                 setCookie("sessionToken", readHexString(bytes, 16));
                 break;
 
-            case COMPOUND:
+            case COMPOUND_MSG:
                 for (var count :int = bytes.readInt(); count >= 0; count--) {
                     decodeMessage(bytes);
                 }
@@ -649,32 +650,38 @@ public class ClientApp extends Sprite {
     /** Flag indicating that the character should be highlighted. */
     protected static var HIGHLIGHT_FLAG :int = 0x10000;
 
+    /** The magic number that identifies the protocol. */
+    protected static var PROTOCOL_MAGIC :int = 0x57544750; // "WTGP"
+
+    /** The protocol version. */
+    protected static var PROTOCOL_VERSION :int = 0x00000001;
+
     /** Outgoing message: key pressed. */
-    protected static var KEY_PRESSED :int = 1;
+    protected static var KEY_PRESSED_MSG :int = 0;
 
     /** Outgoing message: key released. */
-    protected static var KEY_RELEASED :int = 2;
+    protected static var KEY_RELEASED_MSG :int = 1;
 
     /** Incoming message: add window. */
-    protected static var ADD_WINDOW :int = 1;
+    protected static var ADD_WINDOW_MSG :int = 0;
 
     /** Incoming message: remove window. */
-    protected static var REMOVE_WINDOW :int = 2;
+    protected static var REMOVE_WINDOW_MSG :int = 1;
 
     /** Incoming message: update window. */
-    protected static var UPDATE_WINDOW :int = 3;
+    protected static var UPDATE_WINDOW_MSG :int = 2;
 
     /** Incoming message: set contents. */
-    protected static var SET_CONTENTS :int = 4;
+    protected static var SET_CONTENTS_MSG :int = 3;
 
     /** Incoming message: move contents. */
-    protected static var MOVE_CONTENTS :int = 5;
+    protected static var MOVE_CONTENTS_MSG :int = 4;
 
     /** Incoming message: set session id/token. */
-    protected static var SET_SESSION :int = 6;
+    protected static var SET_SESSION_MSG :int = 5;
 
     /** Incoming message: compound. */
-    protected static var COMPOUND :int = 7;
+    protected static var COMPOUND_MSG :int = 6;
 }
 }
 
