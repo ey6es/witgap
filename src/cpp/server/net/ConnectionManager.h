@@ -4,9 +4,12 @@
 #ifndef CONNECTION_MANAGER
 #define CONNECTION_MANAGER
 
+#include <QHash>
 #include <QTcpServer>
 
+class Connection;
 class ServerApp;
+class Session;
 
 /**
  * Listens for TCP connections.
@@ -27,6 +30,13 @@ public:
      */
     ~ConnectionManager ();
 
+    /**
+     * Called by a connection when it has received the protocol header.
+     */
+    void connectionEstablished (
+        Connection* connection, quint64 sessionId,
+        const QByteArray& sessionToken, int width, int height);
+
 public slots:
 
     /**
@@ -38,6 +48,9 @@ protected:
 
     /** The server application. */
     ServerApp* _app;
+
+    /** The set of active sessions, mapped by session id. */
+    QHash<quint64, Session*> _sessions;
 };
 
 #endif // CONNECTION_MANAGER

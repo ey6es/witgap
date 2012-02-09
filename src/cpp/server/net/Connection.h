@@ -34,6 +34,16 @@ public:
      */
     QTcpSocket* socket () const { return _socket; };
 
+    /**
+     * Activates the connection, allowing it to begin reading and writing messages.
+     */
+    void activate ();
+
+    /**
+     * Deactivates the connection, forcibly closing and deleting it.
+     */
+    void deactivate ();
+
 signals:
 
     /**
@@ -66,7 +76,7 @@ public slots:
     /**
      * Sets part of a window's contents.
      */
-    void setContents (int id, const QRect& bounds);
+    void setContents (int id, const QRect& bounds, const int* contents);
 
     /**
      * Moves part of a window's contents.
@@ -76,7 +86,7 @@ public slots:
     /**
      * Sets the user's session token.
      */
-    void setSession ();
+    void setSession (quint64 sessionId, const char* sessionToken);
 
 protected slots:
 

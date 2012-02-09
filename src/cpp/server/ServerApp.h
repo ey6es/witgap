@@ -37,7 +37,7 @@ public:
     ~ServerApp ();
 
     /**
-     * Returns a pointer to the session manager.
+     * Returns a pointer to the connection manager.
      */
     ConnectionManager* connectionManager () const { return _connectionManager; }
 

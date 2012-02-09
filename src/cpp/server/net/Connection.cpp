@@ -26,6 +26,19 @@ Connection::~Connection ()
 {
 }
 
+void Connection::activate ()
+{
+    // connect the signal in order to read incoming messages
+    connect(_socket, SIGNAL(readyRead()), SLOT(readMessages()));
+
+    // call it manually in case we already have something to read
+    readMessages();
+}
+
+void Connection::deactivate ()
+{
+}
+
 void Connection::addWindow (int id, int layer, const QRect& bounds, int fill)
 {
 }
@@ -38,7 +51,7 @@ void Connection::updateWindow (int id, int layer, const QRect& bounds, int fill)
 {
 }
 
-void Connection::setContents (int id, const QRect& bounds)
+void Connection::setContents (int id, const QRect& bounds, const int* contents)
 {
 }
 
@@ -46,7 +59,7 @@ void Connection::moveContents (int id, const QRect& source, const QPoint& dest, 
 {
 }
 
-void Connection::setSession ()
+void Connection::setSession (quint64 sessionId, const char* sessionToken)
 {
 }
 
@@ -73,18 +86,16 @@ void Connection::readHeader ()
     }
     quint64 sessionId;
     stream >> sessionId;
-    char sessionToken[16];
-    stream.readRawData(sessionToken, 16);
+    QByteArray sessionToken = _socket->read(16);
     quint16 width, height;
     stream >> width;
     stream >> height;
 
-    // if that worked, we can switch to reading messages
+    // disable the connection until we're ready to read subsequent messages
     _socket->disconnect(this);
-    connect(_socket, SIGNAL(readyRead()), SLOT(readMessages()));
 
-    // call it manually in case we already have something to read
-    readMessages();
+    // notify the connection manager, which will create a session for the connection
+    _app->connectionManager()->connectionEstablished(this, sessionId, sessionToken, width, height);
 }
 
 void Connection::readMessages ()

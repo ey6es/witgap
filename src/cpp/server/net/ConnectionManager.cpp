@@ -7,6 +7,7 @@
 #include "ServerApp.h"
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
+#include "net/Session.h"
 
 ConnectionManager::ConnectionManager (ServerApp* app) :
     QTcpServer(app),
@@ -26,6 +27,21 @@ ConnectionManager::ConnectionManager (ServerApp* app) :
 
 ConnectionManager::~ConnectionManager ()
 {
+}
+
+void ConnectionManager::connectionEstablished (
+    Connection* connection, quint64 sessionId,
+    const QByteArray& sessionToken, int width, int height)
+{
+    // if we already have a session and the tokens match, replace it
+    Session* session = _sessions[sessionId];
+    if (session != 0 && session->token() == sessionToken) {
+        session->setConnection(connection);
+        return;
+    }
+
+    // otherwise, go to the database to validate the token or generate a new one
+
 }
 
 void ConnectionManager::acceptConnections ()
