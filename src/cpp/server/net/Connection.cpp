@@ -26,6 +26,30 @@ Connection::~Connection ()
 {
 }
 
+void Connection::addWindow (int id, int layer, const QRect& bounds, int fill)
+{
+}
+
+void Connection::removeWindow (int id)
+{
+}
+
+void Connection::updateWindow (int id, int layer, const QRect& bounds, int fill)
+{
+}
+
+void Connection::setContents (int id, const QRect& bounds)
+{
+}
+
+void Connection::moveContents (int id, const QRect& source, const QPoint& dest, int fill)
+{
+}
+
+void Connection::setSession ()
+{
+}
+
 void Connection::readHeader ()
 {
     // if we don't have the full header, wait until we do
@@ -54,7 +78,6 @@ void Connection::readHeader ()
     quint16 width, height;
     stream >> width;
     stream >> height;
-    qDebug() << width << height;
 
     // if that worked, we can switch to reading messages
     _socket->disconnect(this);

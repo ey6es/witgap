@@ -135,7 +135,7 @@ public class ClientApp extends Sprite {
             _socket.writeShort(_height);
         });
         _socket.addEventListener(IOErrorEvent.IO_ERROR, function (event :IOErrorEvent) :void {
-            fatalError("Couldn't connect to server.  Please wait a while, then reload the page.");
+            fatalError("No connection to server.  Please wait a while, then reload the page.");
         });
         _socket.addEventListener(SecurityErrorEvent.SECURITY_ERROR,
                 function (event :SecurityErrorEvent) :void {
