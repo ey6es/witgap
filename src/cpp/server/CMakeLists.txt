@@ -10,4 +10,4 @@ set(SOURCES main.cpp ServerApp.cpp)
 
 qt4_wrap_cpp(SOURCES ${HEADERS})
 add_executable(witgap-server ${SOURCES} ${HEADERS})
-target_link_libraries(witgap-server ${QT_LIBRARIES} net db)
+target_link_libraries(witgap-server ${QT_LIBRARIES} server-net server-db)

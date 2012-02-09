@@ -41,7 +41,7 @@ public:
      */
     ConnectionManager* connectionManager () const { return _connectionManager; }
 
-public slots:
+protected slots:
 
     /**
      * Handles idle processing.
