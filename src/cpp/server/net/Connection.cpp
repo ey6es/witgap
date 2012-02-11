@@ -15,7 +15,8 @@
 Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     QObject(app->connectionManager()),
     _app(app),
-    _socket(socket)
+    _socket(socket),
+    _stream(socket)
 {
     // connect initial slots
     connect(socket, SIGNAL(readyRead()), SLOT(readHeader()));
@@ -60,8 +61,13 @@ void Connection::moveContents (int id, const QRect& source, const QPoint& dest, 
 {
 }
 
-void Connection::setSession (quint64 sessionId, const char* sessionToken)
+void Connection::setSession (quint64 id, const QByteArray& token)
 {
+    _stream << (quint16)26;
+    _stream << (quint16)SET_SESSION_MSG;
+    _stream << id;
+    _socket->write(token);
+    _socket->flush();
 }
 
 void Connection::readHeader ()
@@ -71,26 +77,25 @@ void Connection::readHeader ()
         return;
     }
     // check the magic number and version
-    QDataStream stream(_socket);
     quint32 magic, version;
-    stream >> magic;
+    _stream >> magic;
     if (magic != PROTOCOL_MAGIC) {
         qWarning() << "Invalid protocol magic number:" << magic << _socket->peerAddress();
         _socket->close();
         return;
     }
-    stream >> version;
+    _stream >> version;
     if (version != PROTOCOL_VERSION) {
         qWarning() << "Wrong protocol version:" << version << _socket->peerAddress();
         _socket->close();
         return;
     }
     quint64 sessionId;
-    stream >> sessionId;
+    _stream >> sessionId;
     QByteArray sessionToken = _socket->read(16);
     quint16 width, height;
-    stream >> width;
-    stream >> height;
+    _stream >> width;
+    _stream >> height;
 
     // disable the connection until we're ready to read subsequent messages
     _socket->disconnect(this);

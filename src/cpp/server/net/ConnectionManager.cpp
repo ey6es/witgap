@@ -50,9 +50,13 @@ void ConnectionManager::connectionEstablished (
 }
 
 void ConnectionManager::tokenValidated (
-    QObject* connection, quint64 id, const QByteArray& token)
+    QObject* connobj, quint64 id, const QByteArray& token)
 {
-    qDebug() << connection << id << token.length();
+    // make sure the connection is still in business
+    Connection* connection = qobject_cast<Connection*>(connobj);
+
+    // send the token back to the connection
+    connection->setSession(id, token);
 }
 
 void ConnectionManager::acceptConnections ()

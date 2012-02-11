@@ -44,6 +44,36 @@ public:
      */
     void deactivate ();
 
+    /**
+     * Adds a window to the user's display.
+     */
+    Q_INVOKABLE void addWindow (int id, int layer, const QRect& bounds, int fill);
+
+    /**
+     * Removes a window from the user's display.
+     */
+    Q_INVOKABLE void removeWindow (int id);
+
+    /**
+     * Updates a window on the user's display.
+     */
+    Q_INVOKABLE void updateWindow (int id, int layer, const QRect& bounds, int fill);
+
+    /**
+     * Sets part of a window's contents.
+     */
+    Q_INVOKABLE void setContents (int id, const QRect& bounds, const int* contents);
+
+    /**
+     * Moves part of a window's contents.
+     */
+    Q_INVOKABLE void moveContents (int id, const QRect& source, const QPoint& dest, int fill);
+
+    /**
+     * Sets the user's session id/token.
+     */
+    Q_INVOKABLE void setSession (quint64 id, const QByteArray& token);
+
 signals:
 
     /**
@@ -55,38 +85,6 @@ signals:
      * Fired when the user releases a key.
      */
     void keyReleased (int key);
-
-public slots:
-
-    /**
-     * Adds a window to the user's display.
-     */
-    void addWindow (int id, int layer, const QRect& bounds, int fill);
-
-    /**
-     * Removes a window from the user's display.
-     */
-    void removeWindow (int id);
-
-    /**
-     * Updates a window on the user's display.
-     */
-    void updateWindow (int id, int layer, const QRect& bounds, int fill);
-
-    /**
-     * Sets part of a window's contents.
-     */
-    void setContents (int id, const QRect& bounds, const int* contents);
-
-    /**
-     * Moves part of a window's contents.
-     */
-    void moveContents (int id, const QRect& source, const QPoint& dest, int fill);
-
-    /**
-     * Sets the user's session token.
-     */
-    void setSession (quint64 sessionId, const char* sessionToken);
 
 protected slots:
 
@@ -112,6 +110,9 @@ protected:
 
     /** The underlying socket. */
     QTcpSocket* _socket;
+
+    /** The data stream used to read from and write to the socket. */
+    QDataStream _stream;
 };
 
 #endif // CONNECTION
