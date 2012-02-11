@@ -6,6 +6,8 @@
 
 #include <QThread>
 
+#include "db/SessionRepository.h"
+
 class ServerApp;
 
 /**
@@ -26,6 +28,11 @@ public:
      * Destroys the manager.
      */
     ~DatabaseThread ();
+
+    /**
+     * Returns a reference to the session repository.
+     */
+    SessionRepository* sessionRepository () const { return _sessionRepository; }
 
 protected:
 
@@ -57,6 +64,9 @@ protected:
 
     /** The options to use when connecting. */
     QString _connectOptions;
+
+    /** The session repository. */
+    SessionRepository* _sessionRepository;
 };
 
 #endif // DATABASE_THREAD

@@ -41,6 +41,11 @@ public:
      */
     ConnectionManager* connectionManager () const { return _connectionManager; }
 
+    /**
+     * Returns a pointer to the database thread.
+     */
+    DatabaseThread* databaseThread () const { return _databaseThread; }
+
 protected slots:
 
     /**

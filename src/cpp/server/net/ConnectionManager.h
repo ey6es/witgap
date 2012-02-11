@@ -37,6 +37,11 @@ public:
         Connection* connection, quint64 sessionId,
         const QByteArray& sessionToken, int width, int height);
 
+    /**
+     * Callback for validated tokens.
+     */
+    Q_INVOKABLE void tokenValidated (QObject* connection, quint64 id, const QByteArray& token);
+
 public slots:
 
     /**

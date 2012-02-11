@@ -5,9 +5,11 @@
 #include <QtDebug>
 
 #include "ServerApp.h"
+#include "db/DatabaseThread.h"
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
+#include "util/Callback.h"
 
 ConnectionManager::ConnectionManager (ServerApp* app) :
     QTcpServer(app),
@@ -41,7 +43,16 @@ void ConnectionManager::connectionEstablished (
     }
 
     // otherwise, go to the database to validate the token or generate a new one
+    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "validateToken",
+        Q_ARG(quint64, sessionId), Q_ARG(const QByteArray&, sessionToken),
+        Q_ARG(const Callback&, Callback(this, "tokenValidated(QObject*,quint64,QByteArray)",
+            Q_ARG(QObject*, connection))));
+}
 
+void ConnectionManager::tokenValidated (
+    QObject* connection, quint64 id, const QByteArray& token)
+{
+    qDebug() << connection << id << token.length();
 }
 
 void ConnectionManager::acceptConnections ()

@@ -14,6 +14,7 @@
 
 Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     QObject(app->connectionManager()),
+    _app(app),
     _socket(socket)
 {
     // connect initial slots
