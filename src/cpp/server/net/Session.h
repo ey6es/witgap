@@ -21,7 +21,7 @@ public:
     /**
      * Initializes the session.
      */
-    Session (ServerApp* app, Connection* connection, QByteArray token);
+    Session (ServerApp* app, Connection* connection, quint64 id, QByteArray token);
 
     /**
      * Destroys the session.
@@ -45,6 +45,9 @@ protected:
 
     /** The session connection. */
     Connection* _connection;
+
+    /** The session id. */
+    quint64 _id;
 
     /** The session token. */
     QByteArray _token;

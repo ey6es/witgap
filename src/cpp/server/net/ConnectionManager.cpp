@@ -49,20 +49,20 @@ void ConnectionManager::connectionEstablished (
             Q_ARG(QObject*, connection))));
 }
 
-void ConnectionManager::tokenValidated (
-    QObject* connobj, quint64 id, const QByteArray& token)
-{
-    // make sure the connection is still in business
-    Connection* connection = qobject_cast<Connection*>(connobj);
-
-    // send the token back to the connection
-    connection->setSession(id, token);
-}
-
 void ConnectionManager::acceptConnections ()
 {
     QTcpSocket* socket;
     while ((socket = nextPendingConnection()) != 0) {
         new Connection(_app, socket);
     }
+}
+
+void ConnectionManager::tokenValidated (
+    QObject* connobj, quint64 id, const QByteArray& token)
+{
+    // make sure the connection is still in business
+    Connection* connection = qobject_cast<Connection*>(connobj);
+
+    // create and map the session
+    _sessions[id] = new Session(_app, connection, id, token);
 }

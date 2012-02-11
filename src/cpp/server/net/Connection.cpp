@@ -67,7 +67,6 @@ void Connection::setSession (quint64 id, const QByteArray& token)
     _stream << (quint16)SET_SESSION_MSG;
     _stream << id;
     _socket->write(token);
-    _socket->flush();
 }
 
 void Connection::readHeader ()

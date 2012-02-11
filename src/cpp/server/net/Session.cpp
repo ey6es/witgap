@@ -6,13 +6,16 @@
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
 
-Session::Session (ServerApp* app, Connection* connection, QByteArray token) :
+Session::Session (ServerApp* app, Connection* connection, quint64 id, QByteArray token) :
     QObject(app->connectionManager()),
     _app(app),
     _connection(connection),
+    _id(id),
     _token(token)
 {
-    _connection->activate();
+    // send the session info back to the connection and activate it
+    connection->setSession(id, token);
+    connection->activate();
 }
 
 Session::~Session ()
