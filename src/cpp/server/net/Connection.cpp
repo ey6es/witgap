@@ -22,6 +22,7 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     connect(socket, SIGNAL(readyRead()), SLOT(readHeader()));
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)),
         SLOT(handleError(QAbstractSocket::SocketError)));
+    connect(this, SIGNAL(windowClosed()), SLOT(handleWindowClosed()));
 }
 
 Connection::~Connection ()
@@ -63,8 +64,8 @@ void Connection::moveContents (int id, const QRect& source, const QPoint& dest, 
 
 void Connection::setSession (quint64 id, const QByteArray& token)
 {
-    _stream << (quint16)26;
-    _stream << (quint16)SET_SESSION_MSG;
+    _stream << (quint16)25;
+    _stream << (quint8)SET_SESSION_MSG;
     _stream << id;
     _socket->write(token);
 }
@@ -108,21 +109,32 @@ void Connection::readMessages ()
     // read as many messages as are available
     while (true) {
         qint64 available = _socket->bytesAvailable();
-        if (available < 2) {
+        if (available < 1) {
             return; // wait until we have the rest of the header
         }
-        char sbuf[2];
-        _socket->peek(sbuf, 2);
-        quint16 size = qFromBigEndian<quint16>((uchar*)sbuf);
-        if (available < size + 4) {
-            return; // wait until we have the rest of the size
+        char type;
+        _socket->getChar(&type);
+        if (type == WINDOW_CLOSED_MSG) {
+            emit windowClosed();
+
+        } else { // type == KEY_PRESSED_MSG || type == KEY_RELEASE_MSG
+            if (available < 5) {
+                _socket->ungetChar(type);
+                return; // wait until we have the key
+            }
+            quint32 key;
+            _stream >> key;
+            emit (type == KEY_PRESSED_MSG) ? keyPressed(key) : keyReleased(key);
         }
-        _socket->read(sbuf, 2); // consume the size we already read
-        QByteArray message = _socket->read(size);
     }
 }
 
 void Connection::handleError (QAbstractSocket::SocketError error)
 {
     qDebug() << "error" << error;
+}
+
+void Connection::handleWindowClosed ()
+{
+    qDebug() << "window closed";
 }

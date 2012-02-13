@@ -12,39 +12,34 @@ const quint32 PROTOCOL_MAGIC = 0x57544750; // "WTGP"
 /** The protocol version. */
 const quint32 PROTOCOL_VERSION = 0x00000001;
 
-/** Types for messages sent from client to server. */
-enum {
+/** Client -> server: a key was pressed. */
+const quint8 KEY_PRESSED_MSG = 0;
 
-    /** Sent when a key is pressed. */
-    KEY_PRESSED_MSG,
+/** Client -> server: a key was released. */
+const quint8 KEY_RELEASED_MSG = 1;
 
-    /** Sent when a key is released. */
-    KEY_RELEASED_MSG
-};
+/** Client -> server: the window was closed. */
+const quint8 WINDOW_CLOSED_MSG = 2;
 
-/** Types for messages send from server to client. */
-enum {
+/** Server -> client: add a window. */
+const quint8 ADD_WINDOW_MSG = 0;
 
-    /** Adds a window. */
-    ADD_WINDOW_MSG,
+/** Server -> client: remove a window. */
+const quint8 REMOVE_WINDOW_MSG = 1;
 
-    /** Removes a window. */
-    REMOVE_WINDOW_MSG,
+/** Server -> client: update a window. */
+const quint8 UPDATE_WINDOW_MSG = 2;
 
-    /** Updates a window. */
-    UPDATE_WINDOW_MSG,
+/** Server -> client: set part of a window's contents. */
+const quint8 SET_CONTENTS_MSG = 3;
 
-    /** Sets part of a window's contents. */
-    SET_CONTENTS_MSG,
+/** Server -> client: move part of a window's contents. */
+const quint8 MOVE_CONTENTS_MSG = 4;
 
-    /** Moves part of a window's contents. */
-    MOVE_CONTENTS_MSG,
+/** Server -> client: set the session id/token. */
+const quint8 SET_SESSION_MSG = 5;
 
-    /** Sets the client's session id/token. */
-    SET_SESSION_MSG,
-
-    /** A message containing multiple sub-messages. */
-    COMPOUND_MSG
-};
+/** Server -> client: a compound message follows. */
+const quint8 COMPOUND_MSG = 6;
 
 #endif // PROTOCOL

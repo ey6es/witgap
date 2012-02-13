@@ -15,16 +15,21 @@
             {
                 return document.cookie;
             }
+            window.onbeforeunload = function () {
+                (document.getElementById("inner") ||
+                    document.getElementById("outer")).willBeUnloaded();
+            };
         </script>
     </head>
 
     <body style="background-color: #000000;">
         <object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000"
-                width="800" height="600" id="client" align="middle">
+                width="800" height="600" id="outer" align="middle">
             <param name="movie" value="client.swf"/>
             <param name="FlashVars" value="server_host=localhost&server_port=4015"/>
             <!--[if !IE]>-->
-            <object type="application/x-shockwave-flash" data="client.swf" width="800" height="600">
+            <object type="application/x-shockwave-flash" data="client.swf"
+                    width="800" height="600" id="inner">
                 <param name="movie" value="client.swf"/>
                 <param name="FlashVars" value="server_host=localhost&server_port=4015"/>
             <!--<![endif]-->

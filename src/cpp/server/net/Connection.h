@@ -86,6 +86,11 @@ signals:
      */
     void keyReleased (int key);
 
+    /**
+     * Fired when the user closes the window.
+     */
+    void windowClosed ();
+
 protected slots:
 
     /**
@@ -102,6 +107,11 @@ protected slots:
      * Handles an error on the socket.
      */
     void handleError (QAbstractSocket::SocketError error);
+
+    /**
+     * Handles a client's window close.
+     */
+    void handleWindowClosed ();
 
 protected:
 

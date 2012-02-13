@@ -47,6 +47,18 @@ public class ClientApp extends Sprite {
     }
 
     /**
+     * Notifies the application that it's about to be unloaded.
+     */
+    public function willBeUnloaded () :void
+    {
+        if (!_socket.connected) {
+            return;
+        }
+        _socket.writeByte(WINDOW_CLOSED_MSG);
+        _socket.flush();
+    }
+
+    /**
      * Initializes the app.
      */
     protected function init (event :Event) :void
@@ -123,6 +135,9 @@ public class ClientApp extends Sprite {
         addEventListener(KeyboardEvent.KEY_DOWN, sendKeyMessage);
         addEventListener(KeyboardEvent.KEY_UP, sendKeyMessage);
 
+        // allow the JavaScript context to call willBeUnloaded
+        ExternalInterface.addCallback("willBeUnloaded", willBeUnloaded);
+
         // create the socket
         _socket = new Socket();
         _socket.addEventListener(Event.CONNECT, function (event :Event) :void {
@@ -180,8 +195,7 @@ public class ClientApp extends Sprite {
         if (!_socket.connected) {
             return;
         }
-        _socket.writeShort(6);
-        _socket.writeShort(event.type == KeyboardEvent.KEY_DOWN ?
+        _socket.writeByte(event.type == KeyboardEvent.KEY_DOWN ?
             KEY_PRESSED_MSG : KEY_RELEASED_MSG);
         _socket.writeUnsignedInt(getQtKeyCode(event));
         _socket.flush();
@@ -219,7 +233,7 @@ public class ClientApp extends Sprite {
      */
     protected function decodeMessage (bytes :ByteArray) :void
     {
-        var type :int = bytes.readUnsignedShort();
+        var type :int = bytes.readUnsignedByte();
         switch (type) {
             case ADD_WINDOW_MSG:
                 addWindow(new Window(bytes.readInt(), bytes.readInt(),
@@ -661,6 +675,9 @@ public class ClientApp extends Sprite {
 
     /** Outgoing message: key released. */
     protected static var KEY_RELEASED_MSG :int = 1;
+
+    /** Outgoing message: window closed. */
+    protected static var WINDOW_CLOSED_MSG :int = 2;
 
     /** Incoming message: add window. */
     protected static var ADD_WINDOW_MSG :int = 0;
