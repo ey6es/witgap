@@ -7,6 +7,10 @@
 #include <QMetaMethod>
 #include <QObject>
 #include <QPair>
+#include <QWeakPointer>
+
+/** A guarded pointer to a generic QObject that we can register with the meta-type system. */
+typedef QWeakPointer<QObject> QWeakObjectPointer;
 
 /**
  * Represents a callback to an invokable member function of a QObject.  The function will be

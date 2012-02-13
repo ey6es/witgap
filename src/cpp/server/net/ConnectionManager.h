@@ -7,6 +7,8 @@
 #include <QHash>
 #include <QTcpServer>
 
+#include "util/Callback.h"
+
 class Connection;
 class ServerApp;
 class Session;
@@ -49,7 +51,8 @@ protected:
     /**
      * Callback for validated tokens.
      */
-    Q_INVOKABLE void tokenValidated (QObject* connobj, quint64 id, const QByteArray& token);
+    Q_INVOKABLE void tokenValidated (
+        const QWeakObjectPointer& connptr, quint64 id, const QByteArray& token);
 
     /** The server application. */
     ServerApp* _app;

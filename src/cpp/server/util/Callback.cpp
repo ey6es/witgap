@@ -5,8 +5,9 @@
 
 #include "util/Callback.h"
 
-/** Register the Callback type. */
-static int callbackTypeId = qRegisterMetaType<Callback>("Callback");
+// register our types with the metatype system
+int callbackType = qRegisterMetaType<Callback>("Callback");
+int qWeakObjectPointerType = qRegisterMetaType<Callback>("QWeakObjectPointer");
 
 Callback::Callback (QObject* object, const char* method,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,

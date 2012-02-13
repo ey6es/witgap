@@ -9,7 +9,6 @@
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
-#include "util/Callback.h"
 
 ConnectionManager::ConnectionManager (ServerApp* app) :
     QTcpServer(app),
@@ -45,8 +44,9 @@ void ConnectionManager::connectionEstablished (
     // otherwise, go to the database to validate the token or generate a new one
     QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "validateToken",
         Q_ARG(quint64, sessionId), Q_ARG(const QByteArray&, sessionToken),
-        Q_ARG(const Callback&, Callback(this, "tokenValidated(QObject*,quint64,QByteArray)",
-            Q_ARG(QObject*, connection))));
+        Q_ARG(const Callback&, Callback(this,
+            "tokenValidated(QWeakObjectPointer,quint64,QByteArray)",
+            Q_ARG(const QWeakObjectPointer&, QWeakObjectPointer(connection)))));
 }
 
 void ConnectionManager::acceptConnections ()
@@ -58,10 +58,13 @@ void ConnectionManager::acceptConnections ()
 }
 
 void ConnectionManager::tokenValidated (
-    QObject* connobj, quint64 id, const QByteArray& token)
+    const QWeakObjectPointer& connptr, quint64 id, const QByteArray& token)
 {
     // make sure the connection is still in business
-    Connection* connection = qobject_cast<Connection*>(connobj);
+    Connection* connection = static_cast<Connection*>(connptr.data());
+    if (connection == 0) {
+        return;
+    }
 
     // create and map the session
     _sessions[id] = new Session(_app, connection, id, token);
