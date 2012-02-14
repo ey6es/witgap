@@ -30,9 +30,9 @@ public:
     ~Connection ();
 
     /**
-     * Returns a reference to the underlying socket.
+     * Checks whether the connection is open.
      */
-    QTcpSocket* socket () const { return _socket; };
+    bool isOpen () const { return _socket->state() == QAbstractSocket::ConnectedState; };
 
     /**
      * Activates the connection, allowing it to begin reading and writing messages.
@@ -42,7 +42,7 @@ public:
     /**
      * Deactivates the connection, forcibly closing and deleting it.
      */
-    void deactivate ();
+    void deactivate (const QString& reason);
 
     /**
      * Adds a window to the user's display.
@@ -62,7 +62,7 @@ public:
     /**
      * Sets part of a window's contents.
      */
-    Q_INVOKABLE void setContents (int id, const QRect& bounds, const int* contents);
+    Q_INVOKABLE void setContents (int id, const QRect& bounds, const QByteArray& contents);
 
     /**
      * Moves part of a window's contents.
@@ -103,17 +103,17 @@ protected slots:
      */
     void readMessages ();
 
-    /**
-     * Handles an error on the socket.
-     */
-    void handleError (QAbstractSocket::SocketError error);
-
-    /**
-     * Handles a client's window close.
-     */
-    void handleWindowClosed ();
-
 protected:
+
+    /**
+     * Writes a point to the stream.
+     */
+    void write (const QPoint& point);
+
+    /**
+     * Writes a rectangle to the stream.
+     */
+    void write (const QRect& rect);
 
     /** The server application. */
     ServerApp* _app;

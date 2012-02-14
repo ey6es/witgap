@@ -34,11 +34,16 @@ void ConnectionManager::connectionEstablished (
     Connection* connection, quint64 sessionId,
     const QByteArray& sessionToken, int width, int height)
 {
-    // if we already have a session and the tokens match, replace it
+    // see if we already have a session with the provided id
     Session* session = _sessions[sessionId];
-    if (session != 0 && session->token() == sessionToken) {
-        session->setConnection(connection);
-        return;
+    if (session != 0) {
+        if (session->token() == sessionToken && session->connection() == 0) {
+            // reconnection: use existing session
+            session->setConnection(connection);
+            return;
+        }
+        // invalid token or simultaneous connection: create a new session
+        sessionId = 0;
     }
 
     // otherwise, go to the database to validate the token or generate a new one
@@ -62,7 +67,7 @@ void ConnectionManager::tokenValidated (
 {
     // make sure the connection is still in business
     Connection* connection = static_cast<Connection*>(connptr.data());
-    if (connection == 0) {
+    if (connection == 0 || !connection->isOpen()) {
         return;
     }
 

@@ -20,13 +20,14 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
 {
     // connect initial slots
     connect(socket, SIGNAL(readyRead()), SLOT(readHeader()));
-    connect(socket, SIGNAL(error(QAbstractSocket::SocketError)),
-        SLOT(handleError(QAbstractSocket::SocketError)));
-    connect(this, SIGNAL(windowClosed()), SLOT(handleWindowClosed()));
+    connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(deleteLater()));
+    connect(socket, SIGNAL(disconnected()), SLOT(deleteLater()));
+    connect(this, SIGNAL(windowClosed()), SLOT(deleteLater()));
 }
 
 Connection::~Connection ()
 {
+    delete _socket;
 }
 
 void Connection::activate ()
@@ -38,34 +39,64 @@ void Connection::activate ()
     readMessages();
 }
 
-void Connection::deactivate ()
+void Connection::deactivate (const QString& reason)
 {
+    QByteArray rbytes = reason.toUtf8();
+    _stream << (quint16)(1 + rbytes.length());
+    _stream << CLOSE_MSG;
+    _socket->write(rbytes);
+    _socket->disconnectFromHost();
 }
 
 void Connection::addWindow (int id, int layer, const QRect& bounds, int fill)
 {
+    _stream << (quint16)21;
+    _stream << ADD_WINDOW_MSG;
+    _stream << (quint32)id;
+    _stream << (qint32)layer;
+    write(bounds);
+    _stream << (quint32)fill;
 }
 
 void Connection::removeWindow (int id)
 {
+    _stream << (quint16)5;
+    _stream << REMOVE_WINDOW_MSG;
+    _stream << (quint32)id;
 }
 
 void Connection::updateWindow (int id, int layer, const QRect& bounds, int fill)
 {
+    _stream << (quint16)21;
+    _stream << UPDATE_WINDOW_MSG;
+    _stream << (quint32)id;
+    _stream << (qint32)layer;
+    write(bounds);
+    _stream << (quint32)fill;
 }
 
-void Connection::setContents (int id, const QRect& bounds, const int* contents)
+void Connection::setContents (int id, const QRect& bounds, const QByteArray& contents)
 {
+    _stream << (quint16)(9 + contents.length());
+    _stream << SET_CONTENTS_MSG;
+    write(bounds);
+    _socket->write(contents);
 }
 
 void Connection::moveContents (int id, const QRect& source, const QPoint& dest, int fill)
 {
+    _stream << (quint16)21;
+    _stream << MOVE_CONTENTS_MSG;
+    _stream << (quint32)id;
+    write(source);
+    write(dest);
+    _stream << (quint32)fill;
 }
 
 void Connection::setSession (quint64 id, const QByteArray& token)
 {
     _stream << (quint16)25;
-    _stream << (quint8)SET_SESSION_MSG;
+    _stream << SET_SESSION_MSG;
     _stream << id;
     _socket->write(token);
 }
@@ -129,12 +160,16 @@ void Connection::readMessages ()
     }
 }
 
-void Connection::handleError (QAbstractSocket::SocketError error)
+void Connection::write (const QPoint& point)
 {
-    qDebug() << "error" << error;
+    _stream << (qint16)point.x();
+    _stream << (qint16)point.y();
 }
 
-void Connection::handleWindowClosed ()
+void Connection::write (const QRect& rect)
 {
-    qDebug() << "window closed";
+    _stream << (qint16)rect.left();
+    _stream << (qint16)rect.top();
+    _stream << (qint16)rect.width();
+    _stream << (qint16)rect.height();
 }

@@ -42,4 +42,7 @@ const quint8 SET_SESSION_MSG = 5;
 /** Server -> client: a compound message follows. */
 const quint8 COMPOUND_MSG = 6;
 
+/** Server -> client: close the connection. */
+const quint8 CLOSE_MSG = 7;
+
 #endif // PROTOCOL

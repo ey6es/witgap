@@ -34,9 +34,21 @@ public:
     const QByteArray& token () const { return _token; }
 
     /**
+     * Returns a pointer to the connection, or zero if unconnected.
+     */
+    Connection* connection () const { return _connection; }
+
+    /**
      * Replaces the session connection.
      */
     void setConnection (Connection* connection);
+
+protected slots:
+
+    /**
+     * Indicates that the connection has been destroyed.
+     */
+    void connectionDestroyed ();
 
 protected:
 

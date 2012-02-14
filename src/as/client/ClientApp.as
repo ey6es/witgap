@@ -149,9 +149,11 @@ public class ClientApp extends Sprite {
             _socket.writeShort(_width);
             _socket.writeShort(_height);
         });
-        _socket.addEventListener(IOErrorEvent.IO_ERROR, function (event :IOErrorEvent) :void {
+        var errorHandler :Function = function (event :Event) :void {
             fatalError("No connection to server.  Please wait a while, then reload the page.");
-        });
+        };
+        _socket.addEventListener(Event.CLOSE, errorHandler);
+        _socket.addEventListener(IOErrorEvent.IO_ERROR, errorHandler);
         _socket.addEventListener(SecurityErrorEvent.SECURITY_ERROR,
                 function (event :SecurityErrorEvent) :void {
             // we get this when we can't connect; ignore it
@@ -206,7 +208,7 @@ public class ClientApp extends Sprite {
      */
     protected function readMessages (event :ProgressEvent) :void
     {
-        while (true) {
+        while (_socket.connected) {
             if (_messageLength == 0) {
                 if (_socket.bytesAvailable < 2) {
                     return;
@@ -273,6 +275,11 @@ public class ClientApp extends Sprite {
                 for (var count :int = bytes.readInt(); count >= 0; count--) {
                     decodeMessage(bytes);
                 }
+                break;
+
+            case CLOSE_MSG:
+                fatalError(bytes.readUTFBytes(bytes.bytesAvailable));
+                _socket.close();
                 break;
 
             default:
@@ -460,7 +467,6 @@ public class ClientApp extends Sprite {
         for (var ii :int = 0; ii < _windows.length; ii++) {
             var window :Window = _windows[ii];
             var isect :Rectangle = window.bounds.intersection(bounds);
-            trace(isect);
             if (isect.isEmpty()) {
                 continue;
             }
@@ -699,6 +705,9 @@ public class ClientApp extends Sprite {
 
     /** Incoming message: compound. */
     protected static var COMPOUND_MSG :int = 6;
+
+    /** Incoming message: close. */
+    protected static var CLOSE_MSG :int = 7;
 }
 }
 
