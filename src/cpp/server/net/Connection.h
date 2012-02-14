@@ -106,11 +106,6 @@ protected slots:
 protected:
 
     /**
-     * Writes a point to the stream.
-     */
-    void write (const QPoint& point);
-
-    /**
      * Writes a rectangle to the stream.
      */
     void write (const QRect& rect);

@@ -263,7 +263,7 @@ public class ClientApp extends Sprite {
 
             case MOVE_CONTENTS_MSG:
                 moveWindowContents(bytes.readInt(), readRectangle(bytes),
-                    new Point(bytes.readInt(), bytes.readInt()), bytes.readInt());
+                    new Point(bytes.readShort(), bytes.readShort()), bytes.readInt());
                 break;
 
             case SET_SESSION_MSG:
@@ -292,7 +292,8 @@ public class ClientApp extends Sprite {
      */
     protected function readRectangle (bytes :ByteArray) :Rectangle
     {
-        return new Rectangle(bytes.readInt(), bytes.readInt(), bytes.readInt(), bytes.readInt());
+        return new Rectangle(bytes.readShort(), bytes.readShort(),
+            bytes.readShort(), bytes.readShort());
     }
 
     /**

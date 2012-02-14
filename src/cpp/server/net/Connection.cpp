@@ -52,27 +52,27 @@ void Connection::addWindow (int id, int layer, const QRect& bounds, int fill)
 {
     _stream << (quint16)21;
     _stream << ADD_WINDOW_MSG;
-    _stream << (quint32)id;
+    _stream << (qint32)id;
     _stream << (qint32)layer;
     write(bounds);
-    _stream << (quint32)fill;
+    _stream << (qint32)fill;
 }
 
 void Connection::removeWindow (int id)
 {
-    _stream << (quint16)5;
+    _stream << (qint16)5;
     _stream << REMOVE_WINDOW_MSG;
-    _stream << (quint32)id;
+    _stream << (qint32)id;
 }
 
 void Connection::updateWindow (int id, int layer, const QRect& bounds, int fill)
 {
-    _stream << (quint16)21;
+    _stream << (qint16)21;
     _stream << UPDATE_WINDOW_MSG;
-    _stream << (quint32)id;
+    _stream << (qint32)id;
     _stream << (qint32)layer;
     write(bounds);
-    _stream << (quint32)fill;
+    _stream << (qint32)fill;
 }
 
 void Connection::setContents (int id, const QRect& bounds, const QByteArray& contents)
@@ -87,10 +87,11 @@ void Connection::moveContents (int id, const QRect& source, const QPoint& dest, 
 {
     _stream << (quint16)21;
     _stream << MOVE_CONTENTS_MSG;
-    _stream << (quint32)id;
+    _stream << (qint32)id;
     write(source);
-    write(dest);
-    _stream << (quint32)fill;
+    _stream << (qint16)dest.x();
+    _stream << (qint16)dest.y();
+    _stream << (qint32)fill;
 }
 
 void Connection::setSession (quint64 id, const QByteArray& token)
@@ -158,12 +159,6 @@ void Connection::readMessages ()
             emit (type == KEY_PRESSED_MSG) ? keyPressed(key) : keyReleased(key);
         }
     }
-}
-
-void Connection::write (const QPoint& point)
-{
-    _stream << (qint16)point.x();
-    _stream << (qint16)point.y();
 }
 
 void Connection::write (const QRect& rect)
