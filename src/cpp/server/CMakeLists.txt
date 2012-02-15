@@ -5,11 +5,10 @@ include_directories(.)
 add_subdirectory(net)
 add_subdirectory(db)
 add_subdirectory(ui)
-add_subdirectory(util)
 
 set(HEADERS ServerApp.h)
 set(SOURCES main.cpp ServerApp.cpp)
 
 qt4_wrap_cpp(SOURCES ${HEADERS})
 add_executable(witgap-server ${SOURCES} ${HEADERS})
-target_link_libraries(witgap-server ${QT_LIBRARIES} server-net server-db server-ui server-util)
+target_link_libraries(witgap-server ${QT_LIBRARIES} server-net server-db server-ui util)
