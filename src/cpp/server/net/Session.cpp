@@ -6,7 +6,7 @@
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
 
-Session::Session (ServerApp* app, Connection* connection, quint64 id, QByteArray token) :
+Session::Session (ServerApp* app, Connection* connection, quint64 id, const QByteArray& token) :
     QObject(app->connectionManager()),
     _app(app),
     _connection(0),

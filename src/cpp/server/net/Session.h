@@ -4,10 +4,12 @@
 #ifndef SESSION
 #define SESSION
 
+#include <QList>
 #include <QObject>
 
 class Connection;
 class ServerApp;
+class Window;
 
 /**
  * Handles a single user session.
@@ -21,7 +23,7 @@ public:
     /**
      * Initializes the session.
      */
-    Session (ServerApp* app, Connection* connection, quint64 id, QByteArray token);
+    Session (ServerApp* app, Connection* connection, quint64 id, const QByteArray& token);
 
     /**
      * Returns the session id.
@@ -63,6 +65,9 @@ protected:
 
     /** The session token. */
     QByteArray _token;
+
+    /** The list of active windows. */
+    QList<Window*> _windows;
 };
 
 #endif // SESSION
