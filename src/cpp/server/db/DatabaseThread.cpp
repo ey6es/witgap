@@ -24,10 +24,6 @@ DatabaseThread::DatabaseThread (ServerApp* app) :
     _sessionRepository->moveToThread(this);
 }
 
-DatabaseThread::~DatabaseThread ()
-{
-}
-
 void DatabaseThread::run ()
 {
     // connect to the configured database

@@ -25,11 +25,6 @@ public:
     Connection (ServerApp* app, QTcpSocket* socket);
 
     /**
-     * Destroys the connection.
-     */
-    ~Connection ();
-
-    /**
      * Checks whether the connection is open.
      */
     bool isOpen () const { return _socket->state() == QAbstractSocket::ConnectedState; };
@@ -75,6 +70,16 @@ public:
     Q_INVOKABLE void setSession (quint64 id, const QByteArray& token);
 
 signals:
+
+    /**
+     * Fired when the user presses the mouse.
+     */
+    void mousePressed (int x, int y);
+
+    /**
+     * Fired when the user releases the mouse.
+     */
+    void mouseReleased (int x, int y);
 
     /**
      * Fired when the user presses a key.

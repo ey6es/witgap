@@ -24,9 +24,9 @@ public:
     Session (ServerApp* app, Connection* connection, quint64 id, QByteArray token);
 
     /**
-     * Destroys the session.
+     * Returns the session id.
      */
-    ~Session ();
+    quint64 id () const { return _id; }
 
     /**
      * Returns the session token.
@@ -46,9 +46,9 @@ public:
 protected slots:
 
     /**
-     * Indicates that the connection has been destroyed.
+     * Clears the connection pointer (because it has been destroyed).
      */
-    void connectionDestroyed ();
+    void clearConnection ();
 
 protected:
 

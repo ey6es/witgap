@@ -43,10 +43,6 @@ ServerApp::ServerApp (int& argc, char** argv, const QString& configFile) :
     connect(this, SIGNAL(aboutToQuit()), SLOT(cleanup()));
 }
 
-ServerApp::~ServerApp ()
-{
-}
-
 void ServerApp::idle ()
 {
     if (pendingSignal == SIGINT) {

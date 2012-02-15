@@ -12,14 +12,20 @@ const quint32 PROTOCOL_MAGIC = 0x57544750; // "WTGP"
 /** The protocol version. */
 const quint32 PROTOCOL_VERSION = 0x00000001;
 
+/** Client -> server: the mouse was pressed. */
+const quint8 MOUSE_PRESSED_MSG = 0;
+
+/** Client -> server: the mouse was released. */
+const quint8 MOUSE_RELEASED_MSG = 1;
+
 /** Client -> server: a key was pressed. */
-const quint8 KEY_PRESSED_MSG = 0;
+const quint8 KEY_PRESSED_MSG = 2;
 
 /** Client -> server: a key was released. */
-const quint8 KEY_RELEASED_MSG = 1;
+const quint8 KEY_RELEASED_MSG = 3;
 
 /** Client -> server: the window was closed. */
-const quint8 WINDOW_CLOSED_MSG = 2;
+const quint8 WINDOW_CLOSED_MSG = 4;
 
 /** Server -> client: add a window. */
 const quint8 ADD_WINDOW_MSG = 0;

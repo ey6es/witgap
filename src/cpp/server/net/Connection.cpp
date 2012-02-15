@@ -18,16 +18,14 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     _socket(socket),
     _stream(socket)
 {
+    // take over ownership of the socket
+    _socket->setParent(this);
+
     // connect initial slots
     connect(socket, SIGNAL(readyRead()), SLOT(readHeader()));
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(deleteLater()));
     connect(socket, SIGNAL(disconnected()), SLOT(deleteLater()));
     connect(this, SIGNAL(windowClosed()), SLOT(deleteLater()));
-}
-
-Connection::~Connection ()
-{
-    delete _socket;
 }
 
 void Connection::activate ()
@@ -149,14 +147,22 @@ void Connection::readMessages ()
         if (type == WINDOW_CLOSED_MSG) {
             emit windowClosed();
 
-        } else { // type == KEY_PRESSED_MSG || type == KEY_RELEASE_MSG
+        } else {
             if (available < 5) {
                 _socket->ungetChar(type);
-                return; // wait until we have the key
+                return; // wait until we have the data
             }
-            quint32 key;
-            _stream >> key;
-            emit (type == KEY_PRESSED_MSG) ? keyPressed(key) : keyReleased(key);
+            if (type == MOUSE_PRESSED_MSG || type == MOUSE_RELEASED_MSG) {
+                quint16 x, y;
+                _stream >> x;
+                _stream >> y;
+                emit (type == MOUSE_PRESSED_MSG) ? mousePressed(x, y) : mouseReleased(x, y);
+
+            } else { // type == KEY_PRESSED_MSG || type == KEY_RELEASED_MSG
+                quint32 key;
+                _stream >> key;
+                emit (type == KEY_PRESSED_MSG) ? keyPressed(key) : keyReleased(key);
+            }
         }
     }
 }

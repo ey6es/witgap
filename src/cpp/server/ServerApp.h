@@ -32,11 +32,6 @@ public:
     ServerApp (int& argc, char** argv, const QString& configFile);
 
     /**
-     * Destroys the application.
-     */
-    ~ServerApp ();
-
-    /**
      * Returns a pointer to the connection manager.
      */
     ConnectionManager* connectionManager () const { return _connectionManager; }

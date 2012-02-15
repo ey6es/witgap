@@ -26,10 +26,6 @@ ConnectionManager::ConnectionManager (ServerApp* app) :
     connect(this, SIGNAL(newConnection()), SLOT(acceptConnections()));
 }
 
-ConnectionManager::~ConnectionManager ()
-{
-}
-
 void ConnectionManager::connectionEstablished (
     Connection* connection, quint64 sessionId,
     const QByteArray& sessionToken, int width, int height)
@@ -62,6 +58,12 @@ void ConnectionManager::acceptConnections ()
     }
 }
 
+void ConnectionManager::unmapSession (QObject* object)
+{
+    Session* session = static_cast<Session*>(object);
+    _sessions.remove(session->id());
+}
+
 void ConnectionManager::tokenValidated (
     const QWeakObjectPointer& connptr, quint64 id, const QByteArray& token)
 {
@@ -72,5 +74,9 @@ void ConnectionManager::tokenValidated (
     }
 
     // create and map the session
-    _sessions[id] = new Session(_app, connection, id, token);
+    Session* session = new Session(_app, connection, id, token);
+    _sessions[id] = session;
+
+    // listen for destruction in order to unmap
+    connect(session, SIGNAL(destroyed(QObject*)), SLOT(unmapSession(QObject*)));
 }

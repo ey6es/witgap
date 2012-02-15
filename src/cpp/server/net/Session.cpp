@@ -18,10 +18,6 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id, QByteArray
     setConnection(connection);
 }
 
-Session::~Session ()
-{
-}
-
 void Session::setConnection (Connection* connection)
 {
     if (_connection != 0) {
@@ -29,11 +25,12 @@ void Session::setConnection (Connection* connection)
         _connection->deactivate(tr("Logged in elsewhere."));
     }
     _connection = connection;
-    connect(_connection, SIGNAL(destroyed()), SLOT(connectionDestroyed()));
+    connect(_connection, SIGNAL(windowClosed()), SLOT(deleteLater()));
+    connect(_connection, SIGNAL(destroyed()), SLOT(clearConnection()));
     _connection->activate();
 }
 
-void Session::connectionDestroyed ()
+void Session::clearConnection ()
 {
     _connection = 0;
 }

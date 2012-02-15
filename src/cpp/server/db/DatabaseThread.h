@@ -25,11 +25,6 @@ public:
     DatabaseThread (ServerApp* app);
 
     /**
-     * Destroys the manager.
-     */
-    ~DatabaseThread ();
-
-    /**
      * Returns a reference to the session repository.
      */
     SessionRepository* sessionRepository () const { return _sessionRepository; }

@@ -11,6 +11,7 @@ import flash.events.ContextMenuEvent;
 import flash.events.Event;
 import flash.events.IOErrorEvent;
 import flash.events.KeyboardEvent;
+import flash.events.MouseEvent;
 import flash.events.ProgressEvent;
 import flash.events.SecurityErrorEvent;
 
@@ -56,6 +57,7 @@ public class ClientApp extends Sprite {
         }
         _socket.writeByte(WINDOW_CLOSED_MSG);
         _socket.flush();
+        _socket.close();
     }
 
     /**
@@ -131,7 +133,9 @@ public class ClientApp extends Sprite {
         }
         setColor(getCookie("color", "Green"));
 
-        // listen for key events
+        // listen for mouse and key events
+        _field.addEventListener(MouseEvent.MOUSE_DOWN, sendMouseMessage);
+        _field.addEventListener(MouseEvent.MOUSE_UP, sendMouseMessage);
         addEventListener(KeyboardEvent.KEY_DOWN, sendKeyMessage);
         addEventListener(KeyboardEvent.KEY_UP, sendKeyMessage);
 
@@ -187,6 +191,22 @@ public class ClientApp extends Sprite {
             }
         }
         return def;
+    }
+
+    /**
+     * Handles mouse events.
+     */
+    protected function sendMouseMessage (event :MouseEvent) :void
+    {
+        if (!_socket.connected) {
+            return;
+        }
+        _socket.writeByte(event.type == MouseEvent.MOUSE_DOWN ?
+            MOUSE_PRESSED_MSG : MOUSE_RELEASED_MSG);
+        var idx :int = _field.getCharIndexAtPoint(event.localX, event.localY);
+        _socket.writeShort(idx % (_width + 1));
+        _socket.writeShort(idx / (_width + 1));
+        _socket.flush();
     }
 
     /**
@@ -677,14 +697,20 @@ public class ClientApp extends Sprite {
     /** The protocol version. */
     protected static var PROTOCOL_VERSION :int = 0x00000001;
 
+    /** Outgoing message: mouse pressed. */
+    protected static var MOUSE_PRESSED_MSG :int = 0;
+
+    /** Outgoing message: mouse released. */
+    protected static var MOUSE_RELEASED_MSG :int = 1;
+
     /** Outgoing message: key pressed. */
-    protected static var KEY_PRESSED_MSG :int = 0;
+    protected static var KEY_PRESSED_MSG :int = 2;
 
     /** Outgoing message: key released. */
-    protected static var KEY_RELEASED_MSG :int = 1;
+    protected static var KEY_RELEASED_MSG :int = 3;
 
     /** Outgoing message: window closed. */
-    protected static var WINDOW_CLOSED_MSG :int = 2;
+    protected static var WINDOW_CLOSED_MSG :int = 4;
 
     /** Incoming message: add window. */
     protected static var ADD_WINDOW_MSG :int = 0;

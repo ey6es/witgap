@@ -28,11 +28,6 @@ public:
     ConnectionManager (ServerApp* app);
 
     /**
-     * Destroys the manager.
-     */
-    ~ConnectionManager ();
-
-    /**
      * Called by a connection when it has received the protocol header.
      */
     void connectionEstablished (
@@ -45,6 +40,11 @@ protected slots:
      * Accepts any incoming connections.
      */
     void acceptConnections ();
+
+    /**
+     * Unmaps a destroyed session.
+     */
+    void unmapSession (QObject* object);
 
 protected:
 
