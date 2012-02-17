@@ -292,7 +292,7 @@ public class ClientApp extends Sprite {
                 break;
 
             case COMPOUND_MSG:
-                for (var count :int = bytes.readInt(); count >= 0; count--) {
+                while (bytes.bytesAvailable > 0) {
                     decodeMessage(bytes);
                 }
                 break;
