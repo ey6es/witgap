@@ -1,0 +1,22 @@
+Witgap Style Guide
+------------------
+
+Prime directive: make it look like the code around it.
+
+Follow Qt naming conventions for getters/setters.
+
+Brace style like Three Rings.
+
+Prefer protected to private.
+
+Member ordering.
+
+Prefix protected/private members with underscore.
+
+Camel-case.
+
+"virtual" for subclasses
+
+object ownership
+
+doxygen documentation

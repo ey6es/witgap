@@ -4,12 +4,10 @@
 #ifndef SESSION
 #define SESSION
 
-#include <QList>
 #include <QObject>
 
 class Connection;
 class ServerApp;
-class Window;
 
 /**
  * Handles a single user session.
@@ -45,6 +43,11 @@ public:
      */
     void setConnection (Connection* connection);
 
+    /**
+     * Increments the window id counter and returns its value.
+     */
+    int nextWindowId () { return ++_lastWindowId; }
+
 protected slots:
 
     /**
@@ -66,8 +69,8 @@ protected:
     /** The session token. */
     QByteArray _token;
 
-    /** The list of active windows. */
-    QList<Window*> _windows;
+    /** The last window id assigned. */
+    int _lastWindowId;
 };
 
 #endif // SESSION

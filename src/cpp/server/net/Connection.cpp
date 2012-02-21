@@ -12,6 +12,27 @@
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 
+const QMetaMethod& Connection::addWindowMetaMethod ()
+{
+    static QMetaMethod method = staticMetaObject.method(
+        staticMetaObject.indexOfMethod("addWindow(int,int,QRect,int)"));
+    return method;
+}
+
+const QMetaMethod& Connection::updateWindowMetaMethod ()
+{
+    static QMetaMethod method = staticMetaObject.method(
+        staticMetaObject.indexOfMethod("updateWindow(int,int,QRect,int)"));
+    return method;
+}
+
+const QMetaMethod& Connection::removeWindowMetaMethod ()
+{
+    static QMetaMethod method = staticMetaObject.method(
+        staticMetaObject.indexOfMethod("removeWindow(int)"));
+    return method;
+}
+
 Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     QObject(app->connectionManager()),
     _app(app),
@@ -111,13 +132,13 @@ void Connection::readHeader ()
     _stream >> magic;
     if (magic != PROTOCOL_MAGIC) {
         qWarning() << "Invalid protocol magic number:" << magic << _socket->peerAddress();
-        _socket->close();
+        deactivate("Invalid magic number.");
         return;
     }
     _stream >> version;
     if (version != PROTOCOL_VERSION) {
         qWarning() << "Wrong protocol version:" << version << _socket->peerAddress();
-        _socket->close();
+        deactivate("Wrong protocol version.");
         return;
     }
     quint64 sessionId;

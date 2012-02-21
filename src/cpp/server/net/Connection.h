@@ -4,6 +4,7 @@
 #ifndef CONNECTION
 #define CONNECTION
 
+#include <QMetaMethod>
 #include <QPoint>
 #include <QRect>
 #include <QTcpSocket>
@@ -18,6 +19,21 @@ class Connection : public QObject
     Q_OBJECT
 
 public:
+
+    /**
+     * Returns the meta-method for {@link #addWindow}.
+     */
+    static const QMetaMethod& addWindowMetaMethod ();
+
+    /**
+     * Returns the meta-method for {@link #updateWindow}.
+     */
+    static const QMetaMethod& updateWindowMetaMethod ();
+
+    /**
+     * Returns the meta-method for {@link #removeWindow}.
+     */
+    static const QMetaMethod& removeWindowMetaMethod ();
 
     /**
      * Initializes the connection.

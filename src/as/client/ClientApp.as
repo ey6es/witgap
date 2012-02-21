@@ -228,10 +228,12 @@ public class ClientApp extends Sprite {
      */
     protected function readMessages (event :ProgressEvent) :void
     {
+        var decoded :Boolean = false;
+
         while (_socket.connected) {
             if (_messageLength == 0) {
                 if (_socket.bytesAvailable < 2) {
-                    return;
+                    break;
                 }
                 _messageLength = _socket.readUnsignedShort();
 
@@ -245,9 +247,12 @@ public class ClientApp extends Sprite {
 
                 bytes.position = 0;
                 decodeMessage(bytes);
+                decoded = true;
             }
         }
-        updateDisplay();
+        if (decoded) {
+            updateDisplay();
+        }
     }
 
     /**
