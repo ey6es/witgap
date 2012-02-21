@@ -7,6 +7,8 @@ Follow Qt naming conventions for getters/setters.
 
 Brace style like Three Rings.
 
+Parentheses for definition vs. invocation.
+
 Prefer protected to private.
 
 Member ordering.

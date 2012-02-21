@@ -7,10 +7,12 @@
 #include <QList>
 #include <QObject>
 #include <QRect>
+#include <QRegion>
 #include <QSize>
 #include <QVariant>
 
 class Border;
+class DrawContext;
 class Layout;
 
 /**
@@ -88,6 +90,11 @@ public:
      */
     void maybeValidate ();
 
+    /**
+     * Draws the component if necessary.
+     */
+    void maybeDraw (DrawContext* ctx);
+
 signals:
 
     /**
@@ -102,7 +109,17 @@ public slots:
      */
     virtual void invalidate ();
 
+    /**
+     * Marks the specified region as dirty.
+     */
+    virtual void dirty (const QRect& region);
+
 protected:
+
+    /**
+     * Computes and returns the preferred size.
+     */
+    virtual QSize computePreferredSize (int whint = -1, int hhint = -1) const;
 
     /**
      * Validates the component.
@@ -110,9 +127,9 @@ protected:
     virtual void validate ();
 
     /**
-     * Computes and returns the preferred size.
+     * Draws the component.
      */
-    virtual QSize computePreferredSize (int whint = -1, int hhint = -1) const;
+    virtual void draw (DrawContext* ctx);
 
     /**
      * Invalidates the component's parent, if it has one.
@@ -186,20 +203,56 @@ public:
 protected:
 
     /**
+     * Computes and returns the preferred size.
+     */
+    virtual QSize computePreferredSize (int whint = -1, int hhint = -1) const;
+
+    /**
      * Validates the container.
      */
     virtual void validate ();
 
     /**
-     * Computes and returns the preferred size.
+     * Draws the component.
      */
-    virtual QSize computePreferredSize (int whint = -1, int hhint = -1) const;
+    virtual void draw (DrawContext* ctx);
 
     /** The container's layout, if any. */
     Layout* _layout;
 
     /** The children of the container. */
     QList<Component*> _children;
+};
+
+/**
+ * The context object passed to components for drawing.
+ */
+class DrawContext
+{
+public:
+
+    /**
+     * Translates the position.
+     */
+    void translate (const QPoint& offset) { _pos += offset; }
+
+    /**
+     * Untranslates the position.
+     */
+    void untranslate (const QPoint& offset) { _pos -= offset; }
+
+    /**
+     * Determines whether the dirty region intersects the specified rectangle.
+     */
+    bool isDirty (const QRect& rect) const { return _dirty.intersects(rect.translated(_pos)); }
+
+protected:
+
+    /** The draw position. */
+    QPoint _pos;
+
+    /** The dirty region. */
+    QRegion _dirty;
 };
 
 #endif // COMPONENT

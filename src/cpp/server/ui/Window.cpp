@@ -57,6 +57,12 @@ void Window::invalidate ()
     maybeEnqueueSync();
 }
 
+void Window::dirty (const QRect& region)
+{
+    _dirty += region;
+    maybeEnqueueSync();
+}
+
 void Window::noteNeedsUpdate ()
 {
     _upToDate = false;
@@ -83,6 +89,10 @@ void Window::sync ()
             _upToDate = _added = true;
         }
         maybeValidate();
+        if (!_dirty.isEmpty()) {
+            draw(this);
+            _dirty = QRegion();
+        }
     }
     _syncEnqueued = false;
 }

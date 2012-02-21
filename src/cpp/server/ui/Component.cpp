@@ -38,6 +38,7 @@ void Component::setBorder (Border* border)
             delete _border;
         }
         _border = border;
+        invalidate();
     }
 }
 
@@ -104,6 +105,18 @@ void Component::maybeValidate ()
     }
 }
 
+void Component::maybeDraw (DrawContext* ctx)
+{
+    if (ctx->isDirty(_bounds)) {
+        QPoint tl = _bounds.topLeft();
+        ctx->translate(tl);
+
+        draw(ctx);
+
+        ctx->untranslate(tl);
+    }
+}
+
 void Component::invalidate ()
 {
     if (_valid) {
@@ -114,13 +127,28 @@ void Component::invalidate ()
     }
 }
 
-void Component::validate ()
+void Component::dirty (const QRect& region)
 {
+    // translate into parent coordinates
+    Component* pcomp = qobject_cast<Component*>(parent());
+    if (pcomp != 0) {
+        pcomp->dirty(region.translated(_bounds.topLeft()));
+    }
 }
 
 QSize Component::computePreferredSize (int whint, int hhint) const
 {
     return QSize(qMax(whint, 0), qMax(hhint, 0));
+}
+
+void Component::validate ()
+{
+    // nothing by default
+}
+
+void Component::draw (DrawContext* ctx)
+{
+    // nothing by default
 }
 
 void Component::invalidateParent () const
@@ -171,19 +199,6 @@ void Container::removeChild (Component* child)
     }
 }
 
-void Container::validate ()
-{
-    // apply the layout, if any
-    if (_layout != 0) {
-        _layout->apply(this);
-    }
-
-    // validate all children
-    foreach (Component* child, _children) {
-        child->maybeValidate();
-    }
-}
-
 QSize Container::computePreferredSize (int whint, int hhint) const
 {
     // if we have a layout, that computes the size
@@ -200,4 +215,25 @@ QSize Container::computePreferredSize (int whint, int hhint) const
         mheight = qMax(bounds.y() + bounds.height(), mheight);
     }
     return QSize(mwidth, mheight);
+}
+
+void Container::validate ()
+{
+    // apply the layout, if any
+    if (_layout != 0) {
+        _layout->apply(this);
+    }
+
+    // validate all children
+    foreach (Component* child, _children) {
+        child->maybeValidate();
+    }
+}
+
+void Container::draw (DrawContext* ctx)
+{
+    // draw the children
+    foreach (Component* child, _children) {
+        child->maybeDraw(ctx);
+    }
 }

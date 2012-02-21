@@ -4,6 +4,8 @@
 #ifndef WINDOW
 #define WINDOW
 
+#include <QRegion>
+
 #include "ui/Component.h"
 
 class Session;
@@ -11,7 +13,7 @@ class Session;
 /**
  * A top-level window.
  */
-class Window : public Container
+class Window : public Container, public DrawContext
 {
     Q_OBJECT
 
@@ -53,6 +55,11 @@ public slots:
      * Invalidates the component.
      */
     virtual void invalidate ();
+
+    /**
+     * Dirties the component.
+     */
+    virtual void dirty (const QRect& region);
 
 protected slots:
 
