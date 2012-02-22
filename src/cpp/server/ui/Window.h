@@ -27,7 +27,7 @@ public:
     /**
      * Destroys the window.
      */
-    ~Window ();
+    virtual ~Window ();
 
     /**
      * Returns a pointer to the session that owns the window.

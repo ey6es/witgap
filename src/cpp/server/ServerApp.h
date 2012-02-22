@@ -20,16 +20,16 @@ class ServerApp : public QCoreApplication
 public:
 
     /**
-     * Application configuration.
-     */
-    const QSettings config;
-
-    /**
      * Initializes the application.
      *
      * @param configFile the path to the application configuration file.
      */
     ServerApp (int& argc, char** argv, const QString& configFile);
+
+    /**
+     * Returns the application configuration.
+     */
+    const QSettings& config () const { return _config; }
 
     /**
      * Returns a pointer to the connection manager.
@@ -54,6 +54,9 @@ protected slots:
     void cleanup ();
 
 protected:
+
+    /** The application configuration. */
+    QSettings _config;
 
     /** The connection manager. */
     ConnectionManager* _connectionManager;

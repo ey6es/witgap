@@ -17,7 +17,7 @@ Prefix protected/private members with underscore.
 
 Camel-case.
 
-"virtual" for subclasses
+"virtual," defaults for subclasses
 
 object ownership
 

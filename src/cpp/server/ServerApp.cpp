@@ -19,7 +19,7 @@ void signalHandler (int signal)
 
 ServerApp::ServerApp (int& argc, char** argv, const QString& configFile) :
     QCoreApplication(argc, argv),
-    config(configFile, QSettings::IniFormat, this)
+    _config(configFile, QSettings::IniFormat, this)
 {
     // register the signal handler for ^C/HUP
     signal(SIGINT, signalHandler);

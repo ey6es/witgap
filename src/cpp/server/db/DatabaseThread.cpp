@@ -11,13 +11,13 @@
 DatabaseThread::DatabaseThread (ServerApp* app) :
     QThread(app),
     _app(app),
-    _type(app->config.value("database_type").toString()),
-    _hostname(app->config.value("database_hostname").toString()),
-    _port(app->config.value("database_port").toInt()),
-    _databaseName(app->config.value("database_name").toString()),
-    _username(app->config.value("database_username").toString()),
-    _password(app->config.value("database_password").toString()),
-    _connectOptions(app->config.value("database_connect_options").toString()),
+    _type(app->config().value("database_type").toString()),
+    _hostname(app->config().value("database_hostname").toString()),
+    _port(app->config().value("database_port").toInt()),
+    _databaseName(app->config().value("database_name").toString()),
+    _username(app->config().value("database_username").toString()),
+    _password(app->config().value("database_password").toString()),
+    _connectOptions(app->config().value("database_connect_options").toString()),
     _sessionRepository(new SessionRepository())
 {
     // move the repositories to this thread

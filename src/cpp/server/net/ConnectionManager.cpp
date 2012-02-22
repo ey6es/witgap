@@ -15,8 +15,8 @@ ConnectionManager::ConnectionManager (ServerApp* app) :
     _app(app)
 {
     // start listening on the configured port
-    QHostAddress address(app->config.value("listen_address").toString());
-    quint16 port = app->config.value("listen_port").toInt();
+    QHostAddress address(app->config().value("listen_address").toString());
+    quint16 port = app->config().value("listen_port").toInt();
     if (!listen(address, port)) {
         qCritical() << "Failed to open server socket:" << errorString();
         return;
