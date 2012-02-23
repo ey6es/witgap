@@ -26,7 +26,10 @@ Component::~Component ()
 void Component::setBounds (const QRect& bounds)
 {
     if (_bounds != bounds) {
+        // add the bounds as dirty before and after the change
+        dirty();
         _bounds = bounds;
+        dirty();
         emit boundsChanged();
     }
 }
@@ -40,12 +43,14 @@ void Component::setBorder (Border* border)
         _border = border;
         _margins = (border == 0) ? QMargins() : border->margins();
         invalidate();
+        dirty();
     }
 }
 
 void Component::setBackground (int background)
 {
     _background = background;
+    dirty();
 }
 
 void Component::setPreferredSize (const QSize& size)

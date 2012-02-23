@@ -29,6 +29,11 @@ public:
     /**
      * Creates a new vector from the supplied string.
      */
+    QIntVector (const char* string, int style = 0);
+
+    /**
+     * Creates a new vector from the supplied string.
+     */
     QIntVector (const QString& string, int style = 0);
 };
 

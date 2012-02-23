@@ -119,6 +119,11 @@ public slots:
     virtual void invalidate ();
 
     /**
+     * Dirties the entire component.
+     */
+    void dirty () { dirty(QRect(0, 0, _bounds.width(), _bounds.height())); };
+
+    /**
      * Marks the specified region as dirty.
      */
     virtual void dirty (const QRect& region);

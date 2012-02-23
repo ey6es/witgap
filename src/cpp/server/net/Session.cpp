@@ -5,6 +5,7 @@
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
+#include "ui/Border.h"
 #include "ui/Window.h"
 
 Session::Session (ServerApp* app, Connection* connection, quint64 id, const QByteArray& token) :
@@ -12,7 +13,8 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id, const QByt
     _app(app),
     _connection(0),
     _id(id),
-    _token(token)
+    _token(token),
+    _lastWindowId(0)
 {
     // send the session info back to the connection and activate it
     connection->setSession(id, token);
@@ -21,6 +23,7 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id, const QByt
     Window* window = new Window(this);
     window->setBounds(QRect(10, 10, 20, 20));
     window->setBackground(0x21);
+    window->setBorder(new TitledBorder(tr("Testing?")));
 }
 
 void Session::setConnection (Connection* connection)

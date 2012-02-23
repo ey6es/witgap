@@ -105,8 +105,9 @@ void Connection::setContents (int id, const QRect& bounds, const QIntVector& con
 {
     int size = contents.size();
 
-    _stream << (quint16)(9 + size*4);
+    _stream << (quint16)(13 + size*4);
     _stream << SET_CONTENTS_MSG;
+    _stream << (qint32)id;
     write(bounds);
     for (int ii = 0; ii < size; ii++) {
         _stream << (qint32)contents.at(ii);

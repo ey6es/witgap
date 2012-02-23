@@ -94,14 +94,15 @@ void Window::sync ()
 
         maybeValidate();
 
+        // clip the dirty region to the window bounds
+        _dirty &= QRect(0, 0, _bounds.width(), _bounds.height());
         if (!_dirty.isEmpty()) {
-            // draw the affected area
             prepareForDrawing();
             draw(this);
 
-            // update the affected regions
+            // send the contents of the affected regions
             const QMetaMethod& method = Connection::setContentsMetaMethod();
-            for (int ii, nn = _rects.size(); ii < nn; ii++) {
+            for (int ii = 0, nn = _rects.size(); ii < nn; ii++) {
                 method.invoke(connection, Q_ARG(int, _id), Q_ARG(const QRect&, _rects.at(ii)),
                     Q_ARG(const QIntVector&, _buffers.at(ii)));
             }
