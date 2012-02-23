@@ -3,6 +3,14 @@ Witgap Style Guide
 
 Prime directive: make it look like the code around it.
 
+Preamble/ifdef blocks
+
+Forward references
+
+Classes per file
+
+Const-correctness, rule of three, RAII
+
 Follow Qt naming conventions for getters/setters.
 
 Brace style like Three Rings.
@@ -22,3 +30,15 @@ Camel-case.
 object ownership
 
 doxygen documentation
+
+avoid "abstraction paralysis"; remember, can always refactor
+
+prioritize readability/maintainability over performance in non-critical areas
+
+double up loop variables (ii, jj, kk)
+
+avoid abbreviation in public members
+
+line breaks for method calls/definitions
+
+whitespace between blocks

@@ -8,6 +8,10 @@
 #include <QObject>
 #include <QVector>
 
+#include "util/General.h"
+
+class DrawContext;
+
 /**
  * Represents a border around a component.
  */
@@ -30,6 +34,11 @@ public:
      */
     virtual QMargins margins () const = 0;
 
+    /**
+     * Draws the border.
+     */
+    virtual void draw (DrawContext* ctx, int x, int y, int width, int height) const = 0;
+
 private:
 
     Q_DISABLE_COPY(Border)
@@ -51,6 +60,11 @@ public:
      * Returns the border's margins.
      */
     virtual QMargins margins () const;
+
+    /**
+     * Draws the border.
+     */
+    virtual void draw (DrawContext* ctx, int x, int y, int width, int height) const;
 
 protected:
 
@@ -80,10 +94,44 @@ public:
      */
     virtual QMargins margins () const;
 
+    /**
+     * Draws the border.
+     */
+    virtual void draw (DrawContext* ctx, int x, int y, int width, int height) const;
+
 protected:
 
     /** The border characters. */
     int _n, _ne, _e, _se, _s, _sw, _w, _nw;
+};
+
+/**
+ * A border with a title.
+ */
+class TitledBorder : public FrameBorder
+{
+public:
+
+    /**
+     * Creates a new titled border.
+     */
+    TitledBorder (
+        const QIntVector& title, Qt::Alignment alignment = Qt::AlignHCenter,
+        int n = '-', int ne = '+', int e = '|', int se = '+', int s = '-',
+        int sw = '+', int w = '|', int nw = '+');
+
+    /**
+     * Draws the border.
+     */
+    virtual void draw (DrawContext* ctx, int x, int y, int width, int height) const;
+
+protected:
+
+    /** The title contents. */
+    QIntVector _title;
+
+    /** The preferred alignment. */
+    Qt::Alignment _alignment;
 };
 
 /**
@@ -109,6 +157,11 @@ public:
      * Returns the border's margins.
      */
     virtual QMargins margins () const;
+
+    /**
+     * Draws the border.
+     */
+    virtual void draw (DrawContext* ctx, int x, int y, int width, int height) const;
 
 protected:
 

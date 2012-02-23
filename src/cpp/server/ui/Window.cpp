@@ -13,6 +13,9 @@ Window::Window (QObject* parent, int layer) :
     _added(false),
     _upToDate(false)
 {
+    // use an opaque background
+    _background = ' ';
+
     // connect slots
     connect(this, SIGNAL(boundsChanged()), SLOT(noteNeedsUpdate()));
 
@@ -88,9 +91,22 @@ void Window::sync ()
                 Q_ARG(const QRect&, _bounds), Q_ARG(int, _background));
             _upToDate = _added = true;
         }
+
         maybeValidate();
+
         if (!_dirty.isEmpty()) {
+            // draw the affected area
+            prepareForDrawing();
             draw(this);
+
+            // update the affected regions
+            const QMetaMethod& method = Connection::setContentsMetaMethod();
+            for (int ii, nn = _rects.size(); ii < nn; ii++) {
+                method.invoke(connection, Q_ARG(int, _id), Q_ARG(const QRect&, _rects.at(ii)),
+                    Q_ARG(const QIntVector&, _buffers.at(ii)));
+            }
+
+            // clear the dirty region
             _dirty = QRegion();
         }
     }

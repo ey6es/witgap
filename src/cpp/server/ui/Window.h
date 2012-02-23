@@ -13,7 +13,7 @@ class Session;
 /**
  * A top-level window.
  */
-class Window : public Container, public DrawContext
+class Window : public Container, protected DrawContext
 {
     Q_OBJECT
 

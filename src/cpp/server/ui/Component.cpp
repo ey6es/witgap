@@ -9,7 +9,7 @@ Component::Component (QObject* parent) :
     QObject(parent),
     _border(0),
     _explicitPreferredSize(-1, -1),
-    _background(' '),
+    _background(0),
     _valid(false)
 {
     // connect slots
@@ -38,6 +38,7 @@ void Component::setBorder (Border* border)
             delete _border;
         }
         _border = border;
+        _margins = (border == 0) ? QMargins() : border->margins();
         invalidate();
     }
 }
@@ -105,7 +106,7 @@ void Component::maybeValidate ()
     }
 }
 
-void Component::maybeDraw (DrawContext* ctx)
+void Component::maybeDraw (DrawContext* ctx) const
 {
     if (ctx->isDirty(_bounds)) {
         QPoint tl = _bounds.topLeft();
@@ -146,9 +147,16 @@ void Component::validate ()
     // nothing by default
 }
 
-void Component::draw (DrawContext* ctx)
+void Component::draw (DrawContext* ctx) const
 {
-    // nothing by default
+    // draw the background
+    ctx->fillRect(0, 0, _bounds.width(), _bounds.height(), _background);
+
+    // draw the border
+    int width = _bounds.width(), height = _bounds.height();
+    if (_border != 0) {
+        _border->draw(ctx, 0, 0, _bounds.width(), _bounds.height());
+    }
 }
 
 void Component::invalidateParent () const
@@ -188,12 +196,14 @@ void Container::addChild (Component* child, const QVariant& constraint)
     _children.append(child);
     child->setParent(this);
     child->setConstraint(constraint);
+    dirty(child->bounds());
     invalidate();
 }
 
 void Container::removeChild (Component* child)
 {
     if (_children.removeOne(child)) {
+        dirty(child->bounds());
         child->setParent(0);
         invalidate();
     }
@@ -230,10 +240,136 @@ void Container::validate ()
     }
 }
 
-void Container::draw (DrawContext* ctx)
+void Container::draw (DrawContext* ctx) const
 {
+    Component::draw(ctx);
+
     // draw the children
     foreach (Component* child, _children) {
         child->maybeDraw(ctx);
+    }
+}
+
+void DrawContext::drawChar (int x, int y, int ch)
+{
+    // zero implies transparent
+    if (ch == 0) {
+        return;
+    }
+
+    // apply offset
+    x += _pos.x();
+    y += _pos.y();
+
+    // check against each rect
+    for (int ii = 0, nn = _rects.size(); ii < nn; ii++) {
+        const QRect& rect = _rects.at(ii);
+        if (rect.contains(x, y)) {
+            _buffers[ii][(y - rect.y())*rect.width() + (x - rect.x())] = ch;
+            return;
+        }
+    }
+}
+
+void DrawContext::fillRect (int x, int y, int width, int height, int ch)
+{
+    // zero implies transparent
+    if (ch == 0) {
+        return;
+    }
+
+    // apply offset
+    x += _pos.x();
+    y += _pos.y();
+
+    // check against each rect
+    QRect fill(x, y, width, height);
+    for (int ii = 0, nn = _rects.size(); ii < nn; ii++) {
+        const QRect& rect = _rects.at(ii);
+        QRect isect = rect.intersected(fill);
+        if (isect.isEmpty()) {
+            continue;
+        }
+        int stride = rect.width();
+        int* ptr = _buffers[ii].data() + (isect.y() - rect.y())*stride + (isect.x() - rect.x());
+        for (int yy = isect.height(); yy > 0; yy--) {
+            qFill(ptr, ptr + isect.width(), ch);
+            ptr += stride;
+        }
+    }
+}
+
+void DrawContext::drawContents (
+    int x, int y, int width, int height, const int* contents, bool opaque)
+{
+    // apply offset
+    x += _pos.x();
+    y += _pos.y();
+
+    // check against each rect
+    QRect draw(x, y, width, height);
+    for (int ii = 0, nn = _rects.size(); ii < nn; ii++) {
+        const QRect& rect = _rects.at(ii);
+        QRect isect = rect.intersected(draw);
+        if (isect.isEmpty()) {
+            continue;
+        }
+        int stride = rect.width();
+        int* ldptr = _buffers[ii].data() + (isect.y() - rect.y())*stride + (isect.x() - rect.x());
+        const int* sptr = contents;
+        if (opaque) {
+            for (int yy = isect.height(); yy > 0; yy--) {
+                qCopy(sptr, sptr + width, ldptr);
+                sptr += width;
+                ldptr += stride;
+            }
+        } else {
+            int ch;
+            for (int yy = isect.height(); yy > 0; yy--) {
+                for (int* dptr = ldptr, *end = ldptr + isect.width(); dptr < end; dptr++) {
+                    if ((ch = *sptr++) != 0) {
+                        *dptr = ch;
+                    }
+                }
+                ldptr += stride;
+            }
+        }
+    }
+}
+
+void DrawContext::drawString (int x, int y, const QString& string, int style)
+{
+    // apply offset
+    x += _pos.x();
+    y += _pos.y();
+
+    // check against each rect
+    QRect draw(x, y, string.length(), 1);
+    for (int ii = 0, nn = _rects.size(); ii < nn; ii++) {
+        const QRect& rect = _rects.at(ii);
+        QRect isect = rect.intersected(draw);
+        if (isect.isEmpty()) {
+            continue;
+        }
+        int stride = rect.width();
+        int* dptr = _buffers[ii].data() + (isect.y() - rect.y())*stride + (isect.x() - rect.x());
+        for (const QChar* sptr = string.constData(), *end = sptr + string.length();
+                sptr < end; sptr++) {
+            *dptr++ = (*sptr).unicode() | style;
+        }
+    }
+}
+
+void DrawContext::prepareForDrawing ()
+{
+    // get the list of dirty rects
+    _rects = _dirty.rects();
+
+    // create the corresponding buffers
+    int nrects = _rects.size();
+    _buffers.resize(nrects);
+    for (int ii = 0; ii < nrects; ii++) {
+        const QRect& rect = _rects.at(ii);
+        _buffers[ii].resize(rect.width() * rect.height());
     }
 }

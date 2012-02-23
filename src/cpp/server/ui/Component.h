@@ -5,11 +5,15 @@
 #define COMPONENT
 
 #include <QList>
+#include <QMargins>
 #include <QObject>
 #include <QRect>
 #include <QRegion>
 #include <QSize>
 #include <QVariant>
+#include <QVector>
+
+#include "util/General.h"
 
 class Border;
 class DrawContext;
@@ -43,6 +47,11 @@ public:
      * Returns the component's bounds.
      */
     const QRect& bounds () const { return _bounds; }
+
+    /**
+     * Returns the component's margins.
+     */
+    const QMargins& margins () const { return _margins; }
 
     /**
      * Sets the component's border.  The component will assume ownership of the object.
@@ -93,7 +102,7 @@ public:
     /**
      * Draws the component if necessary.
      */
-    void maybeDraw (DrawContext* ctx);
+    void maybeDraw (DrawContext* ctx) const;
 
 signals:
 
@@ -129,7 +138,7 @@ protected:
     /**
      * Draws the component.
      */
-    virtual void draw (DrawContext* ctx);
+    virtual void draw (DrawContext* ctx) const;
 
     /**
      * Invalidates the component's parent, if it has one.
@@ -138,6 +147,9 @@ protected:
 
     /** The bounds of the component. */
     QRect _bounds;
+
+    /** The margins of the component (determined by its border). */
+    QMargins _margins;
 
     /** The component's border, if any. */
     Border* _border;
@@ -215,7 +227,7 @@ protected:
     /**
      * Draws the component.
      */
-    virtual void draw (DrawContext* ctx);
+    virtual void draw (DrawContext* ctx) const;
 
     /** The container's layout, if any. */
     Layout* _layout;
@@ -246,13 +258,47 @@ public:
      */
     bool isDirty (const QRect& rect) const { return _dirty.intersects(rect.translated(_pos)); }
 
+    /**
+     * Draws a single character.
+     */
+    void drawChar (int x, int y, int ch);
+
+    /**
+     * Fills a rectangle with the supplied character.
+     */
+    void fillRect (int x, int y, int width, int height, int ch);
+
+    /**
+     * Draws the supplied contents.
+     *
+     * @param opaque if false, check for zero values and don't draw them.
+     */
+    void drawContents (
+        int x, int y, int width, int height, const int* contents, bool opaque = true);
+
+    /**
+     * Draws a string.
+     */
+    void drawString (int x, int y, const QString& string, int style = 0);
+
 protected:
+
+    /**
+     * Prepares the context for drawing.
+     */
+    void prepareForDrawing ();
 
     /** The draw position. */
     QPoint _pos;
 
     /** The dirty region. */
     QRegion _dirty;
+
+    /** The rectangles of which the dirty region is comprised. */
+    QVector<QRect> _rects;
+
+    /** The buffers holding the contents of the regions. */
+    QVector<QIntVector> _buffers;
 };
 
 #endif // COMPONENT

@@ -19,6 +19,13 @@ const QMetaMethod& Connection::addWindowMetaMethod ()
     return method;
 }
 
+const QMetaMethod& Connection::removeWindowMetaMethod ()
+{
+    static QMetaMethod method = staticMetaObject.method(
+        staticMetaObject.indexOfMethod("removeWindow(int)"));
+    return method;
+}
+
 const QMetaMethod& Connection::updateWindowMetaMethod ()
 {
     static QMetaMethod method = staticMetaObject.method(
@@ -26,10 +33,10 @@ const QMetaMethod& Connection::updateWindowMetaMethod ()
     return method;
 }
 
-const QMetaMethod& Connection::removeWindowMetaMethod ()
+const QMetaMethod& Connection::setContentsMetaMethod ()
 {
     static QMetaMethod method = staticMetaObject.method(
-        staticMetaObject.indexOfMethod("removeWindow(int)"));
+        staticMetaObject.indexOfMethod("setContents(int,QRect,QIntVector)"));
     return method;
 }
 
@@ -94,12 +101,16 @@ void Connection::updateWindow (int id, int layer, const QRect& bounds, int fill)
     _stream << (qint32)fill;
 }
 
-void Connection::setContents (int id, const QRect& bounds, const QByteArray& contents)
+void Connection::setContents (int id, const QRect& bounds, const QIntVector& contents)
 {
-    _stream << (quint16)(9 + contents.length());
+    int size = contents.size();
+
+    _stream << (quint16)(9 + size*4);
     _stream << SET_CONTENTS_MSG;
     write(bounds);
-    _socket->write(contents);
+    for (int ii = 0; ii < size; ii++) {
+        _stream << (qint32)contents.at(ii);
+    }
 }
 
 void Connection::moveContents (int id, const QRect& source, const QPoint& dest, int fill)

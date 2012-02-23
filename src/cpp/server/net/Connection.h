@@ -9,6 +9,8 @@
 #include <QRect>
 #include <QTcpSocket>
 
+#include "util/General.h"
+
 class ServerApp;
 
 /**
@@ -26,14 +28,19 @@ public:
     static const QMetaMethod& addWindowMetaMethod ();
 
     /**
+     * Returns the meta-method for {@link #removeWindow}.
+     */
+    static const QMetaMethod& removeWindowMetaMethod ();
+
+    /**
      * Returns the meta-method for {@link #updateWindow}.
      */
     static const QMetaMethod& updateWindowMetaMethod ();
 
     /**
-     * Returns the meta-method for {@link #removeWindow}.
+     * Returns the meta-method for {@link #setContents}.
      */
-    static const QMetaMethod& removeWindowMetaMethod ();
+    static const QMetaMethod& setContentsMetaMethod ();
 
     /**
      * Initializes the connection.
@@ -73,7 +80,7 @@ public:
     /**
      * Sets part of a window's contents.
      */
-    Q_INVOKABLE void setContents (int id, const QRect& bounds, const QByteArray& contents);
+    Q_INVOKABLE void setContents (int id, const QRect& bounds, const QIntVector& contents);
 
     /**
      * Moves part of a window's contents.
