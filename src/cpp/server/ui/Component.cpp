@@ -63,20 +63,22 @@ void Component::setPreferredSize (const QSize& size)
 
 QSize Component::preferredSize (int whint, int hhint) const
 {
-    // the size may be entirely explicit
+    // replace hints with explicit size, if provided
     int ewidth = _explicitPreferredSize.width();
     int eheight = _explicitPreferredSize.height();
-    if (ewidth != -1 && eheight != -1) {
-        return _explicitPreferredSize;
+    if (ewidth != -1) {
+        if (eheight != -1) {
+            return _explicitPreferredSize;
+        }
+        whint = ewidth;
+
+    } else if (eheight != -1) {
+        hhint = eheight;
     }
 
-    // if not, we must compute; first get the border margins, if any
-    int mwidth = 0, mheight = 0;
-    if (_border != 0) {
-        QMargins margins = _border->margins();
-        mwidth = margins.left() + margins.right();
-        mheight = margins.top() + margins.bottom();
-    }
+    // if not, we must compute; first get the border margins
+    int mwidth = _margins.left() + _margins.right();
+    int mheight = _margins.top() + _margins.bottom();
 
     // subtract them from the hints, if provided
     if (whint != -1) {
@@ -91,7 +93,7 @@ QSize Component::preferredSize (int whint, int hhint) const
 
     // add back the margins
     return QSize(
-        (ewidth == -1) ? (computed.width() + mwidth) : eheight,
+        (ewidth == -1) ? (computed.width() + mwidth) : ewidth,
         (eheight == -1) ? (computed.height() + mheight) : eheight);
 }
 

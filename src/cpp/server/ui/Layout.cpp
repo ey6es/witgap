@@ -10,18 +10,61 @@ Layout::Layout ()
 {
 }
 
-BoxLayout::BoxLayout (Qt::Orientation orientation, int gap) :
+BoxLayout::BoxLayout (
+        Qt::Orientation orientation, Policy policy, Qt::Alignment alignment, int gap) :
     _orientation(orientation),
+    _policy(policy),
+    _alignment(alignment),
     _gap(gap)
 {
 }
 
 QSize BoxLayout::computePreferredSize (const Container* container, int whint, int hhint) const
 {
-    return QSize(1, 1);
+    int ncomps = container->children().size();
+    int tgap = (ncomps > 1) ? (ncomps - 1) * _gap : 0;
+    if (_orientation == Qt::Horizontal) {
+        int nhhint = _policy.testFlag(VStretch) ? hhint : -1;
+        int totalWidth = 0;
+        int maxHeight = 0;
+        foreach (Component* comp, container->children()) {
+            QSize size = comp->preferredSize(-1, nhhint);
+            totalWidth += size.width();
+            maxHeight = qMax(maxHeight, size.height());
+        }
+        return QSize(qMax(whint, totalWidth + tgap), qMax(hhint, maxHeight));
+
+    } else { // _orientation == Qt::Vertical
+        int nwhint = _policy.testFlag(HStretch) ? whint : -1;
+        int maxWidth = 0;
+        int totalHeight = 0;
+        foreach (Component* comp, container->children()) {
+            QSize size = comp->preferredSize(nwhint, -1);
+            maxWidth = qMax(maxWidth, size.width());
+            totalHeight += size.height();
+        }
+        return QSize(qMax(whint, maxWidth), qMax(hhint, totalHeight + tgap));
+    }
 }
 
 void BoxLayout::apply (Container* container) const
+{
+}
+
+TableLayout::TableLayout (int columns, int rows, int columnGap, int rowGap) :
+    _columns(columns),
+    _rows(rows),
+    _columnGap(columnGap),
+    _rowGap(rowGap)
+{
+}
+
+QSize TableLayout::computePreferredSize (const Container* container, int whint, int hhint) const
+{
+    return QSize(1, 1);
+}
+
+void TableLayout::apply (Container* container) const
 {
 }
 
@@ -46,28 +89,28 @@ QSize BorderLayout::computePreferredSize (const Container* container, int whint,
     findBorderComponents(container->children(), comps);
 
     QSize north, south, east, west, center;
-    if (comps[NORTH] != 0) {
-        north = comps[NORTH]->preferredSize(whint, -1);
+    if (comps[North] != 0) {
+        north = comps[North]->preferredSize(whint, -1);
     }
-    if (comps[SOUTH] != 0) {
-        south = comps[SOUTH]->preferredSize(whint, -1);
+    if (comps[South] != 0) {
+        south = comps[South]->preferredSize(whint, -1);
     }
     if (hhint != -1) {
         hhint -= (north.height() + south.height());
     }
 
-    if (comps[EAST] != 0) {
-        east = comps[EAST]->preferredSize(-1, hhint);
+    if (comps[East] != 0) {
+        east = comps[East]->preferredSize(-1, hhint);
     }
-    if (comps[WEST] != 0) {
-        west = comps[WEST]->preferredSize(-1, hhint);
+    if (comps[West] != 0) {
+        west = comps[West]->preferredSize(-1, hhint);
     }
     if (whint != -1) {
         whint -= (east.width() + west.width());
     }
 
-    if (comps[CENTER] != 0) {
-        center = comps[CENTER]->preferredSize(whint, hhint);
+    if (comps[Center] != 0) {
+        center = comps[Center]->preferredSize(whint, hhint);
     }
 
     return QSize(
@@ -89,29 +132,29 @@ void BorderLayout::apply (Container* container) const
     int height = size.height() - (margins.top() + margins.bottom());
 
     int nheight = 0, sheight = 0;
-    if (comps[NORTH] != 0) {
-        QSize pref = comps[NORTH]->preferredSize(width, -1);
-        comps[NORTH]->setBounds(QRect(x, y, width, nheight = pref.height()));
+    if (comps[North] != 0) {
+        QSize pref = comps[North]->preferredSize(width, -1);
+        comps[North]->setBounds(QRect(x, y, width, nheight = pref.height()));
     }
-    if (comps[SOUTH] != 0) {
-        QSize pref = comps[SOUTH]->preferredSize(width, -1);
+    if (comps[South] != 0) {
+        QSize pref = comps[South]->preferredSize(width, -1);
         sheight = pref.height();
-        comps[SOUTH]->setBounds(QRect(x, y + height - sheight, width, sheight));
+        comps[South]->setBounds(QRect(x, y + height - sheight, width, sheight));
     }
 
     int mheight = height - nheight - sheight;
     int wwidth = 0, ewidth = 0;
-    if (comps[WEST] != 0) {
-        QSize pref = comps[WEST]->preferredSize(-1, mheight);
-        comps[WEST]->setBounds(QRect(x, y + nheight, wwidth = pref.width(), mheight));
+    if (comps[West] != 0) {
+        QSize pref = comps[West]->preferredSize(-1, mheight);
+        comps[West]->setBounds(QRect(x, y + nheight, wwidth = pref.width(), mheight));
     }
-    if (comps[EAST] != 0) {
-        QSize pref = comps[EAST]->preferredSize(-1, mheight);
+    if (comps[East] != 0) {
+        QSize pref = comps[East]->preferredSize(-1, mheight);
         ewidth = pref.width();
-        comps[EAST]->setBounds(QRect(x + width - ewidth, y + nheight, ewidth, mheight));
+        comps[East]->setBounds(QRect(x + width - ewidth, y + nheight, ewidth, mheight));
     }
 
-    if (comps[CENTER] != 0) {
-        comps[CENTER]->setBounds(QRect(x + wwidth, y + nheight, width - wwidth - ewidth, mheight));
+    if (comps[Center] != 0) {
+        comps[Center]->setBounds(QRect(x + wwidth, y + nheight, width - wwidth - ewidth, mheight));
     }
 }

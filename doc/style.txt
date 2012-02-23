@@ -11,7 +11,7 @@ Classes per file
 
 Const-correctness, rule of three, RAII
 
-Follow Qt naming conventions for getters/setters.
+Follow Qt naming conventions for getters/setters; setters before getters.
 
 Brace style like Three Rings.
 
