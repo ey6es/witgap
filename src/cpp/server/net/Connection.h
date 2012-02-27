@@ -7,6 +7,7 @@
 #include <QMetaMethod>
 #include <QPoint>
 #include <QRect>
+#include <QSize>
 #include <QTcpSocket>
 
 #include "util/General.h"
@@ -51,6 +52,11 @@ public:
      * Checks whether the connection is open.
      */
     bool isOpen () const { return _socket->state() == QAbstractSocket::ConnectedState; };
+
+    /**
+     * Returns the display size reported by the client.
+     */
+    const QSize& displaySize () const { return _displaySize; }
 
     /**
      * Activates the connection, allowing it to begin reading and writing messages.
@@ -146,6 +152,9 @@ protected:
 
     /** The data stream used to read from and write to the socket. */
     QDataStream _stream;
+
+    /** The display size reported by the client. */
+    QSize _displaySize;
 };
 
 #endif // CONNECTION

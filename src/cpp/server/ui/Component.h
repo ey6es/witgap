@@ -54,6 +54,12 @@ public:
     const QMargins& margins () const { return _margins; }
 
     /**
+     * Returns the inner rectangle (the bounds minus the margins) in the component's local
+     * coordinate system.
+     */
+    QRect innerRect () const;
+
+    /**
      * Sets the component's border.  The component will assume ownership of the object.
      */
     void setBorder (Border* border);
@@ -171,6 +177,21 @@ protected:
 
     /** If false, this component is invalid and must be layed out again. */
     bool _valid;
+};
+
+/**
+ * A component that simply takes up space.
+ */
+class Spacer : public Component
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the spacer.
+     */
+    Spacer (int width = -1, int height = -1, int background = 0x0, QObject* parent = 0);
 };
 
 /**

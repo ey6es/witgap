@@ -31,8 +31,7 @@ public:
      * Called by a connection when it has received the protocol header.
      */
     void connectionEstablished (
-        Connection* connection, quint64 sessionId,
-        const QByteArray& sessionToken, int width, int height);
+        Connection* connection, quint64 sessionId, const QByteArray& sessionToken);
 
 protected slots:
 

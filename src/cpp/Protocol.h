@@ -143,4 +143,12 @@ const quint8 COMPOUND_MSG = 6;
  */
 const quint8 CLOSE_MSG = 7;
 
+/** A flag indicating that the character should be displayed in reverse. */
+const int REVERSE_FLAG = 0x10000;
+
+/**
+ * Strips the flags from the specified character.
+ */
+inline int getChar (int ch) { return ch & 0xFFFF; }
+
 #endif // PROTOCOL

@@ -4,6 +4,9 @@
 #ifndef LABEL
 #define LABEL
 
+#include <QPair>
+#include <QVector>
+
 #include "ui/Component.h"
 #include "util/General.h"
 
@@ -44,10 +47,18 @@ public:
 
 protected:
 
+    /** The start position and length of a line. */
+    typedef QPair<const int*, int> Line;
+
     /**
      * Computes and returns the preferred size.
      */
     virtual QSize computePreferredSize (int whint = -1, int hhint = -1) const;
+
+    /**
+     * Validates the component.
+     */
+    virtual void validate ();
 
     /**
      * Draws the component.
@@ -59,6 +70,9 @@ protected:
 
     /** The text alignment. */
     Qt::Alignment _alignment;
+
+    /** The location and length of each line. */
+    QVector<Line> _lines;
 };
 
 #endif // LABEL

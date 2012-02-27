@@ -27,8 +27,7 @@ ConnectionManager::ConnectionManager (ServerApp* app) :
 }
 
 void ConnectionManager::connectionEstablished (
-    Connection* connection, quint64 sessionId,
-    const QByteArray& sessionToken, int width, int height)
+    Connection* connection, quint64 sessionId, const QByteArray& sessionToken)
 {
     // see if we already have a session with the provided id
     Session* session = _sessions[sessionId];

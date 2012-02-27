@@ -40,14 +40,34 @@ public:
     int id () const { return _id; }
 
     /**
+     * Sets the window's layer.
+     */
+    void setLayer (int layer);
+
+    /**
      * Returns the window's layer.
      */
     int layer () const { return _layer; }
 
     /**
-     * Sets the window's layer.
+     * Sets the window's modal flag.
      */
-    void setLayer (int layer);
+    void setModal (bool modal);
+
+    /**
+     * Returns the window's modal flag.
+     */
+    bool modal () const { return _modal; }
+
+    /**
+     * Resizes the window to its preferred size.
+     */
+    void pack ();
+
+    /**
+     * Centers the window on the screen.
+     */
+    void center ();
 
 public slots:
 
@@ -90,6 +110,9 @@ protected:
 
     /** The window's layer. */
     int _layer;
+
+    /** Whether or not the window is modal. */
+    bool _modal;
 
     /** Whether or not a sync is currently enqueued. */
     bool _syncEnqueued;

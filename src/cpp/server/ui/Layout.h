@@ -40,7 +40,7 @@ private:
 /**
  * Arranges components from left-to-right or from top-to-bottom.
  */
-class BoxLayout
+class BoxLayout : public Layout
 {
 public:
 
@@ -54,7 +54,7 @@ public:
     /**
      * Constraints.
      */
-    enum Constraint { Fixed };
+    enum Constraint { Fixed = 1 };
 
     /**
      * Creates a new box layout.
@@ -93,7 +93,7 @@ Q_DECLARE_OPERATORS_FOR_FLAGS(BoxLayout::Policy)
 /**
  * Arranges components in a table.
  */
-class TableLayout
+class TableLayout : public Layout
 {
 public:
 
@@ -131,7 +131,7 @@ protected:
 /**
  * Arranges edges components around a central one.
  */
-class BorderLayout
+class BorderLayout : public Layout
 {
 public:
 

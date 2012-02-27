@@ -9,6 +9,7 @@ Window::Window (QObject* parent, int layer) :
     Container(parent),
     _id(session()->nextWindowId()),
     _layer(layer),
+    _modal(false),
     _syncEnqueued(true),
     _added(false),
     _upToDate(false)
@@ -52,6 +53,24 @@ void Window::setLayer (int layer)
         _layer = layer;
         noteNeedsUpdate();
     }
+}
+
+void Window::setModal (bool modal)
+{
+    _modal = modal;
+}
+
+void Window::pack ()
+{
+    setBounds(QRect(_bounds.topLeft(), preferredSize(-1, -1)));
+}
+
+void Window::center ()
+{
+    QSize dsize = session()->displaySize();
+    QSize wsize = _bounds.size();
+    setBounds(QRect(QPoint((dsize.width() - wsize.width())/2,
+        (dsize.height() - wsize.height())/2), wsize));
 }
 
 void Window::invalidate ()

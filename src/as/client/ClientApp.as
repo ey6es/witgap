@@ -72,11 +72,11 @@ public class ClientApp extends Sprite {
         _field.textColor = 0x00FF00;
         _field.text = " ";
         _field.selectable = false;
-        _unlitFormat = new TextFormat();
-        _litFormat = new TextFormat();
-        _litFormat.color = 0x000000;
-        _unlitFormat.font = _litFormat.font = "_typewriter";
-        _field.setTextFormat(_unlitFormat);
+        _normalFormat = new TextFormat();
+        _reverseFormat = new TextFormat();
+        _reverseFormat.color = 0x000000;
+        _normalFormat.font = _reverseFormat.font = "_typewriter";
+        _field.setTextFormat(_normalFormat);
 
         // get the size of a character and use it to determine the char width/height
         var bounds :Rectangle = _field.getCharBoundaries(0);
@@ -91,7 +91,7 @@ public class ClientApp extends Sprite {
             text += line;
         }
         _field.text = text;
-        _field.setTextFormat(_unlitFormat);
+        _field.setTextFormat(_normalFormat);
         _field.x = (loaderInfo.width - _field.width) / 2;
         _field.y = (loaderInfo.height - _field.height) / 2;
 
@@ -524,9 +524,9 @@ public class ClientApp extends Sprite {
                 if ((ovalue & 0xFFFF) != nchar) {
                     _field.replaceText(tidx, tidx + 1, String.fromCharCode(nchar));
                 }
-                var nlit :int = (nvalue & HIGHLIGHT_FLAG);
-                if ((ovalue & HIGHLIGHT_FLAG) != nlit) {
-                    if (nlit == HIGHLIGHT_FLAG) {
+                var nrev :int = (nvalue & REVERSE_FLAG);
+                if ((ovalue & REVERSE_FLAG) != nrev) {
+                    if (nrev == REVERSE_FLAG) {
                         // the char boundaries might not be valid yet, so we compute the location
                         // assuming the text is centered within the field
                         var highlight :Bitmap = new Bitmap(_highlightData);
@@ -536,11 +536,11 @@ public class ClientApp extends Sprite {
                             (_field.width - cbounds.width*_width)/2;
                         highlight.y = _field.y + cbounds.height*yy +
                             (_field.height - cbounds.height*_height)/2;
-                       _field.setTextFormat(_litFormat, tidx, tidx + 1);
+                       _field.setTextFormat(_reverseFormat, tidx, tidx + 1);
                     } else {
                         removeChild(_highlights[idx]);
                         _highlights[idx] = null;
-                        _field.setTextFormat(_unlitFormat, tidx, tidx + 1);
+                        _field.setTextFormat(_normalFormat, tidx, tidx + 1);
                     }
                 }
             }
@@ -669,8 +669,8 @@ public class ClientApp extends Sprite {
     /** The contents of our field as integers. */
     protected var _contents :Array;
 
-    /** Formats for unlit and lit text. */
-    protected var _unlitFormat :TextFormat, _litFormat :TextFormat;
+    /** Formats for normal and reverse text. */
+    protected var _normalFormat :TextFormat, _reverseFormat :TextFormat;
 
     /** The highlight bitmap data. */
     protected var _highlightData :BitmapData;
@@ -693,8 +693,8 @@ public class ClientApp extends Sprite {
     /** The current dirty region. */
     protected var _dirty :Rectangle = new Rectangle();
 
-    /** Flag indicating that the character should be highlighted. */
-    protected static var HIGHLIGHT_FLAG :int = 0x10000;
+    /** Flag indicating that the character should be displayed in reverse. */
+    protected static var REVERSE_FLAG :int = 0x10000;
 
     /** The magic number that identifies the protocol. */
     protected static var PROTOCOL_MAGIC :int = 0x57544750; // "WTGP"

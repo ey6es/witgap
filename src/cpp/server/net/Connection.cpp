@@ -159,12 +159,13 @@ void Connection::readHeader ()
     quint16 width, height;
     _stream >> width;
     _stream >> height;
+    _displaySize = QSize(width, height);
 
     // disable the connection until we're ready to read subsequent messages
     _socket->disconnect(this);
 
     // notify the connection manager, which will create a session for the connection
-    _app->connectionManager()->connectionEstablished(this, sessionId, sessionToken, width, height);
+    _app->connectionManager()->connectionEstablished(this, sessionId, sessionToken);
 }
 
 void Connection::readMessages ()

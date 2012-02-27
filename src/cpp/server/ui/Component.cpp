@@ -34,6 +34,13 @@ void Component::setBounds (const QRect& bounds)
     }
 }
 
+QRect Component::innerRect () const
+{
+    return QRect(_margins.left(), _margins.top(),
+        _bounds.width() - (_margins.left() + _margins.right()),
+        _bounds.height() - (_margins.top() + _margins.bottom()));
+}
+
 void Component::setBorder (Border* border)
 {
     if (_border != border) {
@@ -172,6 +179,13 @@ void Component::invalidateParent () const
     if (pcomp != 0) {
         pcomp->invalidate();
     }
+}
+
+Spacer::Spacer (int width, int height, int background, QObject* parent) :
+    Component(parent)
+{
+    _explicitPreferredSize = QSize(width, height);
+    _background = background;
 }
 
 Container::Container (QObject* parent) :
@@ -324,6 +338,8 @@ void DrawContext::drawContents (
         int stride = rect.width();
         int* ldptr = _buffers[ii].data() + (isect.y() - rect.y())*stride + (isect.x() - rect.x());
         const int* sptr = contents;
+
+        // if we're opaque, we can just copy line-by-line; otherwise, we must check for zero values
         if (opaque) {
             for (int yy = isect.height(); yy > 0; yy--) {
                 qCopy(sptr, sptr + width, ldptr);
