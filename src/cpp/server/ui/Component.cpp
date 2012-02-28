@@ -1,6 +1,7 @@
 //
 // $Id$
 
+#include "net/Session.h"
 #include "ui/Border.h"
 #include "ui/Component.h"
 #include "ui/Layout.h"
@@ -10,7 +11,8 @@ Component::Component (QObject* parent) :
     _border(0),
     _explicitPreferredSize(-1, -1),
     _background(0),
-    _valid(false)
+    _valid(false),
+    _focused(false)
 {
     // connect slots
     connect(this, SIGNAL(boundsChanged()), SLOT(invalidate()));
@@ -21,6 +23,17 @@ Component::~Component ()
     if (_border != 0) {
         delete _border;
     }
+}
+
+Session* Component::session () const
+{
+    for (QObject* obj = parent(); obj != 0; obj = obj->parent()) {
+        Session* session = qobject_cast<Session*>(obj);
+        if (session != 0) {
+            return session;
+        }
+    }
+    return 0;
 }
 
 void Component::setBounds (const QRect& bounds)
@@ -132,6 +145,37 @@ void Component::maybeDraw (DrawContext* ctx) const
     }
 }
 
+void Component::requestFocus ()
+{
+    session()->setFocus(this);
+}
+
+bool Component::event (QEvent* e)
+{
+    switch (e->type()) {
+        case QEvent::FocusIn:
+            _focused = true;
+            focusInEvent((QFocusEvent*)e);
+            return true;
+
+        case QEvent::FocusOut:
+            _focused = false;
+            focusOutEvent((QFocusEvent*)e);
+            return true;
+
+        case QEvent::KeyPress:
+            keyPressEvent((QKeyEvent*)e);
+            return e->isAccepted();
+
+        case QEvent::KeyRelease:
+            keyReleaseEvent((QKeyEvent*)e);
+            return e->isAccepted();
+
+        default:
+            return QObject::event(e);
+    }
+}
+
 void Component::invalidate ()
 {
     if (_valid) {
@@ -173,6 +217,28 @@ void Component::draw (DrawContext* ctx) const
     }
 }
 
+void Component::focusInEvent (QFocusEvent* e)
+{
+}
+
+void Component::focusOutEvent (QFocusEvent* e)
+{
+}
+
+void Component::keyPressEvent (QKeyEvent* e)
+{
+    if (e->key() == Qt::Key_Tab && _focused) {
+
+    } else {
+        e->ignore(); // pass up to parent
+    }
+}
+
+void Component::keyReleaseEvent (QKeyEvent* e)
+{
+    e->ignore(); // pass up to parent
+}
+
 void Component::invalidateParent () const
 {
     Component* pcomp = qobject_cast<Component*>(parent());
@@ -188,9 +254,9 @@ Spacer::Spacer (int width, int height, int background, QObject* parent) :
     _background = background;
 }
 
-Container::Container (QObject* parent) :
+Container::Container (Layout* layout, QObject* parent) :
     Component(parent),
-    _layout(0)
+    _layout(layout)
 {
 }
 

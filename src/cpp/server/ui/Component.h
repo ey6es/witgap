@@ -4,6 +4,9 @@
 #ifndef COMPONENT
 #define COMPONENT
 
+#include <QEvent>
+#include <QFocusEvent>
+#include <QKeyEvent>
 #include <QList>
 #include <QMargins>
 #include <QObject>
@@ -18,6 +21,7 @@
 class Border;
 class DrawContext;
 class Layout;
+class Session;
 
 /**
  * Base class of all user interface components.
@@ -37,6 +41,11 @@ public:
      * Destroys the component.
      */
     virtual ~Component ();
+
+    /**
+     * Returns a pointer to the session that owns the component.
+     */
+    Session* session () const;
 
     /**
      * Sets the component's bounds.
@@ -110,6 +119,21 @@ public:
      */
     void maybeDraw (DrawContext* ctx) const;
 
+    /**
+     * Checks whether the component accepts input focus.
+     */
+    virtual bool acceptsFocus () const { return false; }
+
+    /**
+     * Requests input focus for this component.
+     */
+    void requestFocus ();
+
+    /**
+     * Handles an event.
+     */
+    virtual bool event (QEvent* e);
+
 signals:
 
     /**
@@ -152,6 +176,26 @@ protected:
     virtual void draw (DrawContext* ctx) const;
 
     /**
+     * Handles a focus in event.
+     */
+    virtual void focusInEvent (QFocusEvent* e);
+
+    /**
+     * Handles a focus out event.
+     */
+    virtual void focusOutEvent (QFocusEvent* e);
+
+    /**
+     * Handles a key press event.
+     */
+    virtual void keyPressEvent (QKeyEvent* e);
+
+    /**
+     * Handles a key release event.
+     */
+    virtual void keyReleaseEvent (QKeyEvent* e);
+
+    /**
      * Invalidates the component's parent, if it has one.
      */
     void invalidateParent () const;
@@ -177,6 +221,9 @@ protected:
 
     /** If false, this component is invalid and must be layed out again. */
     bool _valid;
+
+    /** If true, this component owns the input focus. */
+    bool _focused;
 };
 
 /**
@@ -206,7 +253,7 @@ public:
     /**
      * Initializes the container.
      */
-    Container (QObject* parent = 0);
+    Container (Layout* layout = 0, QObject* parent = 0);
 
     /**
      * Destroys the container.

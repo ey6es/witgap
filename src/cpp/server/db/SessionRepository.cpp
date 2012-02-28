@@ -9,10 +9,6 @@
 
 #include "db/SessionRepository.h"
 
-SessionRepository::SessionRepository ()
-{
-}
-
 void SessionRepository::init ()
 {
     // create the table if it doesn't yet exist

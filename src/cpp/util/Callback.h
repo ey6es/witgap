@@ -96,4 +96,31 @@ protected:
     QPair<int, void*> _args[10];
 };
 
+/**
+ * Wraps a {@link Callback} in a {@link QObject} so that it can be triggered by a signal.
+ */
+class CallbackObject : public QObject
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Creates a new callback object.
+     */
+    CallbackObject (const Callback& callback, QObject* parent = 0);
+
+public slots:
+
+    /**
+     * Invokes the callback with no additional arguments.
+     */
+    void invoke () const;
+
+protected:
+
+    /** The wrapped callback. */
+    Callback _callback;
+};
+
 #endif // CALLBACK

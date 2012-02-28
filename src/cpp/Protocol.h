@@ -71,7 +71,7 @@ const quint8 KEY_RELEASED_MSG = 3;
 const quint8 WINDOW_CLOSED_MSG = 4;
 
 /**
- * Server -> client: add a window.  Data:
+ * Server -> client: add or update a window.  Data:
  *     id : qint32 : the unique window id
  *     layer : qint32 : the window layer
  *     x : qint16 : the x coordinate of the window
@@ -80,25 +80,13 @@ const quint8 WINDOW_CLOSED_MSG = 4;
  *     height : qint16 : the height of the window
  *     fill : qint32 : the value with which to initialize the window contents
  */
-const quint8 ADD_WINDOW_MSG = 0;
+const quint8 UPDATE_WINDOW_MSG = 0;
 
 /**
  * Server -> client: remove a window.  Data:
  *     id : qint32 : the unique window id
  */
 const quint8 REMOVE_WINDOW_MSG = 1;
-
-/**
- * Server -> client: update a window.  Data:
- *     id : qint32 : the unique window id
- *     layer : qint32 : the window layer
- *     x : qint16 : the x coordinate of the window
- *     y : qint16 : the y coordinate of the window
- *     width : qint16 : the width of the window
- *     height : qint16 : the height of the window
- *     fill : qint32 : the value with which to initialize the exposed contents
- */
-const quint8 UPDATE_WINDOW_MSG = 2;
 
 /**
  * Server -> client: set part of a window's contents.  Data:
@@ -109,7 +97,7 @@ const quint8 UPDATE_WINDOW_MSG = 2;
  *     height : qint16 : the height of the region to set
  *     contents : qint32[width*height] : the new contents of the region
  */
-const quint8 SET_CONTENTS_MSG = 3;
+const quint8 SET_CONTENTS_MSG = 2;
 
 /**
  * Server -> client: move part of a window's contents.  Data:
@@ -122,26 +110,26 @@ const quint8 SET_CONTENTS_MSG = 3;
  *     destY : qint16 : the y coordinate of the new destination
  *     fill : qint32 : the value with which to initialize the exposed contents
  */
-const quint8 MOVE_CONTENTS_MSG = 4;
+const quint8 MOVE_CONTENTS_MSG = 3;
 
 /**
  * Server -> client: set the session id/token.  Data:
  *     id : quint64 : the new persistent session id
  *     token : char[16] : the new randomly generated token
  */
-const quint8 SET_SESSION_MSG = 5;
+const quint8 SET_SESSION_MSG = 4;
 
 /**
  * Server -> client: a compound message follows.  The data is simply a series of normally-encoded
  * messages.
  */
-const quint8 COMPOUND_MSG = 6;
+const quint8 COMPOUND_MSG = 5;
 
 /**
  * Server -> client: close the connection.  Data:
  *     reason : char[length - 1] : the UTF-8 encoded reason for the closure
  */
-const quint8 CLOSE_MSG = 7;
+const quint8 CLOSE_MSG = 6;
 
 /** A flag indicating that the character should be displayed in reverse. */
 const int REVERSE_FLAG = 0x10000;

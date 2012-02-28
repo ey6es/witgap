@@ -6,12 +6,11 @@
 #include "ui/Window.h"
 
 Window::Window (QObject* parent, int layer) :
-    Container(parent),
+    Container(0, parent),
     _id(session()->nextWindowId()),
     _layer(layer),
     _modal(false),
     _syncEnqueued(true),
-    _added(false),
     _upToDate(false)
 {
     // use an opaque background
@@ -34,17 +33,6 @@ Window::~Window ()
             Connection::removeWindowMetaMethod().invoke(connection, Q_ARG(int, _id));
         }
     }
-}
-
-Session* Window::session () const
-{
-    for (QObject* obj = parent(); obj != 0; obj = obj->parent()) {
-        Session* session = qobject_cast<Session*>(obj);
-        if (session != 0) {
-            return session;
-        }
-    }
-    return 0;
 }
 
 void Window::setLayer (int layer)
@@ -71,6 +59,12 @@ void Window::center ()
     QSize wsize = _bounds.size();
     setBounds(QRect(QPoint((dsize.width() - wsize.width())/2,
         (dsize.height() - wsize.height())/2), wsize));
+}
+
+void Window::resend()
+{
+    noteNeedsUpdate();
+    Component::dirty();
 }
 
 void Window::invalidate ()
@@ -104,11 +98,9 @@ void Window::sync ()
     Connection* connection = session()->connection();
     if (connection != 0) {
         if (!_upToDate) {
-            const QMetaMethod& method = _added ?
-                Connection::updateWindowMetaMethod() : Connection::addWindowMetaMethod();
-            method.invoke(connection, Q_ARG(int, _id), Q_ARG(int, _layer),
-                Q_ARG(const QRect&, _bounds), Q_ARG(int, _background));
-            _upToDate = _added = true;
+            Connection::updateWindowMetaMethod().invoke(connection, Q_ARG(int, _id),
+                Q_ARG(int, _layer), Q_ARG(const QRect&, _bounds), Q_ARG(int, _background));
+            _upToDate = true;
         }
 
         maybeValidate();

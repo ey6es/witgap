@@ -8,8 +8,6 @@
 
 #include "ui/Component.h"
 
-class Session;
-
 /**
  * A top-level window.
  */
@@ -28,11 +26,6 @@ public:
      * Destroys the window.
      */
     virtual ~Window ();
-
-    /**
-     * Returns a pointer to the session that owns the window.
-     */
-    Session* session () const;
 
     /**
      * Returns the window's unique identifier.
@@ -68,6 +61,11 @@ public:
      * Centers the window on the screen.
      */
     void center ();
+
+    /**
+     * Causes the window's state and contents to be resent (called on reconnect).
+     */
+    void resend();
 
 public slots:
 
@@ -116,9 +114,6 @@ protected:
 
     /** Whether or not a sync is currently enqueued. */
     bool _syncEnqueued;
-
-    /** Whether or not the window is added. */
-    bool _added;
 
     /** Whether or not the window is up-to-date. */
     bool _upToDate;

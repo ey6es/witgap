@@ -7,6 +7,8 @@
 #include <QObject>
 #include <QSize>
 
+class Callback;
+class Component;
 class Connection;
 class ServerApp;
 
@@ -55,13 +57,30 @@ public:
     const QSize& displaySize () const { return _displaySize; }
 
     /**
+     * Sets focus to the specified component.
+     */
+    void setFocus (Component* component);
+
+    /**
      * Shows a simple info dialog with the supplied message.
      *
      * @param title the title to use for the dialog, or empty string for none.
-     * @param dismiss the text to use for the dismiss button, or empty string for default.
+     * @param dismiss the text to use for the dismiss button, or empty string for default (OK).
      */
     void showInfoDialog (
         const QString& message, const QString& title = "", const QString& dismiss = "");
+
+    /**
+     * Shows a simple confirmation dialog with the supplied message.
+     *
+     * @param callback the callback to invoke if accepted.
+     * @param title the title to use for the dialog, or empty string for none.
+     * @param dismiss the text to use for the dismiss button, or empty string for default (Cancel).
+     * @param accept the text to use for the accept button, or empty string for default (OK).
+     */
+    void showConfirmDialog (
+        const QString& message, const Callback& callback, const QString& title = "",
+        const QString& dismiss = "", const QString& accept = "");
 
 protected slots:
 
@@ -69,6 +88,11 @@ protected slots:
      * Clears the connection pointer (because it has been destroyed).
      */
     void clearConnection ();
+
+    /**
+     * Clears the focused component (because it has been destroyed).
+     */
+    void clearFocus ();
 
     /**
      * Dispatches a mouse pressed event.
@@ -112,6 +136,9 @@ protected:
 
     /** The current set of key modifiers. */
     Qt::KeyboardModifiers _modifiers;
+
+    /** The component with input focus. */
+    Component* _focused;
 };
 
 #endif // SESSION

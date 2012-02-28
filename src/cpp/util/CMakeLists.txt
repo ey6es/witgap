@@ -1,7 +1,8 @@
 find_package(Qt4 4.6.2 REQUIRED QtCore)
 include(${QT_USE_FILE})
 
-set(HEADERS Callback.h General.h)
-set(SOURCES Callback.cpp General.cpp)
+set(HEADERS Callback.h)
+set(SOURCES Callback.cpp)
 
-add_library(util ${SOURCES} ${HEADERS})
+qt4_wrap_cpp(SOURCES ${HEADERS})
+add_library(util ${SOURCES} ${HEADERS} General.h General.cpp)

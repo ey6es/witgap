@@ -38,7 +38,8 @@ Callback::Callback (const Callback& other) :
     copyArguments(other._args);
 }
 
-Callback::Callback ()
+Callback::Callback () :
+    _object(0)
 {
 }
 
@@ -84,6 +85,9 @@ void Callback::invoke (
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9) const
 {
+    if (_object == 0) {
+        return; // invalid
+    }
     QGenericArgument nargs[] = { val0, val1, val2, val3, val4, val5, val6, val7, val8, val9 };
     QGenericArgument cargs[10];
 
@@ -97,4 +101,15 @@ void Callback::invoke (
     }
     _method.invoke(_object, cargs[0], cargs[1], cargs[2], cargs[3], cargs[4],
         cargs[5], cargs[6], cargs[7], cargs[8], cargs[9]);
+}
+
+CallbackObject::CallbackObject (const Callback& callback, QObject* parent) :
+    QObject(parent),
+    _callback(callback)
+{
+}
+
+void CallbackObject::invoke () const
+{
+    _callback.invoke();
 }

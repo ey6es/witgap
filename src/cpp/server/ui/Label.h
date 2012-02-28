@@ -45,6 +45,11 @@ public:
      */
     Qt::Alignment alignment () const { return _alignment; }
 
+    /**
+     * Sets the flags for all characters in the text.
+     */
+    void setTextFlags (int flags);
+
 protected:
 
     /** The start position and length of a line. */

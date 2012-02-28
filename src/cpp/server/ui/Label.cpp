@@ -32,6 +32,14 @@ void Label::setAlignment (Qt::Alignment alignment)
     }
 }
 
+void Label::setTextFlags (int flags)
+{
+    for (int* ptr = _text.data(), *end = ptr + _text.size(); ptr < end; ptr++) {
+        *ptr = getChar(*ptr) | flags;
+    }
+    dirty();
+}
+
 QSize Label::computePreferredSize (int whint, int hhint) const
 {
     // scan for line breaks
@@ -40,7 +48,7 @@ QSize Label::computePreferredSize (int whint, int hhint) const
     const int* whitespace = 0;
     bool wrun = false;
     for (const int* ptr = _text.constData(), *end = ptr + _text.size(); ptr < end; ptr++) {
-        int value = getChar(*ptr & 0xFFFF);
+        int value = getChar(*ptr);
         if (value != '\n') {
             if (value == ' ') {
                 if (!wrun) { // it's the start of a run of whitespace
@@ -85,7 +93,7 @@ void Label::validate ()
     bool wrun = false;
     _lines.resize(0);
     for (const int* ptr = start, *end = ptr + _text.size(); ptr < end; ptr++) {
-        int value = getChar(*ptr & 0xFFFF);
+        int value = getChar(*ptr);
         if (value != '\n') {
             if (value == ' ') {
                 if (!wrun) { // it's the start of a run of whitespace

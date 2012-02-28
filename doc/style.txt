@@ -42,3 +42,5 @@ avoid abbreviation in public members
 line breaks for method calls/definitions
 
 whitespace between blocks
+
+100 columns

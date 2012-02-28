@@ -24,19 +24,14 @@ class Connection : public QObject
 public:
 
     /**
-     * Returns the meta-method for {@link #addWindow}.
+     * Returns the meta-method for {@link #updateWindow}.
      */
-    static const QMetaMethod& addWindowMetaMethod ();
+    static const QMetaMethod& updateWindowMetaMethod ();
 
     /**
      * Returns the meta-method for {@link #removeWindow}.
      */
     static const QMetaMethod& removeWindowMetaMethod ();
-
-    /**
-     * Returns the meta-method for {@link #updateWindow}.
-     */
-    static const QMetaMethod& updateWindowMetaMethod ();
 
     /**
      * Returns the meta-method for {@link #setContents}.
@@ -69,19 +64,14 @@ public:
     void deactivate (const QString& reason);
 
     /**
-     * Adds a window to the user's display.
+     * Updates a window on the user's display.
      */
-    Q_INVOKABLE void addWindow (int id, int layer, const QRect& bounds, int fill);
+    Q_INVOKABLE void updateWindow (int id, int layer, const QRect& bounds, int fill);
 
     /**
      * Removes a window from the user's display.
      */
     Q_INVOKABLE void removeWindow (int id);
-
-    /**
-     * Updates a window on the user's display.
-     */
-    Q_INVOKABLE void updateWindow (int id, int layer, const QRect& bounds, int fill);
 
     /**
      * Sets part of a window's contents.

@@ -9,18 +9,13 @@
 #include "util/Callback.h"
 
 /**
- * Performs database queries in a separate thread.
+ * Handles database queries associated with sessions.
  */
 class SessionRepository : public QObject
 {
     Q_OBJECT
 
 public:
-
-    /**
-     * Creates the repository.
-     */
-    SessionRepository ();
 
     /**
      * Initializes the repository, performing any necessary migrations.

@@ -262,18 +262,13 @@ public class ClientApp extends Sprite {
     {
         var type :int = bytes.readUnsignedByte();
         switch (type) {
-            case ADD_WINDOW_MSG:
-                addWindow(new Window(bytes.readInt(), bytes.readInt(),
-                    readRectangle(bytes), bytes.readInt()));
+            case UPDATE_WINDOW_MSG:
+                updateWindow(bytes.readInt(), bytes.readInt(),
+                    readRectangle(bytes), bytes.readInt());
                 break;
 
             case REMOVE_WINDOW_MSG:
                 removeWindow(bytes.readInt());
-                break;
-
-            case UPDATE_WINDOW_MSG:
-                updateWindow(bytes.readInt(), bytes.readInt(),
-                    readRectangle(bytes), bytes.readInt());
                 break;
 
             case SET_CONTENTS_MSG:
@@ -379,24 +374,13 @@ public class ClientApp extends Sprite {
     }
 
     /**
-     * Removes the window with the specified id from the list.
-     */
-    protected function removeWindow (id :int) :void
-    {
-        var idx :int = getWindowIndex(id);
-        if (idx != -1) {
-            addDirtyRegion(_windows[idx].bounds);
-            _windows.splice(idx, 1);
-        }
-    }
-
-    /**
-     * Updates the identified window.
+     * Updates the identified window, adding it if it isn't present.
      */
     protected function updateWindow (id :int, layer :int, bounds :Rectangle, fill :int) :void
     {
         var idx :int = getWindowIndex(id);
         if (idx == -1) {
+            addWindow(new Window(id, layer, bounds, fill));
             return;
         }
         var window :Window = _windows[idx];
@@ -413,6 +397,18 @@ public class ClientApp extends Sprite {
                 window.resizeContents(bounds.size, fill);
             }
             window.bounds.copyFrom(bounds);
+        }
+    }
+
+    /**
+     * Removes the window with the specified id from the list.
+     */
+    protected function removeWindow (id :int) :void
+    {
+        var idx :int = getWindowIndex(id);
+        if (idx != -1) {
+            addDirtyRegion(_windows[idx].bounds);
+            _windows.splice(idx, 1);
         }
     }
 
@@ -717,29 +713,26 @@ public class ClientApp extends Sprite {
     /** Outgoing message: window closed. */
     protected static var WINDOW_CLOSED_MSG :int = 4;
 
-    /** Incoming message: add window. */
-    protected static var ADD_WINDOW_MSG :int = 0;
+    /** Incoming message: add or update window. */
+    protected static var UPDATE_WINDOW_MSG :int = 0;
 
     /** Incoming message: remove window. */
     protected static var REMOVE_WINDOW_MSG :int = 1;
 
-    /** Incoming message: update window. */
-    protected static var UPDATE_WINDOW_MSG :int = 2;
-
     /** Incoming message: set contents. */
-    protected static var SET_CONTENTS_MSG :int = 3;
+    protected static var SET_CONTENTS_MSG :int = 2;
 
     /** Incoming message: move contents. */
-    protected static var MOVE_CONTENTS_MSG :int = 4;
+    protected static var MOVE_CONTENTS_MSG :int = 3;
 
     /** Incoming message: set session id/token. */
-    protected static var SET_SESSION_MSG :int = 5;
+    protected static var SET_SESSION_MSG :int = 4;
 
     /** Incoming message: compound. */
-    protected static var COMPOUND_MSG :int = 6;
+    protected static var COMPOUND_MSG :int = 5;
 
     /** Incoming message: close. */
-    protected static var CLOSE_MSG :int = 7;
+    protected static var CLOSE_MSG :int = 6;
 }
 }
 

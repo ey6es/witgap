@@ -12,10 +12,10 @@
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 
-const QMetaMethod& Connection::addWindowMetaMethod ()
+const QMetaMethod& Connection::updateWindowMetaMethod ()
 {
     static QMetaMethod method = staticMetaObject.method(
-        staticMetaObject.indexOfMethod("addWindow(int,int,QRect,int)"));
+        staticMetaObject.indexOfMethod("updateWindow(int,int,QRect,int)"));
     return method;
 }
 
@@ -23,13 +23,6 @@ const QMetaMethod& Connection::removeWindowMetaMethod ()
 {
     static QMetaMethod method = staticMetaObject.method(
         staticMetaObject.indexOfMethod("removeWindow(int)"));
-    return method;
-}
-
-const QMetaMethod& Connection::updateWindowMetaMethod ()
-{
-    static QMetaMethod method = staticMetaObject.method(
-        staticMetaObject.indexOfMethod("updateWindow(int,int,QRect,int)"));
     return method;
 }
 
@@ -74,10 +67,10 @@ void Connection::deactivate (const QString& reason)
     _socket->disconnectFromHost();
 }
 
-void Connection::addWindow (int id, int layer, const QRect& bounds, int fill)
+void Connection::updateWindow (int id, int layer, const QRect& bounds, int fill)
 {
-    _stream << (quint16)21;
-    _stream << ADD_WINDOW_MSG;
+    _stream << (qint16)21;
+    _stream << UPDATE_WINDOW_MSG;
     _stream << (qint32)id;
     _stream << (qint32)layer;
     write(bounds);
@@ -89,16 +82,6 @@ void Connection::removeWindow (int id)
     _stream << (qint16)5;
     _stream << REMOVE_WINDOW_MSG;
     _stream << (qint32)id;
-}
-
-void Connection::updateWindow (int id, int layer, const QRect& bounds, int fill)
-{
-    _stream << (qint16)21;
-    _stream << UPDATE_WINDOW_MSG;
-    _stream << (qint32)id;
-    _stream << (qint32)layer;
-    write(bounds);
-    _stream << (qint32)fill;
 }
 
 void Connection::setContents (int id, const QRect& bounds, const QIntVector& contents)
