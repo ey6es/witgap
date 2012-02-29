@@ -3,11 +3,18 @@
 
 #include <QVarLengthArray>
 
-#include "ui/Component.h"
 #include "ui/Layout.h"
 
 Layout::Layout ()
 {
+}
+
+bool Layout::transferFocus (
+    Container* container, Component* from, Component::Direction dir) const
+{
+    // default behavior just translates right/down to forward and left/up to backward
+    container->transferFocus(from, (dir == Component::Right || dir == Component::Down) ?
+        Component::Forward : Component::Backward);
 }
 
 BoxLayout::BoxLayout (

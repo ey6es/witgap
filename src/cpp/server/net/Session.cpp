@@ -1,6 +1,8 @@
 //
 // $Id$
 
+#include <limits>
+
 #include <QFocusEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -18,6 +20,8 @@
 #include "ui/Layout.h"
 #include "ui/Window.h"
 
+using namespace std;
+
 Session::Session (ServerApp* app, Connection* connection, quint64 id, const QByteArray& token) :
     QObject(app->connectionManager()),
     _app(app),
@@ -25,7 +29,8 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id, const QByt
     _id(id),
     _token(token),
     _lastWindowId(0),
-    _focused(0)
+    _moused(0),
+    _focus(0)
 {
     // send the session info back to the connection and activate it
     connection->setSession(id, token);
@@ -58,6 +63,9 @@ void Session::setConnection (Connection* connection)
     connect(_connection, SIGNAL(keyReleased(int)), SLOT(dispatchKeyReleased(int)));
     _connection->activate();
 
+    // clear the modifiers
+    _modifiers = Qt::KeyboardModifiers();
+
     // readd the windows
     foreach (Window* window, findChildren<Window*>()) {
         window->resend();
@@ -66,18 +74,18 @@ void Session::setConnection (Connection* connection)
 
 void Session::setFocus (Component* component)
 {
-    if (_focused == component) {
+    if (_focus == component) {
         return;
     }
-    if (_focused != 0) {
-        _focused->disconnect(this);
+    if (_focus != 0) {
+        _focus->disconnect(this, SLOT(clearFocus()));
         QFocusEvent event(QEvent::FocusOut);
-        QCoreApplication::sendEvent(_focused, &event);
+        QCoreApplication::sendEvent(_focus, &event);
     }
-    if ((_focused = component) != 0) {
-        connect(_focused, SIGNAL(destroyed()), SLOT(clearFocus()));
+    if ((_focus = component) != 0) {
+        connect(_focus, SIGNAL(destroyed()), SLOT(clearFocus()));
         QFocusEvent event(QEvent::FocusIn);
-        QCoreApplication::sendEvent(_focused, &event);
+        QCoreApplication::sendEvent(_focus, &event);
     }
 }
 
@@ -126,6 +134,9 @@ void Session::showConfirmDialog (
     window->connect(ok, SIGNAL(pressed()), SLOT(deleteLater()));
     (new CallbackObject(callback, window))->connect(ok, SIGNAL(pressed()), SLOT(invoke()));
 
+    Button* derp = new Button(tr("DERP"));
+    buttons->addChild(derp);
+
     ok->requestFocus();
     window->pack();
     window->center();
@@ -136,33 +147,100 @@ void Session::clearConnection ()
     _connection = 0;
 }
 
+void Session::clearMoused ()
+{
+    _moused = 0;
+}
+
 void Session::clearFocus ()
 {
-    _focused = 0;
+    _focus = 0;
 }
 
 void Session::dispatchMousePressed (int x, int y)
 {
-    QMouseEvent event(QEvent::MouseButtonPress, QPoint(x, y), QPoint(x, y),
+    // we shouldn't have a moused component, but let's make sure
+    if (_moused != 0) {
+        _moused->disconnect(this, SLOT(clearMoused()));
+        _moused = 0;
+    }
+
+    // find the highest "hit"
+    int hlayer = numeric_limits<int>::min();
+    Component* target = 0;
+    QPoint absolute(x, y), relative(x, y);
+    foreach (Window* window, findChildren<Window*>()) {
+        if (window->layer() < hlayer) {
+            continue;
+        }
+        if (window->bounds().contains(absolute)) {
+            QPoint rel;
+            Component* comp = window->componentAt(absolute - window->bounds().topLeft(), &rel);
+            if (comp != 0) {
+                target = comp;
+                relative = rel;
+            }
+        }
+    }
+    if (target != 0) {
+        connect(_moused = target, SIGNAL(destroyed()), SLOT(clearMoused()));
+    }
+    QMouseEvent event(QEvent::MouseButtonPress, relative, absolute,
         Qt::LeftButton, Qt::LeftButton, _modifiers);
-    QCoreApplication::sendEvent(this, &event);
+    QCoreApplication::sendEvent(target == 0 ? this : (QObject*)target, &event);
 }
 
 void Session::dispatchMouseReleased (int x, int y)
 {
-    QMouseEvent event(QEvent::MouseButtonRelease, QPoint(x, y), QPoint(x, y),
+    QPoint absolute(x, y), relative(x, y);
+    Component* target = _moused;
+    if (_moused != 0) {
+        relative -= _moused->absolutePos();
+        _moused->disconnect(this, SLOT(clearMoused()));
+        _moused = 0;
+    }
+    QMouseEvent event(QEvent::MouseButtonRelease, relative, absolute,
         Qt::LeftButton, Qt::NoButton, _modifiers);
-    QCoreApplication::sendEvent(this, &event);
+    QCoreApplication::sendEvent(target == 0 ? this : (QObject*)target, &event);
+}
+
+/**
+ * Helper function for modifier updates.
+ */
+Qt::KeyboardModifier getModifier (int key)
+{
+    switch (key) {
+        case Qt::Key_Shift:
+            return Qt::ShiftModifier;
+        case Qt::Key_Control:
+            return Qt::ControlModifier;
+        case Qt::Key_Alt:
+            return Qt::AltModifier;
+        case Qt::Key_Meta:
+            return Qt::MetaModifier;
+        default:
+            return Qt::NoModifier;
+    }
 }
 
 void Session::dispatchKeyPressed (int key)
 {
+    // update our modifiers
+    Qt::KeyboardModifier modifier = getModifier(key);
+    if (modifier != Qt::NoModifier) {
+        _modifiers |= modifier;
+    }
     QKeyEvent event(QEvent::KeyPress, key, _modifiers);
-    QCoreApplication::sendEvent(_focused == 0 ? this : (QObject*)_focused, &event);
+    QCoreApplication::sendEvent(_focus == 0 ? this : (QObject*)_focus, &event);
 }
 
 void Session::dispatchKeyReleased (int key)
 {
+    // update our modifiers
+    Qt::KeyboardModifier modifier = getModifier(key);
+    if (modifier != Qt::NoModifier) {
+        _modifiers &= ~modifier;
+    }
     QKeyEvent event(QEvent::KeyRelease, key, _modifiers);
-    QCoreApplication::sendEvent(_focused == 0 ? this : (QObject*)_focused, &event);
+    QCoreApplication::sendEvent(_focus == 0 ? this : (QObject*)_focus, &event);
 }

@@ -28,6 +28,13 @@ void Button::focusOutEvent (QFocusEvent* e)
     setTextFlags(0);
 }
 
+void Button::mouseButtonReleaseEvent (QMouseEvent* e)
+{
+    if (localBounds().contains(e->pos())) {
+        emit pressed();
+    }
+}
+
 void Button::keyPressEvent (QKeyEvent* e)
 {
     if (e->key() == Qt::Key_Return) {

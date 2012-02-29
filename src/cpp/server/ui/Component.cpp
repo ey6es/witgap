@@ -47,11 +47,22 @@ void Component::setBounds (const QRect& bounds)
     }
 }
 
+QRect Component::localBounds () const
+{
+    return QRect(0, 0, _bounds.width(), _bounds.height());
+}
+
 QRect Component::innerRect () const
 {
     return QRect(_margins.left(), _margins.top(),
         _bounds.width() - (_margins.left() + _margins.right()),
         _bounds.height() - (_margins.top() + _margins.bottom()));
+}
+
+QPoint Component::absolutePos () const
+{
+    Container* container = qobject_cast<Container*>(parent());
+    return (container == 0) ? _bounds.topLeft() : container->absolutePos() + _bounds.topLeft();
 }
 
 void Component::setBorder (Border* border)
@@ -150,6 +161,25 @@ void Component::requestFocus ()
     session()->setFocus(this);
 }
 
+Component* Component::componentAt (QPoint pos, QPoint* relative)
+{
+    *relative = pos;
+    return this;
+}
+
+bool Component::transferFocus (Component* from, Direction dir)
+{
+    if (from == this) {
+        Container* container = qobject_cast<Container*>(parent());
+        return (container != 0) ? container->transferFocus(this, dir) : transferFocus(0, dir);
+    }
+    if (acceptsFocus()) {
+        requestFocus();
+        return true;
+    }
+    return false;
+}
+
 bool Component::event (QEvent* e)
 {
     switch (e->type()) {
@@ -162,6 +192,14 @@ bool Component::event (QEvent* e)
             _focused = false;
             focusOutEvent((QFocusEvent*)e);
             return true;
+
+        case QEvent::MouseButtonPress:
+            mouseButtonPressEvent((QMouseEvent*)e);
+            return e->isAccepted();
+
+        case QEvent::MouseButtonRelease:
+            mouseButtonReleaseEvent((QMouseEvent*)e);
+            return e->isAccepted();
 
         case QEvent::KeyPress:
             keyPressEvent((QKeyEvent*)e);
@@ -225,13 +263,65 @@ void Component::focusOutEvent (QFocusEvent* e)
 {
 }
 
-void Component::keyPressEvent (QKeyEvent* e)
+void Component::mouseButtonPressEvent (QMouseEvent* e)
 {
-    if (e->key() == Qt::Key_Tab && _focused) {
+    if (!_focused && acceptsFocus()) {
+        requestFocus();
 
     } else {
-        e->ignore(); // pass up to parent
+        e->ignore();
     }
+}
+
+void Component::mouseButtonReleaseEvent (QMouseEvent* e)
+{
+    e->ignore(); // pass up to parent
+}
+
+/**
+ * Helper function for keyPressEvent: returns the focus traversal direction.
+ */
+Component::Direction getDirection (QKeyEvent* e)
+{
+    Qt::KeyboardModifiers modifiers = e->modifiers();
+    int key = e->key();
+    if (key == Qt::Key_Tab) {
+        if (modifiers == Qt::ShiftModifier) {
+            return Component::Backward;
+        } else if (modifiers == Qt::NoModifier) {
+            return Component::Forward;
+        } else {
+            return Component::NoDirection;
+        }
+    }
+    if (modifiers != Qt::NoModifier) {
+        return Component::NoDirection; // no modifiers allowed
+    }
+    switch (key) {
+        case Qt::Key_Left:
+            return Component::Left;
+        case Qt::Key_Right:
+            return Component::Right;
+        case Qt::Key_Up:
+            return Component::Up;
+        case Qt::Key_Down:
+            return Component::Down;
+        default:
+            return Component::NoDirection;
+    }
+}
+
+void Component::keyPressEvent (QKeyEvent* e)
+{
+    // handle focus traversal
+    if (_focused) {
+        Direction dir = getDirection(e);
+        if (dir != NoDirection) {
+            transferFocus(this, dir);
+            return;
+        }
+    }
+    e->ignore(); // pass up to parent
 }
 
 void Component::keyReleaseEvent (QKeyEvent* e)
@@ -294,6 +384,45 @@ void Container::removeChild (Component* child)
         child->setParent(0);
         invalidate();
     }
+}
+
+Component* Container::componentAt (QPoint pos, QPoint* relative)
+{
+    foreach (Component* child, _children) {
+        if (child->bounds().contains(pos)) {
+            Component* comp = child->componentAt(pos - child->bounds().topLeft(), relative);
+            if (comp != 0) {
+                return comp;
+            }
+        }
+    }
+    return Component::componentAt(pos, relative);
+}
+
+bool Container::transferFocus (Component* from, Direction dir)
+{
+    if (dir == Forward) {
+        int ii = (from == 0) ? 0 : _children.indexOf(from) + 1;
+        for (int nn = _children.length(); ii < nn; ii++) {
+            if (_children[ii]->transferFocus(0, dir)) {
+                return true;
+            }
+        }
+    } else if (dir == Backward) {
+        int ii = (from == 0) ? _children.length() - 1 : _children.indexOf(from) - 1;
+        for (; ii >= 0; ii--) {
+            if (_children[ii]->transferFocus(0, dir)) {
+                return true;
+            }
+        }
+    } else {
+        // for directions other than forward/back, we delegate to the layout (if any)
+        if (_layout != 0) {
+            return _layout->transferFocus(this, from, dir);
+        }
+        return transferFocus(from, (dir == Right || dir == Down) ? Forward : Backward);
+    }
+    return from != 0 && Component::transferFocus(this, dir);
 }
 
 QSize Container::computePreferredSize (int whint, int hhint) const

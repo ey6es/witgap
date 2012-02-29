@@ -9,6 +9,7 @@
 #include <QKeyEvent>
 #include <QList>
 #include <QMargins>
+#include <QMouseEvent>
 #include <QObject>
 #include <QRect>
 #include <QRegion>
@@ -32,6 +33,9 @@ class Component : public QObject
 
 public:
 
+    /** Directions for focus transfer. */
+    enum Direction { NoDirection, Forward, Backward, Left, Right, Up, Down };
+
     /**
      * Initializes the component.
      */
@@ -48,12 +52,12 @@ public:
     Session* session () const;
 
     /**
-     * Sets the component's bounds.
+     * Sets the component's bounds in its parent coordinate system.
      */
     void setBounds (const QRect& bounds);
 
     /**
-     * Returns the component's bounds.
+     * Returns the component's bounds in its parent coordinate system.
      */
     const QRect& bounds () const { return _bounds; }
 
@@ -63,10 +67,20 @@ public:
     const QMargins& margins () const { return _margins; }
 
     /**
+     * Returns the component's bounds in its local coordinate system.
+     */
+    QRect localBounds () const;
+
+    /**
      * Returns the inner rectangle (the bounds minus the margins) in the component's local
      * coordinate system.
      */
     QRect innerRect () const;
+
+    /**
+     * Returns the component's absolute position.
+     */
+    QPoint absolutePos () const;
 
     /**
      * Sets the component's border.  The component will assume ownership of the object.
@@ -130,6 +144,22 @@ public:
     void requestFocus ();
 
     /**
+     * Finds the component at the specified coordinates and populates the supplied
+     * point with the relative coordinates.  Returns 0 if there isn't a component
+     * at the coordinates.
+     */
+    virtual Component* componentAt (QPoint pos, QPoint* relative);
+
+    /**
+     * Attempts to transfer focus from the source component to the next one in the specified
+     * direction.
+     *
+     * @param from the component to search from, or 0 to start from the beginning/end.
+     * @return whether or not focus was successfully transferred.
+     */
+    virtual bool transferFocus (Component* from, Direction dir);
+
+    /**
      * Handles an event.
      */
     virtual bool event (QEvent* e);
@@ -184,6 +214,16 @@ protected:
      * Handles a focus out event.
      */
     virtual void focusOutEvent (QFocusEvent* e);
+
+    /**
+     * Handles a mouse press event.
+     */
+    virtual void mouseButtonPressEvent (QMouseEvent* e);
+
+    /**
+     * Handles a mouse release event.
+     */
+    virtual void mouseButtonReleaseEvent (QMouseEvent* e);
 
     /**
      * Handles a key press event.
@@ -284,6 +324,22 @@ public:
      * Returns the container's child list.
      */
     const QList<Component*>& children () const { return _children; }
+
+    /**
+     * Finds the component at the specified coordinates and populates the supplied
+     * point with the relative coordinates.  Returns 0 if there isn't a component
+     * at the coordinates.
+     */
+    virtual Component* componentAt (QPoint pos, QPoint* relative);
+
+    /**
+     * Attempts to transfer focus from the source component to the next one in the specified
+     * direction.
+     *
+     * @param from the component to search from, or 0 to start from the beginning/end.
+     * @return whether or not focus was successfully transferred.
+     */
+    virtual bool transferFocus (Component* from, Direction dir);
 
 protected:
 

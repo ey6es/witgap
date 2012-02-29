@@ -90,6 +90,11 @@ protected slots:
     void clearConnection ();
 
     /**
+     * Clears the moused component (because it has been destroyed).
+     */
+    void clearMoused ();
+
+    /**
      * Clears the focused component (because it has been destroyed).
      */
     void clearFocus ();
@@ -137,8 +142,11 @@ protected:
     /** The current set of key modifiers. */
     Qt::KeyboardModifiers _modifiers;
 
+    /** The component over which the mouse button was pressed. */
+    Component* _moused;
+
     /** The component with input focus. */
-    Component* _focused;
+    Component* _focus;
 };
 
 #endif // SESSION

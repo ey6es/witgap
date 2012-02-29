@@ -69,10 +69,10 @@ public class ClientApp extends Sprite {
         _field = new TextField();
         addChild(_field);
         _field.autoSize = TextFieldAutoSize.CENTER;
-        _field.textColor = 0x00FF00;
         _field.text = " ";
         _field.selectable = false;
         _normalFormat = new TextFormat();
+        _normalFormat.color = _field.textColor = 0x00FF00;
         _reverseFormat = new TextFormat();
         _reverseFormat.color = 0x000000;
         _normalFormat.font = _reverseFormat.font = "_typewriter";
@@ -115,9 +115,19 @@ public class ClientApp extends Sprite {
             setCookie("color", caption);
             for (var kk :int = 0; kk < captions.length; kk++) {
                 if (captions[kk] == caption) {
-                    _field.textColor = colors[kk];
+                    _normalFormat.color = _field.textColor = colors[kk];
                     _highlightData.fillRect(_highlightData.rect, colors[kk]);
                     contextMenu.customItems[kk].enabled = false;
+                    for (var yy :int = 0; yy < _height; yy++) {
+                        for (var xx :int = 0; xx < _width; xx++) {
+                            // we must reapply the reverse formats
+                            var val :int = _contents[yy*_width + xx];
+                            if ((val & REVERSE_FLAG) != 0) {
+                                var tidx :int = yy*(_width + 1) + xx;
+                                _field.setTextFormat(_reverseFormat, tidx, tidx + 1);
+                            }
+                        }
+                    }
                 } else {
                     contextMenu.customItems[kk].enabled = true;
                 }
@@ -203,10 +213,13 @@ public class ClientApp extends Sprite {
         }
         _socket.writeByte(event.type == MouseEvent.MOUSE_DOWN ?
             MOUSE_PRESSED_MSG : MOUSE_RELEASED_MSG);
-        var idx :int = _field.getCharIndexAtPoint(event.localX, event.localY);
-        _socket.writeShort(idx % (_width + 1));
-        _socket.writeShort(idx / (_width + 1));
-        _socket.flush();
+        var idx :int = _field.getCharIndexAtPoint(
+            event.stageX - _field.x, event.stageY - _field.y);
+        if (idx != -1) {
+            _socket.writeShort(idx % (_width + 1));
+            _socket.writeShort(idx / (_width + 1));
+            _socket.flush();
+        }
     }
 
     /**
@@ -378,7 +391,7 @@ public class ClientApp extends Sprite {
      */
     protected function updateWindow (id :int, layer :int, bounds :Rectangle, fill :int) :void
     {
-        var idx :int = getWindowIndex(id);
+        var idx :int = getWindowIndex(id, false);
         if (idx == -1) {
             addWindow(new Window(id, layer, bounds, fill));
             return;
@@ -452,15 +465,19 @@ public class ClientApp extends Sprite {
 
     /**
      * Returns the index of the window with the specified id, or -1 if not found.
+     *
+     * @param warn if true, trace a warning if the window wasn't found.
      */
-    protected function getWindowIndex (id :int) :int
+    protected function getWindowIndex (id :int, warn :Boolean = true) :int
     {
         for (var ii :int = 0; ii < _windows.length; ii++) {
             if (_windows[ii].id == id) {
                 return ii;
             }
         }
-        trace("Window not found.", id);
+        if (warn) {
+            trace("Window not found.", id);
+        }
         return -1;
     }
 

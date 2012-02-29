@@ -44,3 +44,5 @@ line breaks for method calls/definitions
 whitespace between blocks
 
 100 columns
+
+casting: should prefer static_cast/qobject_cast rather than c-style

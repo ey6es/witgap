@@ -7,7 +7,7 @@
 #include <QObject>
 #include <QSize>
 
-class Container;
+#include "ui/Component.h"
 
 /**
  * Represents the layout of a component.
@@ -31,6 +31,12 @@ public:
      * Applies the layout to the specified container.
      */
     virtual void apply (Container* container) const = 0;
+
+    /**
+     * Attempts to transfer focus in the specified direction.
+     */
+    virtual bool transferFocus (
+        Container* container, Component* from, Component::Direction dir) const;
 
 private:
 

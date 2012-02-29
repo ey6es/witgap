@@ -53,6 +53,11 @@ protected:
     virtual void focusOutEvent (QFocusEvent* e);
 
     /**
+     * Handles a mouse release event.
+     */
+    virtual void mouseButtonReleaseEvent (QMouseEvent* e);
+
+    /**
      * Handles a key press event.
      */
     virtual void keyPressEvent (QKeyEvent* e);
