@@ -43,6 +43,16 @@ public slots:
 protected:
 
     /**
+     * Updates the margins after changing the border, etc.
+     */
+    virtual void updateMargins ();
+
+    /**
+     * Draws the component.
+     */
+    virtual void draw (DrawContext* ctx) const;
+
+    /**
      * Handles a focus in event.
      */
     virtual void focusInEvent (QFocusEvent* e);
@@ -61,6 +71,69 @@ protected:
      * Handles a key press event.
      */
     virtual void keyPressEvent (QKeyEvent* e);
+};
+
+/**
+ * A check box.
+ */
+class CheckBox : public Button
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the box.
+     */
+    CheckBox (const QIntVector& text = QIntVector(), bool selected = false,
+        Qt::Alignment alignment = Qt::AlignLeft, QObject* parent = 0);
+
+    /**
+     * Selects or deselects the box.
+     */
+    void setSelected (bool selected);
+
+    /**
+     * Checks whether the box is selected.
+     */
+    bool selected () const { return _selected; }
+
+public slots:
+
+    /**
+     * Invalidates the box.
+     */
+    virtual void invalidate ();
+
+    /**
+     * Toggles the selected state.
+     */
+    void toggleSelected () { setSelected(!_selected); }
+
+protected:
+
+    /**
+     * Updates the margins after changing the border, etc.
+     */
+    virtual void updateMargins ();
+
+    /**
+     * Draws the component.
+     */
+    virtual void draw (DrawContext* ctx) const;
+
+    /**
+     * Handles a focus in event.
+     */
+    virtual void focusInEvent (QFocusEvent* e);
+
+    /**
+     * Handles a focus out event.
+     */
+    virtual void focusOutEvent (QFocusEvent* e);
+
+    /** Whether or not the box is selected. */
+    bool _selected;
 };
 
 #endif // BUTTON

@@ -164,22 +164,26 @@ void Connection::readMessages ()
         if (type == WINDOW_CLOSED_MSG) {
             emit windowClosed();
 
-        } else {
+        } else if (type == MOUSE_PRESSED_MSG || type == MOUSE_RELEASED_MSG) {
             if (available < 5) {
                 _socket->ungetChar(type);
                 return; // wait until we have the data
             }
-            if (type == MOUSE_PRESSED_MSG || type == MOUSE_RELEASED_MSG) {
-                quint16 x, y;
-                _stream >> x;
-                _stream >> y;
-                emit (type == MOUSE_PRESSED_MSG) ? mousePressed(x, y) : mouseReleased(x, y);
+            quint16 x, y;
+            _stream >> x;
+            _stream >> y;
+            emit (type == MOUSE_PRESSED_MSG) ? mousePressed(x, y) : mouseReleased(x, y);
 
-            } else { // type == KEY_PRESSED_MSG || type == KEY_RELEASED_MSG
-                quint32 key;
-                _stream >> key;
-                emit (type == KEY_PRESSED_MSG) ? keyPressed(key) : keyReleased(key);
+        } else { // type == KEY_PRESSED_MSG || type == KEY_RELEASED_MSG
+            if (available < 7) {
+                _socket->ungetChar(type);
+                return; // wait until we have the data
             }
+            quint32 key;
+            quint16 ch;
+            _stream >> key;
+            _stream >> ch;
+            emit (type == KEY_PRESSED_MSG) ? keyPressed(key, ch) : keyReleased(key, ch);
         }
     }
 }

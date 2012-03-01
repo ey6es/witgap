@@ -18,6 +18,7 @@
 #include "ui/Component.h"
 #include "ui/Label.h"
 #include "ui/Layout.h"
+#include "ui/TextField.h"
 #include "ui/Window.h"
 
 using namespace std;
@@ -36,7 +37,7 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id, const QByt
     connection->setSession(id, token);
     setConnection(connection);
 
-    showConfirmDialog(tr("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis vel nunc "
+    showInputDialog(tr("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis vel nunc "
         "justo. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos "
         "himenaeos. Praesent ut elit ipsum, sit amet dictum est. Cras purus augue, cursus sed "
         "elementum eu, tincidunt ac purus. Vivamus id lorem felis, sed posuere odio. Aenean "
@@ -59,8 +60,8 @@ void Session::setConnection (Connection* connection)
     connect(_connection, SIGNAL(destroyed()), SLOT(clearConnection()));
     connect(_connection, SIGNAL(mousePressed(int,int)), SLOT(dispatchMousePressed(int,int)));
     connect(_connection, SIGNAL(mouseReleased(int,int)), SLOT(dispatchMouseReleased(int,int)));
-    connect(_connection, SIGNAL(keyPressed(int)), SLOT(dispatchKeyPressed(int)));
-    connect(_connection, SIGNAL(keyReleased(int)), SLOT(dispatchKeyReleased(int)));
+    connect(_connection, SIGNAL(keyPressed(int,QChar)), SLOT(dispatchKeyPressed(int,QChar)));
+    connect(_connection, SIGNAL(keyReleased(int,QChar)), SLOT(dispatchKeyReleased(int,QChar)));
     _connection->activate();
 
     // clear the modifiers
@@ -134,10 +135,33 @@ void Session::showConfirmDialog (
     window->connect(ok, SIGNAL(pressed()), SLOT(deleteLater()));
     (new CallbackObject(callback, window))->connect(ok, SIGNAL(pressed()), SLOT(invoke()));
 
-    Button* derp = new Button(tr("DERP"));
-    buttons->addChild(derp);
-
     ok->requestFocus();
+    window->pack();
+    window->center();
+}
+
+void Session::showInputDialog (
+    const QString& message, const Callback& callback, const QString& title,
+    const QString& dismiss, const QString& accept)
+{
+    Window* window = createDialog(this, message, title);
+
+    TextField* field = new TextField();
+    window->addChild(field);
+
+    Container* buttons = new Container(new BoxLayout());
+    window->addChild(buttons);
+
+    Button* cancel = new Button(dismiss.isEmpty() ? tr("Cancel") : dismiss);
+    buttons->addChild(cancel);
+    window->connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
+
+    Button* ok = new Button(accept.isEmpty() ? tr("OK") : accept);
+    buttons->addChild(ok);
+    window->connect(ok, SIGNAL(pressed()), SLOT(deleteLater()));
+    (new CallbackObject(callback, window))->connect(ok, SIGNAL(pressed()), SLOT(invoke()));
+
+    field->requestFocus();
     window->pack();
     window->center();
 }
@@ -223,24 +247,24 @@ Qt::KeyboardModifier getModifier (int key)
     }
 }
 
-void Session::dispatchKeyPressed (int key)
+void Session::dispatchKeyPressed (int key, QChar ch)
 {
     // update our modifiers
     Qt::KeyboardModifier modifier = getModifier(key);
     if (modifier != Qt::NoModifier) {
         _modifiers |= modifier;
     }
-    QKeyEvent event(QEvent::KeyPress, key, _modifiers);
+    QKeyEvent event(QEvent::KeyPress, key, _modifiers, ch == 0 ? QString() : QString(ch));
     QCoreApplication::sendEvent(_focus == 0 ? this : (QObject*)_focus, &event);
 }
 
-void Session::dispatchKeyReleased (int key)
+void Session::dispatchKeyReleased (int key, QChar ch)
 {
     // update our modifiers
     Qt::KeyboardModifier modifier = getModifier(key);
     if (modifier != Qt::NoModifier) {
         _modifiers &= ~modifier;
     }
-    QKeyEvent event(QEvent::KeyRelease, key, _modifiers);
+    QKeyEvent event(QEvent::KeyRelease, key, _modifiers, ch == 0 ? QString() : QString(ch));
     QCoreApplication::sendEvent(_focus == 0 ? this : (QObject*)_focus, &event);
 }

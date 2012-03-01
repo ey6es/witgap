@@ -103,12 +103,12 @@ signals:
     /**
      * Fired when the user presses a key.
      */
-    void keyPressed (int key);
+    void keyPressed (int key, QChar ch);
 
     /**
      * Fired when the user releases a key.
      */
-    void keyReleased (int key);
+    void keyReleased (int key, QChar ch);
 
     /**
      * Fired when the user closes the window.

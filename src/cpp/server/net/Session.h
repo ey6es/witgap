@@ -82,6 +82,18 @@ public:
         const QString& message, const Callback& callback, const QString& title = "",
         const QString& dismiss = "", const QString& accept = "");
 
+    /**
+     * Shows a simple input dialog with the supplied message.
+     *
+     * @param callback the callback to invoke with the input string if accepted.
+     * @param title the title to use for the dialog, or empty string for none.
+     * @param dismiss the text to use for the dismiss button, or empty string for default (Cancel).
+     * @param accept the text to use for the accept button, or empty string for default (OK).
+     */
+    void showInputDialog (
+        const QString& message, const Callback& callback, const QString& title = "",
+        const QString& dismiss = "", const QString& accept = "");
+
 protected slots:
 
     /**
@@ -112,12 +124,12 @@ protected slots:
     /**
      * Dispatches a key pressed event.
      */
-    void dispatchKeyPressed (int key);
+    void dispatchKeyPressed (int key, QChar ch);
 
     /**
      * Dispatches a key released event.
      */
-    void dispatchKeyReleased (int key);
+    void dispatchKeyReleased (int key, QChar ch);
 
 protected:
 

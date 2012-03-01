@@ -191,6 +191,11 @@ public slots:
 protected:
 
     /**
+     * Updates the margins after changing the border, etc.
+     */
+    virtual void updateMargins ();
+
+    /**
      * Computes and returns the preferred size.
      */
     virtual QSize computePreferredSize (int whint = -1, int hhint = -1) const;

@@ -86,7 +86,7 @@ void BoxLayout::apply (Container* container) const
                 nnfixed++;
             }
         }
-        totalWidth + tgap;
+        totalWidth += tgap;
 
         // adjust for horizontal stretching/alignment
         if (hstretch && nnfixed != 0) {
@@ -140,7 +140,7 @@ void BoxLayout::apply (Container* container) const
                 nnfixed++;
             }
         }
-        totalHeight + tgap;
+        totalHeight += tgap;
 
         // adjust for vertical stretching/alignment
         if (vstretch && nnfixed != 0) {

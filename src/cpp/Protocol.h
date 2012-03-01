@@ -56,12 +56,14 @@ const quint8 MOUSE_RELEASED_MSG = 1;
 /**
  * Client -> server: a key was pressed.  Data:
  *     key : quint32 : the Qt key code
+ *     char : quint16 : the Unicode character
  */
 const quint8 KEY_PRESSED_MSG = 2;
 
 /**
  * Client -> server: a key was released.  Data:
  *     key : quint32 : the Qt key code
+ *     char : quint16 : the Unicode character
  */
 const quint8 KEY_RELEASED_MSG = 3;
 

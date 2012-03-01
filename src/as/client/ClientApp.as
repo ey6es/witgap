@@ -233,6 +233,7 @@ public class ClientApp extends Sprite {
         _socket.writeByte(event.type == KeyboardEvent.KEY_DOWN ?
             KEY_PRESSED_MSG : KEY_RELEASED_MSG);
         _socket.writeUnsignedInt(getQtKeyCode(event));
+        _socket.writeShort(event.charCode);
         _socket.flush();
     }
 
@@ -533,11 +534,14 @@ public class ClientApp extends Sprite {
                 _contents[idx] = nvalue;
 
                 var tidx :int = yy*(_width + 1) + xx;
+                var ochar :int = ovalue & 0xFFFF;
                 var nchar :int = nvalue & 0xFFFF;
-                if ((ovalue & 0xFFFF) != nchar) {
-                    _field.replaceText(tidx, tidx + 1, String.fromCharCode(nchar));
-                }
                 var nrev :int = (nvalue & REVERSE_FLAG);
+                if (ochar != nchar) {
+                    _field.replaceText(tidx, tidx + 1, String.fromCharCode(nchar));
+                    _field.setTextFormat(nrev == REVERSE_FLAG ?
+                        _reverseFormat : _normalFormat, tidx, tidx + 1);
+                }
                 if ((ovalue & REVERSE_FLAG) != nrev) {
                     if (nrev == REVERSE_FLAG) {
                         // the char boundaries might not be valid yet, so we compute the location
@@ -549,11 +553,15 @@ public class ClientApp extends Sprite {
                             (_field.width - cbounds.width*_width)/2;
                         highlight.y = _field.y + cbounds.height*yy +
                             (_field.height - cbounds.height*_height)/2;
-                       _field.setTextFormat(_reverseFormat, tidx, tidx + 1);
+                       if (ochar == nchar) {
+                           _field.setTextFormat(_reverseFormat, tidx, tidx + 1);
+                       }
                     } else {
                         removeChild(_highlights[idx]);
                         _highlights[idx] = null;
-                        _field.setTextFormat(_normalFormat, tidx, tidx + 1);
+                        if (ochar == nchar) {
+                            _field.setTextFormat(_normalFormat, tidx, tidx + 1);
+                        }
                     }
                 }
             }

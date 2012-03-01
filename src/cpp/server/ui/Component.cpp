@@ -72,7 +72,7 @@ void Component::setBorder (Border* border)
             delete _border;
         }
         _border = border;
-        _margins = (border == 0) ? QMargins() : border->margins();
+        updateMargins();
         invalidate();
         dirty();
     }
@@ -231,6 +231,11 @@ void Component::dirty (const QRect& region)
     if (pcomp != 0) {
         pcomp->dirty(region.translated(_bounds.topLeft()));
     }
+}
+
+void Component::updateMargins ()
+{
+    _margins = (_border == 0) ? QMargins() : _border->margins();
 }
 
 QSize Component::computePreferredSize (int whint, int hhint) const
