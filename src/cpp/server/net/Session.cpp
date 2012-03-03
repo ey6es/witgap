@@ -146,7 +146,7 @@ void Session::showInputDialog (
 {
     Window* window = createDialog(this, message, title);
 
-    TextField* field = new TextField();
+    TextField* field = new TextField(30, tr("Lorem ipsum dolor sit amet, consectetur adipiscing elit."));
     window->addChild(field);
 
     Container* buttons = new Container(new BoxLayout());

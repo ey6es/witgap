@@ -537,23 +537,25 @@ void DrawContext::drawContents (
         }
         int stride = rect.width();
         int* ldptr = _buffers[ii].data() + (isect.y() - rect.y())*stride + (isect.x() - rect.x());
-        const int* sptr = contents;
+        const int* lsptr = contents + (isect.y() - y)*width + (isect.x() - x);
 
         // if we're opaque, we can just copy line-by-line; otherwise, we must check for zero values
         if (opaque) {
             for (int yy = isect.height(); yy > 0; yy--) {
-                qCopy(sptr, sptr + width, ldptr);
-                sptr += width;
+                qCopy(lsptr, lsptr + isect.width(), ldptr);
+                lsptr += width;
                 ldptr += stride;
             }
         } else {
             int ch;
             for (int yy = isect.height(); yy > 0; yy--) {
+                const int* sptr = lsptr;
                 for (int* dptr = ldptr, *end = ldptr + isect.width(); dptr < end; dptr++) {
                     if ((ch = *sptr++) != 0) {
                         *dptr = ch;
                     }
                 }
+                lsptr += width;
                 ldptr += stride;
             }
         }
@@ -562,12 +564,17 @@ void DrawContext::drawContents (
 
 void DrawContext::drawString (int x, int y, const QString& string, int style)
 {
+    drawString(x, y, string.constData(), string.length(), style);
+}
+
+void DrawContext::drawString (int x, int y, const QChar* string, int length, int style)
+{
     // apply offset
     x += _pos.x();
     y += _pos.y();
 
     // check against each rect
-    QRect draw(x, y, string.length(), 1);
+    QRect draw(x, y, length, 1);
     for (int ii = 0, nn = _rects.size(); ii < nn; ii++) {
         const QRect& rect = _rects.at(ii);
         QRect isect = rect.intersected(draw);
@@ -576,7 +583,7 @@ void DrawContext::drawString (int x, int y, const QString& string, int style)
         }
         int stride = rect.width();
         int* dptr = _buffers[ii].data() + (isect.y() - rect.y())*stride + (isect.x() - rect.x());
-        for (const QChar* sptr = string.constData(), *end = sptr + string.length();
+        for (const QChar* sptr = string + (isect.x() - x), *end = sptr + isect.width();
                 sptr < end; sptr++) {
             *dptr++ = (*sptr).unicode() | style;
         }

@@ -22,8 +22,8 @@ public:
     /**
      * Initializes the label.
      */
-    Label (const QIntVector& text = QIntVector(), Qt::Alignment alignment = Qt::AlignLeft,
-        QObject* parent = 0);
+    Label (const QIntVector& text = QIntVector(),
+        Qt::Alignment alignment = Qt::AlignLeft | Qt::AlignTop, QObject* parent = 0);
 
     /**
      * Sets the label text.

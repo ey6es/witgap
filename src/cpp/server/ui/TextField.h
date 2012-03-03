@@ -7,6 +7,39 @@
 #include "ui/Component.h"
 
 /**
+ * Contains and controls the contents of a text field.
+ */
+class Document
+{
+public:
+
+    /**
+     * Creates a new document with the supplied initial text.
+     */
+    Document (const QString& text = "");
+
+    /**
+     * Returns the text of the document.
+     */
+    const QString& text () const { return _text; }
+
+    /**
+     * Inserts a string into the document.
+     */
+    virtual void insert (int idx, const QString& text);
+
+    /**
+     * Deletes a string from the document.
+     */
+    void remove (int idx, int length);
+
+protected:
+
+    /** The text of the document. */
+    QString _text;
+};
+
+/**
  * A text field.
  */
 class TextField : public Component
@@ -18,12 +51,34 @@ public:
     /**
      * Creates a new text field.
      */
-    TextField (int width = 20, const QString& text = "", QObject* parent = 0);
+    TextField (int minWidth = 20, Document* document = new Document(), QObject* parent = 0);
+
+    /**
+     * Creates a new text field.
+     */
+    TextField (int minWidth, const QString& text, QObject* parent = 0);
+
+    /**
+     * Destroys the text field.
+     */
+    virtual ~TextField ();
+
+    /**
+     * Returns the contents of the field.
+     */
+    const QString& text () const { return _document->text(); }
 
     /**
      * Checks whether the component accepts input focus.
      */
     virtual bool acceptsFocus () const { return true; }
+
+signals:
+
+    /**
+     * Emitted when the enter key is pressed.
+     */
+    void enterPressed ();
 
 protected:
 
@@ -62,8 +117,16 @@ protected:
      */
     virtual void keyPressEvent (QKeyEvent* e);
 
-    /** The width of the field. */
-    int _width;
+    /**
+     * Updates the document position to match the cursor position.
+     */
+    void updateDocumentPos ();
+
+    /** The minimum width. */
+    int _minWidth;
+
+    /** The document containing the contents. */
+    Document* _document;
 
     /** The position in the document. */
     int _documentPos;

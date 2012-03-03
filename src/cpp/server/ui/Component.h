@@ -415,6 +415,11 @@ public:
      */
     void drawString (int x, int y, const QString& string, int style = 0);
 
+    /**
+     * Draws a string.
+     */
+    void drawString (int x, int y, const QChar* string, int length, int style = 0);
+
 protected:
 
     /**
