@@ -10,6 +10,14 @@ Button::Button (const QIntVector& text, Qt::Alignment alignment, QObject* parent
     updateMargins();
 }
 
+void Button::doPress ()
+{
+    if (!_focused) {
+        requestFocus();
+    }
+    emit pressed();
+}
+
 void Button::invalidate ()
 {
     Label::invalidate();

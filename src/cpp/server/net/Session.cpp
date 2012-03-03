@@ -98,7 +98,7 @@ static Window* createDialog (Session* session, const QString& message, const QSt
     Window* window = new Window(session);
     window->setModal(true);
     window->setBorder(title.isEmpty() ? new FrameBorder() : new TitledBorder(title));
-    window->setLayout(new BoxLayout(Qt::Vertical));
+    window->setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch));
     Label* label = new Label(message, Qt::AlignCenter);
     label->setPreferredSize(QSize(40, -1));
     window->addChild(label);
@@ -146,7 +146,7 @@ void Session::showInputDialog (
 {
     Window* window = createDialog(this, message, title);
 
-    TextField* field = new TextField(30, tr("Lorem ipsum dolor sit amet, consectetur adipiscing elit."));
+    TextField* field = new TextField();
     window->addChild(field);
 
     Container* buttons = new Container(new BoxLayout());
@@ -158,6 +158,7 @@ void Session::showInputDialog (
 
     Button* ok = new Button(accept.isEmpty() ? tr("OK") : accept);
     buttons->addChild(ok);
+    ok->connect(field, SIGNAL(enterPressed()), SLOT(doPress()));
     window->connect(ok, SIGNAL(pressed()), SLOT(deleteLater()));
     (new CallbackObject(callback, window))->connect(ok, SIGNAL(pressed()), SLOT(invoke()));
 

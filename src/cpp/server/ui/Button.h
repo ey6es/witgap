@@ -36,6 +36,11 @@ signals:
 public slots:
 
     /**
+     * Programmatically performs a button press.
+     */
+    void doPress ();
+
+    /**
      * Invalidates the button.
      */
     virtual void invalidate ();

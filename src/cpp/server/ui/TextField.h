@@ -24,7 +24,7 @@ public:
     const QString& text () const { return _text; }
 
     /**
-     * Inserts a string into the document.
+     * Attempts to insert a string into the document.
      */
     virtual void insert (int idx, const QString& text);
 
@@ -37,6 +37,29 @@ protected:
 
     /** The text of the document. */
     QString _text;
+};
+
+/**
+ * A document that limits the text length.
+ */
+class LengthLimitedDocument : public Document
+{
+public:
+
+    /**
+     * Creates a new document with the supplied initial text.
+     */
+    LengthLimitedDocument (int maxLength, const QString& text = "");
+
+    /**
+     * Attempts to insert a string into the document.
+     */
+    virtual void insert (int idx, const QString& text);
+
+protected:
+
+    /** The maximum allowed length. */
+    int _maxLength;
 };
 
 /**
@@ -64,9 +87,19 @@ public:
     virtual ~TextField ();
 
     /**
+     * Sets the text within the document.
+     */
+    void setText (const QString& text);
+
+    /**
      * Returns the contents of the field.
      */
     const QString& text () const { return _document->text(); }
+
+    /**
+     * Sets the document.
+     */
+    void setDocument (Document* document);
 
     /**
      * Checks whether the component accepts input focus.
@@ -98,6 +131,16 @@ protected:
     virtual void draw (DrawContext* ctx) const;
 
     /**
+     * Draws part of the text.
+     */
+    virtual void drawText (DrawContext* ctx, int x, int y, int idx, int length) const;
+
+    /**
+     * Returns the character to display under the cursor.
+     */
+    virtual int cursorChar () const;
+
+    /**
      * Handles a focus in event.
      */
     virtual void focusInEvent (QFocusEvent* e);
@@ -119,8 +162,25 @@ protected:
 
     /**
      * Updates the document position to match the cursor position.
+     *
+     * @return whether or not the component was dirtied as a result of the update.
      */
-    void updateDocumentPos ();
+    bool updateDocumentPos ();
+
+    /**
+     * Dirties the region starting at the supplied document index and including everything after.
+     */
+    void dirty (int idx);
+
+    /**
+     * Dirties the region corresponding to the described document section.
+     */
+    void dirty (int idx, int length);
+
+    /**
+     * Returns the width of the actual text area.
+     */
+    int textAreaWidth () const;
 
     /** The minimum width. */
     int _minWidth;
@@ -133,6 +193,38 @@ protected:
 
     /** The cursor position. */
     int _cursorPos;
+};
+
+/**
+ * A text field that displays its text as asterisks.
+ */
+class PasswordField : public TextField
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Creates a new password field.
+     */
+    PasswordField (int minWidth = 20, Document* document = new Document(), QObject* parent = 0);
+
+    /**
+     * Creates a new password field.
+     */
+    PasswordField (int minWidth, const QString& text, QObject* parent = 0);
+
+protected:
+
+    /**
+     * Draws part of the text.
+     */
+    virtual void drawText (DrawContext* ctx, int x, int y, int idx, int length) const;
+
+    /**
+     * Returns the character to display under the cursor.
+     */
+    virtual int cursorChar () const;
 };
 
 #endif // TEXT_FIELD

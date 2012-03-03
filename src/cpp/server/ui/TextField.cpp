@@ -19,6 +19,20 @@ void Document::remove (int idx, int length)
     _text.remove(idx, length);
 }
 
+LengthLimitedDocument::LengthLimitedDocument (int maxLength, const QString& text) :
+    Document(text),
+    _maxLength(maxLength)
+{
+}
+
+void LengthLimitedDocument::insert (int idx, const QString& text)
+{
+    int remaining = _maxLength - _text.length();
+    if (remaining > 0) {
+        _text.insert(idx, text.left(remaining));
+    }
+}
+
 TextField::TextField (int minWidth, Document* document, QObject* parent) :
     Component(parent),
     _minWidth(minWidth),
@@ -42,6 +56,25 @@ TextField::~TextField ()
     delete _document;
 }
 
+void TextField::setText (const QString& text)
+{
+    _document->remove(0, _document->text().length());
+    _document->insert(0, text);
+
+    // "set" the document to update the positions and dirty
+    setDocument(_document);
+}
+
+void TextField::setDocument (Document* document)
+{
+    _document = document;
+    _documentPos = 0;
+    _cursorPos = document->text().length();
+    if (!updateDocumentPos()) {
+        Component::dirty();
+    }
+}
+
 QSize TextField::computePreferredSize (int whint, int hhint) const
 {
     return QSize(qMax(whint, _minWidth + 2), qMax(hhint, 1));
@@ -57,40 +90,55 @@ void TextField::draw (DrawContext* ctx) const
     Component::draw(ctx);
 
     // find the area within the margins
-    QRect inner = innerRect();
-    int x = inner.x(), y = inner.y(), width = inner.width();
+    int x = _margins.left(), y = _margins.top(), width = textAreaWidth();
 
+    // draw the brackets
     ctx->drawChar(x, y, '[');
+    ctx->drawChar(x + width + 1, y, ']');
 
     // draw the visible portion of the contents
-    const QString& text = _document->text();
-    int length = text.length();
-
-    // get the document position from the front
-    ctx->drawString(x + 1, y, text.constData() + _documentPos,
-        qMin(length - _documentPos, width - 2));
+    int length = _document->text().length();
+    drawText(ctx, x + 1, y, _documentPos, qMin(length - _documentPos, width));
 
     // draw the cursor if in focus
     if (_focused) {
         ctx->drawChar(x + 1 + (_cursorPos - _documentPos), y,
-            REVERSE_FLAG | (_cursorPos < length ? text.at(_cursorPos).unicode() : ' '));
+            REVERSE_FLAG | (_cursorPos < length ? cursorChar() : ' '));
     }
+}
 
-    ctx->drawChar(x + width - 1, y, ']');
+void TextField::drawText (DrawContext* ctx, int x, int y, int idx, int length) const
+{
+    ctx->drawString(x, y, _document->text().constData() + idx, length);
+}
+
+int TextField::cursorChar () const
+{
+    return _document->text().at(_cursorPos).unicode();
 }
 
 void TextField::focusInEvent (QFocusEvent* e)
 {
-    dirty();
+    dirty(_cursorPos, 1);
 }
 
 void TextField::focusOutEvent (QFocusEvent* e)
 {
-    dirty();
+    dirty(_cursorPos, 1);
 }
 
 void TextField::mouseButtonPressEvent (QMouseEvent* e)
 {
+    QRect inner = innerRect();
+    inner.setHeight(1);
+    inner.setX(inner.x() + 1);
+    inner.setWidth(inner.width() - 1);
+    if (inner.contains(e->pos())) {
+        int opos = _cursorPos;
+        _cursorPos = qMin(_documentPos + e->pos().x() - inner.x(), _document->text().length());
+        dirty(_cursorPos, 1);
+        dirty(opos, 1);
+    }
     Component::mouseButtonPressEvent(e);
 }
 
@@ -103,25 +151,28 @@ void TextField::keyPressEvent (QKeyEvent* e)
         int delta = _document->text().length() - olen;
         if (delta > 0) {
             _cursorPos += delta;
-            updateDocumentPos();
+            if (!updateDocumentPos()) {
+                dirty(_cursorPos - delta);
+            }
         }
         return;
     }
     int key = e->key();
     Qt::KeyboardModifiers modifiers = e->modifiers();
     if (modifiers == Qt::ControlModifier) {
+        int opos = _cursorPos;
         if (key == Qt::Key_Left) { // previous word beginning
             const QString& text = _document->text();
             if (_cursorPos > 0) {
                 for (int idx = _cursorPos - 1; idx > 0; idx--) {
                     if (text.at(idx).isLetterOrNumber() && !text.at(idx - 1).isLetterOrNumber()) {
                         _cursorPos = idx;
-                        updateDocumentPos();
-                        return;
+                        break;
                     }
                 }
-                _cursorPos = 0;
-                updateDocumentPos();
+                if (_cursorPos == opos) {
+                    _cursorPos = 0;
+                }
             }
         } else if (key == Qt::Key_Right) { // next word end
             const QString& text = _document->text();
@@ -129,15 +180,19 @@ void TextField::keyPressEvent (QKeyEvent* e)
                 for (int idx = _cursorPos + 1, max = text.length(); idx < max; idx++) {
                     if (!text.at(idx).isLetterOrNumber() && text.at(idx - 1).isLetterOrNumber()) {
                         _cursorPos = idx;
-                        updateDocumentPos();
-                        return;
+                        break;
                     }
                 }
-                _cursorPos = text.length();
-                updateDocumentPos();
+                if (_cursorPos == opos) {
+                    _cursorPos = text.length();
+                }
             }
         } else {
             Component::keyPressEvent(e);
+        }
+        if (_cursorPos != opos && !updateDocumentPos()) {
+            dirty(_cursorPos, 1);
+            dirty(opos, 1);
         }
         return;
 
@@ -149,37 +204,51 @@ void TextField::keyPressEvent (QKeyEvent* e)
         case Qt::Key_Left:
             if (_cursorPos > 0) {
                 _cursorPos--;
-                updateDocumentPos();
+                if (!updateDocumentPos()) {
+                    dirty(_cursorPos, 2);
+                }
             }
             break;
         case Qt::Key_Right:
             if (_cursorPos < _document->text().length()) {
                 _cursorPos++;
-                updateDocumentPos();
+                if (!updateDocumentPos()) {
+                    dirty(_cursorPos - 1, 2);
+                }
             }
             break;
         case Qt::Key_Home:
             if (_cursorPos > 0) {
+                int opos = _cursorPos;
                 _cursorPos = 0;
-                updateDocumentPos();
+                if (!updateDocumentPos()) {
+                    dirty(_cursorPos, 1);
+                    dirty(opos, 1);
+                }
             }
             break;
         case Qt::Key_End:
             if (_cursorPos < _document->text().length()) {
+                int opos = _cursorPos;
                 _cursorPos = _document->text().length();
-                updateDocumentPos();
+                if (!updateDocumentPos()) {
+                    dirty(_cursorPos, 1);
+                    dirty(opos, 1);
+                }
             }
             break;
         case Qt::Key_Backspace:
             if (_cursorPos > 0) {
                 _document->remove(--_cursorPos, 1);
-                updateDocumentPos();
+                if (!updateDocumentPos()) {
+                    dirty(_cursorPos);
+                }
             }
             break;
         case Qt::Key_Delete:
             if (_cursorPos < _document->text().length()) {
                 _document->remove(_cursorPos, 1);
-                dirty();
+                dirty(_cursorPos);
             }
             break;
         case Qt::Key_Return:
@@ -192,10 +261,53 @@ void TextField::keyPressEvent (QKeyEvent* e)
     }
 }
 
-void TextField::updateDocumentPos ()
+bool TextField::updateDocumentPos ()
 {
-    int width = innerRect().width() - 3;
+    int width = textAreaWidth() - 1;
+    int opos = _documentPos;
     _documentPos = qBound(qMax(_cursorPos - width, 0), _documentPos,
         qMin(_cursorPos, _document->text().length() - width));
-    dirty();
+    if (opos != _documentPos) {
+        Component::dirty();
+        return true;
+    }
+    return false;
+}
+
+void TextField::dirty (int idx)
+{
+    // dirty the lesser of the remaining document (plus one for a
+    // possibly deleted character) and what's visible
+    dirty(idx, qMin(_document->text().length() - idx + 2,
+        textAreaWidth() - idx + _documentPos));
+}
+
+void TextField::dirty (int idx, int length)
+{
+    Component::dirty(QRect(_margins.right() + 1 + idx - _documentPos, _margins.top(), length, 1));
+}
+
+int TextField::textAreaWidth () const
+{
+    return _bounds.width() - _margins.left() - _margins.right() - 2;
+}
+
+PasswordField::PasswordField (int minWidth, Document* document, QObject* parent) :
+    TextField(minWidth, document, parent)
+{
+}
+
+PasswordField::PasswordField (int minWidth, const QString& text, QObject* parent) :
+    TextField(minWidth, text, parent)
+{
+}
+
+void PasswordField::drawText (DrawContext* ctx, int x, int y, int idx, int length) const
+{
+    ctx->fillRect(x, y, length, 1, '*');
+}
+
+int PasswordField::cursorChar () const
+{
+    return '*';
 }
