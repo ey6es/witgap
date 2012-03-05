@@ -32,12 +32,25 @@ void Label::setAlignment (Qt::Alignment alignment)
     }
 }
 
-void Label::setTextFlags (int flags)
+void Label::setTextFlags (int flags, int mask)
 {
     for (int* ptr = _text.data(), *end = ptr + _text.size(); ptr < end; ptr++) {
-        *ptr = getChar(*ptr) | flags;
+        *ptr = (*ptr & mask) | flags;
     }
     dirty();
+}
+
+void Label::setEnabled (bool enabled)
+{
+    if (_enabled != enabled) {
+        setTextFlag(DIM_FLAG, !(_enabled = enabled));
+    }
+}
+
+void Label::invalidate ()
+{
+    Component::invalidate();
+    setTextFlag(DIM_FLAG, !_enabled);
 }
 
 QSize Label::computePreferredSize (int whint, int hhint) const

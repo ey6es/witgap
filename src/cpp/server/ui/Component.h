@@ -124,6 +124,16 @@ public:
     const QVariant& constraint () const { return _constraint; }
 
     /**
+     * Enables or disables the component.
+     */
+    virtual void setEnabled (bool enabled);
+
+    /**
+     * Checks whether the component is enabled.
+     */
+    bool enabled () const { return _enabled; }
+
+    /**
      * Validates the component if necessary.
      */
     void maybeValidate ();
@@ -274,6 +284,9 @@ protected:
 
     /** If true, this component owns the input focus. */
     bool _focused;
+
+    /** Whether or not the component is enabled. */
+    bool _enabled;
 };
 
 /**

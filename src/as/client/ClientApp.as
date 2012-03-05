@@ -75,7 +75,9 @@ public class ClientApp extends Sprite {
         _normalFormat.color = _field.textColor = 0x00FF00;
         _reverseFormat = new TextFormat();
         _reverseFormat.color = 0x000000;
-        _normalFormat.font = _reverseFormat.font = "_typewriter";
+        _dimFormat = new TextFormat();
+        _dimFormat.color = 0x008000;
+        _normalFormat.font = _reverseFormat.font = _dimFormat.font = "_typewriter";
         _field.setTextFormat(_normalFormat);
 
         // get the size of a character and use it to determine the char width/height
@@ -116,15 +118,18 @@ public class ClientApp extends Sprite {
             for (var kk :int = 0; kk < captions.length; kk++) {
                 if (captions[kk] == caption) {
                     _normalFormat.color = _field.textColor = colors[kk];
+                    _dimFormat.color = (_field.textColor >> 1) & 0x7F7F7F;
                     _highlightData.fillRect(_highlightData.rect, colors[kk]);
                     contextMenu.customItems[kk].enabled = false;
                     for (var yy :int = 0; yy < _height; yy++) {
                         for (var xx :int = 0; xx < _width; xx++) {
-                            // we must reapply the reverse formats
+                            // we must reapply the reverse and dim formats
                             var val :int = _contents[yy*_width + xx];
+                            var tidx :int = yy*(_width + 1) + xx;
                             if ((val & REVERSE_FLAG) != 0) {
-                                var tidx :int = yy*(_width + 1) + xx;
                                 _field.setTextFormat(_reverseFormat, tidx, tidx + 1);
+                            } else if ((val & DIM_FLAG) != 0) {
+                                _field.setTextFormat(_dimFormat, tidx, tidx + 1);
                             }
                         }
                     }
@@ -537,10 +542,11 @@ public class ClientApp extends Sprite {
                 var ochar :int = ovalue & 0xFFFF;
                 var nchar :int = nvalue & 0xFFFF;
                 var nrev :int = (nvalue & REVERSE_FLAG);
+                var ndim :int = (nvalue & DIM_FLAG);
                 if (ochar != nchar) {
                     _field.replaceText(tidx, tidx + 1, String.fromCharCode(nchar));
-                    _field.setTextFormat(nrev == REVERSE_FLAG ?
-                        _reverseFormat : _normalFormat, tidx, tidx + 1);
+                    _field.setTextFormat(nrev == REVERSE_FLAG ? _reverseFormat :
+                        (ndim == DIM_FLAG ? _dimFormat : _normalFormat), tidx, tidx + 1);
                 }
                 if ((ovalue & REVERSE_FLAG) != nrev) {
                     if (nrev == REVERSE_FLAG) {
@@ -553,16 +559,21 @@ public class ClientApp extends Sprite {
                             (_field.width - cbounds.width*_width)/2;
                         highlight.y = _field.y + cbounds.height*yy +
                             (_field.height - cbounds.height*_height)/2;
-                       if (ochar == nchar) {
-                           _field.setTextFormat(_reverseFormat, tidx, tidx + 1);
-                       }
+                        if (ochar == nchar) {
+                            _field.setTextFormat(_reverseFormat, tidx, tidx + 1);
+                        }
                     } else {
                         removeChild(_highlights[idx]);
                         _highlights[idx] = null;
                         if (ochar == nchar) {
-                            _field.setTextFormat(_normalFormat, tidx, tidx + 1);
+                            _field.setTextFormat(ndim == DIM_FLAG ? _dimFormat : _normalFormat,
+                                tidx, tidx + 1);
                         }
                     }
+                }
+                if ((ovalue & DIM_FLAG) != ndim && nrev != REVERSE_FLAG && ochar == nchar) {
+                    _field.setTextFormat(ndim == DIM_FLAG ? _dimFormat : _normalFormat,
+                        tidx, tidx + 1);
                 }
             }
         }
@@ -690,8 +701,8 @@ public class ClientApp extends Sprite {
     /** The contents of our field as integers. */
     protected var _contents :Array;
 
-    /** Formats for normal and reverse text. */
-    protected var _normalFormat :TextFormat, _reverseFormat :TextFormat;
+    /** Formats for normal, reverse, and dim text. */
+    protected var _normalFormat :TextFormat, _reverseFormat :TextFormat, _dimFormat :TextFormat;
 
     /** The highlight bitmap data. */
     protected var _highlightData :BitmapData;
@@ -716,6 +727,9 @@ public class ClientApp extends Sprite {
 
     /** Flag indicating that the character should be displayed in reverse. */
     protected static var REVERSE_FLAG :int = 0x10000;
+
+    /** Flag indicating that the character should be displayed half-bright. */
+    protected static var DIM_FLAG :int = 0x20000;
 
     /** The magic number that identifies the protocol. */
     protected static var PROTOCOL_MAGIC :int = 0x57544750; // "WTGP"

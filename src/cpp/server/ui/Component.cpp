@@ -12,7 +12,8 @@ Component::Component (QObject* parent) :
     _explicitPreferredSize(-1, -1),
     _background(0),
     _valid(false),
-    _focused(false)
+    _focused(false),
+    _enabled(true)
 {
     // connect slots
     connect(this, SIGNAL(boundsChanged()), SLOT(invalidate()));
@@ -133,6 +134,14 @@ void Component::setConstraint (const QVariant& constraint)
     if (_constraint != constraint) {
         _constraint = constraint;
         invalidateParent();
+    }
+}
+
+void Component::setEnabled (bool enabled)
+{
+    if (_enabled != enabled) {
+        _enabled = enabled;
+        dirty();
     }
 }
 

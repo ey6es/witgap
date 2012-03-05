@@ -33,6 +33,21 @@ void LengthLimitedDocument::insert (int idx, const QString& text)
     }
 }
 
+RegExpDocument::RegExpDocument (const QRegExp& regExp, const QString& text) :
+    Document(text),
+    _regExp(regExp)
+{
+}
+
+void RegExpDocument::insert (int idx, const QString& text)
+{
+    QString ntext = _text;
+    ntext.insert(idx, text);
+    if (_regExp.exactMatch(ntext)) {
+        _text = ntext;
+    }
+}
+
 TextField::TextField (int minWidth, Document* document, QObject* parent) :
     Component(parent),
     _minWidth(minWidth),
@@ -93,12 +108,13 @@ void TextField::draw (DrawContext* ctx) const
     int x = _margins.left(), y = _margins.top(), width = textAreaWidth();
 
     // draw the brackets
-    ctx->drawChar(x, y, '[');
-    ctx->drawChar(x + width + 1, y, ']');
+    int flags = _enabled ? DIM_FLAG : 0;
+    ctx->drawChar(x, y, '[' | flags);
+    ctx->drawChar(x + width + 1, y, ']' | flags);
 
     // draw the visible portion of the contents
     int length = _document->text().length();
-    drawText(ctx, x + 1, y, _documentPos, qMin(length - _documentPos, width));
+    drawText(ctx, x + 1, y, _documentPos, qMin(length - _documentPos, width), flags);
 
     // draw the cursor if in focus
     if (_focused) {
@@ -107,9 +123,9 @@ void TextField::draw (DrawContext* ctx) const
     }
 }
 
-void TextField::drawText (DrawContext* ctx, int x, int y, int idx, int length) const
+void TextField::drawText (DrawContext* ctx, int x, int y, int idx, int length, int flags) const
 {
-    ctx->drawString(x, y, _document->text().constData() + idx, length);
+    ctx->drawString(x, y, _document->text().constData() + idx, length, flags);
 }
 
 int TextField::cursorChar () const
@@ -304,9 +320,9 @@ PasswordField::PasswordField (int minWidth, const QString& text, QObject* parent
 {
 }
 
-void PasswordField::drawText (DrawContext* ctx, int x, int y, int idx, int length) const
+void PasswordField::drawText (DrawContext* ctx, int x, int y, int idx, int length, int flags) const
 {
-    ctx->fillRect(x, y, length, 1, '*');
+    ctx->fillRect(x, y, length, 1, '*' | flags);
 }
 
 int PasswordField::cursorChar () const

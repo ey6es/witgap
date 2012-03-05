@@ -20,8 +20,9 @@ void Button::doPress ()
 
 void Button::invalidate ()
 {
-    Label::invalidate();
-    setTextFlags(_focused ? REVERSE_FLAG : 0);
+    Component::invalidate();
+    setTextFlags((_enabled ? 0 : DIM_FLAG) | (_focused ? REVERSE_FLAG : 0),
+        ~(DIM_FLAG | REVERSE_FLAG));
 }
 
 void Button::updateMargins ()
@@ -38,18 +39,19 @@ void Button::draw (DrawContext* ctx) const
     Label::draw(ctx);
 
     // draw the brackets
-    ctx->drawChar(_margins.left() - 1, _margins.top(), '[');
-    ctx->drawChar(_bounds.width() - _margins.right(), _margins.top(), ']');
+    int flags = _enabled ? 0 : DIM_FLAG;
+    ctx->drawChar(_margins.left() - 1, _margins.top(), '[' | flags);
+    ctx->drawChar(_bounds.width() - _margins.right(), _margins.top(), ']' | flags);
 }
 
 void Button::focusInEvent (QFocusEvent* e)
 {
-    setTextFlags(REVERSE_FLAG);
+    setTextFlag(REVERSE_FLAG, true);
 }
 
 void Button::focusOutEvent (QFocusEvent* e)
 {
-    setTextFlags(0);
+    setTextFlag(REVERSE_FLAG, false);
 }
 
 void Button::mouseButtonReleaseEvent (QMouseEvent* e)
@@ -106,10 +108,11 @@ void CheckBox::draw (DrawContext* ctx) const
     Label::draw(ctx);
 
     // draw the indicator
-    ctx->drawChar(_margins.left() - 4, _margins.top(), '[');
+    int flags = _enabled ? 0 : DIM_FLAG;
+    ctx->drawChar(_margins.left() - 4, _margins.top(), '[' | flags);
     ctx->drawChar(_margins.left() - 3, _margins.top(),
-        (_selected ? 'X' : ' ') | (_focused ? REVERSE_FLAG : 0));
-    ctx->drawChar(_margins.left() - 2, _margins.top(), ']');
+        (_selected ? 'X' : ' ') | (_focused ? REVERSE_FLAG : 0) | flags);
+    ctx->drawChar(_margins.left() - 2, _margins.top(), ']' | flags);
 }
 
 void CheckBox::focusInEvent (QFocusEvent* e)

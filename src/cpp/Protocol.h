@@ -136,6 +136,9 @@ const quint8 CLOSE_MSG = 6;
 /** A flag indicating that the character should be displayed in reverse. */
 const int REVERSE_FLAG = 0x10000;
 
+/** A flag indicating that the character should be displayed half-bright. */
+const int DIM_FLAG = 0x20000;
+
 /**
  * Strips the flags from the specified character.
  */

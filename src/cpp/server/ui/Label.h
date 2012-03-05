@@ -46,9 +46,26 @@ public:
     Qt::Alignment alignment () const { return _alignment; }
 
     /**
+     * Sets or clears a set of flags for all characters in the text.
+     */
+    void setTextFlag (int flag, bool set = true) { setTextFlags(set ? flag : 0, ~flag); }
+
+    /**
      * Sets the flags for all characters in the text.
      */
-    void setTextFlags (int flags);
+    void setTextFlags (int flags, int mask = 0xFFFF);
+
+    /**
+     * Enables or disables the component.
+     */
+    virtual void setEnabled (bool enabled);
+
+public slots:
+
+    /**
+     * Invalidates the label.
+     */
+    virtual void invalidate ();
 
 protected:
 

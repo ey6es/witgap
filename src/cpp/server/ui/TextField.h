@@ -4,6 +4,8 @@
 #ifndef TEXT_FIELD
 #define TEXT_FIELD
 
+#include <QRegExp>
+
 #include "ui/Component.h"
 
 /**
@@ -63,6 +65,29 @@ protected:
 };
 
 /**
+ * A document restricted to strings that match a regular expression.
+ */
+class RegExpDocument : public Document
+{
+public:
+
+    /**
+     * Creates a new document with the supplied initial text.
+     */
+    RegExpDocument (const QRegExp& regExp, const QString& text = "");
+
+    /**
+     * Attempts to insert a string into the document.
+     */
+    virtual void insert (int idx, const QString& text);
+
+protected:
+
+    /** The regular expression that determines what to allow. */
+    QRegExp _regExp;
+};
+
+/**
  * A text field.
  */
 class TextField : public Component
@@ -104,7 +129,7 @@ public:
     /**
      * Checks whether the component accepts input focus.
      */
-    virtual bool acceptsFocus () const { return true; }
+    virtual bool acceptsFocus () const { return _enabled; }
 
 signals:
 
@@ -133,7 +158,7 @@ protected:
     /**
      * Draws part of the text.
      */
-    virtual void drawText (DrawContext* ctx, int x, int y, int idx, int length) const;
+    virtual void drawText (DrawContext* ctx, int x, int y, int idx, int length, int flags) const;
 
     /**
      * Returns the character to display under the cursor.
@@ -219,7 +244,7 @@ protected:
     /**
      * Draws part of the text.
      */
-    virtual void drawText (DrawContext* ctx, int x, int y, int idx, int length) const;
+    virtual void drawText (DrawContext* ctx, int x, int y, int idx, int length, int flags) const;
 
     /**
      * Returns the character to display under the cursor.

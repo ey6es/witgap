@@ -65,6 +65,15 @@ void Session::setConnection (Connection* connection)
     }
 }
 
+int Session::highestWindowLayer () const
+{
+    int highest = 0;
+    foreach (Window* window, findChildren<Window*>()) {
+        highest = qMax(highest, window->layer());
+    }
+    return highest;
+}
+
 void Session::setFocus (Component* component)
 {
     if (_focus == component) {
@@ -87,7 +96,7 @@ void Session::setFocus (Component* component)
  */
 static Window* createDialog (Session* session, const QString& message, const QString& title)
 {
-    Window* window = new Window(session);
+    Window* window = new Window(session, session->highestWindowLayer());
     window->setModal(true);
     window->setBorder(title.isEmpty() ? new FrameBorder() : new TitledBorder(title));
     window->setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch));
@@ -155,38 +164,7 @@ void Session::showInputDialog (
 
 void Session::showLogonDialog ()
 {
-    Window* window = new Window(this);
-    window->setModal(true);
-    window->setBorder(new FrameBorder());
-    window->setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 0));
-
-    Container* ucont = BoxLayout::createHBox();
-    window->addChild(ucont);
-    ucont->addChild(new Label(tr("Username:")));
-    TextField* username = new TextField();
-    ucont->addChild(username);
-    username->connect(username, SIGNAL(enterPressed()), SLOT(transferFocus()));
-
-    Container* pcont = BoxLayout::createHBox();
-    window->addChild(pcont);
-    pcont->addChild(new Label(tr("Password:")));
-    PasswordField* password = new PasswordField();
-    pcont->addChild(password);
-
-    Button* cancel = new Button(tr("Cancel"));
-    window->connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
-
-    Button* logon = new Button(tr("Logon"));
-    logon->connect(password, SIGNAL(enterPressed()), SLOT(doPress()));
-    window->connect(logon, SIGNAL(pressed()), SLOT(deleteLater()));
-
-    window->addChild(new Spacer(1, 1));
-
-    window->addChild(BoxLayout::createHBox(2, cancel, logon));
-
-    username->requestFocus();
-    window->pack();
-    window->center();
+    new LogonDialog(this);
 }
 
 void Session::clearConnection ()
@@ -220,10 +198,16 @@ void Session::dispatchMousePressed (int x, int y)
         if (window->layer() < hlayer) {
             continue;
         }
+        if (window->modal()) {
+            // modal windows block anything underneath
+            hlayer = window->layer();
+            target = 0;
+        }
         if (window->bounds().contains(absolute)) {
             QPoint rel;
             Component* comp = window->componentAt(absolute - window->bounds().topLeft(), &rel);
             if (comp != 0) {
+                hlayer = window->layer();
                 target = comp;
                 relative = rel;
             }
@@ -290,4 +274,48 @@ void Session::dispatchKeyReleased (int key, QChar ch)
     }
     QKeyEvent event(QEvent::KeyRelease, key, _modifiers, ch == 0 ? QString() : QString(ch));
     QCoreApplication::sendEvent(_focus == 0 ? this : (QObject*)_focus, &event);
+}
+
+LogonDialog::LogonDialog (Session* parent) :
+    Window(parent, parent->highestWindowLayer())
+{
+    setModal(true);
+    setBorder(new FrameBorder());
+    setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 0));
+
+    TableLayout* ilayout = new TableLayout(2);
+    ilayout->stretchColumns() += 1;
+    Container* icont = new Container(ilayout);
+    addChild(icont);
+    icont->addChild(new Label(tr("Username:")));
+    _username = new TextField();
+    icont->addChild(_username);
+    _username->connect(_username, SIGNAL(enterPressed()), SLOT(transferFocus()));
+
+    icont->addChild(new Label(tr("Password:")));
+    _password = new PasswordField();
+    icont->addChild(_password);
+
+    Button* cancel = new Button(tr("Cancel"));
+    connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
+
+    Button* create = new Button(tr("Create New Account"));
+
+    _logon = new Button(tr("Logon"));
+    _logon->connect(_password, SIGNAL(enterPressed()), SLOT(doPress()));
+    connect(_logon, SIGNAL(pressed()), SLOT(logon()));
+    _logon->setEnabled(false);
+
+    addChild(new Spacer(1, 1));
+
+    addChild(BoxLayout::createHBox(2, cancel, create, _logon));
+
+    _username->requestFocus();
+    pack();
+    center();
+}
+
+void LogonDialog::logon ()
+{
+    qDebug() << _username->text() << _password->text();
 }

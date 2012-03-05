@@ -4,6 +4,7 @@
 #include <numeric>
 
 #include <QVarLengthArray>
+#include <QtDebug>
 
 #include "ui/Layout.h"
 
@@ -303,27 +304,31 @@ void TableLayout::apply (Container* container) const
     int extraHeight = height - accumulate(heights.data(), heights.data() + nrows, rgap);
 
     // add to stretch columns, if any; otherwise, center horizontally
-    int nscols = _stretchColumns.size();
-    if (nscols > 0) {
-        int per = extraWidth / nscols;
-        int remainder = extraHeight % nscols;
-        foreach (int col, _stretchColumns) {
-            widths[col] += per + (remainder-- > 0) ? 1 : 0;
+    if (extraWidth > 0) {
+        int nscols = _stretchColumns.size();
+        if (nscols > 0) {
+            int per = extraWidth / nscols;
+            int remainder = extraWidth % nscols;
+            foreach (int col, _stretchColumns) {
+                widths[col] += per + (remainder-- > 0 ? 1 : 0);
+            }
+        } else {
+            x += extraWidth/2;
         }
-    } else {
-        x += extraWidth/2;
     }
 
     // add to stretch rows, if any; otherwise, center vertically
-    int nsrows = _stretchRows.size();
-    if (nsrows > 0) {
-        int per = extraHeight / nsrows;
-        int remainder = extraHeight % nsrows;
-        foreach (int row, _stretchRows) {
-            heights[row] += per + (remainder-- > 0 ? 1 : 0);
+    if (extraHeight > 0) {
+        int nsrows = _stretchRows.size();
+        if (nsrows > 0) {
+            int per = extraHeight / nsrows;
+            int remainder = extraHeight % nsrows;
+            foreach (int row, _stretchRows) {
+                heights[row] += per + (remainder-- > 0 ? 1 : 0);
+            }
+        } else {
+            y += extraHeight/2;
         }
-    } else {
-        y += extraHeight/2;
     }
 
     // position the children

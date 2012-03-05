@@ -7,8 +7,9 @@
 #include <QObject>
 #include <QSize>
 
+#include "ui/Window.h"
+
 class Callback;
-class Component;
 class Connection;
 class ServerApp;
 
@@ -50,6 +51,12 @@ public:
      * Increments the window id counter and returns its value.
      */
     int nextWindowId () { return ++_lastWindowId; }
+
+    /**
+     * Finds and returns the highest layer among all added windows, or zero if there aren't any
+     * windows.
+     */
+    int highestWindowLayer () const;
 
     /**
      * Returns the size of the user's display.
@@ -164,6 +171,43 @@ protected:
 
     /** The component with input focus. */
     Component* _focus;
+};
+
+class Button;
+class PasswordField;
+class TextField;
+
+/**
+ * Handles logging on or creating an account.
+ */
+class LogonDialog : public Window
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the dialog.
+     */
+    LogonDialog (Session* parent);
+
+protected slots:
+
+    /**
+     * Attempts to log on using the current information.
+     */
+    void logon ();
+
+protected:
+
+    /** The username field. */
+    TextField* _username;
+
+    /** The password field. */
+    PasswordField* _password;
+
+    /** The logon button. */
+    Button* _logon;
 };
 
 #endif // SESSION
