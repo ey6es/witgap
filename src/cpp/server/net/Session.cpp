@@ -37,15 +37,7 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id, const QByt
     connection->setSession(id, token);
     setConnection(connection);
 
-    showInputDialog(tr("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis vel nunc "
-        "justo. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos "
-        "himenaeos. Praesent ut elit ipsum, sit amet dictum est. Cras purus augue, cursus sed "
-        "elementum eu, tincidunt ac purus. Vivamus id lorem felis, sed posuere odio. Aenean "
-        "varius placerat euismod. Curabitur vel luctus odio. Vivamus sagittis sapien in eros "
-        "malesuada suscipit. Sed lacus massa, vulputate id dictum non, interdum ut odio. "
-        "Vestibulum luctus sollicitudin ligula, vitae elementum dui dictum vitae. Nullam in leo "
-        "justo. Praesent sem mauris, porttitor a vehicula ut, aliquam id arcu. Ut varius interdum "
-        "sagittis."), Callback());
+    showLogonDialog();
 }
 
 void Session::setConnection (Connection* connection)
@@ -123,17 +115,14 @@ void Session::showConfirmDialog (
 {
     Window* window = createDialog(this, message, title);
 
-    Container* buttons = new Container(new BoxLayout());
-    window->addChild(buttons);
-
     Button* cancel = new Button(dismiss.isEmpty() ? tr("Cancel") : dismiss);
-    buttons->addChild(cancel);
     window->connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
 
     Button* ok = new Button(accept.isEmpty() ? tr("OK") : accept);
-    buttons->addChild(ok);
     window->connect(ok, SIGNAL(pressed()), SLOT(deleteLater()));
     (new CallbackObject(callback, window))->connect(ok, SIGNAL(pressed()), SLOT(invoke()));
+
+    window->addChild(BoxLayout::createHBox(2, cancel, ok));
 
     ok->requestFocus();
     window->pack();
@@ -149,20 +138,53 @@ void Session::showInputDialog (
     TextField* field = new TextField();
     window->addChild(field);
 
-    Container* buttons = new Container(new BoxLayout());
-    window->addChild(buttons);
-
     Button* cancel = new Button(dismiss.isEmpty() ? tr("Cancel") : dismiss);
-    buttons->addChild(cancel);
     window->connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
 
     Button* ok = new Button(accept.isEmpty() ? tr("OK") : accept);
-    buttons->addChild(ok);
     ok->connect(field, SIGNAL(enterPressed()), SLOT(doPress()));
     window->connect(ok, SIGNAL(pressed()), SLOT(deleteLater()));
     (new CallbackObject(callback, window))->connect(ok, SIGNAL(pressed()), SLOT(invoke()));
 
+    window->addChild(BoxLayout::createHBox(2, cancel, ok));
+
     field->requestFocus();
+    window->pack();
+    window->center();
+}
+
+void Session::showLogonDialog ()
+{
+    Window* window = new Window(this);
+    window->setModal(true);
+    window->setBorder(new FrameBorder());
+    window->setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 0));
+
+    Container* ucont = BoxLayout::createHBox();
+    window->addChild(ucont);
+    ucont->addChild(new Label(tr("Username:")));
+    TextField* username = new TextField();
+    ucont->addChild(username);
+    username->connect(username, SIGNAL(enterPressed()), SLOT(transferFocus()));
+
+    Container* pcont = BoxLayout::createHBox();
+    window->addChild(pcont);
+    pcont->addChild(new Label(tr("Password:")));
+    PasswordField* password = new PasswordField();
+    pcont->addChild(password);
+
+    Button* cancel = new Button(tr("Cancel"));
+    window->connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
+
+    Button* logon = new Button(tr("Logon"));
+    logon->connect(password, SIGNAL(enterPressed()), SLOT(doPress()));
+    window->connect(logon, SIGNAL(pressed()), SLOT(deleteLater()));
+
+    window->addChild(new Spacer(1, 1));
+
+    window->addChild(BoxLayout::createHBox(2, cancel, logon));
+
+    username->requestFocus();
     window->pack();
     window->center();
 }

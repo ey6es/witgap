@@ -139,11 +139,6 @@ public:
     virtual bool acceptsFocus () const { return false; }
 
     /**
-     * Requests input focus for this component.
-     */
-    void requestFocus ();
-
-    /**
      * Finds the component at the specified coordinates and populates the supplied
      * point with the relative coordinates.  Returns 0 if there isn't a component
      * at the coordinates.
@@ -172,6 +167,16 @@ signals:
     void boundsChanged ();
 
 public slots:
+
+    /**
+     * Requests input focus for this component.
+     */
+    void requestFocus ();
+
+    /**
+     * Attempts to transfer focus from this component to the next.
+     */
+    void transferFocus () { transferFocus(this, Forward); }
 
     /**
      * Invalidates the component.

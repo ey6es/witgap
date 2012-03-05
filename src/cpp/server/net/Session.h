@@ -94,6 +94,11 @@ public:
         const QString& message, const Callback& callback, const QString& title = "",
         const QString& dismiss = "", const QString& accept = "");
 
+    /**
+     * Shows the logon dialog.
+     */
+    void showLogonDialog ();
+
 protected slots:
 
     /**

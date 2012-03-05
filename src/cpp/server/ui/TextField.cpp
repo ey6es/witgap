@@ -248,7 +248,9 @@ void TextField::keyPressEvent (QKeyEvent* e)
         case Qt::Key_Delete:
             if (_cursorPos < _document->text().length()) {
                 _document->remove(_cursorPos, 1);
-                dirty(_cursorPos);
+                if (!updateDocumentPos()) {
+                    dirty(_cursorPos);
+                }
             }
             break;
         case Qt::Key_Return:

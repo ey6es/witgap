@@ -1,9 +1,13 @@
 //
 // $Id$
 
+#include <numeric>
+
 #include <QVarLengthArray>
 
 #include "ui/Layout.h"
+
+using namespace std;
 
 Layout::Layout ()
 {
@@ -15,6 +19,57 @@ bool Layout::transferFocus (
     // default behavior just translates right/down to forward and left/up to backward
     container->transferFocus(from, (dir == Component::Right || dir == Component::Down) ?
         Component::Forward : Component::Backward);
+}
+
+/**
+ * Helper function for convenience factory functions: adds the arguments as children if
+ * they are non-zero.
+ */
+static void addChildren (
+    Container* container, Component* c0, Component* c1, Component* c2, Component* c3)
+{
+    Component* components[] = { c0, c1, c2, c3 };
+    for (int ii = 0; ii < 4; ii++) {
+        if (components[ii] != 0) {
+            container->addChild(components[ii]);
+        }
+    }
+}
+
+Container* BoxLayout::createHBox (
+    int gap, Component* c0, Component* c1, Component* c2, Component* c3)
+{
+    Container* container = new Container(
+        new BoxLayout(Qt::Horizontal, NoPolicy, Qt::AlignCenter, gap));
+    addChildren(container, c0, c1, c2, c3);
+    return container;
+}
+
+Container* BoxLayout::createVBox (
+    int gap, Component* c0, Component* c1, Component* c2, Component* c3)
+{
+    Container* container = new Container(
+        new BoxLayout(Qt::Vertical, NoPolicy, Qt::AlignCenter, gap));
+    addChildren(container, c0, c1, c2, c3);
+    return container;
+}
+
+Container* BoxLayout::createHStretchBox (
+    int gap, Component* c0, Component* c1, Component* c2, Component* c3)
+{
+    Container* container = new Container(
+        new BoxLayout(Qt::Horizontal, HStretch | VStretch, Qt::AlignCenter, gap));
+    addChildren(container, c0, c1, c2, c3);
+    return container;
+}
+
+Container* BoxLayout::createVStretchBox (
+    int gap, Component* c0, Component* c1, Component* c2, Component* c3)
+{
+    Container* container = new Container(
+        new BoxLayout(Qt::Vertical, HStretch | VStretch, Qt::AlignCenter, gap));
+    addChildren(container, c0, c1, c2, c3);
+    return container;
 }
 
 BoxLayout::BoxLayout (
@@ -193,11 +248,104 @@ TableLayout::TableLayout (int columns, int rows, int columnGap, int rowGap) :
 
 QSize TableLayout::computePreferredSize (const Container* container, int whint, int hhint) const
 {
-    return QSize(1, 1);
+    const QList<Component*>& children = container->children();
+    int ncomps = children.size();
+    int ncols = (_columns == -1) ? (ncomps / _rows + (ncomps % _rows == 0 ? 0 : 1)) : _columns;
+    int nrows = (_rows == -1) ? (ncomps / _columns + (ncomps % _columns == 0 ? 0 : 1)) : _rows;
+    QVarLengthArray<int, 16> widths(ncols), heights(nrows);
+    qFill(widths.data(), widths.data() + ncols, 0);
+    qFill(heights.data(), heights.data() + nrows, 0);
+
+    // find the maximum height of all rows and columns
+    for (int ii = 0; ii < ncomps; ii++) {
+        int row, column;
+        getRowAndColumn(ii, &row, &column);
+        QSize size = children.at(ii)->preferredSize(-1, -1);
+        widths[column] = qMax(widths[column], size.width());
+        heights[row] = qMax(heights[row], size.height());
+    }
+
+    // sum up the maximum dimensions and gaps
+    int cgap = (ncols > 1) ? (ncols - 1) * _columnGap : 0;
+    int rgap = (nrows > 1) ? (nrows - 1) * _rowGap : 0;
+    return QSize(
+        qMax(whint, accumulate(widths.data(), widths.data() + ncols, cgap)),
+        qMax(hhint, accumulate(heights.data(), heights.data() + nrows, rgap)));
 }
 
 void TableLayout::apply (Container* container) const
 {
+    const QList<Component*>& children = container->children();
+    int ncomps = children.size();
+    int ncols = (_columns == -1) ? (ncomps / _rows + (ncomps % _rows == 0 ? 0 : 1)) : _columns;
+    int nrows = (_rows == -1) ? (ncomps / _columns + (ncomps % _columns == 0 ? 0 : 1)) : _rows;
+    QVarLengthArray<int, 16> widths(ncols), heights(nrows);
+    qFill(widths.data(), widths.data() + ncols, 0);
+    qFill(heights.data(), heights.data() + nrows, 0);
+
+    // find the maximum height of all rows and columns
+    for (int ii = 0; ii < ncomps; ii++) {
+        int row, column;
+        getRowAndColumn(ii, &row, &column);
+        QSize size = children.at(ii)->preferredSize(-1, -1);
+        widths[column] = qMax(widths[column], size.width());
+        heights[row] = qMax(heights[row], size.height());
+    }
+
+    // find the area within the margins
+    QRect inner = container->innerRect();
+    int x = inner.x(), y = inner.y(), width = inner.width(), height = inner.height();
+
+    // distribute any extra space
+    int cgap = (ncols > 1) ? (ncols - 1) * _columnGap : 0;
+    int rgap = (nrows > 1) ? (nrows - 1) * _rowGap : 0;
+    int extraWidth = width - accumulate(widths.data(), widths.data() + ncols, cgap);
+    int extraHeight = height - accumulate(heights.data(), heights.data() + nrows, rgap);
+
+    // add to stretch columns, if any; otherwise, center horizontally
+    int nscols = _stretchColumns.size();
+    if (nscols > 0) {
+        int per = extraWidth / nscols;
+        int remainder = extraHeight % nscols;
+        foreach (int col, _stretchColumns) {
+            widths[col] += per + (remainder-- > 0) ? 1 : 0;
+        }
+    } else {
+        x += extraWidth/2;
+    }
+
+    // add to stretch rows, if any; otherwise, center vertically
+    int nsrows = _stretchRows.size();
+    if (nsrows > 0) {
+        int per = extraHeight / nsrows;
+        int remainder = extraHeight % nsrows;
+        foreach (int row, _stretchRows) {
+            heights[row] += per + (remainder-- > 0 ? 1 : 0);
+        }
+    } else {
+        y += extraHeight/2;
+    }
+
+    // position the children
+    for (int ii = 0; ii < ncomps; ii++) {
+        int row, column;
+        getRowAndColumn(ii, &row, &column);
+        children.at(ii)->setBounds(QRect(
+            x + accumulate(widths.data(), widths.data() + column, column * _columnGap),
+            y + accumulate(heights.data(), heights.data() + row, row * _rowGap),
+            widths[column], heights[row]));
+    }
+}
+
+void TableLayout::getRowAndColumn (int idx, int* row, int* column) const
+{
+    if (_columns == -1) {
+        *row = idx % _rows;
+        *column = idx / _rows;
+    } else {
+        *row = idx / _columns;
+        *column = idx % _columns;
+    }
 }
 
 /**

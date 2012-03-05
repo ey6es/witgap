@@ -156,11 +156,6 @@ void Component::maybeDraw (DrawContext* ctx) const
     }
 }
 
-void Component::requestFocus ()
-{
-    session()->setFocus(this);
-}
-
 Component* Component::componentAt (QPoint pos, QPoint* relative)
 {
     *relative = pos;
@@ -212,6 +207,11 @@ bool Component::event (QEvent* e)
         default:
             return QObject::event(e);
     }
+}
+
+void Component::requestFocus ()
+{
+    session()->setFocus(this);
 }
 
 void Component::invalidate ()

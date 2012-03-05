@@ -5,6 +5,7 @@
 #define LAYOUT
 
 #include <QObject>
+#include <QSet>
 #include <QSize>
 
 #include "ui/Component.h"
@@ -63,6 +64,32 @@ public:
     enum Constraint { Fixed = 1 };
 
     /**
+     * Convenience method to create a container with a horizontal box layout.
+     */
+    static Container* createHBox (
+        int gap = 2, Component* c0 = 0, Component* c1 = 0, Component* c2 = 0, Component* c3 = 0);
+
+    /**
+     * Convenience method to create a container with a vertical box layout.
+     */
+    static Container* createVBox (
+        int gap = 0, Component* c0 = 0, Component* c1 = 0, Component* c2 = 0, Component* c3 = 0);
+
+    /**
+     * Convenience method to create a container with a horizontal box layout that stretches
+     * in both directions.
+     */
+    static Container* createHStretchBox (
+        int gap = 2, Component* c0 = 0, Component* c1 = 0, Component* c2 = 0, Component* c3 = 0);
+
+    /**
+     * Convenience method to create a container with a vertical box layout that stretches
+     * in both directions.
+     */
+    static Container* createVStretchBox (
+        int gap = 0, Component* c0 = 0, Component* c1 = 0, Component* c2 = 0, Component* c3 = 0);
+
+    /**
      * Creates a new box layout.
      */
     BoxLayout (Qt::Orientation orientation = Qt::Horizontal, Policy policy = NoPolicy,
@@ -109,6 +136,16 @@ public:
     TableLayout (int columns, int rows = -1, int columnGap = 1, int rowGap = 0);
 
     /**
+     * Returns a reference to the set of columns to stretch.
+     */
+    QSet<int>& stretchColumns () { return _stretchColumns; }
+
+    /**
+     * Returns a reference to the set of rows to stretch.
+     */
+    QSet<int>& stretchRows () { return _stretchRows; }
+
+    /**
      * Computes the preferred size of the specified container.
      */
     virtual QSize computePreferredSize (
@@ -121,6 +158,11 @@ public:
 
 protected:
 
+    /**
+     * Given the child index, places the row and column into the specified locations.
+     */
+    void getRowAndColumn (int idx, int* row, int* column) const;
+
     /** The number of columns, or -1 for any. */
     int _columns;
 
@@ -132,6 +174,12 @@ protected:
 
     /** The gap between rows. */
     int _rowGap;
+
+    /** Indices of columns to stretch. */
+    QSet<int> _stretchColumns;
+
+    /** Indices of rows to stretch. */
+    QSet<int> _stretchRows;
 };
 
 /**
