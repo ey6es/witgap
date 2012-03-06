@@ -5,11 +5,14 @@
         <meta name="keywords" content="ASCII,online,game,sandbox,MMO"/>
         <meta name="author" content="Andrzej Kapolka"/>
         <script type="text/javascript">
-            function setCookie (cookie)
+            function setCookie (key, value)
             {
                 var expires = new Date();
                 expires.setFullYear(expires.getFullYear() + 5);
-                document.cookie = cookie + "; expires=" + expires.toUTCString();
+                document.cookie = key + "=" + escape(value) + "; expires=" + expires.toUTCString();
+                if (key == "background") {
+                    document.body.style.backgroundColor = "#" + value;
+                }
             }
             function getCookie ()
             {

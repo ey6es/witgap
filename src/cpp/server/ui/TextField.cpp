@@ -108,7 +108,7 @@ void TextField::draw (DrawContext* ctx) const
     int x = _margins.left(), y = _margins.top(), width = textAreaWidth();
 
     // draw the brackets
-    int flags = _enabled ? DIM_FLAG : 0;
+    int flags = _enabled ? 0 : DIM_FLAG;
     ctx->drawChar(x, y, '[' | flags);
     ctx->drawChar(x + width + 1, y, ']' | flags);
 

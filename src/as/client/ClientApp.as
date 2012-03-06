@@ -5,10 +5,12 @@ package {
 
 import flash.display.Bitmap;
 import flash.display.BitmapData;
+import flash.display.SimpleButton;
 import flash.display.Sprite;
 
 import flash.events.ContextMenuEvent;
 import flash.events.Event;
+import flash.events.FocusEvent;
 import flash.events.IOErrorEvent;
 import flash.events.KeyboardEvent;
 import flash.events.MouseEvent;
@@ -17,6 +19,9 @@ import flash.events.SecurityErrorEvent;
 
 import flash.external.ExternalInterface;
 
+import flash.filters.BevelFilter;
+import flash.filters.BitmapFilterType;
+
 import flash.geom.Point;
 import flash.geom.Rectangle;
 
@@ -24,6 +29,7 @@ import flash.net.Socket;
 
 import flash.text.TextField;
 import flash.text.TextFieldAutoSize;
+import flash.text.TextFieldType;
 import flash.text.TextFormat;
 
 import flash.ui.ContextMenu;
@@ -110,49 +116,28 @@ public class ClientApp extends Sprite {
         // add the context menu to change colors
         contextMenu = new ContextMenu();
         contextMenu.hideBuiltInItems();
-        contextMenu.customItems = [ ];
-        var captions :Array = [ "White", "Green", "Amber" ];
-        var colors :Array = [ 0xFFFFFF, 0x00FF00, 0xFFAF00 ];
-        var setColor :Function = function (caption :String) :void {
-            setCookie("color", caption);
-            for (var kk :int = 0; kk < captions.length; kk++) {
-                if (captions[kk] == caption) {
-                    _normalFormat.color = _field.textColor = colors[kk];
-                    _dimFormat.color = (_field.textColor >> 1) & 0x7F7F7F;
-                    _highlightData.fillRect(_highlightData.rect, colors[kk]);
-                    contextMenu.customItems[kk].enabled = false;
-                    for (var yy :int = 0; yy < _height; yy++) {
-                        for (var xx :int = 0; xx < _width; xx++) {
-                            // we must reapply the reverse and dim formats
-                            var val :int = _contents[yy*_width + xx];
-                            var tidx :int = yy*(_width + 1) + xx;
-                            if ((val & REVERSE_FLAG) != 0) {
-                                _field.setTextFormat(_reverseFormat, tidx, tidx + 1);
-                            } else if ((val & DIM_FLAG) != 0) {
-                                _field.setTextFormat(_dimFormat, tidx, tidx + 1);
-                            }
-                        }
-                    }
-                } else {
-                    contextMenu.customItems[kk].enabled = true;
-                }
-            }
-        };
-        var updateColor :Function = function (event :ContextMenuEvent) :void {
-            setColor(ContextMenuItem(event.target).caption);
-        };
-        for (var kk :int = 0; kk < captions.length; kk++) {
-            var item :ContextMenuItem = new ContextMenuItem(captions[kk]);
-            contextMenu.customItems.push(item);
-            item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, updateColor);
-        }
-        setColor(getCookie("color", "Green"));
+        contextMenu.customItems = [ new ContextMenuItem("Change Colors") ];
+        contextMenu.customItems[0].addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+                function (event :ContextMenuEvent) :void {
+            showColorPicker();
+        });
+        setColors(getForeground(), getBackground());
 
         // listen for mouse and key events
         _field.addEventListener(MouseEvent.MOUSE_DOWN, sendMouseMessage);
         _field.addEventListener(MouseEvent.MOUSE_UP, sendMouseMessage);
         addEventListener(KeyboardEvent.KEY_DOWN, sendKeyMessage);
         addEventListener(KeyboardEvent.KEY_UP, sendKeyMessage);
+
+        // request focus and listen for changes
+        stage.focus = this;
+        addEventListener(FocusEvent.FOCUS_OUT, function (event :FocusEvent) :void {
+            addClientWindow(int.MAX_VALUE - 1, "Click to restore input focus.");
+        });
+        addEventListener(FocusEvent.FOCUS_IN, function (event :FocusEvent) :void {
+            removeWindow(int.MAX_VALUE - 1, false);
+            updateDisplay();
+        });
 
         // allow the JavaScript context to call willBeUnloaded
         ExternalInterface.addCallback("willBeUnloaded", willBeUnloaded);
@@ -185,11 +170,178 @@ public class ClientApp extends Sprite {
     }
 
     /**
+     * Shows the color picker display.
+     */
+    protected function showColorPicker () :void
+    {
+        // no two pickers at once
+        contextMenu.customItems[0].enabled = false;
+
+        var picker :Sprite = new Sprite();
+
+        var bevel :BevelFilter = new BevelFilter();
+        bevel.distance = 0.5;
+
+        picker.graphics.beginFill(0x808080);
+        picker.graphics.drawRect(0, 0, 300, 100);
+        picker.graphics.endFill();
+
+        picker.filters = [ bevel ];
+
+        addChild(picker);
+
+        picker.x = (width - picker.width) / 2;
+        picker.y = (height - picker.height) / 2;
+
+        var fmt :TextFormat = new TextFormat();
+        fmt.font = "_typewriter";
+
+        var createState :Function = function (color :uint, down :Boolean) :Sprite {
+            var state :Sprite = new Sprite();
+            var tf :TextField = new TextField();
+            tf.autoSize = TextFieldAutoSize.LEFT;
+            tf.text = "  OK  ";
+            tf.setTextFormat(fmt);
+            state.addChild(tf);
+            state.graphics.beginFill(color);
+            state.graphics.drawRect(0, 0, tf.width, tf.height);
+            state.graphics.endFill();
+            if (!down) {
+                state.filters = [ bevel ];
+            }
+            return state;
+        };
+        var over :Sprite = createState(0xC0C0C0, false);
+        var ok :SimpleButton = new SimpleButton(createState(0xB0B0B0, false), over,
+            createState(0x707070, true), over);
+        ok.addEventListener(MouseEvent.CLICK, function (event :MouseEvent) :void {
+            removeChild(picker);
+            contextMenu.customItems[0].enabled = true;
+        });
+        picker.addChild(ok);
+        ok.x = (picker.width - ok.width) / 2;
+        ok.y = picker.height - ok.height*3/2;
+
+        var createLabel :Function = function (text :String) :TextField {
+            var label :TextField = new TextField();
+            label.autoSize = TextFieldAutoSize.LEFT;
+            label.text = text;
+            label.setTextFormat(fmt);
+            return label;
+        };
+        var fglabel :TextField = createLabel("Foreground:");
+        picker.addChild(fglabel);
+        var bglabel :TextField = createLabel("Background:");
+        picker.addChild(bglabel);
+
+        var createField :Function = function (text :String) :TextField {
+            var field :TextField = new TextField();
+            field.width = fglabel.width * 6.75 / fglabel.text.length;
+            field.height = fglabel.height;
+            field.text = text;
+            field.setTextFormat(fmt);
+            field.maxChars = 6;
+            field.restrict = "A-F0-9";
+            field.background = true;
+            field.type = TextFieldType.INPUT;
+            field.defaultTextFormat = fmt;
+
+            var bevel :BevelFilter = new BevelFilter();
+            bevel.distance = 0.5;
+            bevel.angle = 225;
+            bevel.type = BitmapFilterType.OUTER;
+            field.filters = [ bevel ];
+
+            return field;
+        };
+
+        var foreground :TextField = createField(getForeground());
+        picker.addChild(foreground);
+
+        var background :TextField = createField(getBackground());
+        picker.addChild(background);
+
+        var changer :Function = function (event :Event) :void {
+            setColors(foreground.text, background.text);
+        };
+        foreground.addEventListener(Event.CHANGE, changer);
+        background.addEventListener(Event.CHANGE, changer);
+
+        fglabel.x = 10;
+        fglabel.y = ok.y - fglabel.height*3/2;
+        foreground.x = 10 + fglabel.width + 3;
+        foreground.y = fglabel.y;
+
+        background.x = picker.width - 10 - background.width;
+        background.y = foreground.y;
+        bglabel.x = background.x - bglabel.width - 3;
+        bglabel.y = fglabel.y;
+    }
+
+    /**
+     * Sets the foreground and background colors.
+     */
+    protected function setColors (foreground :String, background :String) :void
+    {
+        var pad :Function = function (str :String) :String {
+            while (str.length < 6) {
+                str = "0" + str;
+            }
+            return str;
+        };
+        setCookie("foreground", foreground = pad(foreground));
+        setCookie("background", background = pad(background));
+
+        var fg :uint = parseInt(foreground, 16);
+        var bg :uint = parseInt(background, 16);
+
+        _normalFormat.color = _field.textColor = fg;
+
+        stage.color = bg;
+
+        // the dim color is halfway between foreground and background
+        var r :uint = ((fg >> 16) + (bg >> 16)) / 2;
+        var g :uint = (((fg >> 8) & 0xFF) + ((bg >> 8) & 0xFF)) / 2;
+        var b :uint = ((fg & 0xFF) + (bg & 0xFF)) / 2;
+        _dimFormat.color = (r << 16) | (g << 8) | b;
+
+        _highlightData.fillRect(_highlightData.rect, fg);
+        for (var yy :int = 0; yy < _height; yy++) {
+            for (var xx :int = 0; xx < _width; xx++) {
+                // we must reapply the reverse and dim formats
+                var val :int = _contents[yy*_width + xx];
+                var tidx :int = yy*(_width + 1) + xx;
+                if ((val & REVERSE_FLAG) != 0) {
+                    _field.setTextFormat(_reverseFormat, tidx, tidx + 1);
+                } else if ((val & DIM_FLAG) != 0) {
+                    _field.setTextFormat(_dimFormat, tidx, tidx + 1);
+                }
+            }
+        }
+    }
+
+    /**
      * Sets a cookie value in the containing context.
      */
     protected function setCookie (name :String, value :String) :void
     {
-        ExternalInterface.call("setCookie", name + "=" + escape(value));
+        ExternalInterface.call("setCookie", name, value);
+    }
+
+    /**
+     * Retrieves the foreground color preference as a string.
+     */
+    protected function getForeground () :String
+    {
+        return getCookie("foreground", "00FF00");
+    }
+
+    /**
+     * Retrieves the background color preference as a string.
+     */
+    protected function getBackground () :String
+    {
+        return getCookie("background", "000000");
     }
 
     /**
@@ -366,10 +518,19 @@ public class ClientApp extends Sprite {
      */
     protected function fatalError (text :String) :void
     {
+        addClientWindow(int.MAX_VALUE, text);
+    }
+
+    /**
+     * Creates a new centered window with the supplied id (which also acts as the layer)
+     * and text.
+     */
+    protected function addClientWindow (id :int, text :String) :void
+    {
         text = " " + text + " ";
         var bounds :Rectangle = new Rectangle(
             int((_width - text.length - 2) / 2), int(_height/2), text.length + 2, 3);
-        var window :Window = new Window(int.MAX_VALUE, int.MAX_VALUE, bounds, "#".charCodeAt(0));
+        var window :Window = new Window(id, id, bounds, "#".charCodeAt(0));
         for (var ii :int = 0; ii < text.length; ii++) {
             window.contents[text.length + 3 + ii] = int(text.charCodeAt(ii));
         }
@@ -421,10 +582,12 @@ public class ClientApp extends Sprite {
 
     /**
      * Removes the window with the specified id from the list.
+     *
+     * @param warn if true, trace a warning if the window wasn't found.
      */
-    protected function removeWindow (id :int) :void
+    protected function removeWindow (id :int, warn :Boolean = true) :void
     {
-        var idx :int = getWindowIndex(id);
+        var idx :int = getWindowIndex(id, warn);
         if (idx != -1) {
             addDirtyRegion(_windows[idx].bounds);
             _windows.splice(idx, 1);
@@ -775,6 +938,7 @@ public class ClientApp extends Sprite {
 }
 }
 
+import flash.display.Sprite;
 import flash.geom.Point;
 import flash.geom.Rectangle;
 
