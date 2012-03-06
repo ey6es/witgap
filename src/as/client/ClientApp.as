@@ -10,6 +10,7 @@ import flash.display.Sprite;
 
 import flash.events.ContextMenuEvent;
 import flash.events.Event;
+import flash.events.EventDispatcher;
 import flash.events.FocusEvent;
 import flash.events.IOErrorEvent;
 import flash.events.KeyboardEvent;
@@ -183,7 +184,7 @@ public class ClientApp extends Sprite {
         bevel.distance = 0.5;
 
         picker.graphics.beginFill(0x808080);
-        picker.graphics.drawRect(0, 0, 300, 100);
+        picker.graphics.drawRect(0, 0, 300, 270);
         picker.graphics.endFill();
 
         picker.filters = [ bevel ];
@@ -196,6 +197,14 @@ public class ClientApp extends Sprite {
         var fmt :TextFormat = new TextFormat();
         fmt.font = "_typewriter";
 
+        var blockKeys :Function = function (obj :EventDispatcher) :void {
+            obj.addEventListener(KeyboardEvent.KEY_DOWN, function (event :KeyboardEvent) :void {
+                event.stopPropagation();
+            });
+            obj.addEventListener(KeyboardEvent.KEY_UP, function (event :KeyboardEvent) :void {
+                event.stopPropagation();
+            });
+        };
         var createState :Function = function (color :uint, down :Boolean) :Sprite {
             var state :Sprite = new Sprite();
             var tf :TextField = new TextField();
@@ -214,7 +223,9 @@ public class ClientApp extends Sprite {
         var over :Sprite = createState(0xC0C0C0, false);
         var ok :SimpleButton = new SimpleButton(createState(0xB0B0B0, false), over,
             createState(0x707070, true), over);
+        blockKeys(ok);
         ok.addEventListener(MouseEvent.CLICK, function (event :MouseEvent) :void {
+            stage.focus = picker.parent;
             removeChild(picker);
             contextMenu.customItems[0].enabled = true;
         });
@@ -227,6 +238,7 @@ public class ClientApp extends Sprite {
             label.autoSize = TextFieldAutoSize.LEFT;
             label.text = text;
             label.setTextFormat(fmt);
+            label.selectable = false;
             return label;
         };
         var fglabel :TextField = createLabel("Foreground:");
@@ -245,6 +257,7 @@ public class ClientApp extends Sprite {
             field.background = true;
             field.type = TextFieldType.INPUT;
             field.defaultTextFormat = fmt;
+            blockKeys(field);
 
             var bevel :BevelFilter = new BevelFilter();
             bevel.distance = 0.5;
@@ -268,7 +281,7 @@ public class ClientApp extends Sprite {
         background.addEventListener(Event.CHANGE, changer);
 
         fglabel.x = 10;
-        fglabel.y = ok.y - fglabel.height*3/2;
+        fglabel.y = 10;
         foreground.x = 10 + fglabel.width + 3;
         foreground.y = fglabel.y;
 
@@ -276,6 +289,64 @@ public class ClientApp extends Sprite {
         background.y = foreground.y;
         bglabel.x = background.x - bglabel.width - 3;
         bglabel.y = fglabel.y;
+
+        stage.focus = foreground;
+
+        // create swatches to select web colors
+        var webColors :Array = [
+            0x000000, 0x000080, 0x008000, 0x008080,
+            0x800000, 0x800080, 0x808000, 0xC0C0C0,
+            0x808080, 0x0000FF, 0x00FF00, 0x00FFFF,
+            0xFF0000, 0xFF00FF, 0xFFFF00, 0xFFFFFF ];
+        var createSwatch :Function = function (color :uint, field :TextField) :Sprite {
+            var swatch :Sprite = new Sprite();
+            swatch.buttonMode = true;
+
+            var label :TextField = new TextField();
+            label.autoSize = TextFieldAutoSize.LEFT;
+            label.text = padColor(color.toString(16).toUpperCase());
+            label.setTextFormat(fmt);
+            label.background = true;
+            label.border = true;
+            label.selectable = false;
+            label.mouseEnabled = false;
+            swatch.addChild(label);
+            blockKeys(swatch);
+
+            var updater :Function = function (event :Event) :void {
+                if (field === foreground) {
+                    label.backgroundColor = parseInt(background.text, 16);
+                    label.textColor = color;
+                } else {
+                    label.backgroundColor = color;
+                    label.textColor = parseInt(foreground.text, 16);
+                }
+            };
+            updater(null);
+
+            swatch.addEventListener(MouseEvent.CLICK, function (event :MouseEvent) :void {
+                field.text = label.text;
+                field.dispatchEvent(new Event(Event.CHANGE));
+            });
+            (field == foreground ? background : foreground).addEventListener(
+                Event.CHANGE, updater);
+
+            return swatch;
+        };
+        var createSwatches :Function = function (ox :int, oy :int, field :TextField) :void {
+            for (var ii :int = 0; ii < 8; ii++) {
+                for (var jj :int = 0; jj < 2; jj++) {
+                    var swatch :Sprite = createSwatch(webColors[ii*2 + jj], field);
+                    picker.addChild(swatch);
+                    swatch.x = ox +
+                        (fglabel.width + foreground.width + 3 - 2*swatch.width - 10)/2 +
+                            jj*(swatch.width + 10);
+                    swatch.y = oy + ii*(swatch.height + 5);
+                }
+            }
+        };
+        createSwatches(fglabel.x, fglabel.y + fglabel.height + 10, foreground);
+        createSwatches(bglabel.x, bglabel.y + bglabel.height + 10, background);
     }
 
     /**
@@ -283,14 +354,8 @@ public class ClientApp extends Sprite {
      */
     protected function setColors (foreground :String, background :String) :void
     {
-        var pad :Function = function (str :String) :String {
-            while (str.length < 6) {
-                str = "0" + str;
-            }
-            return str;
-        };
-        setCookie("foreground", foreground = pad(foreground));
-        setCookie("background", background = pad(background));
+        setCookie("foreground", foreground = padColor(foreground));
+        setCookie("background", background = padColor(background));
 
         var fg :uint = parseInt(foreground, 16);
         var bg :uint = parseInt(background, 16);
@@ -318,6 +383,17 @@ public class ClientApp extends Sprite {
                 }
             }
         }
+    }
+
+    /**
+     * Pads a color out to the full six digits.
+     */
+    protected function padColor (str :String) :String
+    {
+        while (str.length < 6) {
+            str = "0" + str;
+        }
+        return str;
     }
 
     /**
