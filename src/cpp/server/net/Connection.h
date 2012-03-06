@@ -84,9 +84,9 @@ public:
     Q_INVOKABLE void moveContents (int id, const QRect& source, const QPoint& dest, int fill);
 
     /**
-     * Sets the user's session id/token.
+     * Sets the a client cookie.
      */
-    Q_INVOKABLE void setSession (quint64 id, const QByteArray& token);
+    Q_INVOKABLE void setCookie (const QString& name, const QString& value);
 
 signals:
 
@@ -103,12 +103,12 @@ signals:
     /**
      * Fired when the user presses a key.
      */
-    void keyPressed (int key, QChar ch);
+    void keyPressed (int key, QChar ch, bool numpad);
 
     /**
      * Fired when the user releases a key.
      */
-    void keyReleased (int key, QChar ch);
+    void keyReleased (int key, QChar ch, bool numpad);
 
     /**
      * Fired when the user closes the window.

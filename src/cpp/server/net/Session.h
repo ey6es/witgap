@@ -136,12 +136,12 @@ protected slots:
     /**
      * Dispatches a key pressed event.
      */
-    void dispatchKeyPressed (int key, QChar ch);
+    void dispatchKeyPressed (int key, QChar ch, bool numpad);
 
     /**
      * Dispatches a key released event.
      */
-    void dispatchKeyReleased (int key, QChar ch);
+    void dispatchKeyReleased (int key, QChar ch, bool numpad);
 
 protected:
 

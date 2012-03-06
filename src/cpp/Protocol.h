@@ -61,16 +61,30 @@ const quint8 MOUSE_RELEASED_MSG = 1;
 const quint8 KEY_PRESSED_MSG = 2;
 
 /**
+ * Client -> server: a key was pressed on the number pad.  Data:
+ *     key : quint32 : the Qt key code
+ *     char : quint16 : the Unicode character
+ */
+const quint8 KEY_PRESSED_NUMPAD_MSG = 3;
+
+/**
  * Client -> server: a key was released.  Data:
  *     key : quint32 : the Qt key code
  *     char : quint16 : the Unicode character
  */
-const quint8 KEY_RELEASED_MSG = 3;
+const quint8 KEY_RELEASED_MSG = 4;
+
+/**
+ * Client -> server: a key was released on the number pad.  Data:
+ *     key : quint32 : the Qt key code
+ *     char : quint16 : the Unicode character
+ */
+const quint8 KEY_RELEASED_NUMPAD_MSG = 5;
 
 /**
  * Client -> server: the window was closed.  No data.
  */
-const quint8 WINDOW_CLOSED_MSG = 4;
+const quint8 WINDOW_CLOSED_MSG = 6;
 
 /**
  * Server -> client: add or update a window.  Data:
@@ -115,11 +129,12 @@ const quint8 SET_CONTENTS_MSG = 2;
 const quint8 MOVE_CONTENTS_MSG = 3;
 
 /**
- * Server -> client: set the session id/token.  Data:
- *     id : quint64 : the new persistent session id
- *     token : char[16] : the new randomly generated token
+ * Server -> client: set a client cookie.  Data:
+ *     nameLength : quint16 : the length of the name string in bytes
+ *     name : char[nameLength] : the UTF-8 encoded name string
+ *     value : char[length - 3 - nameLength] : the UTF-8 encoded value string
  */
-const quint8 SET_SESSION_MSG = 4;
+const quint8 SET_COOKIE_MSG = 4;
 
 /**
  * Server -> client: a compound message follows.  The data is simply a series of normally-encoded

@@ -35,6 +35,7 @@ import flash.text.TextFormat;
 
 import flash.ui.ContextMenu;
 import flash.ui.ContextMenuItem;
+import flash.ui.KeyLocation;
 import flash.ui.Keyboard;
 
 import flash.utils.ByteArray;
@@ -197,6 +198,7 @@ public class ClientApp extends Sprite {
         var fmt :TextFormat = new TextFormat();
         fmt.font = "_typewriter";
 
+        // we block key event propagation to prevent it from reaching the server
         var blockKeys :Function = function (obj :EventDispatcher) :void {
             obj.addEventListener(KeyboardEvent.KEY_DOWN, function (event :KeyboardEvent) :void {
                 event.stopPropagation();
@@ -205,6 +207,8 @@ public class ClientApp extends Sprite {
                 event.stopPropagation();
             });
         };
+
+        // create the OK button that closes the window
         var createState :Function = function (color :uint, down :Boolean) :Sprite {
             var state :Sprite = new Sprite();
             var tf :TextField = new TextField();
@@ -233,6 +237,7 @@ public class ClientApp extends Sprite {
         ok.x = (picker.width - ok.width) / 2;
         ok.y = picker.height - ok.height*3/2;
 
+        // create the foreground and background labels
         var createLabel :Function = function (text :String) :TextField {
             var label :TextField = new TextField();
             label.autoSize = TextFieldAutoSize.LEFT;
@@ -246,6 +251,7 @@ public class ClientApp extends Sprite {
         var bglabel :TextField = createLabel("Background:");
         picker.addChild(bglabel);
 
+        // create the foreground and background text fields
         var createField :Function = function (text :String) :TextField {
             var field :TextField = new TextField();
             field.width = fglabel.width * 6.75 / fglabel.text.length;
@@ -463,8 +469,10 @@ public class ClientApp extends Sprite {
         if (!_socket.connected) {
             return;
         }
+        var numpad :Boolean = (event.keyLocation == KeyLocation.NUM_PAD);
         _socket.writeByte(event.type == KeyboardEvent.KEY_DOWN ?
-            KEY_PRESSED_MSG : KEY_RELEASED_MSG);
+            (numpad ? KEY_PRESSED_NUMPAD_MSG : KEY_PRESSED_MSG) :
+            (numpad ? KEY_RELEASED_NUMPAD_MSG : KEY_RELEASED_MSG));
         _socket.writeUnsignedInt(getQtKeyCode(event));
         _socket.writeShort(event.charCode);
         _socket.flush();
@@ -533,9 +541,8 @@ public class ClientApp extends Sprite {
                     new Point(bytes.readShort(), bytes.readShort()), bytes.readInt());
                 break;
 
-            case SET_SESSION_MSG:
-                setCookie("sessionId", readHexString(bytes, 8));
-                setCookie("sessionToken", readHexString(bytes, 16));
+            case SET_COOKIE_MSG:
+                setCookie(bytes.readUTF(), bytes.readUTFBytes(bytes.bytesAvailable));
                 break;
 
             case COMPOUND_MSG:
@@ -561,21 +568,6 @@ public class ClientApp extends Sprite {
     {
         return new Rectangle(bytes.readShort(), bytes.readShort(),
             bytes.readShort(), bytes.readShort());
-    }
-
-    /**
-     * Reads the specified number of bytes from the provided array and returns them as a hex
-     * string.
-     */
-    protected function readHexString (bytes :ByteArray, length :int) :String
-    {
-        var result :String = "";
-        for (var ii :int = 0; ii < length; ii++) {
-            // make sure each byte becomes two characters
-            var value :uint = bytes.readUnsignedByte();
-            result += (value / 16).toString(16) + (value % 16).toString(16);
-        }
-        return result;
     }
 
     /**
@@ -985,11 +977,17 @@ public class ClientApp extends Sprite {
     /** Outgoing message: key pressed. */
     protected static var KEY_PRESSED_MSG :int = 2;
 
+    /** Outgoing message: key pressed on the number pad. */
+    protected static var KEY_PRESSED_NUMPAD_MSG :int = 3;
+
     /** Outgoing message: key released. */
-    protected static var KEY_RELEASED_MSG :int = 3;
+    protected static var KEY_RELEASED_MSG :int = 4;
+
+    /** Outgoing message: key released on the number pad. */
+    protected static var KEY_RELEASED_NUMPAD_MSG :int = 5;
 
     /** Outgoing message: window closed. */
-    protected static var WINDOW_CLOSED_MSG :int = 4;
+    protected static var WINDOW_CLOSED_MSG :int = 6;
 
     /** Incoming message: add or update window. */
     protected static var UPDATE_WINDOW_MSG :int = 0;
@@ -1003,8 +1001,8 @@ public class ClientApp extends Sprite {
     /** Incoming message: move contents. */
     protected static var MOVE_CONTENTS_MSG :int = 3;
 
-    /** Incoming message: set session id/token. */
-    protected static var SET_SESSION_MSG :int = 4;
+    /** Incoming message: set cookie. */
+    protected static var SET_COOKIE_MSG :int = 4;
 
     /** Incoming message: compound. */
     protected static var COMPOUND_MSG :int = 5;

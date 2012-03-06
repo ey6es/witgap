@@ -10,7 +10,9 @@
                 var expires = new Date();
                 expires.setFullYear(expires.getFullYear() + 5);
                 document.cookie = key + "=" + escape(value) + "; expires=" + expires.toUTCString();
-                if (key == "background") {
+                if (key == "foreground") {
+                    document.body.style.color = "#" + value;
+                } else if (key == "background") {
                     document.body.style.backgroundColor = "#" + value;
                 }
             }

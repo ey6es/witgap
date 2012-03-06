@@ -34,7 +34,8 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id, const QByt
     _focus(0)
 {
     // send the session info back to the connection and activate it
-    connection->setSession(id, token);
+    connection->setCookie("sessionId", QString::number(id, 16).rightJustified(16, '0'));
+    connection->setCookie("sessionToken", token.toHex());
     setConnection(connection);
 
     showLogonDialog();
@@ -52,8 +53,10 @@ void Session::setConnection (Connection* connection)
     connect(_connection, SIGNAL(destroyed()), SLOT(clearConnection()));
     connect(_connection, SIGNAL(mousePressed(int,int)), SLOT(dispatchMousePressed(int,int)));
     connect(_connection, SIGNAL(mouseReleased(int,int)), SLOT(dispatchMouseReleased(int,int)));
-    connect(_connection, SIGNAL(keyPressed(int,QChar)), SLOT(dispatchKeyPressed(int,QChar)));
-    connect(_connection, SIGNAL(keyReleased(int,QChar)), SLOT(dispatchKeyReleased(int,QChar)));
+    connect(_connection, SIGNAL(keyPressed(int,QChar,bool)),
+        SLOT(dispatchKeyPressed(int,QChar,bool)));
+    connect(_connection, SIGNAL(keyReleased(int,QChar,bool)),
+        SLOT(dispatchKeyReleased(int,QChar,bool)));
     _connection->activate();
 
     // clear the modifiers
@@ -254,25 +257,29 @@ Qt::KeyboardModifier getModifier (int key)
     }
 }
 
-void Session::dispatchKeyPressed (int key, QChar ch)
+void Session::dispatchKeyPressed (int key, QChar ch, bool numpad)
 {
     // update our modifiers
     Qt::KeyboardModifier modifier = getModifier(key);
     if (modifier != Qt::NoModifier) {
         _modifiers |= modifier;
     }
-    QKeyEvent event(QEvent::KeyPress, key, _modifiers, ch == 0 ? QString() : QString(ch));
+    QKeyEvent event(QEvent::KeyPress, key,
+        _modifiers | (numpad ? Qt::KeypadModifier : Qt::NoModifier),
+        ch == 0 ? QString() : QString(ch));
     QCoreApplication::sendEvent(_focus == 0 ? this : (QObject*)_focus, &event);
 }
 
-void Session::dispatchKeyReleased (int key, QChar ch)
+void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
 {
     // update our modifiers
     Qt::KeyboardModifier modifier = getModifier(key);
     if (modifier != Qt::NoModifier) {
         _modifiers &= ~modifier;
     }
-    QKeyEvent event(QEvent::KeyRelease, key, _modifiers, ch == 0 ? QString() : QString(ch));
+    QKeyEvent event(QEvent::KeyRelease, key,
+        _modifiers | (numpad ? Qt::KeypadModifier : Qt::NoModifier),
+        ch == 0 ? QString() : QString(ch));
     QCoreApplication::sendEvent(_focus == 0 ? this : (QObject*)_focus, &event);
 }
 

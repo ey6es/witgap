@@ -108,12 +108,15 @@ void Connection::moveContents (int id, const QRect& source, const QPoint& dest, 
     _stream << (qint32)fill;
 }
 
-void Connection::setSession (quint64 id, const QByteArray& token)
+void Connection::setCookie (const QString& name, const QString& value)
 {
-    _stream << (quint16)25;
-    _stream << SET_SESSION_MSG;
-    _stream << id;
-    _socket->write(token);
+    QByteArray nbytes = name.toUtf8(), vbytes = value.toUtf8();
+
+    _stream << (quint16)(3 + nbytes.length() + vbytes.length());
+    _stream << SET_COOKIE_MSG;
+    _stream << (quint16)nbytes.length();
+    _socket->write(nbytes);
+    _socket->write(vbytes);
 }
 
 void Connection::readHeader ()
@@ -174,7 +177,9 @@ void Connection::readMessages ()
             _stream >> y;
             emit (type == MOUSE_PRESSED_MSG) ? mousePressed(x, y) : mouseReleased(x, y);
 
-        } else { // type == KEY_PRESSED_MSG || type == KEY_RELEASED_MSG
+        } else {
+            // type == KEY_PRESSED_MSG || type == KEY_PRESSED_NUMPAD_MSG ||
+            // type == KEY_RELEASED_MSG || type == KEY_RELEASED_NUMPAD_MSG
             if (available < 7) {
                 _socket->ungetChar(type);
                 return; // wait until we have the data
@@ -183,7 +188,20 @@ void Connection::readMessages ()
             quint16 ch;
             _stream >> key;
             _stream >> ch;
-            emit (type == KEY_PRESSED_MSG) ? keyPressed(key, ch) : keyReleased(key, ch);
+            switch (type) {
+                case KEY_PRESSED_MSG:
+                    emit keyPressed(key, ch, false);
+                    break;
+                case KEY_PRESSED_NUMPAD_MSG:
+                    emit keyPressed(key, ch, true);
+                    break;
+                case KEY_RELEASED_MSG:
+                    emit keyReleased(key, ch, false);
+                    break;
+                case KEY_RELEASED_NUMPAD_MSG:
+                    emit keyReleased(key, ch, true);
+                    break;
+            }
         }
     }
 }
