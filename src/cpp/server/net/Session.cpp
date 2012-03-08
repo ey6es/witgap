@@ -7,6 +7,7 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPoint>
+#include <QRegExp>
 #include <QtDebug>
 
 #include "ServerApp.h"
@@ -167,7 +168,13 @@ void Session::showInputDialog (
 
 void Session::showLogonDialog ()
 {
-    new LogonDialog(this);
+    if (_connection == 0) {
+        showLogonDialog("");
+        return;
+    }
+    Connection::requestCookieMetaMethod().invoke(_connection,
+        Q_ARG(const QString&, "username"), Q_ARG(const Callback&,
+            Callback(this, "showLogonDialog(QString)")));
 }
 
 void Session::clearConnection ()
@@ -283,46 +290,111 @@ void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
     QCoreApplication::sendEvent(_focus == 0 ? this : (QObject*)_focus, &event);
 }
 
-LogonDialog::LogonDialog (Session* parent) :
+void Session::showLogonDialog (const QString& username)
+{
+    new LogonDialog(this, username);
+}
+
+/** Expressions for partial and complete usernames. */
+const QRegExp PARTIAL_USERNAME("[a-zA-Z0-9]{0,16}"), FULL_USERNAME("[a-zA-Z0-9]{3,16}");
+
+/** Expressions for partial and complete passwords. */
+const QRegExp PARTIAL_PASSWORD(".{0,16}"), FULL_PASSWORD(".{6,16}");
+
+/** Month/day and year expressions. */
+const QRegExp MONTH_DAY("\\d{0,2}"), YEAR("\\d{0,4}");
+
+LogonDialog::LogonDialog (Session* parent, const QString& username) :
     Window(parent, parent->highestWindowLayer())
 {
     setModal(true);
     setBorder(new FrameBorder());
-    setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 0));
+    setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
+
+    addChild(_label = new Label("", Qt::AlignHCenter));
 
     TableLayout* ilayout = new TableLayout(2);
     ilayout->stretchColumns() += 1;
     Container* icont = new Container(ilayout);
     addChild(icont);
     icont->addChild(new Label(tr("Username:")));
-    _username = new TextField();
+    _username = new TextField(20, new RegExpDocument(PARTIAL_USERNAME, username, 16));
     icont->addChild(_username);
-    _username->connect(_username, SIGNAL(enterPressed()), SLOT(transferFocus()));
+    connect(_username, SIGNAL(textChanged()), SLOT(updateLogon()));
 
     icont->addChild(new Label(tr("Password:")));
-    _password = new PasswordField();
+    _password = new PasswordField(20, new RegExpDocument(PARTIAL_PASSWORD, "", 16));
     icont->addChild(_password);
+    connect(_password, SIGNAL(textChanged()), SLOT(updateLogon()));
+
+    icont->addChild(new Label(tr("Confirm Password:")));
+    _confirmPassword = new PasswordField(20, new RegExpDocument(PARTIAL_PASSWORD, "", 16));
+    icont->addChild(_confirmPassword);
+    connect(_confirmPassword, SIGNAL(textChanged()), SLOT(updateLogon()));
+
+    icont->addChild(new Label(tr("Date of Birth:")));
+    _month = new TextField(3, new RegExpDocument(MONTH_DAY, "", 2), true);
+    _month->setLabel(tr("MM"));
+    _day = new TextField(3, new RegExpDocument(MONTH_DAY, "", 2), true);
+    _day->setLabel(tr("DD"));
+    _year = new TextField(5, new RegExpDocument(YEAR, "", 4), true);
+    _year->setLabel(tr("YYYY"));
+    Container* dcont = BoxLayout::createHBox(
+        1, _month, new Label("/"),_day, new Label("/"), _year);
+    icont->addChild(dcont);
+
+    icont->addChild(new Label(tr("Email (Optional):")));
+    _email = new TextField(20);
+    icont->addChild(_email);
 
     Button* cancel = new Button(tr("Cancel"));
     connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
 
-    Button* create = new Button(tr("Create New Account"));
+    _toggleCreateMode = new Button();
+    connect(_toggleCreateMode, SIGNAL(pressed()), SLOT(toggleCreateMode()));
 
     _logon = new Button(tr("Logon"));
-    _logon->connect(_password, SIGNAL(enterPressed()), SLOT(doPress()));
     connect(_logon, SIGNAL(pressed()), SLOT(logon()));
-    _logon->setEnabled(false);
+    _logon->connect(_email, SIGNAL(enterPressed()), SLOT(doPress()));
 
-    addChild(new Spacer(1, 1));
-
-    addChild(BoxLayout::createHBox(2, cancel, create, _logon));
+    addChild(BoxLayout::createHBox(2, cancel, _toggleCreateMode, _logon));
 
     _username->requestFocus();
-    pack();
-    center();
+
+    setCreateMode(username.isEmpty());
+}
+
+void LogonDialog::updateLogon ()
+{
+    _logon->setEnabled(FULL_USERNAME.exactMatch(_username->text()) &&
+        FULL_PASSWORD.exactMatch(_password->text()));
 }
 
 void LogonDialog::logon ()
 {
     qDebug() << _username->text() << _password->text();
+}
+
+void LogonDialog::setCreateMode (bool createMode)
+{
+    if (_createMode = createMode) {
+        _label->setText(tr("Enter desired account details."));
+        _toggleCreateMode->setText(tr("I Have an Account"));
+        _logon->setText(tr("Create"));
+        _password->disconnect(_logon);
+    } else {
+        _label->setText(tr("Enter account details."));
+        _toggleCreateMode->setText(tr("Create New Account"));
+        _logon->setText(tr("Logon"));
+        _logon->connect(_password, SIGNAL(enterPressed()), SLOT(doPress()));
+    }
+    // everything after the fourth child is only for account creation
+    const QList<Component*>& children = _username->container()->children();
+    for (int ii = 4, nn = children.size(); ii < nn; ii++) {
+        children.at(ii)->setVisible(createMode);
+    }
+    _username->requestFocus();
+    updateLogon();
+    pack();
+    center();
 }

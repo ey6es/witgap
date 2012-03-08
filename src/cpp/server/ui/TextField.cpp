@@ -4,14 +4,17 @@
 #include "Protocol.h"
 #include "ui/TextField.h"
 
-Document::Document (const QString& text) :
-    _text(text)
+Document::Document (const QString& text, int maxLength) :
+    _text(text),
+    _maxLength(maxLength)
 {
 }
 
 void Document::insert (int idx, const QString& text)
 {
-    _text.insert(idx, text);
+    if (_text.length() + text.length() <= _maxLength) {
+        _text.insert(idx, text);
+    }
 }
 
 void Document::remove (int idx, int length)
@@ -19,22 +22,8 @@ void Document::remove (int idx, int length)
     _text.remove(idx, length);
 }
 
-LengthLimitedDocument::LengthLimitedDocument (int maxLength, const QString& text) :
-    Document(text),
-    _maxLength(maxLength)
-{
-}
-
-void LengthLimitedDocument::insert (int idx, const QString& text)
-{
-    int remaining = _maxLength - _text.length();
-    if (remaining > 0) {
-        _text.insert(idx, text.left(remaining));
-    }
-}
-
-RegExpDocument::RegExpDocument (const QRegExp& regExp, const QString& text) :
-    Document(text),
+RegExpDocument::RegExpDocument (const QRegExp& regExp, const QString& text, int maxLength) :
+    Document(text, maxLength),
     _regExp(regExp)
 {
 }
@@ -43,27 +32,33 @@ void RegExpDocument::insert (int idx, const QString& text)
 {
     QString ntext = _text;
     ntext.insert(idx, text);
-    if (_regExp.exactMatch(ntext)) {
+    if (_regExp.exactMatch(ntext) && ntext.length() <= _maxLength) {
         _text = ntext;
     }
 }
 
-TextField::TextField (int minWidth, Document* document, QObject* parent) :
+TextField::TextField (int minWidth, Document* document, bool rightAlign, QObject* parent) :
     Component(parent),
     _minWidth(minWidth),
     _document(document),
+    _rightAlign(rightAlign),
     _documentPos(0),
     _cursorPos(document->text().length())
 {
+    connect(this, SIGNAL(enterPressed()), SLOT(transferFocus()));
+    connect(this, SIGNAL(textFull()), SLOT(transferFocus()));
 }
 
-TextField::TextField (int minWidth, const QString& text, QObject* parent) :
+TextField::TextField (int minWidth, const QString& text, bool rightAlign, QObject* parent) :
     Component(parent),
     _minWidth(minWidth),
     _document(new Document(text)),
+    _rightAlign(rightAlign),
     _documentPos(0),
     _cursorPos(text.length())
 {
+    connect(this, SIGNAL(enterPressed()), SLOT(transferFocus()));
+    connect(this, SIGNAL(textFull()), SLOT(transferFocus()));
 }
 
 TextField::~TextField ()
@@ -90,6 +85,14 @@ void TextField::setDocument (Document* document)
     }
 }
 
+void TextField::setLabel (const QString& label)
+{
+    if (_label != label) {
+        _label = label;
+        Component::dirty();
+    }
+}
+
 QSize TextField::computePreferredSize (int whint, int hhint) const
 {
     return QSize(qMax(whint, _minWidth + 2), qMax(hhint, 1));
@@ -105,21 +108,40 @@ void TextField::draw (DrawContext* ctx) const
     Component::draw(ctx);
 
     // find the area within the margins
-    int x = _margins.left(), y = _margins.top(), width = textAreaWidth();
+    int x = _margins.left() + 1, y = _margins.top(), width = textAreaWidth();
 
     // draw the brackets
     int flags = _enabled ? 0 : DIM_FLAG;
-    ctx->drawChar(x, y, '[' | flags);
-    ctx->drawChar(x + width + 1, y, ']' | flags);
+    ctx->drawChar(x - 1, y, '[' | flags);
+    ctx->drawChar(x + width, y, ']' | flags);
 
-    // draw the visible portion of the contents
+    // draw the visible portion of the contents or the label, if appropriate
     int length = _document->text().length();
-    drawText(ctx, x + 1, y, _documentPos, qMin(length - _documentPos, width), flags);
+    if (length == 0) {
+        int llength = _label.length();
+        if (!_focused && llength > 0) {
+            int dwidth = qMin(llength, width);
+            ctx->drawString(x + (_rightAlign ? width - dwidth : 0), y,
+                _label.constData(), dwidth, DIM_FLAG);
+        }
+    } else {
+        if (_rightAlign && length < width) {
+            // when focused, we allocate extra space for the cursor
+            drawText(ctx, x + width - (_focused ? 1 : 0) - length, y, 0, length, flags);
+        } else {
+            drawText(ctx, x, y, _documentPos, qMin(length - _documentPos, width), flags);
+        }
+    }
 
     // draw the cursor if in focus
     if (_focused) {
-        ctx->drawChar(x + 1 + (_cursorPos - _documentPos), y,
-            REVERSE_FLAG | (_cursorPos < length ? cursorChar() : ' '));
+        if (_rightAlign && length < width) {
+            ctx->drawChar(x + width - length - 1 + _cursorPos, y,
+                REVERSE_FLAG | (_cursorPos < length ? cursorChar() : ' '));
+        } else {
+            ctx->drawChar(x + (_cursorPos - _documentPos), y,
+                REVERSE_FLAG | (_cursorPos < length ? cursorChar() : ' '));
+        }
     }
 }
 
@@ -135,12 +157,24 @@ int TextField::cursorChar () const
 
 void TextField::focusInEvent (QFocusEvent* e)
 {
-    dirty(_cursorPos, 1);
+    // if we're going to hide the label, we need to dirty the entire component
+    int dlength = _document->text().length();
+    if ((!_label.isEmpty() && dlength == 0) || (_rightAlign && dlength < textAreaWidth())) {
+        Component::dirty();
+    } else {
+        dirty(_cursorPos, 1);
+    }
 }
 
 void TextField::focusOutEvent (QFocusEvent* e)
 {
-    dirty(_cursorPos, 1);
+    // likewise if we're going to show the label
+    int dlength = _document->text().length();
+    if ((!_label.isEmpty() && dlength == 0) || (_rightAlign && dlength < textAreaWidth())) {
+        Component::dirty();
+    } else {
+        dirty(_cursorPos, 1);
+    }
 }
 
 void TextField::mouseButtonPressEvent (QMouseEvent* e)
@@ -151,7 +185,13 @@ void TextField::mouseButtonPressEvent (QMouseEvent* e)
     inner.setWidth(inner.width() - 1);
     if (inner.contains(e->pos())) {
         int opos = _cursorPos;
-        _cursorPos = qMin(_documentPos + e->pos().x() - inner.x(), _document->text().length());
+        int length = _document->text().length();
+        int fwidth = inner.width() - 1;
+        if (_rightAlign && length < fwidth) {
+            _cursorPos = qMax(e->pos().x() - inner.x() - fwidth + length, 0);
+        } else {
+            _cursorPos = qMin(_documentPos + e->pos().x() - inner.x(), length);
+        }
         dirty(_cursorPos, 1);
         dirty(opos, 1);
     }
@@ -169,6 +209,10 @@ void TextField::keyPressEvent (QKeyEvent* e)
             _cursorPos += delta;
             if (!updateDocumentPos()) {
                 dirty(_cursorPos - delta);
+            }
+            emit textChanged();
+            if (_document->full()) {
+                emit textFull();
             }
         }
         return;
@@ -259,6 +303,7 @@ void TextField::keyPressEvent (QKeyEvent* e)
                 if (!updateDocumentPos()) {
                     dirty(_cursorPos);
                 }
+                emit textChanged();
             }
             break;
         case Qt::Key_Delete:
@@ -267,6 +312,7 @@ void TextField::keyPressEvent (QKeyEvent* e)
                 if (!updateDocumentPos()) {
                     dirty(_cursorPos);
                 }
+                emit textChanged();
             }
             break;
         case Qt::Key_Return:
@@ -296,13 +342,26 @@ void TextField::dirty (int idx)
 {
     // dirty the lesser of the remaining document (plus one for a
     // possibly deleted character) and what's visible
-    dirty(idx, qMin(_document->text().length() - idx + 2,
-        textAreaWidth() - idx + _documentPos));
+    int dlength = _document->text().length();
+    int width = textAreaWidth();
+    if (_rightAlign && dlength < width) {
+        dirty(-1, idx + 2);
+    } else {
+        dirty(idx, qMin(dlength - idx + 2, width - idx + _documentPos));
+    }
 }
 
 void TextField::dirty (int idx, int length)
 {
-    Component::dirty(QRect(_margins.right() + 1 + idx - _documentPos, _margins.top(), length, 1));
+    int dlength = _document->text().length();
+    int width = textAreaWidth();
+    if (_rightAlign && dlength < width) {
+        Component::dirty(QRect(_margins.right() + width - dlength + idx,
+            _margins.top(), length, 1));
+    } else {
+        Component::dirty(QRect(_margins.right() + 1 + idx - _documentPos,
+            _margins.top(), length, 1));
+    }
 }
 
 int TextField::textAreaWidth () const

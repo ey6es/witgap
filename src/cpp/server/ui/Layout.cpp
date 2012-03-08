@@ -27,10 +27,11 @@ bool Layout::transferFocus (
  * they are non-zero.
  */
 static void addChildren (
-    Container* container, Component* c0, Component* c1, Component* c2, Component* c3)
+    Container* container, Component* c0, Component* c1, Component* c2, Component* c3,
+    Component* c4, Component* c5, Component* c6, Component* c7)
 {
-    Component* components[] = { c0, c1, c2, c3 };
-    for (int ii = 0; ii < 4; ii++) {
+    Component* components[] = { c0, c1, c2, c3, c4, c5, c6, c7 };
+    for (int ii = 0; ii < 8; ii++) {
         if (components[ii] != 0) {
             container->addChild(components[ii]);
         }
@@ -38,38 +39,42 @@ static void addChildren (
 }
 
 Container* BoxLayout::createHBox (
-    int gap, Component* c0, Component* c1, Component* c2, Component* c3)
+    int gap, Component* c0, Component* c1, Component* c2, Component* c3,
+    Component* c4, Component* c5, Component* c6, Component* c7)
 {
     Container* container = new Container(
         new BoxLayout(Qt::Horizontal, NoPolicy, Qt::AlignCenter, gap));
-    addChildren(container, c0, c1, c2, c3);
+    addChildren(container, c0, c1, c2, c3, c4, c5, c6, c7);
     return container;
 }
 
 Container* BoxLayout::createVBox (
-    int gap, Component* c0, Component* c1, Component* c2, Component* c3)
+    int gap, Component* c0, Component* c1, Component* c2, Component* c3,
+    Component* c4, Component* c5, Component* c6, Component* c7)
 {
     Container* container = new Container(
         new BoxLayout(Qt::Vertical, NoPolicy, Qt::AlignCenter, gap));
-    addChildren(container, c0, c1, c2, c3);
+    addChildren(container, c0, c1, c2, c3, c4, c5, c6, c7);
     return container;
 }
 
 Container* BoxLayout::createHStretchBox (
-    int gap, Component* c0, Component* c1, Component* c2, Component* c3)
+    int gap, Component* c0, Component* c1, Component* c2, Component* c3,
+    Component* c4, Component* c5, Component* c6, Component* c7)
 {
     Container* container = new Container(
         new BoxLayout(Qt::Horizontal, HStretch | VStretch, Qt::AlignCenter, gap));
-    addChildren(container, c0, c1, c2, c3);
+    addChildren(container, c0, c1, c2, c3, c4, c5, c6, c7);
     return container;
 }
 
 Container* BoxLayout::createVStretchBox (
-    int gap, Component* c0, Component* c1, Component* c2, Component* c3)
+    int gap, Component* c0, Component* c1, Component* c2, Component* c3,
+    Component* c4, Component* c5, Component* c6, Component* c7)
 {
     Container* container = new Container(
         new BoxLayout(Qt::Vertical, HStretch | VStretch, Qt::AlignCenter, gap));
-    addChildren(container, c0, c1, c2, c3);
+    addChildren(container, c0, c1, c2, c3, c4, c5, c6, c7);
     return container;
 }
 
@@ -84,13 +89,16 @@ BoxLayout::BoxLayout (
 
 QSize BoxLayout::computePreferredSize (const Container* container, int whint, int hhint) const
 {
-    int ncomps = container->children().size();
-    int tgap = (ncomps > 1) ? (ncomps - 1) * _gap : 0;
+    int vcount = container->visibleChildCount();
+    int tgap = (vcount > 1) ? (vcount - 1) * _gap : 0;
     if (_orientation == Qt::Horizontal) {
         int nhhint = _policy.testFlag(VStretch) ? hhint : -1;
         int totalWidth = 0;
         int maxHeight = 0;
         foreach (Component* comp, container->children()) {
+            if (!comp->visible()) {
+                continue;
+            }
             QSize size = comp->preferredSize(-1, nhhint);
             totalWidth += size.width();
             maxHeight = qMax(maxHeight, size.height());
@@ -102,6 +110,9 @@ QSize BoxLayout::computePreferredSize (const Container* container, int whint, in
         int maxWidth = 0;
         int totalHeight = 0;
         foreach (Component* comp, container->children()) {
+            if (!comp->visible()) {
+                continue;
+            }
             QSize size = comp->preferredSize(nwhint, -1);
             maxWidth = qMax(maxWidth, size.width());
             totalHeight += size.height();
@@ -116,11 +127,11 @@ void BoxLayout::apply (Container* container) const
     QRect inner = container->innerRect();
     int x = inner.x(), y = inner.y(), width = inner.width(), height = inner.height();
 
-    // if we have 16 children or fewer, we can keep their sizes on the stack
+    // if we have 16 visible children or fewer, we can keep their sizes on the stack
     const QList<Component*>& children = container->children();
     int ncomps = children.size();
-    int tgap = (ncomps > 1) ? (ncomps - 1) * _gap : 0;
-    QVarLengthArray<QSize, 16> psizes(ncomps);
+    int vcount = container->visibleChildCount();
+    QVarLengthArray<QSize, 16> psizes(vcount);
 
     // gather bits we need for both orientations
     bool hstretch = _policy.testFlag(HStretch);
@@ -128,15 +139,19 @@ void BoxLayout::apply (Container* container) const
     int halign = _alignment & Qt::AlignHorizontal_Mask;
     int valign = _alignment & Qt::AlignVertical_Mask;
 
+    int tgap = (vcount > 1) ? (vcount - 1) * _gap : 0;
     if (_orientation == Qt::Horizontal) {
         // get the preferred sizes and compute the total width
         int hhint = vstretch ? height : -1;
         int totalWidth = 0;
         int nnfixed = 0;
-        for (int ii = 0; ii < ncomps; ii++) {
+        for (int ii = 0, idx = 0; ii < ncomps; ii++) {
             Component* comp = children.at(ii);
+            if (!comp->visible()) {
+                continue;
+            }
             QSize size = comp->preferredSize(-1, hhint);
-            psizes[ii] = size;
+            psizes[idx++] = size;
             totalWidth += size.width();
             if (comp->constraint().toInt() != Fixed) {
                 nnfixed++;
@@ -149,9 +164,13 @@ void BoxLayout::apply (Container* container) const
             // distribute the extra space amongst the non-fixed components
             int extra = (width - totalWidth) / nnfixed;
             int remainder = (width - totalWidth) % nnfixed;
-            for (int ii = 0; ii < ncomps; ii++) {
-                if (children.at(ii)->constraint().toInt() != Fixed) {
-                    QSize& psize = psizes[ii];
+            for (int ii = 0, idx = 0; ii < ncomps; ii++) {
+                Component* comp = children.at(ii);
+                if (!comp->visible()) {
+                    continue;
+                }
+                QSize& psize = psizes[idx++];
+                if (comp->constraint().toInt() != Fixed) {
                     psize.rwidth() += extra;
                     if (remainder-- > 0) {
                         psize.rwidth()++;
@@ -167,8 +186,12 @@ void BoxLayout::apply (Container* container) const
         }
 
         // adjust for vertical stretching and alignment, apply
-        for (int ii = 0; ii < ncomps; ii++) {
-            const QSize& psize = psizes[ii];
+        for (int ii = 0, idx = 0; ii < ncomps; ii++) {
+            Component* comp = children.at(ii);
+            if (!comp->visible()) {
+                continue;
+            }
+            const QSize& psize = psizes[idx++];
             QRect bounds(x, y, psize.width(), height);
             if (!vstretch) {
                 int cheight = psize.height();
@@ -179,7 +202,7 @@ void BoxLayout::apply (Container* container) const
                 }
                 bounds.setHeight(cheight);
             }
-            children.at(ii)->setBounds(bounds);
+            comp->setBounds(bounds);
             x += bounds.width() + _gap;
         }
     } else { // _orientation == Qt::Vertical
@@ -187,10 +210,13 @@ void BoxLayout::apply (Container* container) const
         int whint = hstretch ? width : -1;
         int totalHeight = 0;
         int nnfixed = 0;
-        for (int ii = 0; ii < ncomps; ii++) {
+        for (int ii = 0, idx = 0; ii < ncomps; ii++) {
             Component* comp = children.at(ii);
+            if (!comp->visible()) {
+                continue;
+            }
             QSize size = comp->preferredSize(whint, -1);
-            psizes[ii] = size;
+            psizes[idx++] = size;
             totalHeight += size.height();
             if (comp->constraint().toInt() != Fixed) {
                 nnfixed++;
@@ -203,9 +229,13 @@ void BoxLayout::apply (Container* container) const
             // distribute the extra space amongst the non-fixed components
             int extra = (height - totalHeight) / nnfixed;
             int remainder = (height - totalHeight) % nnfixed;
-            for (int ii = 0; ii < ncomps; ii++) {
-                if (children.at(ii)->constraint().toInt() != Fixed) {
-                    QSize& psize = psizes[ii];
+            for (int ii = 0, idx = 0; ii < ncomps; ii++) {
+                Component* comp = children.at(ii);
+                if (!comp->visible()) {
+                    continue;
+                }
+                QSize& psize = psizes[idx++];
+                if (comp->constraint().toInt() != Fixed) {
                     psize.rheight() += extra;
                     if (remainder-- > 0) {
                         psize.rheight()++;
@@ -221,8 +251,12 @@ void BoxLayout::apply (Container* container) const
         }
 
         // adjust for horizontal stretching and alignment, apply
-        for (int ii = 0; ii < ncomps; ii++) {
-            const QSize& psize = psizes[ii];
+        for (int ii = 0, idx = 0; ii < ncomps; ii++) {
+            Component* comp = children.at(ii);
+            if (!comp->visible()) {
+                continue;
+            }
+            const QSize& psize = psizes[idx++];
             QRect bounds(x, y, width, psize.height());
             if (!hstretch) {
                 int cwidth = psize.width();
@@ -233,7 +267,7 @@ void BoxLayout::apply (Container* container) const
                 }
                 bounds.setWidth(cwidth);
             }
-            children.at(ii)->setBounds(bounds);
+            comp->setBounds(bounds);
             y += bounds.height() + _gap;
         }
     }
@@ -251,17 +285,22 @@ QSize TableLayout::computePreferredSize (const Container* container, int whint, 
 {
     const QList<Component*>& children = container->children();
     int ncomps = children.size();
-    int ncols = (_columns == -1) ? (ncomps / _rows + (ncomps % _rows == 0 ? 0 : 1)) : _columns;
-    int nrows = (_rows == -1) ? (ncomps / _columns + (ncomps % _columns == 0 ? 0 : 1)) : _rows;
+    int vcount = container->visibleChildCount();
+    int ncols = (_columns == -1) ? (vcount / _rows + (vcount % _rows == 0 ? 0 : 1)) : _columns;
+    int nrows = (_rows == -1) ? (vcount / _columns + (vcount % _columns == 0 ? 0 : 1)) : _rows;
     QVarLengthArray<int, 16> widths(ncols), heights(nrows);
     qFill(widths.data(), widths.data() + ncols, 0);
     qFill(heights.data(), heights.data() + nrows, 0);
 
     // find the maximum height of all rows and columns
-    for (int ii = 0; ii < ncomps; ii++) {
+    for (int ii = 0, idx = 0; ii < ncomps; ii++) {
+        Component* comp = children.at(ii);
+        if (!comp->visible()) {
+            continue;
+        }
         int row, column;
-        getRowAndColumn(ii, &row, &column);
-        QSize size = children.at(ii)->preferredSize(-1, -1);
+        getRowAndColumn(idx++, &row, &column);
+        QSize size = comp->preferredSize(-1, -1);
         widths[column] = qMax(widths[column], size.width());
         heights[row] = qMax(heights[row], size.height());
     }
@@ -278,17 +317,22 @@ void TableLayout::apply (Container* container) const
 {
     const QList<Component*>& children = container->children();
     int ncomps = children.size();
-    int ncols = (_columns == -1) ? (ncomps / _rows + (ncomps % _rows == 0 ? 0 : 1)) : _columns;
-    int nrows = (_rows == -1) ? (ncomps / _columns + (ncomps % _columns == 0 ? 0 : 1)) : _rows;
+    int vcount = container->visibleChildCount();
+    int ncols = (_columns == -1) ? (vcount / _rows + (vcount % _rows == 0 ? 0 : 1)) : _columns;
+    int nrows = (_rows == -1) ? (vcount / _columns + (vcount % _columns == 0 ? 0 : 1)) : _rows;
     QVarLengthArray<int, 16> widths(ncols), heights(nrows);
     qFill(widths.data(), widths.data() + ncols, 0);
     qFill(heights.data(), heights.data() + nrows, 0);
 
     // find the maximum height of all rows and columns
-    for (int ii = 0; ii < ncomps; ii++) {
+    for (int ii = 0, idx = 0; ii < ncomps; ii++) {
+        Component* comp = children.at(ii);
+        if (!comp->visible()) {
+            continue;
+        }
         int row, column;
-        getRowAndColumn(ii, &row, &column);
-        QSize size = children.at(ii)->preferredSize(-1, -1);
+        getRowAndColumn(idx++, &row, &column);
+        QSize size = comp->preferredSize(-1, -1);
         widths[column] = qMax(widths[column], size.width());
         heights[row] = qMax(heights[row], size.height());
     }
@@ -332,10 +376,14 @@ void TableLayout::apply (Container* container) const
     }
 
     // position the children
-    for (int ii = 0; ii < ncomps; ii++) {
+    for (int ii = 0, idx = 0; ii < ncomps; ii++) {
+        Component* comp = children.at(ii);
+        if (!comp->visible()) {
+            continue;
+        }
         int row, column;
-        getRowAndColumn(ii, &row, &column);
-        children.at(ii)->setBounds(QRect(
+        getRowAndColumn(idx++, &row, &column);
+        comp->setBounds(QRect(
             x + accumulate(widths.data(), widths.data() + column, column * _columnGap),
             y + accumulate(heights.data(), heights.data() + row, row * _rowGap),
             widths[column], heights[row]));
@@ -360,6 +408,9 @@ void TableLayout::getRowAndColumn (int idx, int* row, int* column) const
 static void findBorderComponents (const QList<Component*> children, Component* comps[])
 {
     foreach (Component* comp, children) {
+        if (!comp->visible()) {
+            continue;
+        }
         bool ok;
         int idx = comp->constraint().toInt(&ok);
         if (ok && idx >= 0 && idx < 5) {

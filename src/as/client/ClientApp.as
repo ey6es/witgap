@@ -545,10 +545,18 @@ public class ClientApp extends Sprite {
                 setCookie(bytes.readUTF(), bytes.readUTFBytes(bytes.bytesAvailable));
                 break;
 
-            case COMPOUND_MSG:
-                while (bytes.bytesAvailable > 0) {
-                    decodeMessage(bytes);
-                }
+            case REQUEST_COOKIE_MSG:
+                var requestId :uint = bytes.readUnsignedInt();
+                var name :String = bytes.readUTFBytes(bytes.bytesAvailable);
+
+                // immediately write out the cookie value
+                _socket.writeByte(REPORT_COOKIE_MSG);
+                var out :ByteArray = new ByteArray();
+                out.writeUnsignedInt(requestId);
+                out.writeUTFBytes(getCookie(name, ""));
+                _socket.writeShort(out.length);
+                _socket.writeBytes(out);
+                _socket.flush();
                 break;
 
             case CLOSE_MSG:
@@ -986,8 +994,11 @@ public class ClientApp extends Sprite {
     /** Outgoing message: key released on the number pad. */
     protected static var KEY_RELEASED_NUMPAD_MSG :int = 5;
 
+    /** Outgoing message: report cookie value. */
+    protected static var REPORT_COOKIE_MSG :int = 6;
+
     /** Outgoing message: window closed. */
-    protected static var WINDOW_CLOSED_MSG :int = 6;
+    protected static var WINDOW_CLOSED_MSG :int = 7;
 
     /** Incoming message: add or update window. */
     protected static var UPDATE_WINDOW_MSG :int = 0;
@@ -1004,8 +1015,8 @@ public class ClientApp extends Sprite {
     /** Incoming message: set cookie. */
     protected static var SET_COOKIE_MSG :int = 4;
 
-    /** Incoming message: compound. */
-    protected static var COMPOUND_MSG :int = 5;
+    /** Incoming message: request cookie. */
+    protected static var REQUEST_COOKIE_MSG :int = 5;
 
     /** Incoming message: close. */
     protected static var CLOSE_MSG :int = 6;

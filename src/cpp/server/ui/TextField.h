@@ -4,6 +4,8 @@
 #ifndef TEXT_FIELD
 #define TEXT_FIELD
 
+#include <limits>
+
 #include <QRegExp>
 
 #include "ui/Component.h"
@@ -18,7 +20,7 @@ public:
     /**
      * Creates a new document with the supplied initial text.
      */
-    Document (const QString& text = "");
+    Document (const QString& text = "", int maxLength = std::numeric_limits<int>::max());
 
     /**
      * Returns the text of the document.
@@ -35,30 +37,15 @@ public:
      */
     void remove (int idx, int length);
 
+    /**
+     * Checks whether the document has reached its maximum length.
+     */
+    bool full () const { return _text.length() == _maxLength; }
+
 protected:
 
     /** The text of the document. */
     QString _text;
-};
-
-/**
- * A document that limits the text length.
- */
-class LengthLimitedDocument : public Document
-{
-public:
-
-    /**
-     * Creates a new document with the supplied initial text.
-     */
-    LengthLimitedDocument (int maxLength, const QString& text = "");
-
-    /**
-     * Attempts to insert a string into the document.
-     */
-    virtual void insert (int idx, const QString& text);
-
-protected:
 
     /** The maximum allowed length. */
     int _maxLength;
@@ -74,7 +61,8 @@ public:
     /**
      * Creates a new document with the supplied initial text.
      */
-    RegExpDocument (const QRegExp& regExp, const QString& text = "");
+    RegExpDocument (const QRegExp& regExp, const QString& text = "",
+        int maxLength = std::numeric_limits<int>::max());
 
     /**
      * Attempts to insert a string into the document.
@@ -99,12 +87,14 @@ public:
     /**
      * Creates a new text field.
      */
-    TextField (int minWidth = 20, Document* document = new Document(), QObject* parent = 0);
+    TextField (int minWidth = 20, Document* document = new Document(),
+        bool rightAlign = false, QObject* parent = 0);
 
     /**
      * Creates a new text field.
      */
-    TextField (int minWidth, const QString& text, QObject* parent = 0);
+    TextField (int minWidth, const QString& text,
+        bool rightAlign = false, QObject* parent = 0);
 
     /**
      * Destroys the text field.
@@ -127,11 +117,31 @@ public:
     void setDocument (Document* document);
 
     /**
+     * Sets the label to display when the document is empty and the field lacks focus.
+     */
+    void setLabel (const QString& label);
+
+    /**
+     * Returns a reference to the label.
+     */
+    const QString& label () const { return _label; }
+
+    /**
      * Checks whether the component accepts input focus.
      */
-    virtual bool acceptsFocus () const { return _enabled; }
+    virtual bool acceptsFocus () const { return _enabled && _visible; }
 
 signals:
+
+    /**
+     * Emitted when the text has changed.
+     */
+    void textChanged ();
+
+    /**
+     * Emitted when the text is full (at maximum length).
+     */
+    void textFull ();
 
     /**
      * Emitted when the enter key is pressed.
@@ -213,11 +223,17 @@ protected:
     /** The document containing the contents. */
     Document* _document;
 
+    /** Whether or not to right-align the contents. */
+    bool _rightAlign;
+
     /** The position in the document. */
     int _documentPos;
 
     /** The cursor position. */
     int _cursorPos;
+
+    /** If not empty, a string to display when the document is blank and the field lacks focus. */
+    QString _label;
 };
 
 /**

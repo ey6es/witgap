@@ -4,12 +4,14 @@
 #ifndef CONNECTION
 #define CONNECTION
 
+#include <QHash>
 #include <QMetaMethod>
 #include <QPoint>
 #include <QRect>
 #include <QSize>
 #include <QTcpSocket>
 
+#include "util/Callback.h"
 #include "util/General.h"
 
 class ServerApp;
@@ -37,6 +39,16 @@ public:
      * Returns the meta-method for {@link #setContents}.
      */
     static const QMetaMethod& setContentsMetaMethod ();
+
+    /**
+     * Returns the meta-method for {@link #setCookie}.
+     */
+    static const QMetaMethod& setCookieMetaMethod ();
+
+    /**
+     * Returns the meta-method for {@link #requestCookie}.
+     */
+    static const QMetaMethod& requestCookieMetaMethod ();
 
     /**
      * Initializes the connection.
@@ -87,6 +99,13 @@ public:
      * Sets the a client cookie.
      */
     Q_INVOKABLE void setCookie (const QString& name, const QString& value);
+
+    /**
+     * Requests a client cookie.
+     *
+     * @param callback the callback to invoke with the value, when received.
+     */
+    Q_INVOKABLE void requestCookie (const QString& name, const Callback& callback);
 
 signals:
 
@@ -145,6 +164,12 @@ protected:
 
     /** The display size reported by the client. */
     QSize _displaySize;
+
+    /** The last cookie request id generated. */
+    quint32 _lastCookieRequestId;
+
+    /** Maps outstanding cookie request ids to their corresponding callbacks. */
+    QHash<quint32, Callback> _cookieRequests;
 };
 
 #endif // CONNECTION

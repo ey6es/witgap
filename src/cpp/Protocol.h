@@ -7,7 +7,7 @@
 #include <QtGlobal>
 
 /**
- * Notes: the protocol is binary, message-based, and uses network byte order and Qt streaming.
+ * Notes: the protocol is binary, message-based, and uses network byte order.
  *
  * The client initiates communication by sending the preamble, which consists of:
  *     PROTOCOL_MAGIC : quint32
@@ -82,9 +82,17 @@ const quint8 KEY_RELEASED_MSG = 4;
 const quint8 KEY_RELEASED_NUMPAD_MSG = 5;
 
 /**
+ * Client -> server: report cookie value.  Data:
+ *     length : quint16 : the length of the following data
+ *     id : quint32 : the request id
+ *     value : char[length - 4] : the UTF-8 encoded cookie value
+ */
+const quint8 REPORT_COOKIE_MSG = 6;
+
+/**
  * Client -> server: the window was closed.  No data.
  */
-const quint8 WINDOW_CLOSED_MSG = 6;
+const quint8 WINDOW_CLOSED_MSG = 7;
 
 /**
  * Server -> client: add or update a window.  Data:
@@ -137,10 +145,11 @@ const quint8 MOVE_CONTENTS_MSG = 3;
 const quint8 SET_COOKIE_MSG = 4;
 
 /**
- * Server -> client: a compound message follows.  The data is simply a series of normally-encoded
- * messages.
+ * Server -> client: request a client cookie.  Data:
+ *     id : quint32 : the request id
+ *     name : char[length - 5] : the UTF-8 encoded name string
  */
-const quint8 COMPOUND_MSG = 5;
+const quint8 REQUEST_COOKIE_MSG = 5;
 
 /**
  * Server -> client: close the connection.  Data:

@@ -145,6 +145,11 @@ protected slots:
 
 protected:
 
+    /**
+     * Shows the logon dialog with the provided default username.
+     */
+    Q_INVOKABLE void showLogonDialog (const QString& username);
+
     /** The server application. */
     ServerApp* _app;
 
@@ -174,6 +179,7 @@ protected:
 };
 
 class Button;
+class Label;
 class PasswordField;
 class TextField;
 
@@ -188,10 +194,22 @@ public:
 
     /**
      * Initializes the dialog.
+     *
+     * @param username the username cookie, if any.
      */
-    LogonDialog (Session* parent);
+    LogonDialog (Session* parent, const QString& username);
 
 protected slots:
+
+    /**
+     * Updates the state of the logon/create button based on the input.
+     */
+    void updateLogon ();
+
+    /**
+     * Toggles the mode between create and logon.
+     */
+    void toggleCreateMode () { setCreateMode(!_createMode); };
 
     /**
      * Attempts to log on using the current information.
@@ -200,11 +218,34 @@ protected slots:
 
 protected:
 
+    /**
+     * Switches between account creation and logon mode.
+     */
+    void setCreateMode (bool createMode);
+
+    /** Whether or not we're currently in create mode. */
+    bool _createMode;
+
+    /** The instruction label. */
+    Label* _label;
+
     /** The username field. */
     TextField* _username;
 
     /** The password field. */
     PasswordField* _password;
+
+    /** The confirm password field. */
+    PasswordField* _confirmPassword;
+
+    /** The month, day, and year fields. */
+    TextField* _month, *_day, *_year;
+
+    /** The email field. */
+    TextField* _email;
+
+    /** The create mode toggle button. */
+    Button* _toggleCreateMode;
 
     /** The logon button. */
     Button* _logon;

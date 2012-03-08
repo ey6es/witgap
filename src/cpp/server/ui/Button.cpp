@@ -12,6 +12,9 @@ Button::Button (const QIntVector& text, Qt::Alignment alignment, QObject* parent
 
 void Button::doPress ()
 {
+    if (!_enabled) {
+        return;
+    }
     if (!_focused) {
         requestFocus();
     }

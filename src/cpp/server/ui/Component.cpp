@@ -13,7 +13,8 @@ Component::Component (QObject* parent) :
     _background(0),
     _valid(false),
     _focused(false),
-    _enabled(true)
+    _enabled(true),
+    _visible(true)
 {
     // connect slots
     connect(this, SIGNAL(boundsChanged()), SLOT(invalidate()));
@@ -145,6 +146,14 @@ void Component::setEnabled (bool enabled)
     }
 }
 
+void Component::setVisible (bool visible)
+{
+    if (_visible != visible) {
+        _visible = visible;
+        invalidate();
+    }
+}
+
 void Component::maybeValidate ()
 {
     if (!_valid) {
@@ -155,7 +164,7 @@ void Component::maybeValidate ()
 
 void Component::maybeDraw (DrawContext* ctx) const
 {
-    if (ctx->isDirty(_bounds)) {
+    if (_visible && ctx->isDirty(_bounds)) {
         QPoint tl = _bounds.topLeft();
         ctx->translate(tl);
 
@@ -400,6 +409,17 @@ void Container::removeChild (Component* child)
     }
 }
 
+int Container::visibleChildCount () const
+{
+    int total = 0;
+    foreach (Component* child, _children) {
+        if (child->visible()) {
+            total++;
+        }
+    }
+    return total;
+}
+
 Component* Container::componentAt (QPoint pos, QPoint* relative)
 {
     foreach (Component* child, _children) {
@@ -415,6 +435,9 @@ Component* Container::componentAt (QPoint pos, QPoint* relative)
 
 bool Container::transferFocus (Component* from, Direction dir)
 {
+    if (!(_enabled && _visible)) {
+        return false;
+    }
     if (dir == Forward) {
         int ii = (from == 0) ? 0 : _children.indexOf(from) + 1;
         for (int nn = _children.length(); ii < nn; ii++) {

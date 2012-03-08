@@ -33,11 +33,26 @@ const QMetaMethod& Connection::setContentsMetaMethod ()
     return method;
 }
 
+const QMetaMethod& Connection::setCookieMetaMethod ()
+{
+    static QMetaMethod method = staticMetaObject.method(
+        staticMetaObject.indexOfMethod("setCookie(QString,QString)"));
+    return method;
+}
+
+const QMetaMethod& Connection::requestCookieMetaMethod ()
+{
+    static QMetaMethod method = staticMetaObject.method(
+        staticMetaObject.indexOfMethod("requestCookie(QString,Callback)"));
+    return method;
+}
+
 Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     QObject(app->connectionManager()),
     _app(app),
     _socket(socket),
-    _stream(socket)
+    _stream(socket),
+    _lastCookieRequestId(0)
 {
     // take over ownership of the socket
     _socket->setParent(this);
@@ -119,6 +134,18 @@ void Connection::setCookie (const QString& name, const QString& value)
     _socket->write(vbytes);
 }
 
+void Connection::requestCookie (const QString& name, const Callback& callback)
+{
+    QByteArray nbytes = name.toUtf8();
+
+    _stream << (quint16)(5 + nbytes.length());
+    _stream << REQUEST_COOKIE_MSG;
+    _stream << (quint32)(++_lastCookieRequestId);
+    _socket->write(nbytes);
+
+    _cookieRequests.insert(_lastCookieRequestId, callback);
+}
+
 void Connection::readHeader ()
 {
     // if we don't have the full header, wait until we do
@@ -166,6 +193,24 @@ void Connection::readMessages ()
         _socket->getChar(&type);
         if (type == WINDOW_CLOSED_MSG) {
             emit windowClosed();
+
+        } else if (type == REPORT_COOKIE_MSG) {
+            if (available < 3) {
+                _socket->ungetChar(type);
+                return; // wait until we have the length
+            }
+            quint16 length;
+            _stream >> length;
+            if (available < 3 + length) {
+                _socket->ungetChar(length & 0xFF);
+                _socket->ungetChar(length >> 16);
+                _socket->ungetChar(type);
+                return; // wait until we have the data
+            }
+            quint32 id;
+            _stream >> id;
+            QByteArray value = _socket->read(length - 4);
+            _cookieRequests.take(id).invoke(Q_ARG(const QString&, value));
 
         } else if (type == MOUSE_PRESSED_MSG || type == MOUSE_RELEASED_MSG) {
             if (available < 5) {

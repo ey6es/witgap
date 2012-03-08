@@ -24,7 +24,7 @@ public:
     /**
      * Checks whether the component accepts input focus.
      */
-    virtual bool acceptsFocus () const { return _enabled; }
+    virtual bool acceptsFocus () const { return _enabled && _visible; }
 
 signals:
 

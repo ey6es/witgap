@@ -20,6 +20,7 @@
 #include "util/General.h"
 
 class Border;
+class Container;
 class DrawContext;
 class Layout;
 class Session;
@@ -45,6 +46,11 @@ public:
      * Destroys the component.
      */
     virtual ~Component ();
+
+    /**
+     * Returns the parent of this component, if it is a container.
+     */
+    Container* container () const { return qobject_cast<Container*>(parent()); }
 
     /**
      * Returns a pointer to the session that owns the component.
@@ -132,6 +138,16 @@ public:
      * Checks whether the component is enabled.
      */
     bool enabled () const { return _enabled; }
+
+    /**
+     * Renders the component visible or invisible.
+     */
+    void setVisible (bool visible);
+
+    /**
+     * Checks whether the component is visible.
+     */
+    bool visible () const { return _visible; }
 
     /**
      * Validates the component if necessary.
@@ -287,6 +303,9 @@ protected:
 
     /** Whether or not the component is enabled. */
     bool _enabled;
+
+    /** Whether or not the component is visible. */
+    bool _visible;
 };
 
 /**
@@ -347,6 +366,11 @@ public:
      * Returns the container's child list.
      */
     const QList<Component*>& children () const { return _children; }
+
+    /**
+     * Returns the number of visible children in this container.
+     */
+    int visibleChildCount () const;
 
     /**
      * Finds the component at the specified coordinates and populates the supplied

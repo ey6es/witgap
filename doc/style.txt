@@ -46,3 +46,9 @@ whitespace between blocks
 100 columns
 
 casting: should prefer static_cast/qobject_cast rather than c-style
+
+prefer early breaks over deep nesting
+
+prefer pointers over references for in-out parameters
+
+indents are always four spaces; no tab characters

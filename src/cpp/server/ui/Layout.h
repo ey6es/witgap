@@ -67,27 +67,31 @@ public:
      * Convenience method to create a container with a horizontal box layout.
      */
     static Container* createHBox (
-        int gap = 2, Component* c0 = 0, Component* c1 = 0, Component* c2 = 0, Component* c3 = 0);
+        int gap = 2, Component* c0 = 0, Component* c1 = 0, Component* c2 = 0, Component* c3 = 0,
+        Component* c4 = 0, Component* c5 = 0, Component* c6 = 0, Component* c7 = 0);
 
     /**
      * Convenience method to create a container with a vertical box layout.
      */
     static Container* createVBox (
-        int gap = 0, Component* c0 = 0, Component* c1 = 0, Component* c2 = 0, Component* c3 = 0);
+        int gap = 0, Component* c0 = 0, Component* c1 = 0, Component* c2 = 0, Component* c3 = 0,
+        Component* c4 = 0, Component* c5 = 0, Component* c6 = 0, Component* c7 = 0);
 
     /**
      * Convenience method to create a container with a horizontal box layout that stretches
      * in both directions.
      */
     static Container* createHStretchBox (
-        int gap = 2, Component* c0 = 0, Component* c1 = 0, Component* c2 = 0, Component* c3 = 0);
+        int gap = 2, Component* c0 = 0, Component* c1 = 0, Component* c2 = 0, Component* c3 = 0,
+        Component* c4 = 0, Component* c5 = 0, Component* c6 = 0, Component* c7 = 0);
 
     /**
      * Convenience method to create a container with a vertical box layout that stretches
      * in both directions.
      */
     static Container* createVStretchBox (
-        int gap = 0, Component* c0 = 0, Component* c1 = 0, Component* c2 = 0, Component* c3 = 0);
+        int gap = 0, Component* c0 = 0, Component* c1 = 0, Component* c2 = 0, Component* c3 = 0,
+        Component* c4 = 0, Component* c5 = 0, Component* c6 = 0, Component* c7 = 0);
 
     /**
      * Creates a new box layout.
