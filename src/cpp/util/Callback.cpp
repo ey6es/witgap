@@ -7,7 +7,7 @@
 
 // register our types with the metatype system
 int callbackType = qRegisterMetaType<Callback>("Callback");
-int qWeakObjectPointerType = qRegisterMetaType<Callback>("QWeakObjectPointer");
+int qWeakObjectPointerType = qRegisterMetaType<QWeakObjectPointer>("QWeakObjectPointer");
 
 Callback::Callback (QObject* object, const char* method,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,

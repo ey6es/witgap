@@ -225,6 +225,12 @@ protected:
     Q_INVOKABLE void userMaybeInserted (quint32 id);
 
     /**
+     * If the result contains a UserRecord, the user was logged on; otherwise, the result
+     * will contain an error code.
+     */
+    Q_INVOKABLE void logonMaybeValidated (const QVariant& result);
+
+    /**
      * Switches between account creation and logon mode.
      */
     void setCreateMode (bool createMode);

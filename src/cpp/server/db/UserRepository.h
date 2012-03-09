@@ -19,6 +19,9 @@ class UserRepository : public QObject
 
 public:
 
+    /** The possible errors in logon validation. */
+    enum LogonError { NoError, NoSuchUser, WrongPassword, Banned };
+
     /**
      * Initializes the repository, performing any necessary migrations.
      */
@@ -37,10 +40,37 @@ public:
     /**
      * Attempts to validate a user logon.
      *
-     * @param callback the callback that will be invoked with...
+     * @param callback the callback that will be invoked with a QVariant containing either the
+     * {@link #LogonError} indicating why the logon was denied, or a {@link UserRecord} containing
+     * the user's information if successful.
      */
     Q_INVOKABLE void validateLogon (
         const QString& name, const QString& password, const Callback& callback);
 };
+
+/**
+ * Contains user information loaded from the database.
+ */
+class UserRecord
+{
+public:
+
+    /** User flags.  Do not change. */
+    enum Flag { Banned = 0x1 };
+
+    Q_DECLARE_FLAGS(Flags, Flag)
+
+    /** The user id. */
+    quint32 id;
+
+    /** The cased username. */
+    QString name;
+
+    /** The user's flags. */
+    Flags flags;
+};
+
+Q_DECLARE_METATYPE(UserRecord)
+Q_DECLARE_OPERATORS_FOR_FLAGS(UserRecord::Flags)
 
 #endif // USER_REPOSITORY

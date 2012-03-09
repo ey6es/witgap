@@ -7,6 +7,9 @@
 
 #include "db/UserRepository.h"
 
+// register our types with the metatype system
+int userRecordType = qRegisterMetaType<UserRecord>();
+
 void UserRepository::init ()
 {
     // create the table if it doesn't yet exist
@@ -73,6 +76,7 @@ void UserRepository::validateLogon (
 
     if (!query.next()) {
         // no such user
+        callback.invoke(Q_ARG(const QVariant&, QVariant(NoSuchUser)));
         return;
     }
 
@@ -81,12 +85,16 @@ void UserRepository::validateLogon (
     hash.addData(password.toUtf8());
     hash.addData(query.value(3).toByteArray());
     if (hash.result() != query.value(2)) {
-        // wrong password
+        callback.invoke(Q_ARG(const QVariant&, QVariant(WrongPassword)));
         return;
     }
 
     // check the flags; make sure they're not banned
-    quint32 flags = query.value(4).toUInt();
+    UserRecord::Flags flags = (UserRecord::Flags)query.value(4).toUInt();
+    if (flags.testFlag(UserRecord::Banned)) {
+        callback.invoke(Q_ARG(const QVariant&, QVariant(Banned)));
+        return;
+    }
 
     // get the other bits
     quint32 id = query.value(0).toUInt();
@@ -99,5 +107,6 @@ void UserRepository::validateLogon (
     query.exec();
 
     // report success
-
+    UserRecord urec = { id, casedName, flags };
+    callback.invoke(Q_ARG(const QVariant&, QVariant(userRecordType, &urec)));
 }

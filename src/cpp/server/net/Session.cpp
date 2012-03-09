@@ -357,7 +357,7 @@ LogonDialog::LogonDialog (ServerApp* app, Session* parent, const QString& userna
     icont->addChild(dcont);
 
     icont->addChild(new Label(tr("Email (Optional):")));
-    _email = new TextField(20, new RegExpDocument(PARTIAL_EMAIL));
+    _email = new TextField(20, new RegExpDocument(PARTIAL_EMAIL, "", 255));
     icont->addChild(_email);
     connect(_email, SIGNAL(textChanged()), SLOT(updateLogon()));
 
@@ -427,7 +427,7 @@ void LogonDialog::logon ()
         _logon->setEnabled(false);
         QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "validateLogon",
             Q_ARG(const QString&, _username->text()), Q_ARG(const QString&, _password->text()),
-            Q_ARG(const Callback&, Callback(this, "userMaybeInserted(quint32)")));
+            Q_ARG(const Callback&, Callback(this, "logonMaybeValidated(QVariant)")));
     }
 }
 
@@ -440,6 +440,28 @@ void LogonDialog::userMaybeInserted (quint32 id)
         _username->requestFocus();
         return;
     }
+}
+
+void LogonDialog::logonMaybeValidated (const QVariant& result)
+{
+    switch (result.toInt()) {
+        case UserRepository::NoSuchUser:
+            flashStatus(tr("No account exists with that username."));
+            _username->requestFocus();
+            break;
+        case UserRepository::WrongPassword:
+            flashStatus(tr("The password you have entered is incorrect."));
+            _password->requestFocus();
+            break;
+        case UserRepository::Banned:
+            flashStatus(tr("Your account has been banned from the game."));
+            return;
+        default:
+            UserRecord urec = qVariantValue<UserRecord>(result);
+            break;
+    }
+    _logonBlocked = false;
+    updateLogon();
 }
 
 void LogonDialog::setCreateMode (bool createMode)

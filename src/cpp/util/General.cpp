@@ -4,10 +4,13 @@
 #include <string.h>
 
 #include <QMetaType>
+#include <QVariant>
 
 #include "util/General.h"
 
+// register our types with the metatype system
 int qIntVectorType = qRegisterMetaType<QIntVector>("QIntVector");
+int qVariantType = qRegisterMetaType<QVariant>("QVariant");
 
 QIntVector::QIntVector ()
 {
