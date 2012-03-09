@@ -4,6 +4,7 @@
 #ifndef LABEL
 #define LABEL
 
+#include <QBasicTimer>
 #include <QPair>
 #include <QVector>
 
@@ -95,6 +96,50 @@ protected:
 
     /** The location and length of each line. */
     QVector<Line> _lines;
+};
+
+/**
+ * A label used for status updates.
+ */
+class StatusLabel : public Label
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the status label.
+     */
+    StatusLabel (const QIntVector& text = QIntVector(),
+        Qt::Alignment alignment = Qt::AlignHCenter | Qt::AlignVCenter, QObject* parent = 0);
+
+    /**
+     * Sets the label text, optionally flashing to draw attention to it.
+     */
+    void setStatus (const QIntVector& text, bool flash = false);
+
+protected:
+
+    /**
+     * Updates the margins after changing the border, etc.
+     */
+    virtual void updateMargins ();
+
+    /**
+     * Draws the component.
+     */
+    virtual void draw (DrawContext* ctx) const;
+
+    /**
+     * Handles a timer event.
+     */
+    virtual void timerEvent (QTimerEvent* e);
+
+    /** The timer that we use for flashes. */
+    QBasicTimer _timer;
+
+    /** The number of flashes remaining, if flashing. */
+    int _countdown;
 };
 
 #endif // LABEL

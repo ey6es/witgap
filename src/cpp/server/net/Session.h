@@ -181,6 +181,7 @@ protected:
 class Button;
 class Label;
 class PasswordField;
+class StatusLabel;
 class TextField;
 
 /**
@@ -197,7 +198,7 @@ public:
      *
      * @param username the username cookie, if any.
      */
-    LogonDialog (Session* parent, const QString& username);
+    LogonDialog (ServerApp* app, Session* parent, const QString& username);
 
 protected slots:
 
@@ -219,9 +220,22 @@ protected slots:
 protected:
 
     /**
+     * If the id is non-zero, the user was inserted with that id.
+     */
+    Q_INVOKABLE void userMaybeInserted (quint32 id);
+
+    /**
      * Switches between account creation and logon mode.
      */
     void setCreateMode (bool createMode);
+
+    /**
+     * Flashes the specified status message.
+     */
+    void flashStatus (const QString& status);
+
+    /** The server application. */
+    ServerApp* _app;
 
     /** Whether or not we're currently in create mode. */
     bool _createMode;
@@ -244,11 +258,17 @@ protected:
     /** The email field. */
     TextField* _email;
 
+    /** The status label. */
+    StatusLabel* _status;
+
     /** The create mode toggle button. */
     Button* _toggleCreateMode;
 
-    /** The logon button. */
-    Button* _logon;
+    /** The cancel and logon buttons. */
+    Button* _cancel, *_logon;
+
+    /** If true, we're blocking logon (for a database query, e.g.) */
+    bool _logonBlocked;
 };
 
 #endif // SESSION

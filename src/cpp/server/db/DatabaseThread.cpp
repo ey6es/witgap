@@ -1,6 +1,8 @@
 //
 // $Id$
 
+#include <time.h>
+
 #include <QtDebug>
 #include <QSqlDatabase>
 #include <QSqlError>
@@ -18,14 +20,19 @@ DatabaseThread::DatabaseThread (ServerApp* app) :
     _username(app->config().value("database_username").toString()),
     _password(app->config().value("database_password").toString()),
     _connectOptions(app->config().value("database_connect_options").toString()),
-    _sessionRepository(new SessionRepository())
+    _sessionRepository(new SessionRepository()),
+    _userRepository(new UserRepository())
 {
     // move the repositories to this thread
     _sessionRepository->moveToThread(this);
+    _userRepository->moveToThread(this);
 }
 
 void DatabaseThread::run ()
 {
+    // seed the random number generator for this thread
+    qsrand(clock());
+
     // connect to the configured database
     QString connectionName;
     {
@@ -40,9 +47,11 @@ void DatabaseThread::run ()
         if (db.open()) {
             // initialize repositories
             _sessionRepository->init();
+            _userRepository->init();
 
             // enter event loop
             exec();
+
         } else {
             qCritical() << "Failed to connect to database:" << db.lastError();
         }

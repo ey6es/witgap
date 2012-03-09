@@ -3,6 +3,7 @@
 
 #include <limits>
 
+#include <QDate>
 #include <QFocusEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -11,6 +12,7 @@
 #include <QtDebug>
 
 #include "ServerApp.h"
+#include "db/DatabaseThread.h"
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
@@ -292,7 +294,7 @@ void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
 
 void Session::showLogonDialog (const QString& username)
 {
-    new LogonDialog(this, username);
+    new LogonDialog(_app, this, username);
 }
 
 /** Expressions for partial and complete usernames. */
@@ -304,12 +306,20 @@ const QRegExp PARTIAL_PASSWORD(".{0,16}"), FULL_PASSWORD(".{6,16}");
 /** Month/day and year expressions. */
 const QRegExp MONTH_DAY("\\d{0,2}"), YEAR("\\d{0,4}");
 
-LogonDialog::LogonDialog (Session* parent, const QString& username) :
-    Window(parent, parent->highestWindowLayer())
+/** Partial and full email expressions (full from
+ * http://www.regular-expressions.info/regexbuddy/email.html). */
+const QRegExp PARTIAL_EMAIL("[a-zA-Z0-9._%-]*@?[a-zA-Z0-9.-]*\\.?[a-zA-Z]{0,4}");
+const QRegExp FULL_EMAIL("[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,4}");
+
+LogonDialog::LogonDialog (ServerApp* app, Session* parent, const QString& username) :
+    Window(parent, parent->highestWindowLayer()),
+    _app(app),
+    _logonBlocked(false)
 {
     setModal(true);
     setBorder(new FrameBorder());
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
+    setPreferredSize(QSize(43, -1));
 
     addChild(_label = new Label("", Qt::AlignHCenter));
 
@@ -335,20 +345,26 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
     icont->addChild(new Label(tr("Date of Birth:")));
     _month = new TextField(3, new RegExpDocument(MONTH_DAY, "", 2), true);
     _month->setLabel(tr("MM"));
+    connect(_month, SIGNAL(textChanged()), SLOT(updateLogon()));
     _day = new TextField(3, new RegExpDocument(MONTH_DAY, "", 2), true);
     _day->setLabel(tr("DD"));
+    connect(_day, SIGNAL(textChanged()), SLOT(updateLogon()));
     _year = new TextField(5, new RegExpDocument(YEAR, "", 4), true);
     _year->setLabel(tr("YYYY"));
+    connect(_year, SIGNAL(textChanged()), SLOT(updateLogon()));
     Container* dcont = BoxLayout::createHBox(
         1, _month, new Label("/"),_day, new Label("/"), _year);
     icont->addChild(dcont);
 
     icont->addChild(new Label(tr("Email (Optional):")));
-    _email = new TextField(20);
+    _email = new TextField(20, new RegExpDocument(PARTIAL_EMAIL));
     icont->addChild(_email);
+    connect(_email, SIGNAL(textChanged()), SLOT(updateLogon()));
 
-    Button* cancel = new Button(tr("Cancel"));
-    connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
+    addChild(_status = new StatusLabel());
+
+    _cancel = new Button(tr("Cancel"));
+    connect(_cancel, SIGNAL(pressed()), SLOT(deleteLater()));
 
     _toggleCreateMode = new Button();
     connect(_toggleCreateMode, SIGNAL(pressed()), SLOT(toggleCreateMode()));
@@ -357,7 +373,7 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
     connect(_logon, SIGNAL(pressed()), SLOT(logon()));
     _logon->connect(_email, SIGNAL(enterPressed()), SLOT(doPress()));
 
-    addChild(BoxLayout::createHBox(2, cancel, _toggleCreateMode, _logon));
+    addChild(BoxLayout::createHBox(2, _cancel, _toggleCreateMode, _logon));
 
     _username->requestFocus();
 
@@ -366,13 +382,64 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
 
 void LogonDialog::updateLogon ()
 {
-    _logon->setEnabled(FULL_USERNAME.exactMatch(_username->text()) &&
-        FULL_PASSWORD.exactMatch(_password->text()));
+    bool enableLogon = !_logonBlocked && FULL_USERNAME.exactMatch(_username->text()) &&
+        FULL_PASSWORD.exactMatch(_password->text());
+    if (!_createMode) {
+        _logon->setEnabled(enableLogon);
+        return;
+    }
+    QString email = _email->text().trimmed();
+    _logon->setEnabled(enableLogon && FULL_PASSWORD.exactMatch(_confirmPassword->text()) &&
+        QDate(_year->text().toInt(), _month->text().toInt(), _day->text().toInt()).isValid() &&
+        (email.isEmpty() || FULL_EMAIL.exactMatch(email)));
 }
 
 void LogonDialog::logon ()
 {
-    qDebug() << _username->text() << _password->text();
+    // pass the request on to the database
+    if (_createMode) {
+        // check the passwords
+        if (_password->text() != _confirmPassword->text()) {
+            flashStatus(tr("The passwords you entered do not match."));
+            _password->requestFocus();
+            return;
+        }
+
+        // check the date of birth
+        _logonBlocked = true;
+        _logon->setEnabled(false);
+        QDate dob(_year->text().toInt(), _month->text().toInt(), _day->text().toInt());
+        if (dob > QDate::currentDate().addYears(-13)) {
+            flashStatus(tr("Sorry, you must be at least 13 to create an account."));
+            _cancel->requestFocus();
+            return;
+        }
+
+        // send the request off to the database
+        QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "insertUser",
+            Q_ARG(const QString&, _username->text()), Q_ARG(const QString&, _password->text()),
+            Q_ARG(const QDate&, dob), Q_ARG(const QString&, _email->text().trimmed()),
+            Q_ARG(const Callback&, Callback(this, "userMaybeInserted(quint32)")));
+
+    } else {
+        // block logon and send off the request
+        _logonBlocked = true;
+        _logon->setEnabled(false);
+        QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "validateLogon",
+            Q_ARG(const QString&, _username->text()), Q_ARG(const QString&, _password->text()),
+            Q_ARG(const Callback&, Callback(this, "userMaybeInserted(quint32)")));
+    }
+}
+
+void LogonDialog::userMaybeInserted (quint32 id)
+{
+    if (id == 0) {
+        flashStatus(tr("Sorry, that account name is already taken.  Please choose another."));
+        _logonBlocked = false;
+        updateLogon();
+        _username->requestFocus();
+        return;
+    }
 }
 
 void LogonDialog::setCreateMode (bool createMode)
@@ -393,8 +460,17 @@ void LogonDialog::setCreateMode (bool createMode)
     for (int ii = 4, nn = children.size(); ii < nn; ii++) {
         children.at(ii)->setVisible(createMode);
     }
+    _status->setVisible(false);
     _username->requestFocus();
     updateLogon();
+    pack();
+    center();
+}
+
+void LogonDialog::flashStatus (const QString& status)
+{
+    _status->setVisible(true);
+    _status->setStatus(status, true);
     pack();
     center();
 }

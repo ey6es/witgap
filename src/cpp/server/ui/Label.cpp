@@ -168,3 +168,52 @@ void Label::draw (DrawContext* ctx) const
         y++;
     }
 }
+
+StatusLabel::StatusLabel (const QIntVector& text, Qt::Alignment alignment, QObject* parent) :
+    Label(text, alignment, parent),
+    _countdown(0)
+{
+    updateMargins();
+}
+
+void StatusLabel::setStatus (const QIntVector& text, bool flash)
+{
+    setText(text);
+    if (flash) {
+        // simulate a timer event for the first flash
+        _countdown = 6;
+        timerEvent(0);
+
+        // then run every 250 ms afterwards
+        _timer.start(400, this);
+    }
+}
+
+void StatusLabel::updateMargins ()
+{
+    Label::updateMargins();
+
+    // add space for highlights
+    _margins.setLeft(_margins.left() + 1);
+    _margins.setRight(_margins.right() + 1);
+}
+
+void StatusLabel::draw (DrawContext* ctx) const
+{
+    Label::draw(ctx);
+
+    // if the countdown is odd, show the flash
+    if (_countdown % 2 == 1) {
+        ctx->drawChar(_margins.left() - 1, _margins.top(), ' ' | REVERSE_FLAG);
+        ctx->drawChar(_bounds.width() - _margins.right(), _margins.top(), ' ' | REVERSE_FLAG);
+    }
+}
+
+void StatusLabel::timerEvent (QTimerEvent* e)
+{
+    if (--_countdown == 0) {
+        _timer.stop();
+    }
+    dirty(QRect(_margins.left() - 1, _margins.top(), 1, 1));
+    dirty(QRect(_bounds.width() - _margins.right(), _margins.top(), 1, 1));
+}

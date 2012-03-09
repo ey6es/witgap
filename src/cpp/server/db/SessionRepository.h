@@ -24,6 +24,9 @@ public:
 
     /**
      * Validates the specified session token.
+     *
+     * @param callback the callback that will be invoked with a valid id and token (either the ones
+     * passed in, or a newly generated pair).
      */
     Q_INVOKABLE void validateToken (quint64 id, const QByteArray& token, const Callback& callback);
 };

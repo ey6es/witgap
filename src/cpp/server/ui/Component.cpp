@@ -222,6 +222,10 @@ bool Component::event (QEvent* e)
             keyReleaseEvent((QKeyEvent*)e);
             return e->isAccepted();
 
+        case QEvent::Timer:
+            timerEvent((QTimerEvent*)e);
+            return e->isAccepted();
+
         default:
             return QObject::event(e);
     }
@@ -350,6 +354,10 @@ void Component::keyPressEvent (QKeyEvent* e)
 void Component::keyReleaseEvent (QKeyEvent* e)
 {
     e->ignore(); // pass up to parent
+}
+
+void Component::timerEvent (QTimerEvent* e)
+{
 }
 
 void Component::invalidateParent () const

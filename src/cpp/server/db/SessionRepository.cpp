@@ -1,8 +1,6 @@
 //
 // $Id$
 
-#include <time.h>
-
 #include <QDateTime>
 #include <QSqlQuery>
 #include <QtDebug>
@@ -20,8 +18,7 @@ void SessionRepository::init ()
             "LAST_ONLINE timestamp not null,"
             "index (LAST_ONLINE))");
 
-    // seed the random number generator
-    qsrand(clock());
+
 }
 
 void SessionRepository::validateToken (

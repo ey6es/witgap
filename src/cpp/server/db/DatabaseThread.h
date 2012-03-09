@@ -7,6 +7,7 @@
 #include <QThread>
 
 #include "db/SessionRepository.h"
+#include "db/UserRepository.h"
 
 class ServerApp;
 
@@ -28,6 +29,11 @@ public:
      * Returns a reference to the session repository.
      */
     SessionRepository* sessionRepository () const { return _sessionRepository; }
+
+    /**
+     * Returns a reference to the user repository.
+     */
+    UserRepository* userRepository () const { return _userRepository; }
 
 protected:
 
@@ -62,6 +68,9 @@ protected:
 
     /** The session repository. */
     SessionRepository* _sessionRepository;
+
+    /** The user repository. */
+    UserRepository* _userRepository;
 };
 
 #endif // DATABASE_THREAD

@@ -14,6 +14,7 @@
 #include <QRect>
 #include <QRegion>
 #include <QSize>
+#include <QTimerEvent>
 #include <QVariant>
 #include <QVector>
 
@@ -270,6 +271,11 @@ protected:
      * Handles a key release event.
      */
     virtual void keyReleaseEvent (QKeyEvent* e);
+
+    /**
+     * Handles a timer event.
+     */
+    virtual void timerEvent (QTimerEvent* e);
 
     /**
      * Invalidates the component's parent, if it has one.
