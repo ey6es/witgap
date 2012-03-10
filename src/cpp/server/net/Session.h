@@ -4,6 +4,7 @@
 #ifndef SESSION
 #define SESSION
 
+#include <QEvent>
 #include <QObject>
 #include <QSize>
 
@@ -48,6 +49,11 @@ public:
      * Replaces the session connection.
      */
     void setConnection (Connection* connection);
+
+    /**
+     * Checks whether the session is associated with a logged-on user.
+     */
+    bool loggedOn () const { return _user.id != 0; }
 
     /**
      * Increments the window id counter and returns its value.
@@ -119,9 +125,14 @@ public:
     void loggedOn (const UserRecord& user);
 
     /**
-     * Notes that the current user has logged off.
+     * Logs off the current user.
      */
-    void loggedOff ();
+    Q_INVOKABLE void logoff ();
+
+    /**
+     * Handles an event.
+     */
+    virtual bool event (QEvent* e);
 
 protected slots:
 

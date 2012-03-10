@@ -42,8 +42,6 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id,
     connection->setCookie("sessionId", QString::number(id, 16).rightJustified(16, '0'));
     connection->setCookie("sessionToken", token.toHex());
     setConnection(connection);
-
-    showLogonDialog();
 }
 
 void Session::setConnection (Connection* connection)
@@ -188,6 +186,8 @@ void Session::showLogoffDialog ()
 
 void Session::loggedOn (const UserRecord& user)
 {
+    _user = user;
+
     if (_connection != 0) {
         // set the username cookie on the client
         _connection->setCookieMetaMethod().invoke(_connection,
@@ -199,13 +199,33 @@ void Session::loggedOn (const UserRecord& user)
         Q_ARG(quint64, _id), Q_ARG(quint32, user.id));
 }
 
-void Session::loggedOff ()
+void Session::logoff ()
 {
     _user.id = 0;
 
     // clear the user id in the session record
     QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "setUserId",
         Q_ARG(quint64, _id), Q_ARG(quint32, 0));
+}
+
+bool Session::event (QEvent* e)
+{
+    if (e->type() != QEvent::KeyPress) {
+        return QObject::event(e);
+    }
+    QKeyEvent* ke = (QKeyEvent*)e;
+    if (ke->key() == Qt::Key_L && ke->modifiers() == Qt::ControlModifier) {
+        if (loggedOn()) {
+            showLogoffDialog();
+        } else {
+            showLogonDialog();
+        }
+        return true;
+
+    } else {
+        ke->ignore();
+        return false;
+    }
 }
 
 void Session::clearConnection ()
