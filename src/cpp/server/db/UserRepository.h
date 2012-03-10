@@ -10,6 +10,8 @@
 
 #include "util/Callback.h"
 
+class UserRecord;
+
 /**
  * Handles database queries associated with users.
  */
@@ -46,6 +48,11 @@ public:
      */
     Q_INVOKABLE void validateLogon (
         const QString& name, const QString& password, const Callback& callback);
+
+    /**
+     * Loads the record for the identified user.
+     */
+    UserRecord loadUser (quint32 id);
 };
 
 /**
@@ -72,5 +79,8 @@ public:
 
 Q_DECLARE_METATYPE(UserRecord)
 Q_DECLARE_OPERATORS_FOR_FLAGS(UserRecord::Flags)
+
+/** A record for the lack of a user. */
+const UserRecord NoUser = { 0, "", 0 };
 
 #endif // USER_REPOSITORY

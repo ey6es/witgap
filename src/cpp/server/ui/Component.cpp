@@ -156,7 +156,7 @@ void Component::setVisible (bool visible)
 
 void Component::maybeValidate ()
 {
-    if (!_valid) {
+    if (_visible && !_valid) {
         validate();
         _valid = true;
     }

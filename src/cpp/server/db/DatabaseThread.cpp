@@ -20,7 +20,7 @@ DatabaseThread::DatabaseThread (ServerApp* app) :
     _username(app->config().value("database_username").toString()),
     _password(app->config().value("database_password").toString()),
     _connectOptions(app->config().value("database_connect_options").toString()),
-    _sessionRepository(new SessionRepository()),
+    _sessionRepository(new SessionRepository(app)),
     _userRepository(new UserRepository())
 {
     // move the repositories to this thread

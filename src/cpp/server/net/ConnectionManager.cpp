@@ -45,7 +45,7 @@ void ConnectionManager::connectionEstablished (
     QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "validateToken",
         Q_ARG(quint64, sessionId), Q_ARG(const QByteArray&, sessionToken),
         Q_ARG(const Callback&, Callback(this,
-            "tokenValidated(QWeakObjectPointer,quint64,QByteArray)",
+            "tokenValidated(QWeakObjectPointer,quint64,QByteArray,UserRecord)",
             Q_ARG(const QWeakObjectPointer&, QWeakObjectPointer(connection)))));
 }
 
@@ -64,7 +64,7 @@ void ConnectionManager::unmapSession (QObject* object)
 }
 
 void ConnectionManager::tokenValidated (
-    const QWeakObjectPointer& connptr, quint64 id, const QByteArray& token)
+    const QWeakObjectPointer& connptr, quint64 id, const QByteArray& token, const UserRecord& user)
 {
     // make sure the connection is still in business
     Connection* connection = static_cast<Connection*>(connptr.data());
@@ -73,7 +73,7 @@ void ConnectionManager::tokenValidated (
     }
 
     // create and map the session
-    Session* session = new Session(_app, connection, id, token);
+    Session* session = new Session(_app, connection, id, token, user);
     _sessions[id] = session;
 
     // listen for destruction in order to unmap

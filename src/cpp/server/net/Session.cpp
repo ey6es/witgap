@@ -26,7 +26,8 @@
 
 using namespace std;
 
-Session::Session (ServerApp* app, Connection* connection, quint64 id, const QByteArray& token) :
+Session::Session (ServerApp* app, Connection* connection, quint64 id,
+        const QByteArray& token, const UserRecord& user) :
     QObject(app->connectionManager()),
     _app(app),
     _connection(0),
@@ -34,7 +35,8 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id, const QByt
     _token(token),
     _lastWindowId(0),
     _moused(0),
-    _focus(0)
+    _focus(0),
+    _user(user)
 {
     // send the session info back to the connection and activate it
     connection->setCookie("sessionId", QString::number(id, 16).rightJustified(16, '0'));
@@ -177,6 +179,33 @@ void Session::showLogonDialog ()
     Connection::requestCookieMetaMethod().invoke(_connection,
         Q_ARG(const QString&, "username"), Q_ARG(const Callback&,
             Callback(this, "showLogonDialog(QString)")));
+}
+
+void Session::showLogoffDialog ()
+{
+    showConfirmDialog(tr("Are you sure you want to log off?"), Callback(this, "logoff()"));
+}
+
+void Session::loggedOn (const UserRecord& user)
+{
+    if (_connection != 0) {
+        // set the username cookie on the client
+        _connection->setCookieMetaMethod().invoke(_connection,
+            Q_ARG(const QString&, "username"), Q_ARG(const QString&, user.name));
+    }
+
+    // set the user id in the session record
+    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "setUserId",
+        Q_ARG(quint64, _id), Q_ARG(quint32, user.id));
+}
+
+void Session::loggedOff ()
+{
+    _user.id = 0;
+
+    // clear the user id in the session record
+    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "setUserId",
+        Q_ARG(quint64, _id), Q_ARG(quint32, 0));
 }
 
 void Session::clearConnection ()
@@ -438,7 +467,10 @@ void LogonDialog::userMaybeInserted (quint32 id)
         _logonBlocked = false;
         updateLogon();
         _username->requestFocus();
-        return;
+    } else {
+        UserRecord urec = { id, _username->text(), 0 };
+        session()->loggedOn(urec);
+        deleteLater();
     }
 }
 
@@ -457,8 +489,9 @@ void LogonDialog::logonMaybeValidated (const QVariant& result)
             flashStatus(tr("Your account has been banned from the game."));
             return;
         default:
-            UserRecord urec = qVariantValue<UserRecord>(result);
-            break;
+            session()->loggedOn(qVariantValue<UserRecord>(result));
+            deleteLater();
+            return;
     }
     _logonBlocked = false;
     updateLogon();

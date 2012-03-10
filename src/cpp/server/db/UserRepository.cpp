@@ -4,6 +4,7 @@
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QSqlQuery>
+#include <QtDebug>
 
 #include "db/UserRepository.h"
 
@@ -109,4 +110,20 @@ void UserRepository::validateLogon (
     // report success
     UserRecord urec = { id, casedName, flags };
     callback.invoke(Q_ARG(const QVariant&, QVariant(userRecordType, &urec)));
+}
+
+UserRecord UserRepository::loadUser (quint32 id)
+{
+    QSqlQuery query;
+
+    query.prepare("select NAME, FLAGS from USERS where ID = ?");
+    query.addBindValue(id);
+    query.exec();
+
+    if (!query.next()) {
+        return NoUser;
+    }
+    UserRecord user = { id, query.value(0).toString(),
+        (UserRecord::Flags)query.value(1).toUInt() };
+    return user;
 }

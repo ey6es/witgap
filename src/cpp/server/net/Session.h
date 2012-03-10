@@ -7,6 +7,7 @@
 #include <QObject>
 #include <QSize>
 
+#include "db/UserRepository.h"
 #include "ui/Window.h"
 
 class Callback;
@@ -25,7 +26,8 @@ public:
     /**
      * Initializes the session.
      */
-    Session (ServerApp* app, Connection* connection, quint64 id, const QByteArray& token);
+    Session (ServerApp* app, Connection* connection, quint64 id,
+        const QByteArray& token, const UserRecord& user);
 
     /**
      * Returns the session id.
@@ -106,6 +108,21 @@ public:
      */
     void showLogonDialog ();
 
+    /**
+     * Shows the logoff confirmation dialog.
+     */
+    void showLogoffDialog ();
+
+    /**
+     * Notes that the specified user has logged on.
+     */
+    void loggedOn (const UserRecord& user);
+
+    /**
+     * Notes that the current user has logged off.
+     */
+    void loggedOff ();
+
 protected slots:
 
     /**
@@ -176,6 +193,9 @@ protected:
 
     /** The component with input focus. */
     Component* _focus;
+
+    /** The currently logged in user. */
+    UserRecord _user;
 };
 
 class Button;

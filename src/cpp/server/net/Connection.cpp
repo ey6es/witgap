@@ -203,7 +203,7 @@ void Connection::readMessages ()
             _stream >> length;
             if (available < 3 + length) {
                 _socket->ungetChar(length & 0xFF);
-                _socket->ungetChar(length >> 16);
+                _socket->ungetChar(length >> 8);
                 _socket->ungetChar(type);
                 return; // wait until we have the data
             }

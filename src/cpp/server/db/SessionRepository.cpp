@@ -5,7 +5,15 @@
 #include <QSqlQuery>
 #include <QtDebug>
 
+#include "ServerApp.h"
+#include "db/DatabaseThread.h"
 #include "db/SessionRepository.h"
+#include "db/UserRepository.h"
+
+SessionRepository::SessionRepository (ServerApp* app) :
+    _app(app)
+{
+}
 
 void SessionRepository::init ()
 {
@@ -15,10 +23,10 @@ void SessionRepository::init ()
         "create table if not exists SESSIONS ("
             "ID bigint unsigned not null auto_increment primary key,"
             "TOKEN binary(16) not null,"
+            "USER_ID int unsigned not null default 0,"
             "LAST_ONLINE timestamp not null,"
-            "index (LAST_ONLINE))");
-
-
+            "index (LAST_ONLINE),"
+            "index (USER_ID)");
 }
 
 void SessionRepository::validateToken (
@@ -35,7 +43,14 @@ void SessionRepository::validateToken (
         query.addBindValue(token);
         query.exec();
         if (query.numRowsAffected() > 0) { // valid; return what we were passed
-            callback.invoke(Q_ARG(quint64, id), Q_ARG(const QByteArray&, token));
+            // look up the user record
+            query.prepare("select USER_ID from SESSIONS where ID = ?");
+            query.addBindValue(id);
+            query.exec();
+            quint32 userId = query.next() ? query.value(0).toUInt() : 0;
+            callback.invoke(Q_ARG(quint64, id), Q_ARG(const QByteArray&, token),
+                Q_ARG(const UserRecord&, (userId == 0) ? NoUser :
+                    _app->databaseThread()->userRepository()->loadUser(userId)));
             return;
         }
     }
@@ -50,5 +65,15 @@ void SessionRepository::validateToken (
     query.addBindValue(now);
     query.exec();
     id = query.lastInsertId().toULongLong();
-    callback.invoke(Q_ARG(quint64, id), Q_ARG(const QByteArray&, ntoken));
+    callback.invoke(Q_ARG(quint64, id), Q_ARG(const QByteArray&, ntoken),
+        Q_ARG(const UserRecord&, NoUser));
+}
+
+void SessionRepository::setUserId (quint64 id, quint32 userId)
+{
+    QSqlQuery query;
+    query.prepare("update SESSIONS set USER_ID = ? where ID = ?");
+    query.addBindValue(userId);
+    query.addBindValue(id);
+    query.exec();
 }
