@@ -9,6 +9,8 @@
 
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
+#include "db/SessionRepository.h"
+#include "db/UserRepository.h"
 
 DatabaseThread::DatabaseThread (ServerApp* app) :
     QThread(app),

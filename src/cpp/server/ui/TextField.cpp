@@ -1,6 +1,9 @@
 //
 // $Id$
 
+#include <QKeyEvent>
+#include <QMouseEvent>
+
 #include "Protocol.h"
 #include "ui/TextField.h"
 

@@ -4,21 +4,22 @@
 #ifndef COMPONENT
 #define COMPONENT
 
-#include <QEvent>
-#include <QFocusEvent>
-#include <QKeyEvent>
 #include <QList>
 #include <QMargins>
-#include <QMouseEvent>
 #include <QObject>
 #include <QRect>
 #include <QRegion>
 #include <QSize>
-#include <QTimerEvent>
 #include <QVariant>
 #include <QVector>
 
 #include "util/General.h"
+
+class QEvent;
+class QFocusEvent;
+class QKeyEvent;
+class QMouseEvent;
+class QTimerEvent;
 
 class Border;
 class Container;

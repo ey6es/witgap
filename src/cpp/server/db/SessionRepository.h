@@ -6,8 +6,7 @@
 
 #include <QObject>
 
-#include "util/Callback.h"
-
+class Callback;
 class ServerApp;
 
 /**

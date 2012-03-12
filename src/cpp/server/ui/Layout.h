@@ -6,9 +6,10 @@
 
 #include <QObject>
 #include <QSet>
-#include <QSize>
 
 #include "ui/Component.h"
+
+class QSize;
 
 /**
  * Represents the layout of a component.

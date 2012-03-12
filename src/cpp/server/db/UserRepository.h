@@ -4,12 +4,13 @@
 #ifndef USER_REPOSITORY
 #define USER_REPOSITORY
 
-#include <QDate>
 #include <QObject>
+#include <QMetaType>
 #include <QString>
 
-#include "util/Callback.h"
+class QDate;
 
+class Callback;
 class UserRecord;
 
 /**

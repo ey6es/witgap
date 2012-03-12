@@ -3,14 +3,17 @@
 
 #include <iostream>
 
+#include <QMetaMethod>
+#include <QPoint>
+#include <QRect>
 #include <QtDebug>
 #include <QtEndian>
 
 #include "Protocol.h"
-
 #include "ServerApp.h"
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
+#include "util/General.h"
 
 const QMetaMethod& Connection::updateWindowMetaMethod ()
 {

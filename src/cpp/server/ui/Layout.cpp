@@ -3,6 +3,7 @@
 
 #include <numeric>
 
+#include <QSize>
 #include <QVarLengthArray>
 #include <QtDebug>
 

@@ -1,6 +1,12 @@
 //
 // $Id$
 
+#include <QEvent>
+#include <QFocusEvent>
+#include <QKeyEvent>
+#include <QMouseEvent>
+#include <QTimerEvent>
+
 #include "net/Session.h"
 #include "ui/Border.h"
 #include "ui/Component.h"

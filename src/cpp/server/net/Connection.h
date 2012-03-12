@@ -5,14 +5,15 @@
 #define CONNECTION
 
 #include <QHash>
-#include <QMetaMethod>
-#include <QPoint>
-#include <QRect>
 #include <QSize>
 #include <QTcpSocket>
 
 #include "util/Callback.h"
-#include "util/General.h"
+
+class QMetaMethod;
+class QIntVector;
+class QPoint;
+class QRect;
 
 class ServerApp;
 

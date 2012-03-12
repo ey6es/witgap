@@ -4,8 +4,6 @@
 #ifndef WINDOW
 #define WINDOW
 
-#include <QRegion>
-
 #include "ui/Component.h"
 
 /**

@@ -9,7 +9,8 @@
 #include <QVector>
 
 #include "ui/Component.h"
-#include "util/General.h"
+
+class IntVector;
 
 /**
  * A text label.

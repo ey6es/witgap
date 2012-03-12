@@ -5,6 +5,7 @@
 
 #include "Protocol.h"
 #include "ui/Label.h"
+#include "util/General.h"
 
 using namespace std;
 

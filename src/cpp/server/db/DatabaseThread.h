@@ -6,10 +6,9 @@
 
 #include <QThread>
 
-#include "db/SessionRepository.h"
-#include "db/UserRepository.h"
-
 class ServerApp;
+class SessionRepository;
+class UserRepository;
 
 /**
  * Performs database queries in a separate thread.

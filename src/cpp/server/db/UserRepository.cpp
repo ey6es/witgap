@@ -2,11 +2,13 @@
 // $Id$
 
 #include <QCryptographicHash>
+#include <QDate>
 #include <QDateTime>
 #include <QSqlQuery>
 #include <QtDebug>
 
 #include "db/UserRepository.h"
+#include "util/Callback.h"
 
 // register our types with the metatype system
 int userRecordType = qRegisterMetaType<UserRecord>();

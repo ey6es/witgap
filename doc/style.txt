@@ -52,3 +52,5 @@ prefer early breaks over deep nesting
 prefer pointers over references for in-out parameters
 
 indents are always four spaces; no tab characters
+
+when possible, use forward declarations rather than includes

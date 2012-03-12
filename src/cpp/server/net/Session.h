@@ -4,12 +4,13 @@
 #ifndef SESSION
 #define SESSION
 
-#include <QEvent>
 #include <QObject>
 #include <QSize>
 
 #include "db/UserRepository.h"
 #include "ui/Window.h"
+
+class QEvent;
 
 class Callback;
 class Connection;

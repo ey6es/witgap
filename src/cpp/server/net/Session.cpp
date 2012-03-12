@@ -4,6 +4,7 @@
 #include <limits>
 
 #include <QDate>
+#include <QEvent>
 #include <QFocusEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -13,6 +14,7 @@
 
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
+#include "db/SessionRepository.h"
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"

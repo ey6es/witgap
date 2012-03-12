@@ -4,8 +4,9 @@
 #ifndef GENERAL
 #define GENERAL
 
-#include <QString>
 #include <QVector>
+
+class QString;
 
 /**
  * A vector of integers.

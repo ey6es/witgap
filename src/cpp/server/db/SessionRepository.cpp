@@ -9,6 +9,7 @@
 #include "db/DatabaseThread.h"
 #include "db/SessionRepository.h"
 #include "db/UserRepository.h"
+#include "util/Callback.h"
 
 SessionRepository::SessionRepository (ServerApp* app) :
     _app(app)
