@@ -4,6 +4,7 @@
 #ifndef GENERAL
 #define GENERAL
 
+#include <QPoint>
 #include <QVector>
 
 class QString;
@@ -37,5 +38,10 @@ public:
      */
     QIntVector (const QString& string, int style = 0);
 };
+
+/**
+ * Hash function for points.
+ */
+inline uint qHash (const QPoint& point) { return point.x()*31 + point.y(); }
 
 #endif // GENERAL

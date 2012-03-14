@@ -6,6 +6,7 @@
 
 #include <QThread>
 
+class SceneRepository;
 class ServerApp;
 class SessionRepository;
 class UserRepository;
@@ -23,6 +24,11 @@ public:
      * Initializes the manager.
      */
     DatabaseThread (ServerApp* app);
+
+    /**
+     * Returns a reference to the scene repository.
+     */
+    SceneRepository* sceneRepository () const { return _sceneRepository; }
 
     /**
      * Returns a reference to the session repository.
@@ -64,6 +70,9 @@ protected:
 
     /** The options to use when connecting. */
     QString _connectOptions;
+
+    /** The scene repository. */
+    SceneRepository* _sceneRepository;
 
     /** The session repository. */
     SessionRepository* _sessionRepository;
