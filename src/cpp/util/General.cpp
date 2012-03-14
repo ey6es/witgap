@@ -7,11 +7,26 @@
 #include <QString>
 #include <QVariant>
 
+#include "Protocol.h"
 #include "util/General.h"
 
 // register our types with the metatype system
 int qIntVectorType = qRegisterMetaType<QIntVector>("QIntVector");
 int qVariantType = qRegisterMetaType<QVariant>("QVariant");
+
+QIntVector QIntVector::createHighlighted (const QString& string)
+{
+    QIntVector vector;
+    for (const QChar* ptr = string.constData(), *end = ptr + string.length(); ptr < end; ptr++) {
+        QChar ch = *ptr;
+        if (ch == '&' && ++ptr < end && *ptr != '&') {
+            vector.append((*ptr).unicode() | REVERSE_FLAG);
+        } else {
+            vector.append(ch.unicode());
+        }
+    }
+    return vector;
+}
 
 QIntVector::QIntVector ()
 {

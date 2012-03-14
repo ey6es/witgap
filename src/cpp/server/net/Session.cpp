@@ -10,6 +10,7 @@
 #include <QPoint>
 #include <QtDebug>
 
+#include "CommandMenu.h"
 #include "LogonDialog.h"
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
@@ -35,6 +36,7 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id,
     _id(id),
     _token(token),
     _lastWindowId(0),
+    _mousePressed(false),
     _moused(0),
     _focus(0),
     _user(user)
@@ -215,12 +217,8 @@ bool Session::event (QEvent* e)
         return QObject::event(e);
     }
     QKeyEvent* ke = (QKeyEvent*)e;
-    if (ke->key() == Qt::Key_L && ke->modifiers() == Qt::ControlModifier) {
-        if (loggedOn()) {
-            showLogoffDialog();
-        } else {
-            showLogonDialog();
-        }
+    if (ke->key() == Qt::Key_Control && ke->modifiers() == Qt::NoModifier) {
+        new CommandMenu(this);
         return true;
 
     } else {
@@ -232,6 +230,14 @@ bool Session::event (QEvent* e)
 void Session::clearConnection ()
 {
     _connection = 0;
+
+    // clearing the connection implicitly releases keys and mouse button
+    if (_mousePressed) {
+        dispatchMouseReleased(0, 0);
+    }
+    foreach (int key, _keysPressed) {
+        dispatchKeyReleased(key, 0, false);
+    }
 }
 
 void Session::clearMoused ()
@@ -246,6 +252,9 @@ void Session::clearFocus ()
 
 void Session::dispatchMousePressed (int x, int y)
 {
+    // note that we're pressed
+    _mousePressed = true;
+
     // we shouldn't have a moused component, but let's make sure
     if (_moused != 0) {
         _moused->disconnect(this, SLOT(clearMoused()));
@@ -285,6 +294,10 @@ void Session::dispatchMousePressed (int x, int y)
 
 void Session::dispatchMouseReleased (int x, int y)
 {
+    // note that we're released
+    _mousePressed = false;
+
+    // dispatch to moused component, if any
     QPoint absolute(x, y), relative(x, y);
     Component* target = _moused;
     if (_moused != 0) {
@@ -318,11 +331,15 @@ Qt::KeyboardModifier getModifier (int key)
 
 void Session::dispatchKeyPressed (int key, QChar ch, bool numpad)
 {
+    // note the press
+    _keysPressed.insert(key);
+
     // update our modifiers
     Qt::KeyboardModifier modifier = getModifier(key);
     if (modifier != Qt::NoModifier) {
         _modifiers |= modifier;
     }
+
     QKeyEvent event(QEvent::KeyPress, key,
         _modifiers | (numpad ? Qt::KeypadModifier : Qt::NoModifier),
         ch == 0 ? QString() : QString(ch));
@@ -331,6 +348,9 @@ void Session::dispatchKeyPressed (int key, QChar ch, bool numpad)
 
 void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
 {
+    // note the release
+    _keysPressed.remove(key);
+
     // update our modifiers
     Qt::KeyboardModifier modifier = getModifier(key);
     if (modifier != Qt::NoModifier) {

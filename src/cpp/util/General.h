@@ -17,6 +17,12 @@ class QIntVector : public QVector<int>
 public:
 
     /**
+     * Creates a vector from the supplied string where any characters preceded by an ampersand are
+     * highlighted.
+     */
+    static QIntVector createHighlighted (const QString& string);
+
+    /**
      * Creates an empty vector.
      */
     QIntVector ();

@@ -5,6 +5,7 @@
 #define SESSION
 
 #include <QObject>
+#include <QSet>
 #include <QSize>
 
 #include "db/UserRepository.h"
@@ -199,6 +200,12 @@ protected:
 
     /** The current set of key modifiers. */
     Qt::KeyboardModifiers _modifiers;
+
+    /** The set of keys pressed. */
+    QSet<int> _keysPressed;
+
+    /** Whether or not the mouse button is pressed. */
+    bool _mousePressed;
 
     /** The component over which the mouse button was pressed. */
     Component* _moused;

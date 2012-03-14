@@ -64,7 +64,7 @@ class UserRecord
 public:
 
     /** User flags.  Do not change. */
-    enum Flag { Banned = 0x1 };
+    enum Flag { Banned = 0x1, Admin = 0x2 };
 
     Q_DECLARE_FLAGS(Flags, Flag)
 
@@ -82,6 +82,6 @@ Q_DECLARE_METATYPE(UserRecord)
 Q_DECLARE_OPERATORS_FOR_FLAGS(UserRecord::Flags)
 
 /** A record for the lack of a user. */
-const UserRecord NoUser = { 0, "", 0 };
+const UserRecord NoUser = { 0 };
 
 #endif // USER_REPOSITORY
