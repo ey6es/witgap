@@ -60,6 +60,17 @@ public:
      * Loads the record for the identified user.
      */
     UserRecord loadUser (quint32 id);
+
+    /**
+     * Updates a user record.  The callback will receive a bool indicating whether the update was
+     * successful (failure may occur due to a username collision).
+     */
+    Q_INVOKABLE void updateUser (const UserRecord& urec, const Callback& callback);
+
+    /**
+     * Deletes the identified user.
+     */
+    Q_INVOKABLE void deleteUser (quint32 id);
 };
 
 /**
@@ -70,7 +81,7 @@ class UserRecord
 public:
 
     /** User flags.  Do not change. */
-    enum Flag { Banned = 0x1, Admin = 0x2 };
+    enum Flag { NoFlag = 0x0, Banned = 0x1, Admin = 0x2 };
 
     Q_DECLARE_FLAGS(Flags, Flag)
 
@@ -100,6 +111,11 @@ public:
 
     /** The time at which the user was last online. */
     QDateTime lastOnline;
+
+    /**
+     * Sets the password hash.
+     */
+    void setPassword (const QString& password);
 };
 
 Q_DECLARE_METATYPE(UserRecord)

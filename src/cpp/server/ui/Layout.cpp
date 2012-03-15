@@ -40,21 +40,21 @@ static void addChildren (
 }
 
 Container* BoxLayout::createHBox (
-    int gap, Component* c0, Component* c1, Component* c2, Component* c3,
-    Component* c4, Component* c5, Component* c6, Component* c7)
+    Qt::Alignment alignment, int gap, Component* c0, Component* c1, Component* c2,
+    Component* c3, Component* c4, Component* c5, Component* c6, Component* c7)
 {
     Container* container = new Container(
-        new BoxLayout(Qt::Horizontal, NoPolicy, Qt::AlignCenter, gap));
+        new BoxLayout(Qt::Horizontal, NoPolicy, alignment, gap));
     addChildren(container, c0, c1, c2, c3, c4, c5, c6, c7);
     return container;
 }
 
 Container* BoxLayout::createVBox (
-    int gap, Component* c0, Component* c1, Component* c2, Component* c3,
-    Component* c4, Component* c5, Component* c6, Component* c7)
+    Qt::Alignment alignment, int gap, Component* c0, Component* c1, Component* c2,
+    Component* c3, Component* c4, Component* c5, Component* c6, Component* c7)
 {
     Container* container = new Container(
-        new BoxLayout(Qt::Vertical, NoPolicy, Qt::AlignCenter, gap));
+        new BoxLayout(Qt::Vertical, NoPolicy, alignment, gap));
     addChildren(container, c0, c1, c2, c3, c4, c5, c6, c7);
     return container;
 }

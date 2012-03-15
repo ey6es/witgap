@@ -7,7 +7,6 @@
 #include "ServerApp.h"
 #include "admin/EditUserDialog.h"
 #include "db/DatabaseThread.h"
-#include "db/UserRepository.h"
 #include "net/Session.h"
 #include "ui/Border.h"
 #include "ui/Button.h"
@@ -21,7 +20,8 @@
 #define tr(...) session()->translate("EditUserDialog", __VA_ARGS__)
 
 EditUserDialog::EditUserDialog (Session* parent) :
-    Window(parent, parent->highestWindowLayer())
+    Window(parent, parent->highestWindowLayer()),
+    _user(NoUser)
 {
     setModal(true);
     setBorder(new FrameBorder());
@@ -37,6 +37,7 @@ EditUserDialog::EditUserDialog (Session* parent) :
     _search->connect(_username, SIGNAL(enterPressed()), SLOT(doPress()));
 
     Container* icont = new Container(new TableLayout(2));
+    icont->setBorder(new CharBorder(QMargins(1, 0, 1, 0), 0));
     addChild(icont);
 
     icont->addChild(new Label(tr("ID:")));
@@ -48,29 +49,37 @@ EditUserDialog::EditUserDialog (Session* parent) :
     icont->addChild(new Label(tr("Last Online:")));
     icont->addChild(_lastOnline = new Label());
 
+    icont->addChild(new Spacer(1, 1));
+    icont->addChild(new Spacer(1, 1));
+
     icont->addChild(new Label(tr("New Username:")));
     icont->addChild(_newUsername = new TextField(20,
         new RegExpDocument(PartialUsernameExp, "", 16)));
+    connect(_newUsername, SIGNAL(textChanged()), SLOT(updateUpdate()));
 
     icont->addChild(new Label(tr("Password:")));
     icont->addChild(_password = new PasswordField(20,
         new RegExpDocument(PartialPasswordExp, "", 255)));
+    connect(_password, SIGNAL(textChanged()), SLOT(updateUpdate()));
 
     icont->addChild(new Label(tr("Confirm Password:")));
     icont->addChild(_confirmPassword = new PasswordField(20,
         new RegExpDocument(PartialPasswordExp, "", 255)));
+    connect(_confirmPassword, SIGNAL(textChanged()), SLOT(updateUpdate()));
 
     icont->addChild(new Label(tr("Date of Birth:")));
     icont->addChild(_dob = new TextField());
+    connect(_dob, SIGNAL(textChanged()), SLOT(updateUpdate()));
 
     icont->addChild(new Label(tr("Email:")));
     icont->addChild(_email = new TextField(20, new RegExpDocument(PartialEmailExp, "", 255)));
+    connect(_email, SIGNAL(textChanged()), SLOT(updateUpdate()));
 
     icont->addChild(new Label(tr("Banned:")));
-    icont->addChild(_banned = new CheckBox());
+    icont->addChild(BoxLayout::createHBox(Qt::AlignLeft, 0, _banned = new CheckBox()));
 
     icont->addChild(new Label(tr("Admin:")));
-    icont->addChild(_admin = new CheckBox());
+    icont->addChild(BoxLayout::createHBox(Qt::AlignLeft, 0, _admin = new CheckBox()));
 
     addChild(_status = new StatusLabel());
 
@@ -78,11 +87,9 @@ EditUserDialog::EditUserDialog (Session* parent) :
     connect(close, SIGNAL(pressed()), SLOT(deleteLater()));
     connect(_delete = new Button(tr("Delete")), SIGNAL(pressed()), SLOT(confirmDelete()));
     connect(_update = new Button(tr("Update")), SIGNAL(pressed()), SLOT(update()));
-    addChild(BoxLayout::createHBox(2, close, _delete, _update));
+    addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, close, _delete, _update));
 
     updateSearch();
-
-    _username->requestFocus();
 }
 
 void EditUserDialog::updateSearch ()
@@ -95,6 +102,8 @@ void EditUserDialog::updateSearch ()
 
     pack();
     center();
+
+    _username->requestFocus();
 }
 
 void EditUserDialog::search ()
@@ -106,6 +115,17 @@ void EditUserDialog::search ()
         Q_ARG(const Callback&, Callback(this, "userMaybeLoaded(UserRecord)")));
 }
 
+void EditUserDialog::updateUpdate ()
+{
+    QString password = _password->text();
+    QString email = _email->text();
+    _update->setEnabled(FullUsernameExp.exactMatch(_newUsername->text()) &&
+        password == _confirmPassword->text() &&
+            (password.isEmpty() || FullPasswordExp.exactMatch(password)) &&
+        QDate::fromString(_dob->text(), "MM-dd-yyyy").isValid() &&
+        (email.isEmpty() || FullEmailExp.exactMatch(email)));
+}
+
 void EditUserDialog::confirmDelete ()
 {
     session()->showConfirmDialog(tr("Are you sure you want to delete this user?"),
@@ -114,15 +134,33 @@ void EditUserDialog::confirmDelete ()
 
 void EditUserDialog::update ()
 {
+    // update the record fields
+    _user.name = _newUsername->text();
+    QString password = _password->text();
+    if (!password.isEmpty()) {
+        _user.setPassword(password);
+    }
+    _user.dateOfBirth = QDate::fromString(_dob->text(), "MM-dd-yyyy");
+    _user.email = _email->text();
+    _user.flags =
+        (_banned->selected() ? UserRecord::Banned : UserRecord::NoFlag) |
+        (_admin->selected() ? UserRecord::Admin : UserRecord::NoFlag);
+
+    // send the request off to the database
+    QMetaObject::invokeMethod(
+        session()->app()->databaseThread()->userRepository(), "updateUser",
+        Q_ARG(const UserRecord&, _user),
+        Q_ARG(const Callback&, Callback(this, "userMaybeUpdated(bool)")));
 }
 
 void EditUserDialog::userMaybeLoaded (const UserRecord& user)
 {
-    if (user.id == 0) {
+    if ((_user = user).id == 0) {
         _status->setVisible(true);
         _status->setStatus(tr("No user exists with that name."), true);
         pack();
         center();
+        _username->requestFocus();
         return;
     }
     _id->container()->setVisible(true);
@@ -141,8 +179,30 @@ void EditUserDialog::userMaybeLoaded (const UserRecord& user)
 
     pack();
     center();
+
+    _newUsername->requestFocus();
 }
 
 void EditUserDialog::reallyDelete ()
 {
+    // send the request off to the database
+    QMetaObject::invokeMethod(
+        session()->app()->databaseThread()->userRepository(), "deleteUser",
+        Q_ARG(quint32, _user.id));
+
+    // reset the interface
+    updateSearch();
+}
+
+void EditUserDialog::userMaybeUpdated (bool updated)
+{
+    _status->setVisible(true);
+    if (updated) {
+        _status->setStatus(tr("User updated."), true);
+    } else {
+        _status->setStatus(tr("The requested name was not available."), true);
+        _newUsername->requestFocus();
+    }
+    pack();
+    center();
 }

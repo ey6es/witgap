@@ -29,6 +29,17 @@ void UserRepository::init ()
             "LAST_ONLINE datetime not null)");
 }
 
+/**
+ * Helper function that returns the hash of the plaintext password and the supplied salt.
+ */
+QByteArray hashPassword (const QString& password, const QByteArray& salt)
+{
+    QCryptographicHash hash(QCryptographicHash::Md5);
+    hash.addData(password.toUtf8());
+    hash.addData(salt);
+    return hash.result();
+}
+
 void UserRepository::insertUser (
     const QString& name, const QString& password, const QDate& dob,
     const QString& email, const Callback& callback)
@@ -43,17 +54,14 @@ void UserRepository::insertUser (
     }
 
     // use it to hash the password
-    QCryptographicHash hash(QCryptographicHash::Md5);
-    hash.addData(password.toUtf8());
-    hash.addData(salt);
+    QByteArray passwordHash = hashPassword(password, salt);
 
     query.prepare(
         "insert into USERS (NAME, NAME_LOWER, PASSWORD_HASH, PASSWORD_SALT, DATE_OF_BIRTH, "
         "EMAIL, FLAGS, CREATED, LAST_ONLINE) values (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     query.addBindValue(name);
     query.addBindValue(name.toLower());
-    QByteArray hashResult = hash.result();
-    query.addBindValue(hashResult);
+    query.addBindValue(passwordHash);
     query.addBindValue(salt);
     query.addBindValue(dob);
     query.addBindValue(email);
@@ -66,7 +74,7 @@ void UserRepository::insertUser (
         return;
     }
     UserRecord urec = {
-        query.lastInsertId().toUInt(), name, hashResult, salt, dob, email, 0, now, now };
+        query.lastInsertId().toUInt(), name, passwordHash, salt, dob, email, 0, now, now };
     callback.invoke(Q_ARG(const UserRecord&, urec));
 }
 
@@ -105,10 +113,7 @@ void UserRepository::validateLogon (
     }
 
     // validate the password hash
-    QCryptographicHash hash(QCryptographicHash::Md5);
-    hash.addData(password.toUtf8());
-    hash.addData(urec.passwordSalt);
-    if (hash.result() != urec.passwordHash) {
+    if (hashPassword(password, urec.passwordSalt) != urec.passwordHash) {
         callback.invoke(Q_ARG(const QVariant&, QVariant(WrongPassword)));
         return;
     }
@@ -138,4 +143,33 @@ void UserRepository::loadUser (const QString& name, const Callback& callback)
 UserRecord UserRepository::loadUser (quint32 id)
 {
     return loadUserRecord("ID", id);
+}
+
+void UserRepository::updateUser (const UserRecord& urec, const Callback& callback)
+{
+    QSqlQuery query;
+    query.prepare("update USERS set NAME = ?, NAME_LOWER = ?, PASSWORD_HASH = ?, "
+        "DATE_OF_BIRTH = ?, EMAIL = ?, FLAGS = ? where ID = ?");
+    query.addBindValue(urec.name);
+    query.addBindValue(urec.name.toLower());
+    query.addBindValue(urec.passwordHash);
+    query.addBindValue(urec.dateOfBirth);
+    query.addBindValue(urec.email);
+    query.addBindValue((int)urec.flags);
+    query.addBindValue(urec.id);
+
+    callback.invoke(Q_ARG(bool, query.exec()));
+}
+
+void UserRepository::deleteUser (quint32 id)
+{
+    QSqlQuery query;
+    query.prepare("delete from USERS where ID = ?");
+    query.addBindValue(id);
+    query.exec();
+}
+
+void UserRecord::setPassword (const QString& password)
+{
+    passwordHash = hashPassword(password, passwordSalt);
 }

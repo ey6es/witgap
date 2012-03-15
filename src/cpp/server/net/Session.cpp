@@ -145,7 +145,7 @@ void Session::showConfirmDialog (
     window->connect(ok, SIGNAL(pressed()), SLOT(deleteLater()));
     (new CallbackObject(callback, window))->connect(ok, SIGNAL(pressed()), SLOT(invoke()));
 
-    window->addChild(BoxLayout::createHBox(2, cancel, ok));
+    window->addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, cancel, ok));
 
     ok->requestFocus();
     window->pack();
@@ -169,7 +169,7 @@ void Session::showInputDialog (
     window->connect(ok, SIGNAL(pressed()), SLOT(deleteLater()));
     (new CallbackObject(callback, window))->connect(ok, SIGNAL(pressed()), SLOT(invoke()));
 
-    window->addChild(BoxLayout::createHBox(2, cancel, ok));
+    window->addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, cancel, ok));
 
     field->requestFocus();
     window->pack();

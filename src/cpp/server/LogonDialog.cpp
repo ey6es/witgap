@@ -60,7 +60,7 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
     _year->setLabel(tr("YYYY"));
     connect(_year, SIGNAL(textChanged()), SLOT(updateLogon()));
     Container* dcont = BoxLayout::createHBox(
-        1, _month, new Label("/"),_day, new Label("/"), _year);
+        Qt::AlignCenter, 1, _month, new Label("/"),_day, new Label("/"), _year);
     icont->addChild(dcont);
 
     icont->addChild(new Label(tr("Email (Optional):")));
@@ -80,7 +80,7 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
     connect(_logon, SIGNAL(pressed()), SLOT(logon()));
     _logon->connect(_email, SIGNAL(enterPressed()), SLOT(doPress()));
 
-    addChild(BoxLayout::createHBox(2, _cancel, _toggleCreateMode, _logon));
+    addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, _cancel, _toggleCreateMode, _logon));
 
     _username->requestFocus();
 
@@ -127,7 +127,7 @@ void LogonDialog::logon ()
             session()->app()->databaseThread()->userRepository(), "insertUser",
             Q_ARG(const QString&, _username->text()), Q_ARG(const QString&, _password->text()),
             Q_ARG(const QDate&, dob), Q_ARG(const QString&, _email->text().trimmed()),
-            Q_ARG(const Callback&, Callback(this, "userMaybeInserted(quint32)")));
+            Q_ARG(const Callback&, Callback(this, "userMaybeInserted(UserRecord)")));
 
     } else {
         // block logon and send off the request

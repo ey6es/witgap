@@ -4,6 +4,7 @@
 #ifndef EDIT_USER_DIALOG
 #define EDIT_USER_DIALOG
 
+#include "db/UserRepository.h"
 #include "ui/Window.h"
 
 class Button;
@@ -14,7 +15,6 @@ class ServerApp;
 class Session;
 class StatusLabel;
 class TextField;
-class UserRecord;
 
 /**
  * Allows admins to edit/delete user accounts.
@@ -43,6 +43,11 @@ protected slots:
     void search ();
 
     /**
+     * Updates the state of the update button.
+     */
+    void updateUpdate ();
+
+    /**
      * Makes sure the admin really wants to delete the user.
      */
     void confirmDelete ();
@@ -63,6 +68,11 @@ protected:
      * Actually deletes the user, having confirmed that that's what the admin wants.
      */
     Q_INVOKABLE void reallyDelete ();
+
+    /**
+     * Responds to a request to update the user.
+     */
+    Q_INVOKABLE void userMaybeUpdated (bool updated);
 
     /** The current username field. */
     TextField* _username;
@@ -108,6 +118,9 @@ protected:
 
     /** The delete user button. */
     Button* _delete;
+
+    /** The loaded user record. */
+    UserRecord _user;
 };
 
 #endif // EDIT_USER_DIALOG
