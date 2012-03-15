@@ -11,6 +11,7 @@
 #include "db/UserRepository.h"
 
 class QEvent;
+class QTranslator;
 
 class Callback;
 class Component;
@@ -31,6 +32,11 @@ public:
      */
     Session (ServerApp* app, Connection* connection, quint64 id,
         const QByteArray& token, const UserRecord& user);
+
+    /**
+     * Returns a pointer to the application object.
+     */
+    ServerApp* app () const { return _app; }
 
     /**
      * Returns the session id.
@@ -56,6 +62,11 @@ public:
      * Checks whether the session is associated with a logged-on user.
      */
     bool loggedOn () const { return _user.id != 0; }
+
+    /**
+     * Checks whether the session is associated with an admin.
+     */
+    bool admin () const { return _user.id != 0 && _user.flags.testFlag(UserRecord::Admin); }
 
     /**
      * Increments the window id counter and returns its value.
@@ -130,6 +141,12 @@ public:
      * Logs off the current user.
      */
     Q_INVOKABLE void logoff ();
+
+    /**
+     * Translates a string using the user's preferred language.
+     */
+    QString translate (
+        const char* context, const char* sourceText, const char* disambiguation = 0, int n = -1);
 
     /**
      * Handles an event.
@@ -212,6 +229,9 @@ protected:
 
     /** The component with input focus. */
     Component* _focus;
+
+    /** The translator for the user's language, if any. */
+    QTranslator* _translator;
 
     /** The currently logged in user. */
     UserRecord _user;

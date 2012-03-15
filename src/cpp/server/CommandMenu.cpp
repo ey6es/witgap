@@ -5,10 +5,14 @@
 
 #include "CommandMenu.h"
 
+#include "admin/AdminMenu.h"
 #include "net/Session.h"
 #include "ui/Border.h"
 #include "ui/Label.h"
 #include "ui/Layout.h"
+
+// translate through the session
+#define tr(...) session()->translate("CommandMenu", __VA_ARGS__)
 
 CommandMenu::CommandMenu (Session* parent) :
     Window(parent, parent->highestWindowLayer())
@@ -16,6 +20,10 @@ CommandMenu::CommandMenu (Session* parent) :
     setModal(true);
     setBorder(new FrameBorder());
     setLayout(new TableLayout(1));
+
+    if (parent->admin()) {
+        addChild(new Label(QIntVector::createHighlighted(tr("&Admin"))));
+    }
 
     addChild(new Label(QIntVector::createHighlighted(
         parent->loggedOn() ? tr("&Logoff") : tr("&Logon"))));
@@ -28,17 +36,23 @@ CommandMenu::CommandMenu (Session* parent) :
 
 void CommandMenu::keyPressEvent (QKeyEvent* e)
 {
+    Session* session = this->session();
     switch (e->key()) {
-        case Qt::Key_L: {
-            Session* sess = session();
-            if (sess->loggedOn()) {
-                sess->showLogoffDialog();
+        case Qt::Key_A:
+            if (session->admin()) {
+                new AdminMenu(session);
+                deleteLater();
+            }
+            break;
+
+        case Qt::Key_L:
+            if (session->loggedOn()) {
+                session->showLogoffDialog();
             } else {
-                sess->showLogonDialog();
+                session->showLogonDialog();
             }
             deleteLater();
             break;
-        }
 
         default:
             Window::keyPressEvent(e);
@@ -48,7 +62,7 @@ void CommandMenu::keyPressEvent (QKeyEvent* e)
 
 void CommandMenu::keyReleaseEvent (QKeyEvent* e)
 {
-    if (e->key() == Qt::Key_Control) {
+    if (e->key() == Qt::Key_Alt) {
         deleteLater();
 
     } else {

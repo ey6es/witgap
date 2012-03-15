@@ -8,6 +8,7 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPoint>
+#include <QTranslator>
 #include <QtDebug>
 
 #include "CommandMenu.h"
@@ -28,6 +29,9 @@
 
 using namespace std;
 
+// translate through the session
+#define tr(...) translate("Session", __VA_ARGS__)
+
 Session::Session (ServerApp* app, Connection* connection, quint64 id,
         const QByteArray& token, const UserRecord& user) :
     QObject(app->connectionManager()),
@@ -39,6 +43,7 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id,
     _mousePressed(false),
     _moused(0),
     _focus(0),
+    _translator(0),
     _user(user)
 {
     // send the session info back to the connection and activate it
@@ -211,13 +216,25 @@ void Session::logoff ()
         Q_ARG(quint64, _id), Q_ARG(quint32, 0));
 }
 
+QString Session::translate (
+    const char* context, const char* sourceText, const char* disambiguation, int n)
+{
+    if (_translator != 0) {
+        QString translated = _translator->translate(context, sourceText, disambiguation, n);
+        if (!translated.isEmpty()) {
+            return translated;
+        }
+    }
+    return QString(sourceText);
+}
+
 bool Session::event (QEvent* e)
 {
     if (e->type() != QEvent::KeyPress) {
         return QObject::event(e);
     }
     QKeyEvent* ke = (QKeyEvent*)e;
-    if (ke->key() == Qt::Key_Control && ke->modifiers() == Qt::NoModifier) {
+    if (ke->key() == Qt::Key_Alt && ke->modifiers() == Qt::NoModifier) {
         new CommandMenu(this);
         return true;
 
@@ -364,5 +381,5 @@ void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
 
 void Session::showLogonDialog (const QString& username)
 {
-    new LogonDialog(_app, this, username);
+    new LogonDialog(this, username);
 }

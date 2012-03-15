@@ -25,7 +25,7 @@ void SessionRepository::init ()
             "ID bigint unsigned not null auto_increment primary key,"
             "TOKEN binary(16) not null,"
             "USER_ID int unsigned not null default 0,"
-            "LAST_ONLINE timestamp not null,"
+            "LAST_ONLINE datetime not null,"
             "index (LAST_ONLINE),"
             "index (USER_ID)");
 }

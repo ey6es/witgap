@@ -4,15 +4,17 @@
 #ifndef LOGON_DIALOG
 #define LOGON_DIALOG
 
+#include <QRegExp>
+
 #include "ui/Window.h"
 
 class Button;
 class Label;
 class PasswordField;
-class ServerApp;
 class Session;
 class StatusLabel;
 class TextField;
+class UserRecord;
 
 /**
  * Handles logging on or creating an account.
@@ -28,7 +30,7 @@ public:
      *
      * @param username the username cookie, if any.
      */
-    LogonDialog (ServerApp* app, Session* parent, const QString& username);
+    LogonDialog (Session* parent, const QString& username);
 
 protected slots:
 
@@ -50,9 +52,9 @@ protected slots:
 protected:
 
     /**
-     * If the id is non-zero, the user was inserted with that id.
+     * If the record id is non-zero, the user was inserted with that record.
      */
-    Q_INVOKABLE void userMaybeInserted (quint32 id);
+    Q_INVOKABLE void userMaybeInserted (const UserRecord& user);
 
     /**
      * If the result contains a UserRecord, the user was logged on; otherwise, the result
@@ -69,9 +71,6 @@ protected:
      * Flashes the specified status message.
      */
     void flashStatus (const QString& status);
-
-    /** The server application. */
-    ServerApp* _app;
 
     /** Whether or not we're currently in create mode. */
     bool _createMode;
@@ -106,5 +105,19 @@ protected:
     /** If true, we're blocking logon (for a database query, e.g.) */
     bool _logonBlocked;
 };
+
+/** Expressions for partial and complete usernames. */
+const QRegExp PartialUsernameExp("[a-zA-Z0-9]{0,16}"), FullUsernameExp("[a-zA-Z0-9]{3,16}");
+
+/** Expressions for partial and complete passwords. */
+const QRegExp PartialPasswordExp(".{0,255}"), FullPasswordExp(".{6,255}");
+
+/** Month/day and year expressions. */
+const QRegExp MonthDayExp("\\d{0,2}"), YearExp("\\d{0,4}");
+
+/** Partial and full email expressions (full from
+ * http://www.regular-expressions.info/regexbuddy/email.html). */
+const QRegExp PartialEmailExp("[a-zA-Z0-9._%-]*@?[a-zA-Z0-9.-]*\\.?[a-zA-Z]{0,4}");
+const QRegExp FullEmailExp("[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,4}");
 
 #endif // LOGON_DIALOG

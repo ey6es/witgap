@@ -6,6 +6,8 @@
 
 #include "ui/Window.h"
 
+class QKeyEvent;
+
 class Session;
 
 /**
@@ -21,6 +23,18 @@ public:
      * Initializes the menu.
      */
     AdminMenu (Session* parent);
+
+protected:
+
+    /**
+     * Handles a key press event.
+     */
+    virtual void keyPressEvent (QKeyEvent* e);
+
+    /**
+     * Handles a key release event.
+     */
+    virtual void keyReleaseEvent (QKeyEvent* e);
 };
 
 #endif // ADMIN_MENU

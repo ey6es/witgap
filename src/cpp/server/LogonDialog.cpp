@@ -2,7 +2,6 @@
 // $Id$
 
 #include <QDate>
-#include <QRegExp>
 
 #include "LogonDialog.h"
 #include "ServerApp.h"
@@ -17,23 +16,11 @@
 #include "ui/TextField.h"
 #include "util/Callback.h"
 
-/** Expressions for partial and complete usernames. */
-const QRegExp PARTIAL_USERNAME("[a-zA-Z0-9]{0,16}"), FULL_USERNAME("[a-zA-Z0-9]{3,16}");
+// translate through the session
+#define tr(...) session()->translate("LogonDialog", __VA_ARGS__)
 
-/** Expressions for partial and complete passwords. */
-const QRegExp PARTIAL_PASSWORD(".{0,16}"), FULL_PASSWORD(".{6,16}");
-
-/** Month/day and year expressions. */
-const QRegExp MONTH_DAY("\\d{0,2}"), YEAR("\\d{0,4}");
-
-/** Partial and full email expressions (full from
- * http://www.regular-expressions.info/regexbuddy/email.html). */
-const QRegExp PARTIAL_EMAIL("[a-zA-Z0-9._%-]*@?[a-zA-Z0-9.-]*\\.?[a-zA-Z]{0,4}");
-const QRegExp FULL_EMAIL("[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,4}");
-
-LogonDialog::LogonDialog (ServerApp* app, Session* parent, const QString& username) :
+LogonDialog::LogonDialog (Session* parent, const QString& username) :
     Window(parent, parent->highestWindowLayer()),
-    _app(app),
     _logonBlocked(false)
 {
     setModal(true);
@@ -48,28 +35,28 @@ LogonDialog::LogonDialog (ServerApp* app, Session* parent, const QString& userna
     Container* icont = new Container(ilayout);
     addChild(icont);
     icont->addChild(new Label(tr("Username:")));
-    _username = new TextField(20, new RegExpDocument(PARTIAL_USERNAME, username, 16));
+    _username = new TextField(20, new RegExpDocument(PartialUsernameExp, username, 16));
     icont->addChild(_username);
     connect(_username, SIGNAL(textChanged()), SLOT(updateLogon()));
 
     icont->addChild(new Label(tr("Password:")));
-    _password = new PasswordField(20, new RegExpDocument(PARTIAL_PASSWORD, "", 16));
+    _password = new PasswordField(20, new RegExpDocument(PartialPasswordExp, "", 255));
     icont->addChild(_password);
     connect(_password, SIGNAL(textChanged()), SLOT(updateLogon()));
 
     icont->addChild(new Label(tr("Confirm Password:")));
-    _confirmPassword = new PasswordField(20, new RegExpDocument(PARTIAL_PASSWORD, "", 16));
+    _confirmPassword = new PasswordField(20, new RegExpDocument(PartialPasswordExp, "", 255));
     icont->addChild(_confirmPassword);
     connect(_confirmPassword, SIGNAL(textChanged()), SLOT(updateLogon()));
 
     icont->addChild(new Label(tr("Date of Birth:")));
-    _month = new TextField(3, new RegExpDocument(MONTH_DAY, "", 2), true);
+    _month = new TextField(3, new RegExpDocument(MonthDayExp, "", 2), true);
     _month->setLabel(tr("MM"));
     connect(_month, SIGNAL(textChanged()), SLOT(updateLogon()));
-    _day = new TextField(3, new RegExpDocument(MONTH_DAY, "", 2), true);
+    _day = new TextField(3, new RegExpDocument(MonthDayExp, "", 2), true);
     _day->setLabel(tr("DD"));
     connect(_day, SIGNAL(textChanged()), SLOT(updateLogon()));
-    _year = new TextField(5, new RegExpDocument(YEAR, "", 4), true);
+    _year = new TextField(5, new RegExpDocument(YearExp, "", 4), true);
     _year->setLabel(tr("YYYY"));
     connect(_year, SIGNAL(textChanged()), SLOT(updateLogon()));
     Container* dcont = BoxLayout::createHBox(
@@ -77,7 +64,7 @@ LogonDialog::LogonDialog (ServerApp* app, Session* parent, const QString& userna
     icont->addChild(dcont);
 
     icont->addChild(new Label(tr("Email (Optional):")));
-    _email = new TextField(20, new RegExpDocument(PARTIAL_EMAIL, "", 255));
+    _email = new TextField(20, new RegExpDocument(PartialEmailExp, "", 255));
     icont->addChild(_email);
     connect(_email, SIGNAL(textChanged()), SLOT(updateLogon()));
 
@@ -102,16 +89,16 @@ LogonDialog::LogonDialog (ServerApp* app, Session* parent, const QString& userna
 
 void LogonDialog::updateLogon ()
 {
-    bool enableLogon = !_logonBlocked && FULL_USERNAME.exactMatch(_username->text()) &&
-        FULL_PASSWORD.exactMatch(_password->text());
+    bool enableLogon = !_logonBlocked && FullUsernameExp.exactMatch(_username->text()) &&
+        FullPasswordExp.exactMatch(_password->text());
     if (!_createMode) {
         _logon->setEnabled(enableLogon);
         return;
     }
     QString email = _email->text().trimmed();
-    _logon->setEnabled(enableLogon && FULL_PASSWORD.exactMatch(_confirmPassword->text()) &&
+    _logon->setEnabled(enableLogon && FullPasswordExp.exactMatch(_confirmPassword->text()) &&
         QDate(_year->text().toInt(), _month->text().toInt(), _day->text().toInt()).isValid() &&
-        (email.isEmpty() || FULL_EMAIL.exactMatch(email)));
+        (email.isEmpty() || FullEmailExp.exactMatch(email)));
 }
 
 void LogonDialog::logon ()
@@ -136,7 +123,8 @@ void LogonDialog::logon ()
         }
 
         // send the request off to the database
-        QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "insertUser",
+        QMetaObject::invokeMethod(
+            session()->app()->databaseThread()->userRepository(), "insertUser",
             Q_ARG(const QString&, _username->text()), Q_ARG(const QString&, _password->text()),
             Q_ARG(const QDate&, dob), Q_ARG(const QString&, _email->text().trimmed()),
             Q_ARG(const Callback&, Callback(this, "userMaybeInserted(quint32)")));
@@ -145,22 +133,22 @@ void LogonDialog::logon ()
         // block logon and send off the request
         _logonBlocked = true;
         _logon->setEnabled(false);
-        QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "validateLogon",
+        QMetaObject::invokeMethod(
+            session()->app()->databaseThread()->userRepository(), "validateLogon",
             Q_ARG(const QString&, _username->text()), Q_ARG(const QString&, _password->text()),
             Q_ARG(const Callback&, Callback(this, "logonMaybeValidated(QVariant)")));
     }
 }
 
-void LogonDialog::userMaybeInserted (quint32 id)
+void LogonDialog::userMaybeInserted (const UserRecord& user)
 {
-    if (id == 0) {
+    if (user.id == 0) {
         flashStatus(tr("Sorry, that account name is already taken.  Please choose another."));
         _logonBlocked = false;
         updateLogon();
         _username->requestFocus();
     } else {
-        UserRecord urec = { id, _username->text(), 0 };
-        session()->loggedOn(urec);
+        session()->loggedOn(user);
         deleteLater();
     }
 }

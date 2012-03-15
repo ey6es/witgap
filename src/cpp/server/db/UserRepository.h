@@ -4,11 +4,12 @@
 #ifndef USER_REPOSITORY
 #define USER_REPOSITORY
 
+#include <QByteArray>
+#include <QDate>
+#include <QDateTime>
 #include <QObject>
 #include <QMetaType>
 #include <QString>
-
-class QDate;
 
 class Callback;
 class UserRecord;
@@ -51,6 +52,11 @@ public:
         const QString& name, const QString& password, const Callback& callback);
 
     /**
+     * Loads the record for the named user and provides it to the specified callback.
+     */
+    Q_INVOKABLE void loadUser (const QString& name, const Callback& callback);
+
+    /**
      * Loads the record for the identified user.
      */
     UserRecord loadUser (quint32 id);
@@ -74,8 +80,26 @@ public:
     /** The cased username. */
     QString name;
 
+    /** The password hash. */
+    QByteArray passwordHash;
+
+    /** The password salt. */
+    QByteArray passwordSalt;
+
+    /** The user's date of birth. */
+    QDate dateOfBirth;
+
+    /** The user's email. */
+    QString email;
+
     /** The user's flags. */
     Flags flags;
+
+    /** The time at which the user was created. */
+    QDateTime created;
+
+    /** The time at which the user was last online. */
+    QDateTime lastOnline;
 };
 
 Q_DECLARE_METATYPE(UserRecord)
