@@ -127,7 +127,7 @@ void LogonDialog::logon ()
             session()->app()->databaseThread()->userRepository(), "insertUser",
             Q_ARG(const QString&, _username->text()), Q_ARG(const QString&, _password->text()),
             Q_ARG(const QDate&, dob), Q_ARG(const QString&, _email->text().trimmed()),
-            Q_ARG(const Callback&, Callback(this, "userMaybeInserted(UserRecord)")));
+            Q_ARG(const Callback&, Callback(_this, "userMaybeInserted(UserRecord)")));
 
     } else {
         // block logon and send off the request
@@ -136,7 +136,7 @@ void LogonDialog::logon ()
         QMetaObject::invokeMethod(
             session()->app()->databaseThread()->userRepository(), "validateLogon",
             Q_ARG(const QString&, _username->text()), Q_ARG(const QString&, _password->text()),
-            Q_ARG(const Callback&, Callback(this, "logonMaybeValidated(QVariant)")));
+            Q_ARG(const Callback&, Callback(_this, "logonMaybeValidated(QVariant)")));
     }
 }
 

@@ -20,7 +20,7 @@ void SceneRepository::init ()
             "ID int unsigned not null auto_increment primary key,"
             "NAME varchar(255) not null,"
             "CREATOR_ID int unsigned not null,"
-            "CREATED timestamp not null,"
+            "CREATED datetime not null,"
             "SCROLL_WIDTH smallint unsigned not null,"
             "SCROLL_HEIGHT smallint unsigned not null,"
             "index (CREATOR_ID))");
@@ -33,6 +33,25 @@ void SceneRepository::init ()
             "DATA binary(4096) not null,"
             "index (SCENE_ID),"
             "index (X, Y))");
+}
+
+void SceneRepository::insertScene (
+    const QString& name, quint32 creatorId, const Callback& callback)
+{
+    QDateTime now = QDateTime::currentDateTime();
+
+    QSqlQuery query;
+    query.prepare("insert into SCENES (NAME, CREATOR_ID, CREATED, SCROLL_WIDTH, SCROLL_HEIGHT) "
+        "values (?, ?, ?, ?, ?)");
+    query.addBindValue(name);
+    query.addBindValue(creatorId);
+    query.addBindValue(now);
+    query.addBindValue(100);
+    query.addBindValue(100);
+    query.exec();
+
+    SceneRecord scene = { query.lastInsertId().toUInt(), name, creatorId, now, 100, 100 };
+    callback.invoke(Q_ARG(const SceneRecord&, scene));
 }
 
 void SceneRepository::loadScene (quint32 id, const Callback& callback)

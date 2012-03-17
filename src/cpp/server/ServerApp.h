@@ -9,6 +9,7 @@
 
 class ConnectionManager;
 class DatabaseThread;
+class SceneManager;
 
 /**
  * The Witgap server application.
@@ -37,6 +38,11 @@ public:
     ConnectionManager* connectionManager () const { return _connectionManager; }
 
     /**
+     * Returns a pointer to the scene manager.
+     */
+    SceneManager* sceneManager () const { return _sceneManager; }
+
+    /**
      * Returns a pointer to the database thread.
      */
     DatabaseThread* databaseThread () const { return _databaseThread; }
@@ -60,6 +66,9 @@ protected:
 
     /** The connection manager. */
     ConnectionManager* _connectionManager;
+
+    /** The scene manager. */
+    SceneManager* _sceneManager;
 
     /** The database thread. */
     DatabaseThread* _databaseThread;

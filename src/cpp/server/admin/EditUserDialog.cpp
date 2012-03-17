@@ -112,7 +112,7 @@ void EditUserDialog::search ()
     QMetaObject::invokeMethod(
         session()->app()->databaseThread()->userRepository(), "loadUser",
         Q_ARG(const QString&, _username->text()),
-        Q_ARG(const Callback&, Callback(this, "userMaybeLoaded(UserRecord)")));
+        Q_ARG(const Callback&, Callback(_this, "userMaybeLoaded(UserRecord)")));
 }
 
 void EditUserDialog::updateUpdate ()
@@ -129,7 +129,7 @@ void EditUserDialog::updateUpdate ()
 void EditUserDialog::confirmDelete ()
 {
     session()->showConfirmDialog(tr("Are you sure you want to delete this user?"),
-        Callback(this, "reallyDelete()"));
+        Callback(_this, "reallyDelete()"));
 }
 
 void EditUserDialog::update ()
@@ -150,7 +150,7 @@ void EditUserDialog::update ()
     QMetaObject::invokeMethod(
         session()->app()->databaseThread()->userRepository(), "updateUser",
         Q_ARG(const UserRecord&, _user),
-        Q_ARG(const Callback&, Callback(this, "userMaybeUpdated(bool)")));
+        Q_ARG(const Callback&, Callback(_this, "userMaybeUpdated(bool)")));
 }
 
 void EditUserDialog::userMaybeLoaded (const UserRecord& user)

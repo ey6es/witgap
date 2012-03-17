@@ -24,9 +24,12 @@ CommandMenu::CommandMenu (Session* parent) :
     if (parent->admin()) {
         addChild(new Label(QIntVector::createHighlighted(tr("&Admin"))));
     }
-
-    addChild(new Label(QIntVector::createHighlighted(
-        parent->loggedOn() ? tr("&Logoff") : tr("&Logon"))));
+    if (parent->loggedOn()) {
+        addChild(new Label(QIntVector::createHighlighted(tr("&New Scene"))));
+        addChild(new Label(QIntVector::createHighlighted(tr("&Logoff"))));
+    } else {
+        addChild(new Label(QIntVector::createHighlighted(tr("&Logon"))));
+    }
 
     pack();
     center();
@@ -52,6 +55,13 @@ void CommandMenu::keyPressEvent (QKeyEvent* e)
                 session->showLogonDialog();
             }
             deleteLater();
+            break;
+
+        case Qt::Key_N:
+            if (session->loggedOn()) {
+                session->createScene();
+                deleteLater();
+            }
             break;
 
         default:

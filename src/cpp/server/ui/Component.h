@@ -6,13 +6,13 @@
 
 #include <QList>
 #include <QMargins>
-#include <QObject>
 #include <QRect>
 #include <QRegion>
 #include <QSize>
 #include <QVariant>
 #include <QVector>
 
+#include "util/Callback.h"
 #include "util/General.h"
 
 class QEvent;
@@ -30,7 +30,7 @@ class Session;
 /**
  * Base class of all user interface components.
  */
-class Component : public QObject
+class Component : public CallableObject
 {
     Q_OBJECT
 

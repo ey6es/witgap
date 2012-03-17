@@ -4,24 +4,24 @@
 #ifndef SESSION
 #define SESSION
 
-#include <QObject>
 #include <QSet>
 #include <QSize>
 
 #include "db/UserRepository.h"
+#include "util/Callback.h"
 
 class QEvent;
 class QTranslator;
 
-class Callback;
 class Component;
 class Connection;
+class SceneRecord;
 class ServerApp;
 
 /**
  * Handles a single user session.
  */
-class Session : public QObject
+class Session : public CallableObject
 {
     Q_OBJECT
 
@@ -143,6 +143,11 @@ public:
     Q_INVOKABLE void logoff ();
 
     /**
+     * Initiates the process of creating a new scene and transferring the user to it.
+     */
+    void createScene ();
+
+    /**
      * Translates a string using the user's preferred language.
      */
     QString translate (
@@ -196,6 +201,11 @@ protected:
      * Shows the logon dialog with the provided default username.
      */
     Q_INVOKABLE void showLogonDialog (const QString& username);
+
+    /**
+     * Reports back with the newly created scene.
+     */
+    Q_INVOKABLE void sceneCreated (const SceneRecord& scene);
 
     /** The server application. */
     ServerApp* _app;

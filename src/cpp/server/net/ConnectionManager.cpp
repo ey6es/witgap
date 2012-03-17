@@ -13,7 +13,8 @@
 
 ConnectionManager::ConnectionManager (ServerApp* app) :
     QTcpServer(app),
-    _app(app)
+    _app(app),
+    _this(this)
 {
     // start listening on the configured port
     QHostAddress address(app->config().value("listen_address").toString());
@@ -45,7 +46,7 @@ void ConnectionManager::connectionEstablished (
     // otherwise, go to the database to validate the token or generate a new one
     QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "validateToken",
         Q_ARG(quint64, sessionId), Q_ARG(const QByteArray&, sessionToken),
-        Q_ARG(const Callback&, Callback(this,
+        Q_ARG(const Callback&, Callback(_this,
             "tokenValidated(QWeakObjectPointer,quint64,QByteArray,UserRecord)",
             Q_ARG(const QWeakObjectPointer&, QWeakObjectPointer(connection)))));
 }

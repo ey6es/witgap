@@ -11,7 +11,6 @@ class Button;
 class CheckBox;
 class Label;
 class PasswordField;
-class ServerApp;
 class Session;
 class StatusLabel;
 class TextField;

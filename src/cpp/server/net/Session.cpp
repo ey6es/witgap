@@ -15,6 +15,7 @@
 #include "LogonDialog.h"
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
+#include "db/SceneRepository.h"
 #include "db/SessionRepository.h"
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
@@ -34,7 +35,7 @@ using namespace std;
 
 Session::Session (ServerApp* app, Connection* connection, quint64 id,
         const QByteArray& token, const UserRecord& user) :
-    QObject(app->connectionManager()),
+    CallableObject(app->connectionManager()),
     _app(app),
     _connection(0),
     _id(id),
@@ -184,12 +185,12 @@ void Session::showLogonDialog ()
     }
     Connection::requestCookieMetaMethod().invoke(_connection,
         Q_ARG(const QString&, "username"), Q_ARG(const Callback&,
-            Callback(this, "showLogonDialog(QString)")));
+            Callback(_this, "showLogonDialog(QString)")));
 }
 
 void Session::showLogoffDialog ()
 {
-    showConfirmDialog(tr("Are you sure you want to log off?"), Callback(this, "logoff()"));
+    showConfirmDialog(tr("Are you sure you want to log off?"), Callback(_this, "logoff()"));
 }
 
 void Session::loggedOn (const UserRecord& user)
@@ -214,6 +215,14 @@ void Session::logoff ()
     // clear the user id in the session record
     QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "setUserId",
         Q_ARG(quint64, _id), Q_ARG(quint32, 0));
+}
+
+void Session::createScene ()
+{
+    // insert the scene into the database
+    QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "insertScene",
+        Q_ARG(const QString&, tr("Untitled Scene")), Q_ARG(quint32, _user.id),
+        Q_ARG(const Callback&, Callback(_this, "sceneCreated(SceneRecord)")));
 }
 
 QString Session::translate (
@@ -382,4 +391,9 @@ void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
 void Session::showLogonDialog (const QString& username)
 {
     new LogonDialog(this, username);
+}
+
+void Session::sceneCreated (const SceneRecord& scene)
+{
+
 }

@@ -13,7 +13,7 @@
 #include "ui/Layout.h"
 
 Component::Component (QObject* parent) :
-    QObject(parent),
+    CallableObject(parent),
     _border(0),
     _explicitPreferredSize(-1, -1),
     _background(0),

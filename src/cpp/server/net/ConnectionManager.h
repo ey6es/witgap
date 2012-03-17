@@ -60,6 +60,9 @@ protected:
 
     /** The set of active sessions, mapped by session id. */
     QHash<quint64, Session*> _sessions;
+
+    /** Synchronized pointer for callbacks. */
+    CallablePointer _this;
 };
 
 #endif // CONNECTION_MANAGER

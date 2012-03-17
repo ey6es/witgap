@@ -9,6 +9,7 @@
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
 #include "net/ConnectionManager.h"
+#include "scene/SceneManager.h"
 
 volatile int pendingSignal = 0;
 
@@ -33,8 +34,9 @@ ServerApp::ServerApp (int& argc, char** argv, const QString& configFile) :
     // create the database thread
     _databaseThread = new DatabaseThread(this);
 
-    // create the connection manager
+    // create the managers
     _connectionManager = new ConnectionManager(this);
+    _sceneManager = new SceneManager(this);
 
     // start the database thread
     _databaseThread->start();
