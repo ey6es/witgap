@@ -2,6 +2,7 @@
 // $Id$
 
 #include <QDate>
+#include <QtDebug>
 
 #include "LogonDialog.h"
 #include "ServerApp.h"
@@ -148,6 +149,8 @@ void LogonDialog::userMaybeInserted (const UserRecord& user)
         updateLogon();
         _username->requestFocus();
     } else {
+        qDebug() << "Account created." << user.id << user.name << user.dateOfBirth << user.email;
+
         session()->loggedOn(user);
         deleteLater();
     }

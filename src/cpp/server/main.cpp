@@ -3,6 +3,8 @@
 
 #include <iostream>
 
+#include <QtDebug>
+
 #include "ServerApp.h"
 
 using namespace std;
@@ -17,6 +19,7 @@ int main (int argc, char** argv)
         cout << "Usage: witgap-server inifile" << endl;
         return 0;
     }
-    ServerApp app(argc, argv, argv[1]);
-    return app.exec();
+    int result = ServerApp(argc, argv, argv[1]).exec();
+    qDebug() << "Server shutdown.";
+    return result;
 }

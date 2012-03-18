@@ -5,6 +5,7 @@
 #define CONNECTION
 
 #include <QHash>
+#include <QHostAddress>
 #include <QSize>
 #include <QTcpSocket>
 
@@ -55,6 +56,11 @@ public:
      * Initializes the connection.
      */
     Connection (ServerApp* app, QTcpSocket* socket);
+
+    /**
+     * Destroys the connection.
+     */
+    ~Connection ();
 
     /**
      * Checks whether the connection is open.
@@ -159,6 +165,9 @@ protected:
 
     /** The underlying socket. */
     QTcpSocket* _socket;
+
+    /** The stored address. */
+    QHostAddress _address;
 
     /** The data stream used to read from and write to the socket. */
     QDataStream _stream;

@@ -29,7 +29,7 @@ public:
     void init ();
 
     /**
-     * Inserts a new scene into the database.  The callback will receive the {@link SceneRecord}.
+     * Inserts a new scene into the database.  The callback will receive the (quint32) scene id.
      */
     Q_INVOKABLE void insertScene (
         const QString& name, quint32 creatorId, const Callback& callback);

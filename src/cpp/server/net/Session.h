@@ -15,6 +15,7 @@ class QTranslator;
 
 class Component;
 class Connection;
+class Scene;
 class SceneRecord;
 class ServerApp;
 
@@ -148,6 +149,11 @@ public:
     void createScene ();
 
     /**
+     * Moves the user to the identified scene.
+     */
+    void moveToScene (quint32 id);
+
+    /**
      * Translates a string using the user's preferred language.
      */
     QString translate (
@@ -203,9 +209,20 @@ protected:
     Q_INVOKABLE void showLogonDialog (const QString& username);
 
     /**
-     * Reports back with the newly created scene.
+     * Reports back with id of the newly created scene.
      */
-    Q_INVOKABLE void sceneCreated (const SceneRecord& scene);
+    Q_INVOKABLE void sceneCreated (quint32 id);
+
+    /**
+     * Reports back with the resolved scene object, if successful.
+     */
+    Q_INVOKABLE void sceneMaybeResolved (QObject* scene);
+
+    /**
+     * Enters the now-resolved scene.  This is called after the session has been transferred
+     * to the scene thread.
+     */
+    Q_INVOKABLE void continueMovingToScene (QObject* scene);
 
     /** The server application. */
     ServerApp* _app;
@@ -245,6 +262,9 @@ protected:
 
     /** The currently logged in user. */
     UserRecord _user;
+
+    /** The currently occupied scene. */
+    Scene* _scene;
 };
 
 #endif // SESSION

@@ -65,6 +65,19 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(deleteLater()));
     connect(socket, SIGNAL(disconnected()), SLOT(deleteLater()));
     connect(this, SIGNAL(windowClosed()), SLOT(deleteLater()));
+
+    // log the connection
+    qDebug() << "Connection opened." << (_address = _socket->peerAddress());
+}
+
+Connection::~Connection ()
+{
+    // log the destruction
+    QString error;
+    QDebug base = qDebug() << "Connection closed." << _address;
+    if (_socket->error() != QAbstractSocket::UnknownSocketError) {
+        base << _socket->errorString();
+    }
 }
 
 void Connection::activate ()
@@ -179,6 +192,9 @@ void Connection::readHeader ()
 
     // disable the connection until we're ready to read subsequent messages
     _socket->disconnect(this);
+
+    // log the establishment
+    qDebug() << "Connection established." << sessionId << _displaySize;
 
     // notify the connection manager, which will create a session for the connection
     _app->connectionManager()->connectionEstablished(this, sessionId, sessionToken);

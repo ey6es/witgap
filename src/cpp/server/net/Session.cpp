@@ -20,6 +20,8 @@
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
+#include "scene/Scene.h"
+#include "scene/SceneManager.h"
 #include "ui/Border.h"
 #include "ui/Button.h"
 #include "ui/Component.h"
@@ -195,6 +197,8 @@ void Session::showLogoffDialog ()
 
 void Session::loggedOn (const UserRecord& user)
 {
+    qDebug() << "Logged on." << _id << user.name;
+
     _user = user;
 
     if (_connection != 0) {
@@ -210,6 +214,8 @@ void Session::loggedOn (const UserRecord& user)
 
 void Session::logoff ()
 {
+    qDebug() << "Logged off." << _id << _user.name;
+
     _user.id = 0;
 
     // clear the user id in the session record
@@ -222,7 +228,15 @@ void Session::createScene ()
     // insert the scene into the database
     QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "insertScene",
         Q_ARG(const QString&, tr("Untitled Scene")), Q_ARG(quint32, _user.id),
-        Q_ARG(const Callback&, Callback(_this, "sceneCreated(SceneRecord)")));
+        Q_ARG(const Callback&, Callback(_this, "sceneCreated(quint32)")));
+}
+
+void Session::moveToScene (quint32 id)
+{
+    // resolve the scene via the manager
+    QMetaObject::invokeMethod(_app->sceneManager(), "resolveScene",
+        Q_ARG(quint32, id),
+        Q_ARG(const Callback&, Callback(_this, "sceneMaybeResolved(QObject*)")));
 }
 
 QString Session::translate (
@@ -393,7 +407,29 @@ void Session::showLogonDialog (const QString& username)
     new LogonDialog(this, username);
 }
 
-void Session::sceneCreated (const SceneRecord& scene)
+void Session::sceneCreated (quint32 id)
 {
+    qDebug() << "Created scene." << _user.name << id;
+
+    moveToScene(id);
+}
+
+void Session::sceneMaybeResolved (QObject* scene)
+{
+    if (scene == 0) {
+        showInfoDialog(tr("Failed to resolve scene."));
+        return;
+    }
+    // move the session to the scene thread
+    setParent(0);
+    moveToThread(scene->thread());
+
+    // continue the process in the scene thread
+    QMetaObject::invokeMethod(this, "continueMovingToScene", Q_ARG(QObject*, scene));
+}
+
+void Session::continueMovingToScene (QObject* scene)
+{
+    _scene = static_cast<Scene*>(scene);
 
 }

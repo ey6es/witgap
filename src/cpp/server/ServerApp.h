@@ -7,6 +7,8 @@
 #include <QCoreApplication>
 #include <QSettings>
 
+class QByteArray;
+
 class ConnectionManager;
 class DatabaseThread;
 class SceneManager;
@@ -60,6 +62,11 @@ protected slots:
     void cleanup ();
 
 protected:
+
+    /**
+     * Prints a log message to the standard output.
+     */
+    Q_INVOKABLE void log (const QByteArray& msg);
 
     /** The application configuration. */
     QSettings _config;

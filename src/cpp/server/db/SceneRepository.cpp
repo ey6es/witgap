@@ -38,20 +38,17 @@ void SceneRepository::init ()
 void SceneRepository::insertScene (
     const QString& name, quint32 creatorId, const Callback& callback)
 {
-    QDateTime now = QDateTime::currentDateTime();
-
     QSqlQuery query;
     query.prepare("insert into SCENES (NAME, CREATOR_ID, CREATED, SCROLL_WIDTH, SCROLL_HEIGHT) "
         "values (?, ?, ?, ?, ?)");
     query.addBindValue(name);
     query.addBindValue(creatorId);
-    query.addBindValue(now);
+    query.addBindValue(QDateTime::currentDateTime());
     query.addBindValue(100);
     query.addBindValue(100);
     query.exec();
 
-    SceneRecord scene = { query.lastInsertId().toUInt(), name, creatorId, now, 100, 100 };
-    callback.invoke(Q_ARG(const SceneRecord&, scene));
+    callback.invoke(Q_ARG(quint32, query.lastInsertId().toUInt()));
 }
 
 void SceneRepository::loadScene (quint32 id, const Callback& callback)

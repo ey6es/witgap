@@ -49,9 +49,11 @@ void SessionRepository::validateToken (
             query.addBindValue(id);
             query.exec();
             quint32 userId = query.next() ? query.value(0).toUInt() : 0;
+            UserRecord urec = (userId == 0) ? NoUser :
+                _app->databaseThread()->userRepository()->loadUser(userId);
+            qDebug() << "Session resumed." << id << urec.name;
             callback.invoke(Q_ARG(quint64, id), Q_ARG(const QByteArray&, token),
-                Q_ARG(const UserRecord&, (userId == 0) ? NoUser :
-                    _app->databaseThread()->userRepository()->loadUser(userId)));
+                Q_ARG(const UserRecord&, urec));
             return;
         }
     }
@@ -66,6 +68,7 @@ void SessionRepository::validateToken (
     query.addBindValue(now);
     query.exec();
     id = query.lastInsertId().toULongLong();
+    qDebug() << "Session created." << id;
     callback.invoke(Q_ARG(quint64, id), Q_ARG(const QByteArray&, ntoken),
         Q_ARG(const UserRecord&, NoUser));
 }

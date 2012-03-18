@@ -10,3 +10,6 @@ database_name = witgap
 database_username = witgap
 database_password = xxx
 database_connect_options =
+
+; The number of threads to create for scenes, or -1 for max(1, number of cores - 1)
+scene_threads = -1

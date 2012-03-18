@@ -8,6 +8,8 @@
 
 #include "db/SceneRepository.h"
 
+class ServerApp;
+
 /**
  * The in-memory representation of a scene.
  */
@@ -20,9 +22,12 @@ public:
     /**
      * Creates a new scene.
      */
-    Scene (const SceneRecord& record);
+    Scene (ServerApp* app, const SceneRecord& record);
 
 protected:
+
+    /** The application object. */
+    ServerApp* _app;
 
     /** The scene record. */
     SceneRecord _record;
