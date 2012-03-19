@@ -14,12 +14,12 @@ Scene::Scene (ServerApp* app, const SceneRecord& record) :
 {
 }
 
-bool Scene::canEdit (Session* session) const
+bool Scene::canSetProperties (Session* session) const
 {
     return session->admin() || session->user().id == _record.creatorId;
 }
 
-void Scene::update (const QString& name, quint16 scrollWidth, quint16 scrollHeight)
+void Scene::setProperties (const QString& name, quint16 scrollWidth, quint16 scrollHeight)
 {
     // update the record
     _record.name = name;

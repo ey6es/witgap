@@ -31,14 +31,14 @@ public:
     const SceneRecord& record () const { return _record; }
 
     /**
-     * Checks whether the specified session can edit the scene.
+     * Checks whether the specified session can edit the scene properties.
      */
-    bool canEdit (Session* session) const;
+    bool canSetProperties (Session* session) const;
 
     /**
-     * Updates the scene metadata.
+     * Sets the scene properties.
      */
-    void update (const QString& name, quint16 scrollWidth, quint16 scrollHeight);
+    void setProperties (const QString& name, quint16 scrollWidth, quint16 scrollHeight);
 
     /**
      * Removes the scene from the database.

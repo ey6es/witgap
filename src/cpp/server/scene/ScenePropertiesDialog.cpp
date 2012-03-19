@@ -4,8 +4,8 @@
 #include <limits>
 
 #include "net/Session.h"
-#include "scene/EditSceneDialog.h"
 #include "scene/Scene.h"
+#include "scene/ScenePropertiesDialog.h"
 #include "ui/Border.h"
 #include "ui/Button.h"
 #include "ui/Label.h"
@@ -14,14 +14,14 @@
 #include "util/Callback.h"
 
 // translate through the session
-#define tr(...) session()->translate("EditSceneDialog", __VA_ARGS__)
+#define tr(...) session()->translate("ScenePropertiesDialog", __VA_ARGS__)
 
 using namespace std;
 
 /** Expression for unsigned shorts. */
 const QRegExp UShortExp("\\d{0,5}");
 
-EditSceneDialog::EditSceneDialog (Session* parent) :
+ScenePropertiesDialog::ScenePropertiesDialog (Session* parent) :
     Window(parent, parent->highestWindowLayer())
 {
     setModal(true);
@@ -48,49 +48,56 @@ EditSceneDialog::EditSceneDialog (Session* parent) :
 
     icont->addChild(new Label(tr("Name:")));
     icont->addChild(_name = new TextField(20, new Document(record.name, 255)));
-    connect(_name, SIGNAL(textChanged()), SLOT(updateUpdate()));
+    connect(_name, SIGNAL(textChanged()), SLOT(updateApply()));
 
     icont->addChild(new Label(tr("Scroll Width:")));
     icont->addChild(_scrollWidth = new TextField(20,
         new RegExpDocument(UShortExp, QString::number(record.scrollWidth), 5)));
-    connect(_name, SIGNAL(textChanged()), SLOT(updateUpdate()));
+    connect(_name, SIGNAL(textChanged()), SLOT(updateApply()));
 
     icont->addChild(new Label(tr("Scroll Height:")));
     icont->addChild(_scrollHeight = new TextField(20,
         new RegExpDocument(UShortExp, QString::number(record.scrollHeight), 5)));
-    connect(_name, SIGNAL(textChanged()), SLOT(updateUpdate()));
+    connect(_name, SIGNAL(textChanged()), SLOT(updateApply()));
 
-    Button* close = new Button(tr("Close"));
-    connect(close, SIGNAL(pressed()), SLOT(deleteLater()));
+    Button* cancel = new Button(tr("Cancel"));
+    connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
     Button* del = new Button(tr("Delete"));
-    connect(del, SIGNAL(pressed()), SLOT(deleteLater()));
-    connect(_update = new Button(tr("Update")), SIGNAL(pressed()), SLOT(update()));
-    addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, close, del, _update));
+    connect(del, SIGNAL(pressed()), SLOT(confirmDelete()));
+    connect(_apply = new Button(tr("Apply")), SIGNAL(pressed()), SLOT(apply()));
+    connect(_ok = new Button(tr("OK")), SIGNAL(pressed()), SLOT(apply()));
+    connect(_ok, SIGNAL(pressed()), SLOT(deleteLater()));
+    addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, cancel, del, _apply, _ok));
+
+    pack();
+    center();
 }
 
-void EditSceneDialog::updateUpdate ()
+void ScenePropertiesDialog::updateApply ()
 {
     int scrollWidth = _scrollWidth->text().toInt();
     int scrollHeight = _scrollHeight->text().toInt();
-    _update->setEnabled(!_name->text().trimmed().isEmpty() &&
+    bool enable = !_name->text().trimmed().isEmpty() &&
         scrollWidth > 0 && scrollWidth < numeric_limits<quint16>::max() &&
-        scrollHeight > 0 && scrollHeight < numeric_limits<quint16>::max());
+        scrollHeight > 0 && scrollHeight < numeric_limits<quint16>::max();
+    _apply->setEnabled(enable);
+    _ok->setEnabled(enable);
 }
 
-void EditSceneDialog::confirmDelete ()
+void ScenePropertiesDialog::confirmDelete ()
 {
     session()->showConfirmDialog(tr("Are you sure you want to delete this scene?"),
         Callback(_this, "reallyDelete()"));
 }
 
-void EditSceneDialog::update ()
+void ScenePropertiesDialog::apply ()
 {
     // handle update through the scene
-    session()->scene()->update(_name->text().simplified(),
+    session()->scene()->setProperties(_name->text().simplified(),
         _scrollWidth->text().toInt(), _scrollHeight->text().toInt());
 }
 
-void EditSceneDialog::reallyDelete ()
+void ScenePropertiesDialog::reallyDelete ()
 {
     // handle deletion through the scene
     session()->scene()->remove();

@@ -55,25 +55,25 @@ EditUserDialog::EditUserDialog (Session* parent) :
     icont->addChild(new Label(tr("New Username:")));
     icont->addChild(_newUsername = new TextField(20,
         new RegExpDocument(PartialUsernameExp, "", 16)));
-    connect(_newUsername, SIGNAL(textChanged()), SLOT(updateUpdate()));
+    connect(_newUsername, SIGNAL(textChanged()), SLOT(updateApply()));
 
     icont->addChild(new Label(tr("Password:")));
     icont->addChild(_password = new PasswordField(20,
         new RegExpDocument(PartialPasswordExp, "", 255)));
-    connect(_password, SIGNAL(textChanged()), SLOT(updateUpdate()));
+    connect(_password, SIGNAL(textChanged()), SLOT(updateApply()));
 
     icont->addChild(new Label(tr("Confirm Password:")));
     icont->addChild(_confirmPassword = new PasswordField(20,
         new RegExpDocument(PartialPasswordExp, "", 255)));
-    connect(_confirmPassword, SIGNAL(textChanged()), SLOT(updateUpdate()));
+    connect(_confirmPassword, SIGNAL(textChanged()), SLOT(updateApply()));
 
     icont->addChild(new Label(tr("Date of Birth:")));
     icont->addChild(_dob = new TextField());
-    connect(_dob, SIGNAL(textChanged()), SLOT(updateUpdate()));
+    connect(_dob, SIGNAL(textChanged()), SLOT(updateApply()));
 
     icont->addChild(new Label(tr("Email:")));
     icont->addChild(_email = new TextField(20, new RegExpDocument(PartialEmailExp, "", 255)));
-    connect(_email, SIGNAL(textChanged()), SLOT(updateUpdate()));
+    connect(_email, SIGNAL(textChanged()), SLOT(updateApply()));
 
     icont->addChild(new Label(tr("Banned:")));
     icont->addChild(BoxLayout::createHBox(Qt::AlignLeft, 0, _banned = new CheckBox()));
@@ -83,11 +83,13 @@ EditUserDialog::EditUserDialog (Session* parent) :
 
     addChild(_status = new StatusLabel());
 
-    Button* close = new Button(tr("Close"));
-    connect(close, SIGNAL(pressed()), SLOT(deleteLater()));
+    Button* cancel = new Button(tr("Cancel"));
+    connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
     connect(_delete = new Button(tr("Delete")), SIGNAL(pressed()), SLOT(confirmDelete()));
-    connect(_update = new Button(tr("Update")), SIGNAL(pressed()), SLOT(update()));
-    addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, close, _delete, _update));
+    connect(_apply = new Button(tr("Apply")), SIGNAL(pressed()), SLOT(apply()));
+    connect(_ok = new Button(tr("OK")), SIGNAL(pressed()), SLOT(apply()));
+    connect(_ok, SIGNAL(pressed()), SLOT(deleteLater()));
+    addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, cancel, _delete, _apply, _ok));
 
     updateSearch();
 }
@@ -97,7 +99,8 @@ void EditUserDialog::updateSearch ()
     _id->container()->setVisible(false);
     _status->setVisible(false);
     _search->setEnabled(FullUsernameExp.exactMatch(_username->text()));
-    _update->setVisible(false);
+    _apply->setVisible(false);
+    _ok->setVisible(false);
     _delete->setVisible(false);
 
     pack();
@@ -115,15 +118,17 @@ void EditUserDialog::search ()
         Q_ARG(const Callback&, Callback(_this, "userMaybeLoaded(UserRecord)")));
 }
 
-void EditUserDialog::updateUpdate ()
+void EditUserDialog::updateApply ()
 {
     QString password = _password->text();
     QString email = _email->text();
-    _update->setEnabled(FullUsernameExp.exactMatch(_newUsername->text()) &&
+    bool enable = FullUsernameExp.exactMatch(_newUsername->text()) &&
         password == _confirmPassword->text() &&
             (password.isEmpty() || FullPasswordExp.exactMatch(password)) &&
         QDate::fromString(_dob->text(), "MM-dd-yyyy").isValid() &&
-        (email.isEmpty() || FullEmailExp.exactMatch(email)));
+        (email.isEmpty() || FullEmailExp.exactMatch(email));
+    _apply->setEnabled(enable);
+    _ok->setEnabled(enable);
 }
 
 void EditUserDialog::confirmDelete ()
@@ -132,7 +137,7 @@ void EditUserDialog::confirmDelete ()
         Callback(_this, "reallyDelete()"));
 }
 
-void EditUserDialog::update ()
+void EditUserDialog::apply ()
 {
     // update the record fields
     _user.name = _newUsername->text();
@@ -174,8 +179,10 @@ void EditUserDialog::userMaybeLoaded (const UserRecord& user)
     _email->setText(user.email);
     _banned->setSelected(user.flags.testFlag(UserRecord::Banned));
     _admin->setSelected(user.flags.testFlag(UserRecord::Admin));
-    _update->setVisible(true);
-    _update->setEnabled(true);
+    _apply->setVisible(true);
+    _apply->setEnabled(true);
+    _ok->setVisible(true);
+    _ok->setEnabled(true);
     _delete->setVisible(true);
 
     pack();

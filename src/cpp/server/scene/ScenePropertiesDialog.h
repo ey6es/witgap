@@ -1,8 +1,8 @@
 //
 // $Id$
 
-#ifndef EDIT_SCENE_DIALOG
-#define EDIT_SCENE_DIALOG
+#ifndef SCENE_PROPERTIES_DIALOG
+#define SCENE_PROPERTIES_DIALOG
 
 #include "ui/Window.h"
 
@@ -13,7 +13,7 @@ class TextField;
 /**
  * Allows scene owners and admins to edit the properties of the scene.
  */
-class EditSceneDialog : public Window
+class ScenePropertiesDialog : public Window
 {
     Q_OBJECT
 
@@ -22,14 +22,14 @@ public:
     /**
      * Initializes the dialog.
      */
-    EditSceneDialog (Session* parent);
+    ScenePropertiesDialog (Session* parent);
 
 protected slots:
 
     /**
-     * Updates the state of the update button.
+     * Updates the state of the apply/OK buttons.
      */
-    void updateUpdate ();
+    void updateApply ();
 
     /**
      * Makes sure the user really wants to delete the scene.
@@ -37,9 +37,9 @@ protected slots:
     void confirmDelete ();
 
     /**
-     * Updates the scene.
+     * Applies the changes.
      */
-    void update ();
+    void apply ();
 
 protected:
 
@@ -57,8 +57,8 @@ protected:
     /** The scroll height field. */
     TextField* _scrollHeight;
 
-    /** The update button. */
-    Button* _update;
+    /** The apply/OK buttons. */
+    Button* _apply, *_ok;
 };
 
-#endif // EDIT_SCENE_DIALOG
+#endif // SCENE_PROPERTIES_DIALOG

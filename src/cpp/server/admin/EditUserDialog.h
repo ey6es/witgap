@@ -42,9 +42,9 @@ protected slots:
     void search ();
 
     /**
-     * Updates the state of the update button.
+     * Updates the state of the apply/OK buttons.
      */
-    void updateUpdate ();
+    void updateApply ();
 
     /**
      * Makes sure the admin really wants to delete the user.
@@ -54,7 +54,7 @@ protected slots:
     /**
      * Updates the user record.
      */
-    void update ();
+    void apply ();
 
 protected:
 
@@ -112,11 +112,11 @@ protected:
     /** The status label. */
     StatusLabel* _status;
 
-    /** The update user button. */
-    Button* _update;
-
     /** The delete user button. */
     Button* _delete;
+
+    /** The apply/OK buttons. */
+    Button* _apply, *_ok;
 
     /** The loaded user record. */
     UserRecord _user;
