@@ -97,8 +97,8 @@ void EditUserDialog::updateSearch ()
     _id->container()->setVisible(false);
     _status->setVisible(false);
     _search->setEnabled(FullUsernameExp.exactMatch(_username->text()));
-    _update->setEnabled(false);
-    _delete->setEnabled(false);
+    _update->setVisible(false);
+    _delete->setVisible(false);
 
     pack();
     center();
@@ -174,8 +174,9 @@ void EditUserDialog::userMaybeLoaded (const UserRecord& user)
     _email->setText(user.email);
     _banned->setSelected(user.flags.testFlag(UserRecord::Banned));
     _admin->setSelected(user.flags.testFlag(UserRecord::Admin));
+    _update->setVisible(true);
     _update->setEnabled(true);
-    _delete->setEnabled(true);
+    _delete->setVisible(true);
 
     pack();
     center();

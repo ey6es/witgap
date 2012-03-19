@@ -70,6 +70,16 @@ public:
     bool admin () const { return _user.id != 0 && _user.flags.testFlag(UserRecord::Admin); }
 
     /**
+     * Returns a reference to the user record.
+     */
+    const UserRecord& user () const { return _user; }
+
+    /**
+     * Returns the scene pointer, if the user is in a scene.
+     */
+    Scene* scene () const { return _scene; }
+
+    /**
      * Increments the window id counter and returns its value.
      */
     int nextWindowId () { return ++_lastWindowId; }

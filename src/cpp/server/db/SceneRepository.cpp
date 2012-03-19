@@ -19,10 +19,12 @@ void SceneRepository::init ()
         "create table if not exists SCENES ("
             "ID int unsigned not null auto_increment primary key,"
             "NAME varchar(255) not null,"
+            "NAME_LOWER varchar(255) not null,"
             "CREATOR_ID int unsigned not null,"
             "CREATED datetime not null,"
             "SCROLL_WIDTH smallint unsigned not null,"
             "SCROLL_HEIGHT smallint unsigned not null,"
+            "index (NAME_LOWER),"
             "index (CREATOR_ID))");
 
     query.exec(
@@ -39,9 +41,10 @@ void SceneRepository::insertScene (
     const QString& name, quint32 creatorId, const Callback& callback)
 {
     QSqlQuery query;
-    query.prepare("insert into SCENES (NAME, CREATOR_ID, CREATED, SCROLL_WIDTH, SCROLL_HEIGHT) "
-        "values (?, ?, ?, ?, ?)");
+    query.prepare("insert into SCENES (NAME, NAME_LOWER, CREATOR_ID, CREATED, SCROLL_WIDTH, "
+        "SCROLL_HEIGHT) values (?, ?, ?, ?, ?, ?)");
     query.addBindValue(name);
+    query.addBindValue(name.toLower());
     query.addBindValue(creatorId);
     query.addBindValue(QDateTime::currentDateTime());
     query.addBindValue(100);
@@ -55,7 +58,8 @@ void SceneRepository::loadScene (quint32 id, const Callback& callback)
 {
     QSqlQuery query;
     query.prepare(
-        "select NAME, CREATOR_ID, CREATED, SCROLL_WIDTH, SCROLL_HEIGHT from SCENES where ID = ?");
+        "select SCENES.NAME, CREATOR_ID, USERS.NAME, SCENES.CREATED, SCROLL_WIDTH, SCROLL_HEIGHT "
+            "from SCENES, USERS where SCENES.CREATOR_ID = USERS.ID and SCENES.ID = ?");
     query.addBindValue(id);
     query.exec();
 
@@ -64,8 +68,8 @@ void SceneRepository::loadScene (quint32 id, const Callback& callback)
         return;
     }
     SceneRecord scene = {
-        id, query.value(0).toString(), query.value(1).toUInt(), query.value(2).toDateTime(),
-        query.value(3).toUInt(), query.value(4).toUInt() };
+        id, query.value(0).toString(), query.value(1).toUInt(), query.value(2).toString(),
+        query.value(3).toDateTime(), query.value(4).toUInt(), query.value(5).toUInt() };
 
     query.prepare("select X, Y, DATA from SCENE_DATA where SCENE_ID = ?");
     query.addBindValue(id);
@@ -79,4 +83,35 @@ void SceneRepository::loadScene (quint32 id, const Callback& callback)
     }
 
     callback.invoke(Q_ARG(const SceneRecord&, scene));
+}
+
+void SceneRepository::findScenes (
+    const QString& prefix, quint32 creatorId, const Callback& callback)
+{
+    QSqlQuery query;
+}
+
+void SceneRepository::updateScene (const SceneRecord& srec)
+{
+    QSqlQuery query;
+    query.prepare("update SCENES set NAME = ?, NAME_LOWER = ?, SCROLL_WIDTH = ?, "
+        "SCROLL_HEIGHT = ? where ID = ?");
+    query.addBindValue(srec.name);
+    query.addBindValue(srec.name.toLower());
+    query.addBindValue(srec.scrollWidth);
+    query.addBindValue(srec.scrollHeight);
+    query.addBindValue(srec.id);
+    query.exec();
+}
+
+void SceneRepository::deleteScene (quint32 id)
+{
+    QSqlQuery query;
+    query.prepare("delete from SCENES where ID = ?");
+    query.addBindValue(id);
+    query.exec();
+
+    query.prepare("delete from SCENE_DATA where ID = ?");
+    query.addBindValue(id);
+    query.exec();
 }

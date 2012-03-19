@@ -30,10 +30,10 @@
 #include "ui/TextField.h"
 #include "ui/Window.h"
 
-using namespace std;
-
 // translate through the session
 #define tr(...) translate("Session", __VA_ARGS__)
+
+using namespace std;
 
 Session::Session (ServerApp* app, Connection* connection, quint64 id,
         const QByteArray& token, const UserRecord& user) :
@@ -47,7 +47,8 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id,
     _moused(0),
     _focus(0),
     _translator(0),
-    _user(user)
+    _user(user),
+    _scene(0)
 {
     // send the session info back to the connection and activate it
     connection->setCookie("sessionId", QString::number(id, 16).rightJustified(16, '0'));

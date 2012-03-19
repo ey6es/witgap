@@ -13,6 +13,7 @@
 #include "util/General.h"
 
 class Callback;
+class SceneRecord;
 
 /**
  * Handles database queries associated with scenes.
@@ -38,6 +39,24 @@ public:
      * Loads a scene.  The callback will receive the {@link SceneRecord}.
      */
     Q_INVOKABLE void loadScene (quint32 id, const Callback& callback);
+
+    /**
+     * Finds scenes whose names start with the specified prefix.
+     *
+     * @param creatorId the id of the creator whose scenes are desired, or 0 for all creators.
+     */
+    Q_INVOKABLE void findScenes (
+        const QString& prefix, quint32 creatorId, const Callback& callback);
+
+    /**
+     * Updates a scene record.
+     */
+    Q_INVOKABLE void updateScene (const SceneRecord& srec);
+
+    /**
+     * Deletes the identified scene.
+     */
+    Q_INVOKABLE void deleteScene (quint32 id);
 };
 
 /**
@@ -55,6 +74,9 @@ public:
 
     /** The user id of the scene creator. */
     quint32 creatorId;
+
+    /** The name of the scene creator. */
+    QString creatorName;
 
     /** The time at which the scene was created. */
     QDateTime created;
