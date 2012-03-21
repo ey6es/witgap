@@ -10,6 +10,7 @@
 
 // register our types with the metatype system
 int sceneRecordType = qRegisterMetaType<SceneRecord>();
+int sceneDescriptorListType = qRegisterMetaType<SceneDescriptorList>("SceneDescriptorList");
 
 void SceneRepository::init ()
 {
@@ -89,6 +90,26 @@ void SceneRepository::findScenes (
     const QString& prefix, quint32 creatorId, const Callback& callback)
 {
     QSqlQuery query;
+    QString escaped = prefix.toLower().replace('%', "\\%").replace('_', "\\_") += '%';
+    QString base = "select SCENES.ID, SCENES.NAME, CREATOR_ID, USERS.NAME, SCENES.CREATED from "
+        "SCENES, USERS where SCENES.CREATOR_ID = USERS.ID and SCENES.NAME_LOWER like ?";
+    if (creatorId == 0) {
+        query.prepare(base);
+        query.addBindValue(escaped);
+    } else {
+        query.prepare(base + " and CREATOR_ID = ?");
+        query.addBindValue(escaped);
+        query.addBindValue(creatorId);
+    }
+    query.exec();
+
+    SceneDescriptorList descs;
+    while (query.next()) {
+        SceneDescriptor desc = { query.value(0).toUInt(), query.value(1).toString(),
+            query.value(2).toUInt(), query.value(3).toString(), query.value(4).toDateTime() };
+        descs.append(desc);
+    }
+    callback.invoke(Q_ARG(const SceneDescriptorList&, descs));
 }
 
 void SceneRepository::updateScene (const SceneRecord& srec)

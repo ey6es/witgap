@@ -88,6 +88,18 @@ void TextField::setDocument (Document* document)
     }
 }
 
+void TextField::setCursorPosition (int pos)
+{
+    if (_cursorPos != pos) {
+        int opos = _cursorPos;
+        _cursorPos = pos;
+        if (!updateDocumentPos()) {
+            dirty(_cursorPos, 1);
+            dirty(opos, 1);
+        }
+    }
+}
+
 void TextField::setLabel (const QString& label)
 {
     if (_label != label) {
@@ -187,16 +199,13 @@ void TextField::mouseButtonPressEvent (QMouseEvent* e)
     inner.setX(inner.x() + 1);
     inner.setWidth(inner.width() - 1);
     if (inner.contains(e->pos())) {
-        int opos = _cursorPos;
         int length = _document->text().length();
         int fwidth = inner.width() - 1;
         if (_rightAlign && length < fwidth) {
-            _cursorPos = qMax(e->pos().x() - inner.x() - fwidth + length, 0);
+            setCursorPosition(qMax(e->pos().x() - inner.x() - fwidth + length, 0));
         } else {
-            _cursorPos = qMin(_documentPos + e->pos().x() - inner.x(), length);
+            setCursorPosition(qMin(_documentPos + e->pos().x() - inner.x(), length));
         }
-        dirty(_cursorPos, 1);
-        dirty(opos, 1);
     }
     Component::mouseButtonPressEvent(e);
 }
@@ -229,12 +238,12 @@ void TextField::keyPressEvent (QKeyEvent* e)
             if (_cursorPos > 0) {
                 for (int idx = _cursorPos - 1; idx > 0; idx--) {
                     if (text.at(idx).isLetterOrNumber() && !text.at(idx - 1).isLetterOrNumber()) {
-                        _cursorPos = idx;
+                        setCursorPosition(idx);
                         break;
                     }
                 }
                 if (_cursorPos == opos) {
-                    _cursorPos = 0;
+                    setCursorPosition(0);
                 }
             }
         } else if (key == Qt::Key_Right) { // next word end
@@ -242,20 +251,16 @@ void TextField::keyPressEvent (QKeyEvent* e)
             if (_cursorPos < text.length()) {
                 for (int idx = _cursorPos + 1, max = text.length(); idx < max; idx++) {
                     if (!text.at(idx).isLetterOrNumber() && text.at(idx - 1).isLetterOrNumber()) {
-                        _cursorPos = idx;
+                        setCursorPosition(idx);
                         break;
                     }
                 }
                 if (_cursorPos == opos) {
-                    _cursorPos = text.length();
+                    setCursorPosition(text.length());
                 }
             }
         } else {
             Component::keyPressEvent(e);
-        }
-        if (_cursorPos != opos && !updateDocumentPos()) {
-            dirty(_cursorPos, 1);
-            dirty(opos, 1);
         }
         return;
 
@@ -272,6 +277,7 @@ void TextField::keyPressEvent (QKeyEvent* e)
                 }
             }
             break;
+
         case Qt::Key_Right:
             if (_cursorPos < _document->text().length()) {
                 _cursorPos++;
@@ -280,26 +286,15 @@ void TextField::keyPressEvent (QKeyEvent* e)
                 }
             }
             break;
+
         case Qt::Key_Home:
-            if (_cursorPos > 0) {
-                int opos = _cursorPos;
-                _cursorPos = 0;
-                if (!updateDocumentPos()) {
-                    dirty(_cursorPos, 1);
-                    dirty(opos, 1);
-                }
-            }
+            setCursorPosition(0);
             break;
+
         case Qt::Key_End:
-            if (_cursorPos < _document->text().length()) {
-                int opos = _cursorPos;
-                _cursorPos = _document->text().length();
-                if (!updateDocumentPos()) {
-                    dirty(_cursorPos, 1);
-                    dirty(opos, 1);
-                }
-            }
+            setCursorPosition(_document->text().length());
             break;
+
         case Qt::Key_Backspace:
             if (_cursorPos > 0) {
                 _document->remove(--_cursorPos, 1);
@@ -309,6 +304,7 @@ void TextField::keyPressEvent (QKeyEvent* e)
                 emit textChanged();
             }
             break;
+
         case Qt::Key_Delete:
             if (_cursorPos < _document->text().length()) {
                 _document->remove(_cursorPos, 1);
@@ -318,10 +314,12 @@ void TextField::keyPressEvent (QKeyEvent* e)
                 emit textChanged();
             }
             break;
+
         case Qt::Key_Return:
         case Qt::Key_Enter:
             emit enterPressed();
             break;
+
         default:
             Component::keyPressEvent(e);
             break;
@@ -359,10 +357,10 @@ void TextField::dirty (int idx, int length)
     int dlength = _document->text().length();
     int width = textAreaWidth();
     if (_rightAlign && dlength < width) {
-        Component::dirty(QRect(_margins.right() + width - dlength + idx,
+        Component::dirty(QRect(_margins.left() + width - dlength + idx,
             _margins.top(), length, 1));
     } else {
-        Component::dirty(QRect(_margins.right() + 1 + idx - _documentPos,
+        Component::dirty(QRect(_margins.left() + 1 + idx - _documentPos,
             _margins.top(), length, 1));
     }
 }

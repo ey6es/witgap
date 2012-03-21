@@ -117,6 +117,16 @@ public:
     void setDocument (Document* document);
 
     /**
+     * Sets the position of the cursor within the document.
+     */
+    void setCursorPosition (int pos);
+
+    /**
+     * Returns the cursor position.
+     */
+    int cursorPosition () const { return _cursorPos; }
+
+    /**
      * Sets the label to display when the document is empty and the field lacks focus.
      */
     void setLabel (const QString& label);

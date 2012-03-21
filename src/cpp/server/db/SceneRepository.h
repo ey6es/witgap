@@ -6,6 +6,7 @@
 
 #include <QDateTime>
 #include <QHash>
+#include <QList>
 #include <QMetaType>
 #include <QObject>
 #include <QPoint>
@@ -41,7 +42,8 @@ public:
     Q_INVOKABLE void loadScene (quint32 id, const Callback& callback);
 
     /**
-     * Finds scenes whose names start with the specified prefix.
+     * Finds scenes whose names start with the specified prefix.  The callback will receive a
+     * SceneDescriptorList containing the scene descriptors.
      *
      * @param creatorId the id of the creator whose scenes are desired, or 0 for all creators.
      */
@@ -95,5 +97,31 @@ Q_DECLARE_METATYPE(SceneRecord)
 
 /** A record for the lack of a scene. */
 const SceneRecord NoScene = { 0 };
+
+/**
+ * Describes a scene for search purposes.
+ */
+class SceneDescriptor
+{
+public:
+
+    /** The scene id. */
+    quint32 id;
+
+    /** The scene name. */
+    QString name;
+
+    /** The user id of the scene creator. */
+    quint32 creatorId;
+
+    /** The name of the scene creator. */
+    QString creatorName;
+
+    /** The time at which the scene was created. */
+    QDateTime created;
+};
+
+/** A list of scene descriptors that we'll register with the metatype system. */
+typedef QList<SceneDescriptor> SceneDescriptorList;
 
 #endif // SCENE_REPOSITORY
