@@ -4,7 +4,6 @@
 #include <limits>
 
 #include <QEvent>
-#include <QFocusEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPoint>
@@ -45,7 +44,7 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id,
     _lastWindowId(0),
     _mousePressed(false),
     _moused(0),
-    _focus(0),
+    _activeWindow(0),
     _translator(0),
     _user(user),
     _scene(0)
@@ -92,21 +91,40 @@ int Session::highestWindowLayer () const
     return highest;
 }
 
-void Session::setFocus (Component* component)
+void Session::setActiveWindow (Window* window)
 {
-    if (_focus == component) {
+    if (_activeWindow == window) {
         return;
     }
-    if (_focus != 0) {
-        _focus->disconnect(this, SLOT(clearFocus()));
-        QFocusEvent event(QEvent::FocusOut);
-        QCoreApplication::sendEvent(_focus, &event);
+    if (_activeWindow != 0) {
+        _activeWindow->disconnect(this, SLOT(clearActiveWindow()));
+        _activeWindow->setActive(false);
     }
-    if ((_focus = component) != 0) {
-        connect(_focus, SIGNAL(destroyed()), SLOT(clearFocus()));
-        QFocusEvent event(QEvent::FocusIn);
-        QCoreApplication::sendEvent(_focus, &event);
+    if ((_activeWindow = window) != 0) {
+        connect(_activeWindow, SIGNAL(destroyed()), SLOT(clearActiveWindow()));
+        _activeWindow->setActive(true);
     }
+}
+
+void Session::requestFocus (Component* component)
+{
+    Window* nwindow = component->window();
+    nwindow->setFocus(component);
+    if (nwindow == _activeWindow) {
+        return; // already active
+    }
+    // we can only make it the active window if there are no modal windows above
+    int nlayer = nwindow->layer();
+    bool after = false;
+    foreach (Window* window, findChildren<Window*>()) {
+        int layer = window->layer();
+        if (window == nwindow) {
+            after = true;
+        } else if (window->modal() && (layer > nlayer || layer == nlayer && after)) {
+            return;
+        }
+    }
+    setActiveWindow(nwindow);
 }
 
 /**
@@ -116,6 +134,7 @@ static Window* createDialog (Session* session, const QString& message, const QSt
 {
     Window* window = new Window(session, session->highestWindowLayer());
     window->setModal(true);
+    window->setDeleteOnEscape(true);
     window->setBorder(title.isEmpty() ? new FrameBorder() : new TitledBorder(title));
     window->setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch));
     Label* label = new Label(message, Qt::AlignCenter);
@@ -286,9 +305,9 @@ void Session::clearMoused ()
     _moused = 0;
 }
 
-void Session::clearFocus ()
+void Session::clearActiveWindow ()
 {
-    _focus = 0;
+    _activeWindow = 0;
 }
 
 void Session::dispatchMousePressed (int x, int y)
@@ -380,11 +399,12 @@ void Session::dispatchKeyPressed (int key, QChar ch, bool numpad)
     if (modifier != Qt::NoModifier) {
         _modifiers |= modifier;
     }
-
     QKeyEvent event(QEvent::KeyPress, key,
         _modifiers | (numpad ? Qt::KeypadModifier : Qt::NoModifier),
         ch == 0 ? QString() : QString(ch));
-    QCoreApplication::sendEvent(_focus == 0 ? this : (QObject*)_focus, &event);
+    QCoreApplication::sendEvent(
+        _activeWindow == 0 ? this : (QObject*)(_activeWindow->focus() == 0 ?
+            _activeWindow : _activeWindow->focus()), &event);
 }
 
 void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
@@ -400,7 +420,9 @@ void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
     QKeyEvent event(QEvent::KeyRelease, key,
         _modifiers | (numpad ? Qt::KeypadModifier : Qt::NoModifier),
         ch == 0 ? QString() : QString(ch));
-    QCoreApplication::sendEvent(_focus == 0 ? this : (QObject*)_focus, &event);
+    QCoreApplication::sendEvent(
+        _activeWindow == 0 ? this : (QObject*)(_activeWindow->focus() == 0 ?
+            _activeWindow : _activeWindow->focus()), &event);
 }
 
 void Session::showLogonDialog (const QString& username)
@@ -422,6 +444,9 @@ void Session::sceneMaybeResolved (QObject* scene)
         return;
     }
     // move the session to the scene thread
+    if (_scene != 0) {
+        _scene->removeSession(this);
+    }
     setParent(0);
     moveToThread(scene->thread());
 
@@ -432,5 +457,5 @@ void Session::sceneMaybeResolved (QObject* scene)
 void Session::continueMovingToScene (QObject* scene)
 {
     _scene = static_cast<Scene*>(scene);
-
+    _scene->addSession(this);
 }

@@ -51,6 +51,36 @@ public:
     bool modal () const { return _modal; }
 
     /**
+     * Sets whether or not to delete the window when escape is pressed.
+     */
+    void setDeleteOnEscape (bool deleteOnEscape) { _deleteOnEscape = deleteOnEscape; }
+
+    /**
+     * Returns whether or not the window is deleted when escape is pressed.
+     */
+    bool deleteOnEscape () const { return _deleteOnEscape; }
+
+    /**
+     * Sets the focused component.
+     */
+    void setFocus (Component* focus);
+
+    /**
+     * Returns the component with input focus.
+     */
+    Component* focus () const { return _focus; }
+
+    /**
+     * Sets the window's active state.
+     */
+    void setActive (bool active);
+
+    /**
+     * Checks whether this is the active window.
+     */
+    bool active () const { return _active; }
+
+    /**
      * Resizes the window to its preferred size.
      */
     void pack ();
@@ -89,7 +119,17 @@ protected slots:
      */
     void maybeEnqueueSync ();
 
+    /**
+     * Clears the focused component (because it has been deleted).
+     */
+    void clearFocus ();
+
 protected:
+
+    /**
+     * Handles a key press event.
+     */
+    virtual void keyPressEvent (QKeyEvent* e);
 
     /**
      * Updates the state of the window and synchronizes the client's state with it.
@@ -109,6 +149,15 @@ protected:
 
     /** Whether or not the window is modal. */
     bool _modal;
+
+    /** Whether or not to delete the window when escape is pressed. */
+    bool _deleteOnEscape;
+
+    /** The owner of input focus within the window. */
+    Component* _focus;
+
+    /** Whether or not this is the active window. */
+    bool _active;
 
     /** Whether or not a sync is currently enqueued. */
     bool _syncEnqueued;

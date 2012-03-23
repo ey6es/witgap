@@ -1,6 +1,7 @@
 //
 // $Id$
 
+#include <QFocusEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
 
@@ -60,7 +61,7 @@ QSize ScrollingList::computePreferredSize (int whint, int hhint) const
     foreach (const QString& value, _values) {
         maxLength = qMax(maxLength, value.length());
     }
-    return QSize(qMax(whint, maxLength), qMax(hhint, _minHeight));
+    return QSize(qMax(whint, maxLength + 2), qMax(hhint, _minHeight));
 }
 
 void ScrollingList::draw (DrawContext* ctx) const
@@ -68,26 +69,52 @@ void ScrollingList::draw (DrawContext* ctx) const
     Component::draw(ctx);
 
     QRect inner = innerRect();
-    int x = inner.x(), y = inner.y(), width = inner.width(), height = inner.height();
+    int x = inner.x() + 1, y = inner.y(), width = inner.width() - 2, height = inner.height();
 
     for (int ii = _listPos, nn = _values.length(), yymax = y + height;
             ii < nn && y < yymax; ii++, y++) {
         const QString& value = _values.at(ii);
         int length = qMin(width, value.length());
         if (ii == _selectedIdx) {
-            ctx->drawString(x, y, value.constData(), length, REVERSE_FLAG);
-            if (width > length) {
-                ctx->fillRect(x + length, y, width - length, 1, ' ' | REVERSE_FLAG);
+            ctx->drawChar(x - 1, y, '[');
+            if (_focused) {
+                ctx->drawString(x, y, value.constData(), length, REVERSE_FLAG);
+                if (width > length) {
+                    ctx->fillRect(x + length, y, width - length, 1, ' ' | REVERSE_FLAG);
+                }
+            } else {
+                ctx->drawString(x, y, value.constData(), length);
             }
+            ctx->drawChar(x + width, y, ']');
         } else {
             ctx->drawString(x, y, value.constData(), length);
         }
     }
 }
 
+void ScrollingList::focusInEvent (QFocusEvent* e)
+{
+    if (_selectedIdx == -1) {
+        if (!_values.isEmpty()) {
+            setSelectedIndex(_listPos);
+        }
+    } else {
+        dirty(_selectedIdx, 1);
+    }
+}
+
+void ScrollingList::focusOutEvent (QFocusEvent* e)
+{
+    if (_selectedIdx != -1) {
+        dirty(_selectedIdx, 1);
+    }
+}
+
 void ScrollingList::mouseButtonPressEvent (QMouseEvent* e)
 {
     QRect inner = innerRect();
+    inner.setX(inner.x() + 1);
+    inner.setWidth(inner.width() - 1);
     if (inner.contains(e->pos())) {
         int idx = _listPos + e->pos().y() - inner.y();
         if (idx < _values.length()) {
@@ -112,6 +139,9 @@ void ScrollingList::keyPressEvent (QKeyEvent* e)
                     dirty(_selectedIdx, 2);
                 }
                 emit selectionChanged();
+
+            } else {
+                Component::keyPressEvent(e);
             }
             break;
 
@@ -122,6 +152,9 @@ void ScrollingList::keyPressEvent (QKeyEvent* e)
                     dirty(_selectedIdx - 1, 2);
                 }
                 emit selectionChanged();
+
+            } else {
+                Component::keyPressEvent(e);
             }
             break;
 

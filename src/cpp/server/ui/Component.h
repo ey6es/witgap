@@ -26,6 +26,7 @@ class Container;
 class DrawContext;
 class Layout;
 class Session;
+class Window;
 
 /**
  * Base class of all user interface components.
@@ -53,6 +54,11 @@ public:
      * Returns the parent of this component, if it is a container.
      */
     Container* container () const { return qobject_cast<Container*>(parent()); }
+
+    /**
+     * Returns a pointer to the window that contains the component.
+     */
+    Window* window ();
 
     /**
      * Returns a pointer to the session that owns the component.

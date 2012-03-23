@@ -21,6 +21,7 @@ CommandMenu::CommandMenu (Session* parent) :
     Window(parent, parent->highestWindowLayer())
 {
     setModal(true);
+    setDeleteOnEscape(true);
     setBorder(new FrameBorder());
     setLayout(new TableLayout(1));
 

@@ -1,6 +1,11 @@
 //
 // $Id$
 
+#include <QCoreApplication>
+#include <QFocusEvent>
+#include <QKeyEvent>
+#include <QtDebug>
+
 #include "net/Connection.h"
 #include "net/Session.h"
 #include "ui/Window.h"
@@ -10,6 +15,9 @@ Window::Window (QObject* parent, int layer) :
     _id(session()->nextWindowId()),
     _layer(layer),
     _modal(false),
+    _deleteOnEscape(false),
+    _focus(0),
+    _active(false),
     _syncEnqueued(true),
     _upToDate(false)
 {
@@ -26,9 +34,9 @@ Window::Window (QObject* parent, int layer) :
 Window::~Window ()
 {
     // if the session still exists and is connected, send a remove window message
-    Session* sess = session();
-    if (sess != 0) {
-        Connection* connection = sess->connection();
+    Session* session = this->session();
+    if (session != 0) {
+        Connection* connection = session->connection();
         if (connection != 0) {
             Connection::removeWindowMetaMethod().invoke(connection, Q_ARG(int, _id));
         }
@@ -46,6 +54,39 @@ void Window::setLayer (int layer)
 void Window::setModal (bool modal)
 {
     _modal = modal;
+}
+
+void Window::setFocus (Component* focus)
+{
+    if (_focus == focus) {
+        return;
+    }
+    if (_focus != 0) {
+        _focus->disconnect(this, SLOT(clearFocus()));
+        if (_active) {
+            QFocusEvent event(QEvent::FocusOut);
+            QCoreApplication::sendEvent(_focus, &event);
+        }
+    }
+    if ((_focus = focus) != 0) {
+        connect(focus, SIGNAL(destroyed()), SLOT(clearFocus()));
+        if (_active) {
+            QFocusEvent event(QEvent::FocusIn);
+            QCoreApplication::sendEvent(focus, &event);
+        }
+    }
+}
+
+void Window::setActive (bool active)
+{
+    if (_active == active) {
+        return;
+    }
+    _active = active;
+    if (_focus != 0) {
+        QFocusEvent event(_active ? QEvent::FocusIn : QEvent::FocusOut);
+        QCoreApplication::sendEvent(_focus, &event);
+    }
 }
 
 void Window::pack ()
@@ -90,6 +131,22 @@ void Window::maybeEnqueueSync ()
     if (!_syncEnqueued) {
         syncMetaMethod().invoke(this, Qt::QueuedConnection);
         _syncEnqueued = true;
+    }
+}
+
+void Window::clearFocus ()
+{
+    _focus = 0;
+}
+
+void Window::keyPressEvent (QKeyEvent* e)
+{
+    Qt::KeyboardModifiers modifiers = e->modifiers();
+    if (_deleteOnEscape && e->key() == Qt::Key_Escape &&
+            (modifiers == Qt::ShiftModifier || modifiers == Qt::NoModifier)) {
+        deleteLater();
+    } else {
+        Container::keyPressEvent(e);
     }
 }
 

@@ -49,7 +49,6 @@ TextField::TextField (int minWidth, Document* document, bool rightAlign, QObject
     _cursorPos(document->text().length())
 {
     connect(this, SIGNAL(enterPressed()), SLOT(transferFocus()));
-    connect(this, SIGNAL(textFull()), SLOT(transferFocus()));
 }
 
 TextField::TextField (int minWidth, const QString& text, bool rightAlign, QObject* parent) :
@@ -61,7 +60,6 @@ TextField::TextField (int minWidth, const QString& text, bool rightAlign, QObjec
     _cursorPos(text.length())
 {
     connect(this, SIGNAL(enterPressed()), SLOT(transferFocus()));
-    connect(this, SIGNAL(textFull()), SLOT(transferFocus()));
 }
 
 TextField::~TextField ()

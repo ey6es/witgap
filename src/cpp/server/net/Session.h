@@ -18,6 +18,7 @@ class Connection;
 class Scene;
 class SceneRecord;
 class ServerApp;
+class Window;
 
 /**
  * Handles a single user session.
@@ -96,9 +97,19 @@ public:
     const QSize& displaySize () const { return _displaySize; }
 
     /**
-     * Sets focus to the specified component.
+     * Sets the active window.
      */
-    void setFocus (Component* component);
+    void setActiveWindow (Window* window);
+
+    /**
+     * Returns a pointer to the active window.
+     */
+    Window* activeWindow () const { return _activeWindow; }
+
+    /**
+     * Requests focus for the specified component.
+     */
+    void requestFocus (Component* component);
 
     /**
      * Shows a simple info dialog with the supplied message.
@@ -187,9 +198,9 @@ protected slots:
     void clearMoused ();
 
     /**
-     * Clears the focused component (because it has been destroyed).
+     * Clears the active window (because it has been destroyed).
      */
-    void clearFocus ();
+    void clearActiveWindow ();
 
     /**
      * Dispatches a mouse pressed event.
@@ -264,8 +275,8 @@ protected:
     /** The component over which the mouse button was pressed. */
     Component* _moused;
 
-    /** The component with input focus. */
-    Component* _focus;
+    /** The active window (the one that holds the input focus). */
+    Window* _activeWindow;
 
     /** The translator for the user's language, if any. */
     QTranslator* _translator;

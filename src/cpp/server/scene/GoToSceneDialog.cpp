@@ -22,6 +22,7 @@ GoToSceneDialog::GoToSceneDialog (Session* parent) :
     Window(parent, parent->highestWindowLayer())
 {
     setModal(true);
+    setDeleteOnEscape(true);
     setBorder(new FrameBorder());
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
 
@@ -44,6 +45,8 @@ GoToSceneDialog::GoToSceneDialog (Session* parent) :
 
     pack();
     center();
+
+    _name->requestFocus();
 
     // request the list of the user's scenes
     QMetaObject::invokeMethod(parent->app()->databaseThread()->sceneRepository(), "findScenes",
@@ -83,4 +86,6 @@ void GoToSceneDialog::setScenes (const SceneDescriptorList& scenes)
         names.append(desc.name);
     }
     _list->setValues(names);
+
+    updateSelection();
 }

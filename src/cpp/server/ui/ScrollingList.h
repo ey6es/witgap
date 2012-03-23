@@ -88,6 +88,16 @@ protected:
     virtual void draw (DrawContext* ctx) const;
 
     /**
+     * Handles a focus in event.
+     */
+    virtual void focusInEvent (QFocusEvent* e);
+
+    /**
+     * Handles a focus out event.
+     */
+    virtual void focusOutEvent (QFocusEvent* e);
+
+    /**
      * Handles a mouse press event.
      */
     virtual void mouseButtonPressEvent (QMouseEvent* e);

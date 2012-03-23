@@ -45,6 +45,16 @@ public:
      */
     void remove ();
 
+    /**
+     * Adds a session to the scene.  The session should already be in the scene thread.
+     */
+    void addSession (Session* session);
+
+    /**
+     * Removes a session from the scene.
+     */
+    void removeSession (Session* session);
+
 protected:
 
     /** The application object. */

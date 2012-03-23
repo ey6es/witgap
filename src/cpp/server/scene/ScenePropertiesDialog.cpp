@@ -25,6 +25,7 @@ ScenePropertiesDialog::ScenePropertiesDialog (Session* parent) :
     Window(parent, parent->highestWindowLayer())
 {
     setModal(true);
+    setDeleteOnEscape(true);
     setBorder(new FrameBorder());
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
 
@@ -52,12 +53,12 @@ ScenePropertiesDialog::ScenePropertiesDialog (Session* parent) :
 
     icont->addChild(new Label(tr("Scroll Width:")));
     icont->addChild(_scrollWidth = new TextField(20,
-        new RegExpDocument(UShortExp, QString::number(record.scrollWidth), 5)));
+        new RegExpDocument(UShortExp, QString::number(record.scrollWidth), 5), true));
     connect(_name, SIGNAL(textChanged()), SLOT(updateApply()));
 
     icont->addChild(new Label(tr("Scroll Height:")));
     icont->addChild(_scrollHeight = new TextField(20,
-        new RegExpDocument(UShortExp, QString::number(record.scrollHeight), 5)));
+        new RegExpDocument(UShortExp, QString::number(record.scrollHeight), 5), true));
     connect(_name, SIGNAL(textChanged()), SLOT(updateApply()));
 
     Button* cancel = new Button(tr("Cancel"));
@@ -71,6 +72,8 @@ ScenePropertiesDialog::ScenePropertiesDialog (Session* parent) :
 
     pack();
     center();
+
+    _name->requestFocus();
 }
 
 void ScenePropertiesDialog::updateApply ()

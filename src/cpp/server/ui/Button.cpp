@@ -69,9 +69,10 @@ void Button::mouseButtonReleaseEvent (QMouseEvent* e)
 
 void Button::keyPressEvent (QKeyEvent* e)
 {
-    QString text = e->text();
-    QChar ch = text.isEmpty() ? 0 : text.at(0);
-    if (ch.isPrint() || ch == '\r') {
+    int key = e->key();
+    Qt::KeyboardModifiers modifiers = e->modifiers();
+    if ((key == Qt::Key_Return || key == Qt::Key_Enter) &&
+            (modifiers == Qt::ShiftModifier || modifiers == Qt::NoModifier)) {
         emit pressed();
 
     } else {

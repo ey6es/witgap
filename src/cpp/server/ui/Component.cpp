@@ -1,6 +1,7 @@
 //
 // $Id$
 
+#include <QCoreApplication>
 #include <QEvent>
 #include <QFocusEvent>
 #include <QKeyEvent>
@@ -11,6 +12,7 @@
 #include "ui/Border.h"
 #include "ui/Component.h"
 #include "ui/Layout.h"
+#include "ui/Window.h"
 
 Component::Component (QObject* parent) :
     CallableObject(parent),
@@ -31,6 +33,17 @@ Component::~Component ()
     if (_border != 0) {
         delete _border;
     }
+}
+
+Window* Component::window ()
+{
+    for (QObject* obj = this; obj != 0; obj = obj->parent()) {
+        Window* window = qobject_cast<Window*>(obj);
+        if (window != 0) {
+            return window;
+        }
+    }
+    return 0;
 }
 
 Session* Component::session () const
@@ -201,6 +214,7 @@ bool Component::transferFocus (Component* from, Direction dir)
 
 bool Component::event (QEvent* e)
 {
+    QObject* parent = this->parent();
     switch (e->type()) {
         case QEvent::FocusIn:
             _focused = true;
@@ -212,21 +226,33 @@ bool Component::event (QEvent* e)
             focusOutEvent((QFocusEvent*)e);
             return true;
 
-        case QEvent::MouseButtonPress:
-            mouseButtonPressEvent((QMouseEvent*)e);
-            return e->isAccepted();
-
-        case QEvent::MouseButtonRelease:
-            mouseButtonReleaseEvent((QMouseEvent*)e);
-            return e->isAccepted();
-
+        case QEvent::MouseButtonPress: {
+            QMouseEvent* me = static_cast<QMouseEvent*>(e);
+            mouseButtonPressEvent(me);
+            if (me->isAccepted()) {
+                return true;
+            }
+            QMouseEvent nme(me->type(), me->pos() + _bounds.topLeft(),
+                me->globalPos(), me->button(), me->buttons(), me->modifiers());
+            return parent != 0 && QCoreApplication::sendEvent(parent, &nme);
+        }
+        case QEvent::MouseButtonRelease: {
+            QMouseEvent* me = static_cast<QMouseEvent*>(e);
+            mouseButtonReleaseEvent(me);
+            if (me->isAccepted()) {
+                return true;
+            }
+            QMouseEvent nme(me->type(), me->pos() + _bounds.topLeft(),
+                me->globalPos(), me->button(), me->buttons(), me->modifiers());
+            return parent != 0 && QCoreApplication::sendEvent(parent, &nme);
+        }
         case QEvent::KeyPress:
             keyPressEvent((QKeyEvent*)e);
-            return e->isAccepted();
+            return e->isAccepted() || (parent != 0 && QCoreApplication::sendEvent(parent, e));
 
         case QEvent::KeyRelease:
             keyReleaseEvent((QKeyEvent*)e);
-            return e->isAccepted();
+            return e->isAccepted() || (parent != 0 && QCoreApplication::sendEvent(parent, e));
 
         case QEvent::Timer:
             timerEvent((QTimerEvent*)e);
@@ -239,7 +265,7 @@ bool Component::event (QEvent* e)
 
 void Component::requestFocus ()
 {
-    session()->setFocus(this);
+    session()->requestFocus(this);
 }
 
 void Component::invalidate ()

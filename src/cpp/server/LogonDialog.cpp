@@ -25,6 +25,7 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
     _logonBlocked(false)
 {
     setModal(true);
+    setDeleteOnEscape(true);
     setBorder(new FrameBorder());
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
     setPreferredSize(QSize(43, -1));
@@ -54,12 +55,15 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
     _month = new TextField(3, new RegExpDocument(MonthDayExp, "", 2), true);
     _month->setLabel(tr("MM"));
     connect(_month, SIGNAL(textChanged()), SLOT(updateLogon()));
+    _month->connect(_month, SIGNAL(textFull()), SLOT(transferFocus()));
     _day = new TextField(3, new RegExpDocument(MonthDayExp, "", 2), true);
     _day->setLabel(tr("DD"));
     connect(_day, SIGNAL(textChanged()), SLOT(updateLogon()));
+    _day->connect(_day, SIGNAL(textFull()), SLOT(transferFocus()));
     _year = new TextField(5, new RegExpDocument(YearExp, "", 4), true);
     _year->setLabel(tr("YYYY"));
     connect(_year, SIGNAL(textChanged()), SLOT(updateLogon()));
+    _year->connect(_year, SIGNAL(textFull()), SLOT(transferFocus()));
     Container* dcont = BoxLayout::createHBox(
         Qt::AlignCenter, 1, _month, new Label("/"),_day, new Label("/"), _year);
     icont->addChild(dcont);

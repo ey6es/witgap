@@ -37,3 +37,13 @@ void Scene::remove ()
     QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "deleteScene",
         Q_ARG(quint64, _record.id));
 }
+
+void Scene::addSession (Session* session)
+{
+    session->setParent(this);
+}
+
+void Scene::removeSession (Session* session)
+{
+    session->setParent(0);
+}

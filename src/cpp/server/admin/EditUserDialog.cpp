@@ -24,6 +24,7 @@ EditUserDialog::EditUserDialog (Session* parent) :
     _user(NoUser)
 {
     setModal(true);
+    setDeleteOnEscape(true);
     setBorder(new FrameBorder());
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
 
