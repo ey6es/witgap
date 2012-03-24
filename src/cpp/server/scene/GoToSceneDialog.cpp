@@ -19,10 +19,8 @@
 #define tr(...) session()->translate("GoToSceneDialog", __VA_ARGS__)
 
 GoToSceneDialog::GoToSceneDialog (Session* parent) :
-    Window(parent, parent->highestWindowLayer())
+    Window(parent, parent->highestWindowLayer(), true, true)
 {
-    setModal(true);
-    setDeleteOnEscape(true);
     setBorder(new FrameBorder());
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
 
@@ -45,8 +43,6 @@ GoToSceneDialog::GoToSceneDialog (Session* parent) :
 
     pack();
     center();
-
-    _name->requestFocus();
 
     // request the list of the user's scenes
     QMetaObject::invokeMethod(parent->app()->databaseThread()->sceneRepository(), "findScenes",

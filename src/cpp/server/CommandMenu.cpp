@@ -18,10 +18,8 @@
 #define tr(...) session()->translate("CommandMenu", __VA_ARGS__)
 
 CommandMenu::CommandMenu (Session* parent) :
-    Window(parent, parent->highestWindowLayer())
+    Window(parent, parent->highestWindowLayer(), true, true)
 {
-    setModal(true);
-    setDeleteOnEscape(true);
     setBorder(new FrameBorder());
     setLayout(new TableLayout(1));
 
@@ -42,8 +40,6 @@ CommandMenu::CommandMenu (Session* parent) :
 
     pack();
     center();
-
-    requestFocus();
 }
 
 void CommandMenu::keyPressEvent (QKeyEvent* e)

@@ -206,7 +206,7 @@ bool Component::transferFocus (Component* from, Direction dir)
         return (container != 0) ? container->transferFocus(this, dir) : transferFocus(0, dir);
     }
     if (acceptsFocus()) {
-        requestFocus();
+        window()->setFocus(this);
         return true;
     }
     return false;

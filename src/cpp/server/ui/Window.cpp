@@ -10,12 +10,12 @@
 #include "net/Session.h"
 #include "ui/Window.h"
 
-Window::Window (QObject* parent, int layer) :
+Window::Window (QObject* parent, int layer, bool modal, bool deleteOnEscape) :
     Container(0, parent),
     _id(session()->nextWindowId()),
     _layer(layer),
-    _modal(false),
-    _deleteOnEscape(false),
+    _modal(modal),
+    _deleteOnEscape(deleteOnEscape),
     _focus(0),
     _active(false),
     _syncEnqueued(true),
@@ -29,6 +29,11 @@ Window::Window (QObject* parent, int layer) :
 
     // queue up a sync message
     syncMetaMethod().invoke(this, Qt::QueuedConnection);
+
+    // if modal, we need to update the active window first thing
+    if (modal) {
+        session()->updateActiveWindow();
+    }
 }
 
 Window::~Window ()
@@ -48,12 +53,16 @@ void Window::setLayer (int layer)
     if (_layer != layer) {
         _layer = layer;
         noteNeedsUpdate();
+        session()->updateActiveWindow();
     }
 }
 
 void Window::setModal (bool modal)
 {
-    _modal = modal;
+    if (_modal != modal) {
+        _modal = modal;
+        session()->updateActiveWindow();
+    }
 }
 
 void Window::setFocus (Component* focus)
@@ -61,19 +70,24 @@ void Window::setFocus (Component* focus)
     if (_focus == focus) {
         return;
     }
-    if (_focus != 0) {
+    bool ozero = (_focus == 0);
+    if (!ozero) {
         _focus->disconnect(this, SLOT(clearFocus()));
         if (_active) {
             QFocusEvent event(QEvent::FocusOut);
             QCoreApplication::sendEvent(_focus, &event);
         }
     }
-    if ((_focus = focus) != 0) {
+    bool nzero = ((_focus = focus) == 0);
+    if (!nzero) {
         connect(focus, SIGNAL(destroyed()), SLOT(clearFocus()));
         if (_active) {
             QFocusEvent event(QEvent::FocusIn);
             QCoreApplication::sendEvent(focus, &event);
         }
+    }
+    if (ozero != nzero) {
+        session()->updateActiveWindow();
     }
 }
 
@@ -137,6 +151,21 @@ void Window::maybeEnqueueSync ()
 void Window::clearFocus ()
 {
     _focus = 0;
+
+    // try to reassign
+    transferFocus(0, Forward);
+}
+
+void Window::validate ()
+{
+    Container::validate();
+
+    // make sure the focus is still valid
+    if (_focus == 0) {
+        transferFocus(0, Forward);
+    } else if (!(_focus->acceptsFocus() || _focus->transferFocus(_focus, Forward))) {
+        setFocus(0);
+    }
 }
 
 void Window::keyPressEvent (QKeyEvent* e)

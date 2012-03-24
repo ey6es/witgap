@@ -22,10 +22,8 @@ using namespace std;
 const QRegExp UShortExp("\\d{0,5}");
 
 ScenePropertiesDialog::ScenePropertiesDialog (Session* parent) :
-    Window(parent, parent->highestWindowLayer())
+    Window(parent, parent->highestWindowLayer(), true, true)
 {
-    setModal(true);
-    setDeleteOnEscape(true);
     setBorder(new FrameBorder());
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
 
@@ -72,8 +70,6 @@ ScenePropertiesDialog::ScenePropertiesDialog (Session* parent) :
 
     pack();
     center();
-
-    _name->requestFocus();
 }
 
 void ScenePropertiesDialog::updateApply ()

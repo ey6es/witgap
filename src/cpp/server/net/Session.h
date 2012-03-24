@@ -107,6 +107,11 @@ public:
     Window* activeWindow () const { return _activeWindow; }
 
     /**
+     * Updates the active window according to the current window states.
+     */
+    void updateActiveWindow ();
+
+    /**
      * Requests focus for the specified component.
      */
     void requestFocus (Component* component);
@@ -244,6 +249,11 @@ protected:
      * to the scene thread.
      */
     Q_INVOKABLE void continueMovingToScene (QObject* scene);
+
+    /**
+     * Determines whether the specified window is beneath another, modal window.
+     */
+    bool belowModal (Window* window) const;
 
     /** The server application. */
     ServerApp* _app;

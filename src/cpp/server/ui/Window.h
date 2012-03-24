@@ -18,7 +18,7 @@ public:
     /**
      * Initializes the window.
      */
-    Window (QObject* parent, int layer = 0);
+    Window (QObject* parent, int layer = 0, bool modal = false, bool deleteOnEscape = false);
 
     /**
      * Destroys the window.
@@ -125,6 +125,11 @@ protected slots:
     void clearFocus ();
 
 protected:
+
+    /**
+     * Validates the container.
+     */
+    virtual void validate ();
 
     /**
      * Handles a key press event.

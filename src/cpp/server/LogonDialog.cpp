@@ -21,11 +21,9 @@
 #define tr(...) session()->translate("LogonDialog", __VA_ARGS__)
 
 LogonDialog::LogonDialog (Session* parent, const QString& username) :
-    Window(parent, parent->highestWindowLayer()),
+    Window(parent, parent->highestWindowLayer(), true, true),
     _logonBlocked(false)
 {
-    setModal(true);
-    setDeleteOnEscape(true);
     setBorder(new FrameBorder());
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
     setPreferredSize(QSize(43, -1));
@@ -86,8 +84,6 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
     _logon->connect(_email, SIGNAL(enterPressed()), SLOT(doPress()));
 
     addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, _cancel, _toggleCreateMode, _logon));
-
-    _username->requestFocus();
 
     setCreateMode(username.isEmpty());
 }

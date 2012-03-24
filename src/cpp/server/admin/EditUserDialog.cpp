@@ -20,11 +20,9 @@
 #define tr(...) session()->translate("EditUserDialog", __VA_ARGS__)
 
 EditUserDialog::EditUserDialog (Session* parent) :
-    Window(parent, parent->highestWindowLayer()),
+    Window(parent, parent->highestWindowLayer(), true, true),
     _user(NoUser)
 {
-    setModal(true);
-    setDeleteOnEscape(true);
     setBorder(new FrameBorder());
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
 

@@ -106,25 +106,36 @@ void Session::setActiveWindow (Window* window)
     }
 }
 
+void Session::updateActiveWindow ()
+{
+    if (_activeWindow != 0 && (_activeWindow->modal() || _activeWindow->focus() != 0) &&
+            !belowModal(_activeWindow)) {
+        return;
+    }
+    int hlayer = numeric_limits<int>::min();
+    Window* hwindow = 0;
+    foreach (Window* window, findChildren<Window*>()) {
+        if (window->layer() < hlayer) {
+            continue;
+        }
+        // we want the highest window that's modal or that has a focus
+        if (window->modal() || window->focus() != 0) {
+            hlayer = window->layer();
+            hwindow = window;
+        }
+    }
+    setActiveWindow(hwindow);
+}
+
 void Session::requestFocus (Component* component)
 {
     Window* nwindow = component->window();
     nwindow->setFocus(component);
-    if (nwindow == _activeWindow) {
-        return; // already active
-    }
+
     // we can only make it the active window if there are no modal windows above
-    int nlayer = nwindow->layer();
-    bool after = false;
-    foreach (Window* window, findChildren<Window*>()) {
-        int layer = window->layer();
-        if (window == nwindow) {
-            after = true;
-        } else if (window->modal() && (layer > nlayer || layer == nlayer && after)) {
-            return;
-        }
+    if (!(nwindow == _activeWindow || belowModal(nwindow))) {
+        setActiveWindow(nwindow);
     }
-    setActiveWindow(nwindow);
 }
 
 /**
@@ -132,9 +143,7 @@ void Session::requestFocus (Component* component)
  */
 static Window* createDialog (Session* session, const QString& message, const QString& title)
 {
-    Window* window = new Window(session, session->highestWindowLayer());
-    window->setModal(true);
-    window->setDeleteOnEscape(true);
+    Window* window = new Window(session, session->highestWindowLayer(), true, true);
     window->setBorder(title.isEmpty() ? new FrameBorder() : new TitledBorder(title));
     window->setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch));
     Label* label = new Label(message, Qt::AlignCenter);
@@ -150,7 +159,6 @@ void Session::showInfoDialog (const QString& message, const QString& title, cons
     Button* button = new Button(dismiss.isEmpty() ? tr("OK") : dismiss);
     window->addChild(button);
     window->connect(button, SIGNAL(pressed()), SLOT(deleteLater()));
-    button->requestFocus();
     window->pack();
     window->center();
 }
@@ -194,7 +202,6 @@ void Session::showInputDialog (
 
     window->addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, cancel, ok));
 
-    field->requestFocus();
     window->pack();
     window->center();
 }
@@ -308,6 +315,9 @@ void Session::clearMoused ()
 void Session::clearActiveWindow ()
 {
     _activeWindow = 0;
+
+    // search for a new window to make active
+    updateActiveWindow();
 }
 
 void Session::dispatchMousePressed (int x, int y)
@@ -458,4 +468,19 @@ void Session::continueMovingToScene (QObject* scene)
 {
     _scene = static_cast<Scene*>(scene);
     _scene->addSession(this);
+}
+
+bool Session::belowModal (Window* window) const
+{
+    int layer = window->layer();
+    bool after = false;
+    foreach (Window* owindow, findChildren<Window*>()) {
+        int olayer = owindow->layer();
+        if (owindow == window) {
+            after = true;
+        } else if (owindow->modal() && (olayer > layer || olayer == layer && after)) {
+            return true;
+        }
+    }
+    return false;
 }
