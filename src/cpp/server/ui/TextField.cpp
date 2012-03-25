@@ -387,3 +387,31 @@ int PasswordField::cursorChar () const
 {
     return '*';
 }
+
+FieldExpEnabler::FieldExpEnabler (
+        Component* component, TextField* f1, const QRegExp& e1, TextField* f2, const QRegExp& e2,
+        TextField* f3, const QRegExp& e3, TextField* f4, const QRegExp& e4) :
+    QObject(component),
+    _component(component)
+{
+    FieldExp fieldExps[] = { FieldExp(f1, e1), FieldExp(f2, e2),
+        FieldExp(f3, e3), FieldExp(f4, e4) };
+    for (int ii = 0; ii < 4; ii++) {
+        if (fieldExps[ii].first != 0) {
+            connect(fieldExps[ii].first, SIGNAL(textChanged()), SLOT(updateComponent()));
+            _fieldExps.append(fieldExps[ii]);
+        }
+    }
+    updateComponent();
+}
+
+void FieldExpEnabler::updateComponent ()
+{
+    foreach (const FieldExp& fieldExp, _fieldExps) {
+        if (!fieldExp.second.exactMatch(fieldExp.first->text())) {
+            _component->setEnabled(false);
+            return;
+        }
+    }
+    _component->setEnabled(true);
+}

@@ -6,6 +6,7 @@
 
 #include <limits>
 
+#include <QPair>
 #include <QRegExp>
 
 #include "ui/Component.h"
@@ -276,6 +277,46 @@ protected:
      * Returns the character to display under the cursor.
      */
     virtual int cursorChar () const;
+};
+
+/** An expression that simply requires the text to contain something other than whitespace. */
+const QRegExp NonEmptyExp("\\s*\\S+.*");
+
+/**
+ * Enables a component based on whether the contents of one or more text fields match regular
+ * expressions.
+ */
+class FieldExpEnabler : public QObject
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Creates a new enabler.
+     */
+    FieldExpEnabler (Component* component, TextField* f1, const QRegExp& e1 = NonEmptyExp,
+        TextField* f2 = 0, const QRegExp& e2 = NonEmptyExp,
+        TextField* f3 = 0, const QRegExp& e3 = NonEmptyExp,
+        TextField* f4 = 0, const QRegExp& e4 = NonEmptyExp);
+
+public slots:
+
+    /**
+     * Updates the component based on the text field contents.
+     */
+    void updateComponent ();
+
+protected:
+
+    /** A text field and its corresponding expression. */
+    typedef QPair<TextField*, QRegExp> FieldExp;
+
+    /** The component to enable. */
+    Component* _component;
+
+    /** The field/regexp pairs. */
+    QVector<FieldExp> _fieldExps;
 };
 
 #endif // TEXT_FIELD

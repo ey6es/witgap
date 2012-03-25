@@ -183,6 +183,30 @@ void Session::showConfirmDialog (
     window->center();
 }
 
+/**
+ * Helper class for input dialog; invokes the callback with the contents of the text field.
+ */
+class TextCallbackObject : public CallbackObject
+{
+public:
+
+    /**
+     * Creates a new text callback object.
+     */
+    TextCallbackObject (const Callback& callback, QObject* parent, TextField* field) :
+        CallbackObject(callback, parent), _field(field) {}
+
+protected:
+
+    /**
+     * Invokes the callback.
+     */
+    virtual void invoke () const { _callback.invoke(Q_ARG(const QString&, _field->text())); }
+
+    /** The text field from which to obtain the text. */
+    TextField* _field;
+};
+
 void Session::showInputDialog (
     const QString& message, const Callback& callback, const QString& title,
     const QString& dismiss, const QString& accept)
@@ -198,7 +222,9 @@ void Session::showInputDialog (
     Button* ok = new Button(accept.isEmpty() ? tr("OK") : accept);
     ok->connect(field, SIGNAL(enterPressed()), SLOT(doPress()));
     window->connect(ok, SIGNAL(pressed()), SLOT(deleteLater()));
-    (new CallbackObject(callback, window))->connect(ok, SIGNAL(pressed()), SLOT(invoke()));
+    (new TextCallbackObject(callback, window, field))->connect(
+        ok, SIGNAL(pressed()), SLOT(invoke()));
+    new FieldExpEnabler(ok, field);
 
     window->addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, cancel, ok));
 
@@ -286,6 +312,11 @@ bool Session::event (QEvent* e)
     QKeyEvent* ke = (QKeyEvent*)e;
     if (ke->key() == Qt::Key_Alt && ke->modifiers() == Qt::NoModifier) {
         new CommandMenu(this);
+        return true;
+
+    } else if (ke->key() == Qt::Key_F2 && ke->modifiers() == Qt::NoModifier) {
+        showInputDialog(tr("Please enter a brief bug description."),
+            Callback(_this, "submitBugReport(QString)"));
         return true;
 
     } else {
@@ -438,6 +469,11 @@ void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
 void Session::showLogonDialog (const QString& username)
 {
     new LogonDialog(this, username);
+}
+
+void Session::submitBugReport (const QString& description)
+{
+    qDebug() << description;
 }
 
 void Session::sceneCreated (quint32 id)

@@ -144,7 +144,7 @@ public slots:
     /**
      * Invokes the callback with no additional arguments.
      */
-    void invoke () const;
+    virtual void invoke () const;
 
 protected:
 

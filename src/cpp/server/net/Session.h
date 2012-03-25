@@ -235,6 +235,11 @@ protected:
     Q_INVOKABLE void showLogonDialog (const QString& username);
 
     /**
+     * Submits a bug report with the supplied description.
+     */
+    Q_INVOKABLE void submitBugReport (const QString& description);
+
+    /**
      * Reports back with id of the newly created scene.
      */
     Q_INVOKABLE void sceneCreated (quint32 id);
