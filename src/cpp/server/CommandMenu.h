@@ -6,10 +6,6 @@
 
 #include "ui/Window.h"
 
-class QKeyEvent;
-
-class Session;
-
 /**
  * Pops up to provide access to commands.
  */

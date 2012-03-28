@@ -8,6 +8,7 @@
 
 #include "db/SceneRepository.h"
 
+class Actor;
 class ServerApp;
 class Session;
 
@@ -55,6 +56,16 @@ public:
      */
     void removeSession (Session* session);
 
+    /**
+     * Adds the specified actor's visual representation to the scene contents.
+     */
+    void addToContents (Actor* actor);
+
+    /**
+     * Removes the specified actor's visual representation from the scene contents.
+     */
+    void removeFromContents (Actor* actor);
+
 protected:
 
     /** The application object. */
@@ -62,6 +73,9 @@ protected:
 
     /** The scene record. */
     SceneRecord _record;
+
+    /** The current scene contents. */
+    QHash<QPoint, QIntVector> _contents;
 };
 
 #endif // SCENE

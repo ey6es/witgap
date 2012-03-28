@@ -10,8 +10,8 @@
 #include <QTranslator>
 #include <QtDebug>
 
-#include "CommandMenu.h"
 #include "LogonDialog.h"
+#include "MainWindow.h"
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
 #include "db/SceneRepository.h"
@@ -52,6 +52,10 @@ Session::Session (ServerApp* app, Connection* connection, quint64 id,
     // send the session info back to the connection and activate it
     connection->setCookie("sessionId", QString::number(id, 16).rightJustified(16, '0'));
     connection->setCookie("sessionToken", token.toHex());
+
+    // create the main window
+    _mainWindow = new MainWindow(this);
+
     setConnection(connection);
 }
 
@@ -75,6 +79,9 @@ void Session::setConnection (Connection* connection)
 
     // clear the modifiers
     _modifiers = Qt::KeyboardModifiers();
+
+    // position the main window
+    _mainWindow->setBounds(QRect(0, 0, _displaySize.width(), _displaySize.height()));
 
     // readd the windows
     foreach (Window* window, findChildren<Window*>()) {
@@ -310,11 +317,7 @@ bool Session::event (QEvent* e)
         return QObject::event(e);
     }
     QKeyEvent* ke = (QKeyEvent*)e;
-    if (ke->key() == Qt::Key_Alt && ke->modifiers() == Qt::NoModifier) {
-        new CommandMenu(this);
-        return true;
-
-    } else if (ke->key() == Qt::Key_F2 && ke->modifiers() == Qt::NoModifier) {
+    if (ke->key() == Qt::Key_F2 && ke->modifiers() == Qt::NoModifier) {
         showInputDialog(tr("Please enter a brief bug description."),
             Callback(_this, "submitBugReport(QString)"));
         return true;

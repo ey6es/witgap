@@ -12,6 +12,8 @@ Scene::Scene (ServerApp* app, const SceneRecord& record) :
     _record(record),
     _app(app)
 {
+    // initialize the contents from the record
+    _contents = _record.data;
 }
 
 bool Scene::canSetProperties (Session* session) const
@@ -46,4 +48,12 @@ void Scene::addSession (Session* session)
 void Scene::removeSession (Session* session)
 {
     session->setParent(0);
+}
+
+void Scene::addToContents (Actor* actor)
+{
+}
+
+void Scene::removeFromContents (Actor* actor)
+{
 }

@@ -15,6 +15,8 @@ class QTranslator;
 
 class Component;
 class Connection;
+class MainWindow;
+class Pawn;
 class Scene;
 class SceneRecord;
 class ServerApp;
@@ -79,6 +81,11 @@ public:
      * Returns the scene pointer, if the user is in a scene.
      */
     Scene* scene () const { return _scene; }
+
+    /**
+     * Returns the pawn pointer, if the user has a pawn in the scene.
+     */
+    Pawn* pawn () const { return _pawn; }
 
     /**
      * Increments the window id counter and returns its value.
@@ -278,6 +285,9 @@ protected:
     /** The size of the user's display. */
     QSize _displaySize;
 
+    /** The main client window. */
+    MainWindow* _mainWindow;
+
     /** The current set of key modifiers. */
     Qt::KeyboardModifiers _modifiers;
 
@@ -301,6 +311,9 @@ protected:
 
     /** The currently occupied scene. */
     Scene* _scene;
+
+    /** The currently controlled pawn. */
+    Pawn* _pawn;
 };
 
 #endif // SESSION
