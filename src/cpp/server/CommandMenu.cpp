@@ -4,7 +4,7 @@
 #include <QKeyEvent>
 
 #include "CommandMenu.h"
-
+#include "PreferencesDialog.h"
 #include "admin/AdminMenu.h"
 #include "net/Session.h"
 #include "scene/GoToSceneDialog.h"
@@ -26,17 +26,18 @@ CommandMenu::CommandMenu (Session* parent) :
     if (parent->admin()) {
         addChild(new Label(QIntVector::createHighlighted(tr("&Admin"))));
     }
-    if (parent->loggedOn()) {
+    bool loggedOn = parent->loggedOn();
+    if (loggedOn) {
         addChild(new Label(QIntVector::createHighlighted(tr("&Go to Scene"))));
         addChild(new Label(QIntVector::createHighlighted(tr("&New Scene"))));
         Scene* scene = parent->scene();
         if (scene != 0 && scene->canSetProperties(parent)) {
-            addChild(new Label(QIntVector::createHighlighted(tr("Scene &Properties"))));
+            addChild(new Label(QIntVector::createHighlighted(tr("&Scene Properties"))));
         }
-        addChild(new Label(QIntVector::createHighlighted(tr("&Logoff"))));
-    } else {
-        addChild(new Label(QIntVector::createHighlighted(tr("&Logon"))));
     }
+
+    addChild(new Label(QIntVector::createHighlighted(tr("&Preferences"))));
+    addChild(new Label(QIntVector::createHighlighted(loggedOn ? tr("&Logoff") : tr("&Logon"))));
 
     pack();
     center();
@@ -78,6 +79,11 @@ void CommandMenu::keyPressEvent (QKeyEvent* e)
             break;
 
         case Qt::Key_P:
+            new PreferencesDialog(session);
+            deleteLater();
+            break;
+
+        case Qt::Key_S:
             if (scene != 0 && scene->canSetProperties(session)) {
                 new ScenePropertiesDialog(session);
                 deleteLater();

@@ -18,7 +18,7 @@ public:
     /**
      * Creates a new pawn.
      */
-    Pawn (Scene* scene, int character, const QPoint& position);
+    Pawn (Scene* scene, QChar character, const QPoint& position);
 };
 
 #endif // PAWN

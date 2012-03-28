@@ -7,8 +7,8 @@
 #include <QByteArray>
 #include <QDate>
 #include <QDateTime>
-#include <QObject>
 #include <QMetaType>
+#include <QObject>
 #include <QString>
 
 class Callback;
@@ -39,7 +39,7 @@ public:
      */
     Q_INVOKABLE void insertUser (
         const QString& name, const QString& password, const QDate& dob,
-        const QString& email, const Callback& callback);
+        const QString& email, QChar avatar, const Callback& callback);
 
     /**
      * Attempts to validate a user logon.
@@ -105,6 +105,9 @@ public:
 
     /** The user's flags. */
     Flags flags;
+
+    /** The user's avatar. */
+    QChar avatar;
 
     /** The time at which the user was created. */
     QDateTime created;

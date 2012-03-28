@@ -4,10 +4,13 @@
 #ifndef SESSION_REPOSITORY
 #define SESSION_REPOSITORY
 
+#include <QDateTime>
+#include <QMetaType>
 #include <QObject>
 
 class Callback;
 class ServerApp;
+class SessionRecord;
 
 /**
  * Handles database queries associated with sessions.
@@ -31,23 +34,45 @@ public:
     /**
      * Validates the specified session token.
      *
-     * @param callback the callback that will be invoked with a valid id and token (either the ones
-     * passed in, or a newly generated pair) and the {@link UserRecord} of the user associated with
-     * the session.
+     * @param callback the callback that will be invoked with the {@link SessionRecord} of the
+     * session and the {@link UserRecord} of the user associated with the session.
      */
     Q_INVOKABLE void validateToken (quint64 id, const QByteArray& token, const Callback& callback);
 
     /**
-     * Sets the user id for a session.
-     *
-     * @param userId the new user id, or zero for none.
+     * Updates a session record.
      */
-    Q_INVOKABLE void setUserId (quint64 id, quint32 userId);
+    Q_INVOKABLE void updateSession (const SessionRecord& session);
 
 protected:
 
     /** The server application. */
     ServerApp* _app;
 };
+
+/**
+ * Contains session information loaded from the database.
+ */
+class SessionRecord
+{
+public:
+
+    /** The session id. */
+    quint64 id;
+
+    /** The session token. */
+    QByteArray token;
+
+    /** The session avatar. */
+    QChar avatar;
+
+    /** The id of the associated user, or zero for none. */
+    quint32 userId;
+
+    /** The last online time. */
+    QDateTime lastOnline;
+};
+
+Q_DECLARE_METATYPE(SessionRecord)
 
 #endif // SESSION_REPOSITORY

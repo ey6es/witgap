@@ -7,6 +7,7 @@
 #include <QSet>
 #include <QSize>
 
+#include "db/SessionRepository.h"
 #include "db/UserRepository.h"
 #include "util/Callback.h"
 
@@ -34,8 +35,8 @@ public:
     /**
      * Initializes the session.
      */
-    Session (ServerApp* app, Connection* connection, quint64 id,
-        const QByteArray& token, const UserRecord& user);
+    Session (ServerApp* app, Connection* connection,
+        const SessionRecord& record, const UserRecord& user);
 
     /**
      * Returns a pointer to the application object.
@@ -43,14 +44,9 @@ public:
     ServerApp* app () const { return _app; }
 
     /**
-     * Returns the session id.
+     * Returns a reference to the session record.
      */
-    quint64 id () const { return _id; }
-
-    /**
-     * Returns the session token.
-     */
-    const QByteArray& token () const { return _token; }
+    const SessionRecord& record () const { return _record; }
 
     /**
      * Returns a pointer to the connection, or zero if unconnected.
@@ -187,6 +183,11 @@ public:
     void moveToScene (quint32 id);
 
     /**
+     * Sets the user's avatar.
+     */
+    void setAvatar (QChar avatar);
+
+    /**
      * Translates a string using the user's preferred language.
      */
     QString translate (
@@ -273,11 +274,8 @@ protected:
     /** The session connection. */
     Connection* _connection;
 
-    /** The session id. */
-    quint64 _id;
-
-    /** The session token. */
-    QByteArray _token;
+    /** The session record. */
+    SessionRecord _record;
 
     /** The last window id assigned. */
     int _lastWindowId;

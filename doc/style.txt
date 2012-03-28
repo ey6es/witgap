@@ -59,3 +59,8 @@ use 0 rather than NULL
 
 for forward declarations and includes: standard libraries, external libraries, internals
 (alphabetic order)
+
+don't repeat yourself: a couple repetitions is OK, but once you repeat something three or more
+times, or if it's a lengthy block, break it out into a function/class
+
+break overlong functions/overlarge classes into multiple functions/contained classes

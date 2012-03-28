@@ -11,6 +11,9 @@
 #include "db/UserRepository.h"
 #include "util/Callback.h"
 
+// register our types with the metatype system
+int sessionRecordType = qRegisterMetaType<SessionRecord>();
+
 SessionRepository::SessionRepository (ServerApp* app) :
     _app(app)
 {
@@ -24,10 +27,27 @@ void SessionRepository::init ()
         "create table if not exists SESSIONS ("
             "ID bigint unsigned not null auto_increment primary key,"
             "TOKEN binary(16) not null,"
+            "AVATAR smallint unsigned not null,"
             "USER_ID int unsigned not null default 0,"
             "LAST_ONLINE datetime not null,"
             "index (LAST_ONLINE),"
             "index (USER_ID)");
+}
+
+/**
+ * Helper function for validateToken: returns a random alphanumeric character for use as an
+ * avatar.
+ */
+QChar randomAvatar ()
+{
+    int value = qrand() % 62;
+    if (value < 26) {
+        return 'a' + value;
+    } else if (value < 52) {
+        return 'A' + (value - 26);
+    } else {
+        return '0' + (value - 52);
+    }
 }
 
 void SessionRepository::validateToken (
@@ -45,39 +65,43 @@ void SessionRepository::validateToken (
         query.exec();
         if (query.numRowsAffected() > 0) { // valid; return what we were passed
             // look up the user record
-            query.prepare("select USER_ID from SESSIONS where ID = ?");
+            query.prepare("select AVATAR, USER_ID from SESSIONS where ID = ?");
             query.addBindValue(id);
             query.exec();
-            quint32 userId = query.next() ? query.value(0).toUInt() : 0;
-            UserRecord urec = (userId == 0) ? NoUser :
-                _app->databaseThread()->userRepository()->loadUser(userId);
+            Q_ASSERT(query.next());
+            SessionRecord srec = {
+                id, token, query.value(0).toChar(), query.value(1).toUInt(), now };
+            UserRecord urec = (srec.userId == 0) ? NoUser :
+                _app->databaseThread()->userRepository()->loadUser(srec.userId);
             qDebug() << "Session resumed." << id << urec.name;
-            callback.invoke(Q_ARG(quint64, id), Q_ARG(const QByteArray&, token),
-                Q_ARG(const UserRecord&, urec));
+            callback.invoke(Q_ARG(const SessionRecord&, srec), Q_ARG(const UserRecord&, urec));
             return;
         }
     }
 
-    // if that didn't work, we must generate a new id and token
+    // if that didn't work, we must generate a new id and token and a random avatar
     QByteArray ntoken(16, 0);
     for (int ii = 0; ii < 16; ii++) {
         ntoken[ii] = qrand() % 256;
     }
-    query.prepare("insert into SESSIONS (TOKEN, LAST_ONLINE) values (?, ?)");
+    QChar avatar = randomAvatar();
+    query.prepare("insert into SESSIONS (TOKEN, AVATAR, LAST_ONLINE) values (?, ?, ?)");
     query.addBindValue(ntoken);
+    query.addBindValue(avatar);
     query.addBindValue(now);
     query.exec();
-    id = query.lastInsertId().toULongLong();
-    qDebug() << "Session created." << id;
-    callback.invoke(Q_ARG(quint64, id), Q_ARG(const QByteArray&, ntoken),
-        Q_ARG(const UserRecord&, NoUser));
+
+    SessionRecord srec = { query.lastInsertId().toULongLong(), ntoken, avatar, 0, now };
+    qDebug() << "Session created." << srec.id;
+    callback.invoke(Q_ARG(const SessionRecord&, srec), Q_ARG(const UserRecord&, NoUser));
 }
 
-void SessionRepository::setUserId (quint64 id, quint32 userId)
+void SessionRepository::updateSession (const SessionRecord& session)
 {
     QSqlQuery query;
-    query.prepare("update SESSIONS set USER_ID = ? where ID = ?");
-    query.addBindValue(userId);
-    query.addBindValue(id);
+    query.prepare("update SESSIONS set USER_ID = ?, AVATAR = ? where ID = ?");
+    query.addBindValue(session.userId);
+    query.addBindValue(session.avatar);
+    query.addBindValue(session.id);
     query.exec();
 }

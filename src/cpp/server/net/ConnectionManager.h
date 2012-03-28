@@ -12,6 +12,7 @@
 class Connection;
 class ServerApp;
 class Session;
+class SessionRecord;
 class UserRecord;
 
 /**
@@ -52,8 +53,7 @@ protected:
      * Callback for validated tokens.
      */
     Q_INVOKABLE void tokenValidated (
-        const QWeakObjectPointer& connptr, quint64 id,
-        const QByteArray& token, const UserRecord& user);
+        const QWeakObjectPointer& connptr, const SessionRecord& record, const UserRecord& user);
 
     /** The server application. */
     ServerApp* _app;

@@ -34,24 +34,24 @@
 
 using namespace std;
 
-Session::Session (ServerApp* app, Connection* connection, quint64 id,
-        const QByteArray& token, const UserRecord& user) :
+Session::Session (ServerApp* app, Connection* connection,
+        const SessionRecord& record, const UserRecord& user) :
     CallableObject(app->connectionManager()),
     _app(app),
     _connection(0),
-    _id(id),
-    _token(token),
+    _record(record),
     _lastWindowId(0),
     _mousePressed(false),
     _moused(0),
     _activeWindow(0),
     _translator(0),
     _user(user),
-    _scene(0)
+    _scene(0),
+    _pawn(0)
 {
     // send the session info back to the connection and activate it
-    connection->setCookie("sessionId", QString::number(id, 16).rightJustified(16, '0'));
-    connection->setCookie("sessionToken", token.toHex());
+    connection->setCookie("sessionId", QString::number(record.id, 16).rightJustified(16, '0'));
+    connection->setCookie("sessionToken", record.token.toHex());
 
     // create the main window
     _mainWindow = new MainWindow(this);
@@ -257,7 +257,7 @@ void Session::showLogoffDialog ()
 
 void Session::loggedOn (const UserRecord& user)
 {
-    qDebug() << "Logged on." << _id << user.name;
+    qDebug() << "Logged on." << _record.id << user.name;
 
     _user = user;
 
@@ -267,20 +267,23 @@ void Session::loggedOn (const UserRecord& user)
             Q_ARG(const QString&, "username"), Q_ARG(const QString&, user.name));
     }
 
-    // set the user id in the session record
-    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "setUserId",
-        Q_ARG(quint64, _id), Q_ARG(quint32, user.id));
+    // set the user id and avatar in the session record
+    _record.userId = user.id;
+    _record.avatar = user.avatar;
+    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "updateSession",
+        Q_ARG(const SessionRecord&, _record));
 }
 
 void Session::logoff ()
 {
-    qDebug() << "Logged off." << _id << _user.name;
+    qDebug() << "Logged off." << _record.id << _user.name;
 
     _user.id = 0;
 
     // clear the user id in the session record
-    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "setUserId",
-        Q_ARG(quint64, _id), Q_ARG(quint32, 0));
+    _record.userId = 0;
+    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "updateSession",
+        Q_ARG(const SessionRecord&, _record));
 }
 
 void Session::createScene ()
@@ -297,6 +300,21 @@ void Session::moveToScene (quint32 id)
     QMetaObject::invokeMethod(_app->sceneManager(), "resolveScene",
         Q_ARG(quint32, id),
         Q_ARG(const Callback&, Callback(_this, "sceneMaybeResolved(QObject*)")));
+}
+
+void Session::setAvatar (QChar avatar)
+{
+    // set and persist in session record
+    _record.avatar = avatar;
+    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "updateSession",
+        Q_ARG(const SessionRecord&, _record));
+
+    // if logged on, set and persist in user record
+    if (_user.id != 0) {
+        _user.avatar = avatar;
+        QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "updateUser",
+            Q_ARG(const UserRecord&, _user), Q_ARG(const Callback&, Callback()));
+    }
 }
 
 QString Session::translate (
@@ -495,6 +513,8 @@ void Session::sceneMaybeResolved (QObject* scene)
     // move the session to the scene thread
     if (_scene != 0) {
         _scene->removeSession(this);
+        _scene = 0;
+        _pawn = 0;
     }
     setParent(0);
     moveToThread(scene->thread());
@@ -506,7 +526,7 @@ void Session::sceneMaybeResolved (QObject* scene)
 void Session::continueMovingToScene (QObject* scene)
 {
     _scene = static_cast<Scene*>(scene);
-    _scene->addSession(this);
+    _pawn = _scene->addSession(this);
 }
 
 bool Session::belowModal (Window* window) const

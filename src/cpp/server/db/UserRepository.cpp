@@ -25,6 +25,7 @@ void UserRepository::init ()
             "DATE_OF_BIRTH date not null,"
             "EMAIL varchar(255) not null,"
             "FLAGS int unsigned not null,"
+            "AVATAR smallint unsigned not null,"
             "CREATED datetime not null,"
             "LAST_ONLINE datetime not null)");
 }
@@ -42,7 +43,7 @@ QByteArray hashPassword (const QString& password, const QByteArray& salt)
 
 void UserRepository::insertUser (
     const QString& name, const QString& password, const QDate& dob,
-    const QString& email, const Callback& callback)
+    const QString& email, QChar avatar, const Callback& callback)
 {
     QSqlQuery query;
     QDateTime now = QDateTime::currentDateTime();
@@ -58,7 +59,7 @@ void UserRepository::insertUser (
 
     query.prepare(
         "insert into USERS (NAME, NAME_LOWER, PASSWORD_HASH, PASSWORD_SALT, DATE_OF_BIRTH, "
-        "EMAIL, FLAGS, CREATED, LAST_ONLINE) values (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        "EMAIL, FLAGS, AVATAR, CREATED, LAST_ONLINE) values (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     query.addBindValue(name);
     query.addBindValue(name.toLower());
     query.addBindValue(passwordHash);
@@ -66,6 +67,7 @@ void UserRepository::insertUser (
     query.addBindValue(dob);
     query.addBindValue(email);
     query.addBindValue(0);
+    query.addBindValue(avatar);
     query.addBindValue(now);
     query.addBindValue(now);
 
@@ -74,7 +76,7 @@ void UserRepository::insertUser (
         return;
     }
     UserRecord urec = {
-        query.lastInsertId().toUInt(), name, passwordHash, salt, dob, email, 0, now, now };
+        query.lastInsertId().toUInt(), name, passwordHash, salt, dob, email, 0, avatar, now, now };
     callback.invoke(Q_ARG(const UserRecord&, urec));
 }
 
@@ -86,8 +88,8 @@ static UserRecord loadUserRecord (const QString& field, const QVariant& value)
     // look up the user id, password hash and salt
     QSqlQuery query;
     query.prepare(
-        "select ID, NAME, PASSWORD_HASH, PASSWORD_SALT, DATE_OF_BIRTH, EMAIL, FLAGS, CREATED, "
-        "LAST_ONLINE from USERS where " + field + " = ?");
+        "select ID, NAME, PASSWORD_HASH, PASSWORD_SALT, DATE_OF_BIRTH, EMAIL, FLAGS, AVATAR, "
+        "CREATED, LAST_ONLINE from USERS where " + field + " = ?");
     query.addBindValue(value);
     query.exec();
 
@@ -97,8 +99,8 @@ static UserRecord loadUserRecord (const QString& field, const QVariant& value)
     UserRecord urec = {
         query.value(0).toUInt(), query.value(1).toString(), query.value(2).toByteArray(),
         query.value(3).toByteArray(), query.value(4).toDate(), query.value(5).toString(),
-        (UserRecord::Flags)query.value(6).toUInt(), query.value(7).toDateTime(),
-        query.value(8).toDateTime() };
+        (UserRecord::Flags)query.value(6).toUInt(), query.value(7).toChar(),
+        query.value(8).toDateTime(), query.value(9).toDateTime() };
     return urec;
 }
 
@@ -149,13 +151,14 @@ void UserRepository::updateUser (const UserRecord& urec, const Callback& callbac
 {
     QSqlQuery query;
     query.prepare("update USERS set NAME = ?, NAME_LOWER = ?, PASSWORD_HASH = ?, "
-        "DATE_OF_BIRTH = ?, EMAIL = ?, FLAGS = ? where ID = ?");
+        "DATE_OF_BIRTH = ?, EMAIL = ?, FLAGS = ?, AVATAR = ? where ID = ?");
     query.addBindValue(urec.name);
     query.addBindValue(urec.name.toLower());
     query.addBindValue(urec.passwordHash);
     query.addBindValue(urec.dateOfBirth);
     query.addBindValue(urec.email);
     query.addBindValue((int)urec.flags);
+    query.addBindValue(urec.avatar);
     query.addBindValue(urec.id);
 
     callback.invoke(Q_ARG(bool, query.exec()));

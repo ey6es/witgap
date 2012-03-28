@@ -9,6 +9,7 @@
 #include "db/SceneRepository.h"
 
 class Actor;
+class Pawn;
 class ServerApp;
 class Session;
 
@@ -21,6 +22,9 @@ class Scene : public QObject
 
 public:
 
+    /** The size of the scene blocks as a power of two. */
+    static const int BlockSize = 5;
+
     /**
      * Creates a new scene.
      */
@@ -30,6 +34,11 @@ public:
      * Returns a reference to the scene record.
      */
     const SceneRecord& record () const { return _record; }
+
+    /**
+     * Returns a reference to the scene contents.
+     */
+    const QHash<QPoint, QIntVector>& contents () const { return _contents; }
 
     /**
      * Checks whether the specified session can edit the scene properties.
@@ -48,8 +57,10 @@ public:
 
     /**
      * Adds a session to the scene.  The session should already be in the scene thread.
+     *
+     * @return a pointer to the pawn created for the session, or 0 for none.
      */
-    void addSession (Session* session);
+    Pawn* addSession (Session* session);
 
     /**
      * Removes a session from the scene.

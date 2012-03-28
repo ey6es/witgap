@@ -3,7 +3,9 @@
 
 #include <QMetaObject>
 
+#include "Protocol.h"
 #include "ServerApp.h"
+#include "actor/Pawn.h"
 #include "db/DatabaseThread.h"
 #include "net/Session.h"
 #include "scene/Scene.h"
@@ -40,18 +42,24 @@ void Scene::remove ()
         Q_ARG(quint64, _record.id));
 }
 
-void Scene::addSession (Session* session)
+Pawn* Scene::addSession (Session* session)
 {
     session->setParent(this);
+    return new Pawn(this, session->record().avatar, QPoint(0, 0));
 }
 
 void Scene::removeSession (Session* session)
 {
+    Pawn* pawn = session->pawn();
+    if (pawn != 0) {
+        delete pawn;
+    }
     session->setParent(0);
 }
 
 void Scene::addToContents (Actor* actor)
 {
+    actor->position();
 }
 
 void Scene::removeFromContents (Actor* actor)
