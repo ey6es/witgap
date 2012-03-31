@@ -15,7 +15,7 @@ package com.hurlant.crypto.prng
 
 	import flash.utils.ByteArray;
 
-	public class ARC4 implements IPRNG {
+	public class ARC4 {
 		private var i:int = 0;
 		private var j:int = 0;
 		private var S:ByteArray;

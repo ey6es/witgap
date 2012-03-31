@@ -100,6 +100,18 @@ public:
     const QSize& displaySize () const { return _displaySize; }
 
     /**
+     * Increments the number of elements requiring encryption.  If it was previously zero,
+     * encryption will be enabled.
+     */
+    void incrementCryptoCount ();
+
+    /**
+     * Decrements the number of elements requiring encryption.  When it reaches zero,
+     * encryption will be disabled.
+     */
+    void decrementCryptoCount ();
+
+    /**
      * Sets the active window.
      */
     void setActiveWindow (Window* window);
@@ -277,6 +289,9 @@ protected:
 
     /** The size of the user's display. */
     QSize _displaySize;
+
+    /** The number of elements requiring encryption.  When this drops to zero, we can disable. */
+    int _cryptoCount;
 
     /** The main client window. */
     MainWindow* _mainWindow;

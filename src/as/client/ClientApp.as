@@ -39,6 +39,8 @@ import flash.ui.KeyLocation;
 import flash.ui.Keyboard;
 
 import flash.utils.ByteArray;
+import flash.utils.IDataInput;
+import flash.utils.IDataOutput;
 
 import com.hurlant.crypto.prng.Random;
 import com.hurlant.crypto.rsa.RSAKey;
@@ -69,8 +71,9 @@ public class ClientApp extends Sprite {
         if (!_socket.connected) {
             return;
         }
-        _socket.writeByte(WINDOW_CLOSED_MSG);
-        _socket.flush();
+        var out :IDataOutput = startMessage();
+        out.writeByte(WINDOW_CLOSED_MSG);
+        endMessage(out);
         _socket.close();
     }
 
@@ -483,15 +486,17 @@ public class ClientApp extends Sprite {
         if (!_socket.connected) {
             return;
         }
-        _socket.writeByte(event.type == MouseEvent.MOUSE_DOWN ?
-            MOUSE_PRESSED_MSG : MOUSE_RELEASED_MSG);
         var idx :int = _field.getCharIndexAtPoint(
             event.stageX - _field.x, event.stageY - _field.y);
-        if (idx != -1) {
-            _socket.writeShort(idx % (_width + 1));
-            _socket.writeShort(idx / (_width + 1));
-            _socket.flush();
+        if (idx == -1) {
+            return;
         }
+        var out :IDataOutput = startMessage();
+        out.writeByte(event.type == MouseEvent.MOUSE_DOWN ?
+            MOUSE_PRESSED_MSG : MOUSE_RELEASED_MSG);
+        out.writeShort(idx % (_width + 1));
+        out.writeShort(idx / (_width + 1));
+        endMessage(out);
     }
 
     /**
@@ -502,13 +507,14 @@ public class ClientApp extends Sprite {
         if (!_socket.connected) {
             return;
         }
+        var out :IDataOutput = startMessage();
         var numpad :Boolean = (event.keyLocation == KeyLocation.NUM_PAD);
-        _socket.writeByte(event.type == KeyboardEvent.KEY_DOWN ?
+        out.writeByte(event.type == KeyboardEvent.KEY_DOWN ?
             (numpad ? KEY_PRESSED_NUMPAD_MSG : KEY_PRESSED_MSG) :
             (numpad ? KEY_RELEASED_NUMPAD_MSG : KEY_RELEASED_MSG));
-        _socket.writeUnsignedInt(getQtKeyCode(event));
-        _socket.writeShort(event.charCode);
-        _socket.flush();
+        out.writeUnsignedInt(getQtKeyCode(event));
+        out.writeShort(event.charCode);
+        endMessage(out);
     }
 
     /**
@@ -531,6 +537,9 @@ public class ClientApp extends Sprite {
                 }
                 var bytes :ByteArray = new ByteArray();
                 _socket.readBytes(bytes, 0, _messageLength);
+                if (_crypto) {
+                    _dctx.decrypt(bytes);
+                }
                 _messageLength = 0;
 
                 bytes.position = 0;
@@ -585,8 +594,9 @@ public class ClientApp extends Sprite {
 
             case TOGGLE_CRYPTO_MSG:
                 // respond immediately in the affirmative and toggle
-                _socket.writeByte(CRYPTO_TOGGLED_MSG);
-                _socket.flush();
+                var out :IDataOutput = startMessage();
+                out.writeByte(CRYPTO_TOGGLED_MSG);
+                endMessage(out);
                 _crypto = !_crypto;
                 break;
 
@@ -596,22 +606,37 @@ public class ClientApp extends Sprite {
     }
 
     /**
+     * Starts a message.
+     *
+     * @return the output stream to write to.
+     */
+    protected function startMessage () :IDataOutput
+    {
+        return _crypto ? new ByteArray() : _socket;
+    }
+
+    /**
+     * Finishes a message.
+     *
+     * @param out the output stream returned from {@link #startMessage}.
+     */
+    protected function endMessage (out :IDataOutput) :void
+    {
+        if (_crypto) {
+            var bytes :ByteArray = ByteArray(out);
+            _ectx.encrypt(bytes);
+            _socket.writeBytes(bytes);
+        }
+        _socket.flush();
+    }
+
+    /**
      * Reads and returns a rectangle from the provided array.
      */
     protected function readRectangle (bytes :ByteArray) :Rectangle
     {
         return new Rectangle(bytes.readShort(), bytes.readShort(),
             bytes.readShort(), bytes.readShort());
-    }
-
-    /**
-     * Writes the specified hex string to the socket as binary data.
-     */
-    protected function writeHexString (string :String) :void
-    {
-        for (var ii :int = 0; ii < string.length; ii += 2) {
-            _socket.writeByte(parseInt(string.substr(ii, 2), 16));
-        }
     }
 
     /**

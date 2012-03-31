@@ -41,6 +41,7 @@ Session::Session (ServerApp* app, Connection* connection,
     _connection(0),
     _record(record),
     _lastWindowId(0),
+    _cryptoCount(0),
     _mousePressed(false),
     _moused(0),
     _activeWindow(0),
@@ -76,6 +77,11 @@ void Session::setConnection (Connection* connection)
     connect(_connection, SIGNAL(keyReleased(int,QChar,bool)),
         SLOT(dispatchKeyReleased(int,QChar,bool)));
     _connection->activate();
+
+    // activate encryption if necessary
+    if (_cryptoCount > 0) {
+        _connection->toggleCrypto();
+    }
 
     // clear the modifiers
     _modifiers = Qt::KeyboardModifiers();
@@ -142,6 +148,20 @@ void Session::requestFocus (Component* component)
     // we can only make it the active window if there are no modal windows above
     if (!(nwindow == _activeWindow || belowModal(nwindow))) {
         setActiveWindow(nwindow);
+    }
+}
+
+void Session::incrementCryptoCount ()
+{
+    if (_cryptoCount++ == 0 && _connection != 0) {
+        Connection::toggleCryptoMetaMethod().invoke(_connection);
+    }
+}
+
+void Session::decrementCryptoCount ()
+{
+    if (--_cryptoCount == 0 && _connection != 0) {
+        Connection::toggleCryptoMetaMethod().invoke(_connection);
     }
 }
 

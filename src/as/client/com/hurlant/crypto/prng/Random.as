@@ -1,12 +1,12 @@
 /**
  * Random
- * 
+ *
  * An ActionScript 3 implementation of a Random Number Generator
  * Copyright (c) 2007 Henri Torgemane
- * 
+ *
  * Derived from:
  * 		The jsbn library, Copyright (c) 2003-2005 Tom Wu
- * 
+ *
  * See LICENSE.txt for full license information.
  */
 package com.hurlant.crypto.prng
@@ -20,19 +20,18 @@ package com.hurlant.crypto.prng
 	import flash.display.Stage;
 	import flash.utils.getTimer;
 	import flash.text.Font;
-	
+
 	public class Random
 	{
-		private var state:IPRNG;
+		private var state:ARC4;
 		private var ready:Boolean = false;
 		private var pool:ByteArray;
 		private var psize:int;
 		private var pptr:int;
 		private var seeded:Boolean = false;
-		
+
 		public function Random(prng:Class = null) {
-			if (prng==null) prng = ARC4;
-			state = new prng as IPRNG;
+			state = new ARC4;
 			psize= state.getPoolSize();
 			pool = new ByteArray;
 			pptr = 0;
@@ -44,7 +43,7 @@ package com.hurlant.crypto.prng
 			pptr=0;
 			seed();
 		}
-		
+
 		public function seed(x:int = 0):void {
 			if (x==0) {
 				x = new Date().getTime();
@@ -56,7 +55,7 @@ package com.hurlant.crypto.prng
 			pptr %= psize;
 			seeded = true;
 		}
-		
+
 		/**
 		 * Gather anything we have that isn't entirely predictable:
 		 *  - memory used
@@ -81,8 +80,8 @@ package com.hurlant.crypto.prng
 				seed(b.readUnsignedInt());
 			}
 		}
-		
-		
+
+
 		public function nextBytes(buffer:ByteArray, length:int):void {
 			while (length--) {
 				buffer.writeByte(nextByte());

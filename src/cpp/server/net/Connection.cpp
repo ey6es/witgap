@@ -3,6 +3,7 @@
 
 #include <iostream>
 
+#include <QBuffer>
 #include <QMetaMethod>
 #include <QPoint>
 #include <QRect>
@@ -46,11 +47,20 @@ const QMetaMethod& Connection::setCookieMetaMethod ()
     return method;
 }
 
+const QMetaMethod& Connection::toggleCryptoMetaMethod ()
+{
+    static QMetaMethod method = staticMetaObject.method(
+        staticMetaObject.indexOfMethod("toggleCrypto()"));
+    return method;
+}
+
 Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     QObject(app->connectionManager()),
     _app(app),
     _socket(socket),
-    _stream(socket)
+    _stream(socket),
+    _crypto(false),
+    _clientCrypto(false)
 {
     // init crypto bits
     EVP_CIPHER_CTX_init(&_ectx);
@@ -95,51 +105,57 @@ void Connection::activate ()
 void Connection::deactivate (const QString& reason)
 {
     QByteArray rbytes = reason.toUtf8();
-    _stream << (quint16)(1 + rbytes.length());
+    int rlen = rbytes.length();
+    startMessage(1 + rlen);
     _stream << CLOSE_MSG;
-    _socket->write(rbytes);
+    _stream.writeRawData(rbytes.constData(), rlen);
+    endMessage();
     _socket->disconnectFromHost();
 }
 
 void Connection::updateWindow (int id, int layer, const QRect& bounds, int fill)
 {
-    _stream << (qint16)21;
+    startMessage(21);
     _stream << UPDATE_WINDOW_MSG;
     _stream << (qint32)id;
     _stream << (qint32)layer;
     write(bounds);
     _stream << (qint32)fill;
+    endMessage();
 }
 
 void Connection::removeWindow (int id)
 {
-    _stream << (qint16)5;
+    startMessage(5);
     _stream << REMOVE_WINDOW_MSG;
     _stream << (qint32)id;
+    endMessage();
 }
 
 void Connection::setContents (int id, const QRect& bounds, const QIntVector& contents)
 {
     int size = contents.size();
 
-    _stream << (quint16)(13 + size*4);
+    startMessage(13 + size*4);
     _stream << SET_CONTENTS_MSG;
     _stream << (qint32)id;
     write(bounds);
     for (int ii = 0; ii < size; ii++) {
         _stream << (qint32)contents.at(ii);
     }
+    endMessage();
 }
 
 void Connection::moveContents (int id, const QRect& source, const QPoint& dest, int fill)
 {
-    _stream << (quint16)21;
+    startMessage(21);
     _stream << MOVE_CONTENTS_MSG;
     _stream << (qint32)id;
     write(source);
     _stream << (qint16)dest.x();
     _stream << (qint16)dest.y();
     _stream << (qint32)fill;
+    endMessage();
 }
 
 void Connection::setCookie (const QString& name, const QString& value)
@@ -147,12 +163,35 @@ void Connection::setCookie (const QString& name, const QString& value)
     // set in our local map
     _cookies.insert(name, value);
 
+    // cookies require encryption
+    bool ocrypto = _crypto;
+    if (!ocrypto) {
+        toggleCrypto();
+    }
+
     QByteArray nbytes = name.toUtf8(), vbytes = value.toUtf8();
-    _stream << (quint16)(3 + nbytes.length() + vbytes.length());
+    int nlen = nbytes.length(), vlen = vbytes.length();
+    startMessage(3 + nlen + vlen);
     _stream << SET_COOKIE_MSG;
-    _stream << (quint16)nbytes.length();
-    _socket->write(nbytes);
-    _socket->write(vbytes);
+    _stream << (quint16)nlen;
+    _stream.writeRawData(nbytes.constData(), nlen);
+    _stream.writeRawData(vbytes.constData(), vlen);
+    endMessage();
+
+    // restore the previous crypto setting
+    if (!ocrypto) {
+        toggleCrypto();
+    }
+}
+
+void Connection::toggleCrypto ()
+{
+    startMessage(1);
+    _stream << TOGGLE_CRYPTO_MSG;
+    endMessage();
+
+    // note for future messages
+    _crypto = !_crypto;
 }
 
 /**
@@ -214,13 +253,8 @@ void Connection::readHeader ()
         (unsigned char*)secret.data() + 16);
 
     // the rest is encrypted with the secret key
-    QByteArray in = _socket->read(length - 4 - 128);
-    QByteArray out(in.length(), 0);
-    int outl;
-    EVP_DecryptUpdate(&_dctx, (unsigned char*)out.data(), &outl,
-        (unsigned char*)in.data(), in.length());
-    EVP_DecryptFinal_ex(&_dctx, (unsigned char*)out.data() + outl, &outl);
-    QDataStream ostream(out);
+    QByteArray output = readEncrypted(length - 4 - 128);
+    QDataStream ostream(output);
     quint16 qlen, clen;
     ostream >> qlen;
     QByteArray query(qlen, 0);
@@ -260,51 +294,42 @@ void Connection::readMessages ()
 {
     // read as many messages as are available
     while (true) {
-        qint64 available = _socket->bytesAvailable();
-        if (available < 1) {
-            return; // wait until we have the rest of the header
-        }
-        char type;
-        _socket->getChar(&type);
-        if (type == WINDOW_CLOSED_MSG) {
-            emit windowClosed();
+        if (_clientCrypto) {
+            // all messages fit within a single block, so that's exactly the size we want
+            int blockSize = EVP_CIPHER_CTX_block_size(&_dctx);
+            if (_socket->bytesAvailable() < blockSize) {
+                return;
+            }
+            // read the block in and decrypt it
+            QByteArray decrypted = readEncrypted(blockSize);
+            QDataStream stream(decrypted);
+            maybeReadMessage(stream, blockSize);
 
-        } else if (type == MOUSE_PRESSED_MSG || type == MOUSE_RELEASED_MSG) {
-            if (available < 5) {
-                _socket->ungetChar(type);
-                return; // wait until we have the data
-            }
-            quint16 x, y;
-            _stream >> x;
-            _stream >> y;
-            emit (type == MOUSE_PRESSED_MSG) ? mousePressed(x, y) : mouseReleased(x, y);
-
-        } else {
-            // type == KEY_PRESSED_MSG || type == KEY_PRESSED_NUMPAD_MSG ||
-            // type == KEY_RELEASED_MSG || type == KEY_RELEASED_NUMPAD_MSG
-            if (available < 7) {
-                _socket->ungetChar(type);
-                return; // wait until we have the data
-            }
-            quint32 key;
-            quint16 ch;
-            _stream >> key;
-            _stream >> ch;
-            switch (type) {
-                case KEY_PRESSED_MSG:
-                    emit keyPressed(key, ch, false);
-                    break;
-                case KEY_PRESSED_NUMPAD_MSG:
-                    emit keyPressed(key, ch, true);
-                    break;
-                case KEY_RELEASED_MSG:
-                    emit keyReleased(key, ch, false);
-                    break;
-                case KEY_RELEASED_NUMPAD_MSG:
-                    emit keyReleased(key, ch, true);
-                    break;
-            }
+        } else if (!maybeReadMessage(_stream, _socket->bytesAvailable())) {
+            return; // wait for the rest of the message
         }
+    }
+}
+
+void Connection::startMessage (quint16 length)
+{
+    if (_crypto) {
+        QBuffer* buffer = new QBuffer();
+        buffer->open(QIODevice::WriteOnly);
+        _stream.setDevice(buffer);
+
+    } else {
+        _stream << length;
+    }
+}
+
+void Connection::endMessage ()
+{
+    if (_crypto) {
+        QBuffer* buffer = static_cast<QBuffer*>(_stream.device());
+        _stream.setDevice(_socket);
+        writeEncrypted(buffer->buffer());
+        delete buffer;
     }
 }
 
@@ -314,4 +339,88 @@ void Connection::write (const QRect& rect)
     _stream << (qint16)rect.top();
     _stream << (qint16)rect.width();
     _stream << (qint16)rect.height();
+}
+
+QByteArray Connection::readEncrypted (int length)
+{
+    QByteArray in = _socket->read(length);
+    QByteArray out(in.length(), 0);
+    int outl;
+    EVP_DecryptUpdate(&_dctx, (unsigned char*)out.data(), &outl,
+        (unsigned char*)in.data(), in.length());
+    EVP_DecryptFinal_ex(&_dctx, (unsigned char*)out.data() + outl, &outl);
+
+    // we immediately reinitialize using the last encrypted block as an initialization vector
+    EVP_DecryptInit_ex(&_dctx, 0, 0, 0,
+        (unsigned char*)in.data() + length - EVP_CIPHER_CTX_block_size(&_dctx));
+    return out;
+}
+
+void Connection::writeEncrypted (QByteArray& in)
+{
+    int blockSize = EVP_CIPHER_CTX_block_size(&_ectx);
+    QByteArray out(in.length() + blockSize, 0);
+    int outl;
+    EVP_EncryptUpdate(&_ectx, (unsigned char*)out.data(), &outl,
+        (unsigned char*)in.data(), in.length());
+    int finall;
+    EVP_EncryptFinal_ex(&_ectx, (unsigned char*)out.data() + outl, &finall);
+    int length = outl + finall;
+    _stream << (quint16)length;
+    _socket->write(out.constData(), length);
+
+    // immediately reinitialize
+    EVP_EncryptInit_ex(&_ectx, 0, 0, 0, (unsigned char*)out.data() + length - blockSize);
+}
+
+bool Connection::maybeReadMessage (QDataStream& stream, qint64 available)
+{
+    if (available < 1) {
+        return false; // wait until we have the type
+    }
+    quint8 type;
+    stream >> type;
+    if (type == WINDOW_CLOSED_MSG) {
+        emit windowClosed();
+
+    } else if (type == CRYPTO_TOGGLED_MSG) {
+        _clientCrypto = !_clientCrypto;
+
+    } else if (type == MOUSE_PRESSED_MSG || type == MOUSE_RELEASED_MSG) {
+        if (available < 5) {
+            _socket->ungetChar(type);
+            return false; // wait until we have the data
+        }
+        quint16 x, y;
+        stream >> x;
+        stream >> y;
+        emit (type == MOUSE_PRESSED_MSG) ? mousePressed(x, y) : mouseReleased(x, y);
+
+    } else {
+        // type == KEY_PRESSED_MSG || type == KEY_PRESSED_NUMPAD_MSG ||
+        // type == KEY_RELEASED_MSG || type == KEY_RELEASED_NUMPAD_MSG
+        if (available < 7) {
+            _socket->ungetChar(type);
+            return false; // wait until we have the data
+        }
+        quint32 key;
+        quint16 ch;
+        stream >> key;
+        stream >> ch;
+        switch (type) {
+            case KEY_PRESSED_MSG:
+                emit keyPressed(key, ch, false);
+                break;
+            case KEY_PRESSED_NUMPAD_MSG:
+                emit keyPressed(key, ch, true);
+                break;
+            case KEY_RELEASED_MSG:
+                emit keyReleased(key, ch, false);
+                break;
+            case KEY_RELEASED_NUMPAD_MSG:
+                emit keyReleased(key, ch, true);
+                break;
+        }
+    }
+    return true;
 }

@@ -51,9 +51,9 @@ public:
     static const QMetaMethod& setCookieMetaMethod ();
 
     /**
-     * Returns the meta-method for {@link #requestCookie}.
+     * Returns the meta-method for {@link #toggleCrypto}.
      */
-    static const QMetaMethod& requestCookieMetaMethod ();
+    static const QMetaMethod& toggleCryptoMetaMethod ();
 
     /**
      * Initializes the connection.
@@ -120,6 +120,11 @@ public:
      */
     Q_INVOKABLE void setCookie (const QString& name, const QString& value);
 
+    /**
+     * Toggles encryption.
+     */
+    Q_INVOKABLE void toggleCrypto ();
+
 signals:
 
     /**
@@ -162,9 +167,37 @@ protected slots:
 protected:
 
     /**
+     * Starts a message of the specified (unencrypted) length.
+     */
+    void startMessage (quint16 length);
+
+    /**
+     * Finishes the current message.
+     */
+    void endMessage ();
+
+    /**
      * Writes a rectangle to the stream.
      */
     void write (const QRect& rect);
+
+    /**
+     * Reads an encrypted block of the specified length and returns the decrypted result.
+     */
+    QByteArray readEncrypted (int length);
+
+    /**
+     * Encrypts the provided block and writes it out.
+     */
+    void writeEncrypted (QByteArray& in);
+
+    /**
+     * Attempts to read a single message from the specified stream.
+     *
+     * @param available the number of available bytes to read.
+     * @return true if we processed a message, false if we're still waiting for more data.
+     */
+    bool maybeReadMessage (QDataStream& stream, qint64 available);
 
     /** The server application. */
     ServerApp* _app;
@@ -189,6 +222,12 @@ protected:
 
     /** The cookie values stored on the client. */
     QHash<QString, QString> _cookies;
+
+    /** Whether or not we're encrypting our messages. */
+    bool _crypto;
+
+    /** Whether or not the client is encrypting its messages. */
+    bool _clientCrypto;
 };
 
 #endif // CONNECTION

@@ -86,24 +86,10 @@ package com.hurlant.crypto.symmetric
 		}
 
 		protected function getIV4e():ByteArray {
-			var vec:ByteArray = new ByteArray;
-			if (iv) {
-				vec.writeBytes(iv);
-			} else {
-				prng.nextBytes(vec, blockSize);
-			}
-			lastIV.length=0;
-			lastIV.writeBytes(vec);
-			return vec;
+			return lastIV;
 		}
 		protected function getIV4d():ByteArray {
-			var vec:ByteArray = new ByteArray;
-			if (iv) {
-				vec.writeBytes(iv);
-			} else {
-				throw new Error("an IV must be set before calling decrypt()");
-			}
-			return vec;
+			return lastIV;
 		}
 	}
 }

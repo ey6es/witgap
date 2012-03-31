@@ -86,6 +86,17 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
     addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, _cancel, _toggleCreateMode, _logon));
 
     setCreateMode(username.isEmpty());
+
+    // we need to encrypt while the logon dialog is up
+    parent->incrementCryptoCount();
+}
+
+LogonDialog::~LogonDialog ()
+{
+    Session* session = this->session();
+    if (session != 0) {
+        session->decrementCryptoCount();
+    }
 }
 
 void LogonDialog::updateLogon ()

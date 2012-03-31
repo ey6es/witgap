@@ -32,6 +32,11 @@ public:
      */
     LogonDialog (Session* parent, const QString& username);
 
+    /**
+     * Destroys the dialog.
+     */
+    virtual ~LogonDialog ();
+
 protected slots:
 
     /**
