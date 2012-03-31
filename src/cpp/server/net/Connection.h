@@ -6,8 +6,11 @@
 
 #include <QHash>
 #include <QHostAddress>
+#include <QMultiHash>
 #include <QSize>
 #include <QTcpSocket>
+
+#include <openssl/evp.h>
 
 #include "util/Callback.h"
 
@@ -73,6 +76,16 @@ public:
     const QSize& displaySize () const { return _displaySize; }
 
     /**
+     * Returns a reference to the map of query parameters passed to the client.
+     */
+    const QMultiHash<QString, QString> query () const { return _query; }
+
+    /**
+     * Returns a reference to the map of cookie values stored on the client.
+     */
+    const QHash<QString, QString> cookies () const { return _cookies; }
+
+    /**
      * Activates the connection, allowing it to begin reading and writing messages.
      */
     void activate ();
@@ -106,13 +119,6 @@ public:
      * Sets the a client cookie.
      */
     Q_INVOKABLE void setCookie (const QString& name, const QString& value);
-
-    /**
-     * Requests a client cookie.
-     *
-     * @param callback the callback to invoke with the value, when received.
-     */
-    Q_INVOKABLE void requestCookie (const QString& name, const Callback& callback);
 
 signals:
 
@@ -172,14 +178,17 @@ protected:
     /** The data stream used to read from and write to the socket. */
     QDataStream _stream;
 
+    /** The encryption and decryption contexts. */
+    EVP_CIPHER_CTX _ectx, _dctx;
+
     /** The display size reported by the client. */
     QSize _displaySize;
 
-    /** The last cookie request id generated. */
-    quint32 _lastCookieRequestId;
+    /** The query arguments supplied to the client. */
+    QMultiHash<QString, QString> _query;
 
-    /** Maps outstanding cookie request ids to their corresponding callbacks. */
-    QHash<quint32, Callback> _cookieRequests;
+    /** The cookie values stored on the client. */
+    QHash<QString, QString> _cookies;
 };
 
 #endif // CONNECTION

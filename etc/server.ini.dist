@@ -2,6 +2,9 @@
 listen_address = 0.0.0.0
 listen_port = 4015
 
+; The location of the private RSA key
+private_key = /export/witgap/etc/private_key.pem
+
 ; The database info
 database_type = QMYSQL
 database_hostname = localhost

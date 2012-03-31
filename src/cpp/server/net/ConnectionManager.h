@@ -7,6 +7,8 @@
 #include <QHash>
 #include <QTcpServer>
 
+#include <openssl/pem.h>
+
 #include "util/Callback.h"
 
 class Connection;
@@ -30,10 +32,19 @@ public:
     ConnectionManager (ServerApp* app);
 
     /**
+     * Destroys the manager.
+     */
+    ~ConnectionManager ();
+
+    /**
+     * Returns a pointer to the private RSA key.
+     */
+    RSA* rsa () const { return _rsa; }
+
+    /**
      * Called by a connection when it has received the protocol header.
      */
-    void connectionEstablished (
-        Connection* connection, quint64 sessionId, const QByteArray& sessionToken);
+    void connectionEstablished (Connection* connection);
 
 protected slots:
 
@@ -57,6 +68,9 @@ protected:
 
     /** The server application. */
     ServerApp* _app;
+
+    /** The private RSA key. */
+    RSA* _rsa;
 
     /** The set of active sessions, mapped by session id. */
     QHash<quint64, Session*> _sessions;

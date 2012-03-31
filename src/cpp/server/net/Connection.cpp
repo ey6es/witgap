@@ -6,8 +6,11 @@
 #include <QMetaMethod>
 #include <QPoint>
 #include <QRect>
+#include <QUrl>
 #include <QtDebug>
 #include <QtEndian>
+
+#include <openssl/rsa.h>
 
 #include "Protocol.h"
 #include "ServerApp.h"
@@ -43,20 +46,16 @@ const QMetaMethod& Connection::setCookieMetaMethod ()
     return method;
 }
 
-const QMetaMethod& Connection::requestCookieMetaMethod ()
-{
-    static QMetaMethod method = staticMetaObject.method(
-        staticMetaObject.indexOfMethod("requestCookie(QString,Callback)"));
-    return method;
-}
-
 Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     QObject(app->connectionManager()),
     _app(app),
     _socket(socket),
-    _stream(socket),
-    _lastCookieRequestId(0)
+    _stream(socket)
 {
+    // init crypto bits
+    EVP_CIPHER_CTX_init(&_ectx);
+    EVP_CIPHER_CTX_init(&_dctx);
+
     // take over ownership of the socket
     _socket->setParent(this);
 
@@ -78,6 +77,10 @@ Connection::~Connection ()
     if (_socket->error() != QAbstractSocket::UnknownSocketError) {
         base << _socket->errorString();
     }
+
+    // cleanup crypto bits
+    EVP_CIPHER_CTX_cleanup(&_ectx);
+    EVP_CIPHER_CTX_cleanup(&_dctx);
 }
 
 void Connection::activate ()
@@ -141,8 +144,10 @@ void Connection::moveContents (int id, const QRect& source, const QPoint& dest, 
 
 void Connection::setCookie (const QString& name, const QString& value)
 {
-    QByteArray nbytes = name.toUtf8(), vbytes = value.toUtf8();
+    // set in our local map
+    _cookies.insert(name, value);
 
+    QByteArray nbytes = name.toUtf8(), vbytes = value.toUtf8();
     _stream << (quint16)(3 + nbytes.length() + vbytes.length());
     _stream << SET_COOKIE_MSG;
     _stream << (quint16)nbytes.length();
@@ -150,26 +155,25 @@ void Connection::setCookie (const QString& name, const QString& value)
     _socket->write(vbytes);
 }
 
-void Connection::requestCookie (const QString& name, const Callback& callback)
+/**
+ * Helper function for readHeader: puts an int back in the socket buffer.
+ */
+static void ungetInt (QTcpSocket* socket, quint32 value)
 {
-    QByteArray nbytes = name.toUtf8();
-
-    _stream << (quint16)(5 + nbytes.length());
-    _stream << REQUEST_COOKIE_MSG;
-    _stream << (quint32)(++_lastCookieRequestId);
-    _socket->write(nbytes);
-
-    _cookieRequests.insert(_lastCookieRequestId, callback);
+    socket->ungetChar(value & 0xFF);
+    socket->ungetChar((value >> 8) & 0xFF);
+    socket->ungetChar((value >> 16) & 0xFF);
+    socket->ungetChar(value >> 24);
 }
 
 void Connection::readHeader ()
 {
     // if we don't have the full header, wait until we do
-    if (_socket->bytesAvailable() < 36) {
+    if (_socket->bytesAvailable() < 12) {
         return;
     }
     // check the magic number and version
-    quint32 magic, version;
+    quint32 magic, version, length;
     _stream >> magic;
     if (magic != PROTOCOL_MAGIC) {
         qWarning() << "Invalid protocol magic number:" << magic << _socket->peerAddress();
@@ -182,22 +186,74 @@ void Connection::readHeader ()
         deactivate("Wrong protocol version.");
         return;
     }
-    quint64 sessionId;
-    _stream >> sessionId;
-    QByteArray sessionToken = _socket->read(16);
+    _stream >> length;
+    if (_socket->bytesAvailable() < length) {
+        // push back what we read and wait for the rest
+        ungetInt(_socket, length);
+        ungetInt(_socket, PROTOCOL_VERSION);
+        ungetInt(_socket, PROTOCOL_MAGIC);
+        return;
+    }
     quint16 width, height;
     _stream >> width;
     _stream >> height;
     _displaySize = QSize(width, height);
 
+    QByteArray encryptedSecret = _socket->read(128);
+    QByteArray secret(32, 0);
+    int len = RSA_private_decrypt(128, (const unsigned char*)encryptedSecret.constData(),
+        (unsigned char*)secret.data(), _app->connectionManager()->rsa(), RSA_PKCS1_PADDING);
+    if (len != 32) {
+        qWarning() << "Invalid encryption key:" << _socket->peerAddress();
+        deactivate("Invalid encryption key.");
+        return;
+    }
+    EVP_EncryptInit_ex(&_ectx, EVP_aes_128_cbc(), 0, (unsigned char*)secret.data(),
+        (unsigned char*)secret.data() + 16);
+    EVP_DecryptInit_ex(&_dctx, EVP_aes_128_cbc(), 0, (unsigned char*)secret.data(),
+        (unsigned char*)secret.data() + 16);
+
+    // the rest is encrypted with the secret key
+    QByteArray in = _socket->read(length - 4 - 128);
+    QByteArray out(in.length(), 0);
+    int outl;
+    EVP_DecryptUpdate(&_dctx, (unsigned char*)out.data(), &outl,
+        (unsigned char*)in.data(), in.length());
+    EVP_DecryptFinal_ex(&_dctx, (unsigned char*)out.data() + outl, &outl);
+    QDataStream ostream(out);
+    quint16 qlen, clen;
+    ostream >> qlen;
+    QByteArray query(qlen, 0);
+    ostream.readRawData(query.data(), qlen);
+    ostream >> clen;
+    QByteArray cookie(clen, 0);
+    ostream.readRawData(cookie.data(), clen);
+
+    // parse out the query and cookie values
+    if (query.startsWith('?')) {
+        query.remove(0, 1);
+    }
+    foreach (const QByteArray& str, query.split('&')) {
+        QByteArray tstr = str.trimmed();
+        int idx = tstr.indexOf('=');
+        _query.insert((idx == -1) ? "" : QUrl::fromPercentEncoding(tstr.left(idx)),
+            QUrl::fromPercentEncoding(tstr.mid(idx + 1)));
+    }
+    foreach (const QByteArray& str, cookie.split(';')) {
+        QByteArray tstr = str.trimmed();
+        int idx = tstr.indexOf('=');
+        _cookies.insert((idx == -1) ? "" : QUrl::fromPercentEncoding(tstr.left(idx)),
+            QUrl::fromPercentEncoding(tstr.mid(idx + 1)));
+    }
+
     // disable the connection until we're ready to read subsequent messages
     _socket->disconnect(this);
 
     // log the establishment
-    qDebug() << "Connection established." << sessionId << _displaySize;
+    qDebug() << "Connection established." << _displaySize;
 
     // notify the connection manager, which will create a session for the connection
-    _app->connectionManager()->connectionEstablished(this, sessionId, sessionToken);
+    _app->connectionManager()->connectionEstablished(this);
 }
 
 void Connection::readMessages ()
@@ -212,24 +268,6 @@ void Connection::readMessages ()
         _socket->getChar(&type);
         if (type == WINDOW_CLOSED_MSG) {
             emit windowClosed();
-
-        } else if (type == REPORT_COOKIE_MSG) {
-            if (available < 3) {
-                _socket->ungetChar(type);
-                return; // wait until we have the length
-            }
-            quint16 length;
-            _stream >> length;
-            if (available < 3 + length) {
-                _socket->ungetChar(length & 0xFF);
-                _socket->ungetChar(length >> 8);
-                _socket->ungetChar(type);
-                return; // wait until we have the data
-            }
-            quint32 id;
-            _stream >> id;
-            QByteArray value = _socket->read(length - 4);
-            _cookieRequests.take(id).invoke(Q_ARG(const QString&, value));
 
         } else if (type == MOUSE_PRESSED_MSG || type == MOUSE_RELEASED_MSG) {
             if (available < 5) {

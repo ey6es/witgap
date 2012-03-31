@@ -238,11 +238,6 @@ protected slots:
 protected:
 
     /**
-     * Shows the logon dialog with the provided default username.
-     */
-    Q_INVOKABLE void showLogonDialog (const QString& username);
-
-    /**
      * Submits a bug report with the supplied description.
      */
     Q_INVOKABLE void submitBugReport (const QString& description);

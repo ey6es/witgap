@@ -12,10 +12,17 @@
  * The client initiates communication by sending the preamble, which consists of:
  *     PROTOCOL_MAGIC : quint32
  *     PROTOCOL_VERSION : quint32
- *     sessionId : quint64 : the persistent session id
- *     sessionToken : char[16] : the randomly generated token for authenticating the session
+ *     length : quint32 : the length in bytes of the remainder (excluding this field)
  *     width : quint16 : the width of the client's display in characters
  *     height : quint16 : the height of the client's display in characters
+ *     encryptedSecret : char[128] : the secret key, encrypted with the public RSA key
+ *
+ *     The remainder of the preamble is encrypted with the secret key:
+ *
+ *     queryLength : quint16 : the length of the URL query string
+ *     query : char[queryLength] : the UTF-8 encoded URL query string
+ *     cookieLength : quint16 : the length of the cookie string
+ *     cookie : char[cookieLength] : the UTF-8 encoded cookie string
  *
  * If the server rejects the preamble, it will disconnect immediately.  Otherwise, both parties
  * may begin sending messages.
@@ -82,17 +89,14 @@ const quint8 KEY_RELEASED_MSG = 4;
 const quint8 KEY_RELEASED_NUMPAD_MSG = 5;
 
 /**
- * Client -> server: report cookie value.  Data:
- *     length : quint16 : the length of the following data
- *     id : quint32 : the request id
- *     value : char[length - 4] : the UTF-8 encoded cookie value
- */
-const quint8 REPORT_COOKIE_MSG = 6;
-
-/**
  * Client -> server: the window was closed.  No data.
  */
-const quint8 WINDOW_CLOSED_MSG = 7;
+const quint8 WINDOW_CLOSED_MSG = 6;
+
+/**
+ * Client -> server: encryption toggled.  No data.
+ */
+const quint8 CRYPTO_TOGGLED_MSG = 7;
 
 /**
  * Server -> client: add or update a window.  Data:
@@ -145,17 +149,15 @@ const quint8 MOVE_CONTENTS_MSG = 3;
 const quint8 SET_COOKIE_MSG = 4;
 
 /**
- * Server -> client: request a client cookie.  Data:
- *     id : quint32 : the request id
- *     name : char[length - 5] : the UTF-8 encoded name string
- */
-const quint8 REQUEST_COOKIE_MSG = 5;
-
-/**
  * Server -> client: close the connection.  Data:
  *     reason : char[length - 1] : the UTF-8 encoded reason for the closure
  */
-const quint8 CLOSE_MSG = 6;
+const quint8 CLOSE_MSG = 5;
+
+/**
+ * Server -> client: toggle encryption.  No data.
+ */
+const quint8 TOGGLE_CRYPTO_MSG = 6;
 
 /** A flag indicating that the character should be displayed in reverse. */
 const int REVERSE_FLAG = 0x10000;

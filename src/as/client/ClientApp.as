@@ -40,6 +40,12 @@ import flash.ui.Keyboard;
 
 import flash.utils.ByteArray;
 
+import com.hurlant.crypto.prng.Random;
+import com.hurlant.crypto.rsa.RSAKey;
+import com.hurlant.crypto.symmetric.AESKey;
+import com.hurlant.crypto.symmetric.CBCMode;
+import com.hurlant.util.Hex;
+
 /**
  * The Witgap client application.
  */
@@ -147,13 +153,40 @@ public class ClientApp extends Sprite {
         // create the socket
         _socket = new Socket();
         _socket.addEventListener(Event.CONNECT, function (event :Event) :void {
-            // write the magic number, version, screen dimensions
+            // create our encryption key/iv and encrypt using the public key
+            var random :Random = new Random();
+            var secret :ByteArray = new ByteArray(), iv :ByteArray = new ByteArray();
+            random.nextBytes(secret, 16);
+            random.nextBytes(iv, 16);
+            _ectx = new CBCMode(new AESKey(secret));
+            _ectx.IV = iv;
+            _dctx = new CBCMode(new AESKey(secret));
+            _dctx.IV = iv;
+
+            var rsaKey :RSAKey = RSAKey.parsePublicKey(
+                loaderInfo.parameters["public_key"], "10001");
+            var combined :ByteArray = new ByteArray(), encrypted :ByteArray = new ByteArray();
+            combined.writeBytes(secret);
+            combined.writeBytes(iv);
+            rsaKey.encrypt(combined, encrypted, 32);
+
+            // write the preamble
             _socket.writeUnsignedInt(PROTOCOL_MAGIC);
             _socket.writeUnsignedInt(PROTOCOL_VERSION);
-            writeHexString(getCookie("sessionId", "0000000000000000"));
-            writeHexString(getCookie("sessionToken", "00000000000000000000000000000000"));
-            _socket.writeShort(_width);
-            _socket.writeShort(_height);
+
+            var remainder :ByteArray = new ByteArray();
+            remainder.writeShort(_width);
+            remainder.writeShort(_height);
+            remainder.writeBytes(encrypted);
+
+            encrypted = new ByteArray();
+            encrypted.writeUTF(ExternalInterface.call("eval", "location.search"));
+            encrypted.writeUTF(ExternalInterface.call("eval", "document.cookie"));
+            _ectx.encrypt(encrypted);
+            remainder.writeBytes(encrypted);
+
+            _socket.writeUnsignedInt(remainder.length);
+            _socket.writeBytes(remainder);
         });
         var errorHandler :Function = function (event :Event) :void {
             fatalError("No connection to server.  Please wait a while, then reload the page.");
@@ -431,7 +464,7 @@ public class ClientApp extends Sprite {
      */
     protected function getCookie (name :String, def :String) :String
     {
-        var values :Array = ExternalInterface.call("getCookie").split(";");
+        var values :Array = ExternalInterface.call("eval", "document.cookie").split(";");
         for (var ii :int = 0; ii < values.length; ii++) {
             var value :String = values[ii];
             var idx :int = value.indexOf("=");
@@ -545,23 +578,16 @@ public class ClientApp extends Sprite {
                 setCookie(bytes.readUTF(), bytes.readUTFBytes(bytes.bytesAvailable));
                 break;
 
-            case REQUEST_COOKIE_MSG:
-                var requestId :uint = bytes.readUnsignedInt();
-                var name :String = bytes.readUTFBytes(bytes.bytesAvailable);
-
-                // immediately write out the cookie value
-                _socket.writeByte(REPORT_COOKIE_MSG);
-                var out :ByteArray = new ByteArray();
-                out.writeUnsignedInt(requestId);
-                out.writeUTFBytes(getCookie(name, ""));
-                _socket.writeShort(out.length);
-                _socket.writeBytes(out);
-                _socket.flush();
-                break;
-
             case CLOSE_MSG:
                 fatalError(bytes.readUTFBytes(bytes.bytesAvailable));
                 _socket.close();
+                break;
+
+            case TOGGLE_CRYPTO_MSG:
+                // respond immediately in the affirmative and toggle
+                _socket.writeByte(CRYPTO_TOGGLED_MSG);
+                _socket.flush();
+                _crypto = !_crypto;
                 break;
 
             default:
@@ -955,6 +981,12 @@ public class ClientApp extends Sprite {
     /** The socket via which we communicate with the server. */
     protected var _socket :Socket;
 
+    /** The contexts that we use for encryption and decryption. */
+    protected var _ectx :CBCMode, _dctx :CBCMode;
+
+    /** Whether or not to encrypt incoming/outgoing messages. */
+    protected var _crypto :Boolean = false;
+
     /** The length of the current server message. */
     protected var _messageLength :int = 0;
 
@@ -994,11 +1026,11 @@ public class ClientApp extends Sprite {
     /** Outgoing message: key released on the number pad. */
     protected static var KEY_RELEASED_NUMPAD_MSG :int = 5;
 
-    /** Outgoing message: report cookie value. */
-    protected static var REPORT_COOKIE_MSG :int = 6;
-
     /** Outgoing message: window closed. */
-    protected static var WINDOW_CLOSED_MSG :int = 7;
+    protected static var WINDOW_CLOSED_MSG :int = 6;
+
+    /** Outgoing message: encryption toggled. */
+    protected static var CRYPTO_TOGGLED_MSG :int = 7;
 
     /** Incoming message: add or update window. */
     protected static var UPDATE_WINDOW_MSG :int = 0;
@@ -1015,11 +1047,11 @@ public class ClientApp extends Sprite {
     /** Incoming message: set cookie. */
     protected static var SET_COOKIE_MSG :int = 4;
 
-    /** Incoming message: request cookie. */
-    protected static var REQUEST_COOKIE_MSG :int = 5;
-
     /** Incoming message: close. */
-    protected static var CLOSE_MSG :int = 6;
+    protected static var CLOSE_MSG :int = 5;
+
+    /** Incoming message: toggle encryption. */
+    protected static var TOGGLE_CRYPTO_MSG :int = 6;
 }
 }
 

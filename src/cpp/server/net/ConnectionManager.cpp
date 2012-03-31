@@ -1,8 +1,12 @@
 //
 // $Id$
 
+#include <stdio.h>
+
 #include <QTcpSocket>
 #include <QtDebug>
+
+#include <openssl/rsa.h>
 
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
@@ -14,8 +18,21 @@
 ConnectionManager::ConnectionManager (ServerApp* app) :
     QTcpServer(app),
     _app(app),
+    _rsa(0),
     _this(this)
 {
+    // read the private RSA key
+    FILE* keyFile = fopen(app->config().value("private_key").toByteArray().constData(), "r");
+    if (keyFile == 0) {
+        qCritical() << "Couldn't open private key file.";
+        return;
+    }
+    _rsa = PEM_read_RSAPrivateKey(keyFile, 0, 0, 0);
+    if (_rsa == 0) {
+        qCritical() << "Invalid private key file.";
+        return;
+    }
+
     // start listening on the configured port
     QHostAddress address(app->config().value("listen_address").toString());
     quint16 port = app->config().value("listen_port").toInt();
@@ -28,10 +45,19 @@ ConnectionManager::ConnectionManager (ServerApp* app) :
     connect(this, SIGNAL(newConnection()), SLOT(acceptConnections()));
 }
 
-void ConnectionManager::connectionEstablished (
-    Connection* connection, quint64 sessionId, const QByteArray& sessionToken)
+ConnectionManager::~ConnectionManager ()
+{
+    if (_rsa != 0) {
+        RSA_free(_rsa);
+    }
+}
+
+void ConnectionManager::connectionEstablished (Connection* connection)
 {
     // see if we already have a session with the provided id
+    quint32 sessionId = connection->cookies().value("sessionId", "0").toULongLong(0, 16);
+    QByteArray sessionToken = QByteArray::fromHex(
+        connection->cookies().value("sessionToken", "00000000000000000000000000000000").toAscii());
     Session* session = _sessions[sessionId];
     if (session != 0) {
         if (session->record().token == sessionToken && session->connection() == 0) {

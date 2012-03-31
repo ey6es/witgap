@@ -241,13 +241,7 @@ void Session::showInputDialog (
 
 void Session::showLogonDialog ()
 {
-    if (_connection == 0) {
-        showLogonDialog("");
-        return;
-    }
-    Connection::requestCookieMetaMethod().invoke(_connection,
-        Q_ARG(const QString&, "username"), Q_ARG(const Callback&,
-            Callback(_this, "showLogonDialog(QString)")));
+    new LogonDialog(this, _connection == 0 ? "" : _connection->cookies().value("username", ""));
 }
 
 void Session::showLogoffDialog ()
@@ -485,11 +479,6 @@ void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
     QCoreApplication::sendEvent(
         _activeWindow == 0 ? this : (QObject*)(_activeWindow->focus() == 0 ?
             _activeWindow : _activeWindow->focus()), &event);
-}
-
-void Session::showLogonDialog (const QString& username)
-{
-    new LogonDialog(this, username);
 }
 
 void Session::submitBugReport (const QString& description)
