@@ -19,7 +19,7 @@ class UserRecord;
 /**
  * Handles logging on or creating an account.
  */
-class LogonDialog : public Window
+class LogonDialog : public EncryptedWindow
 {
     Q_OBJECT
 
@@ -31,11 +31,6 @@ public:
      * @param username the username cookie, if any.
      */
     LogonDialog (Session* parent, const QString& username);
-
-    /**
-     * Destroys the dialog.
-     */
-    virtual ~LogonDialog ();
 
 protected slots:
 
@@ -54,6 +49,16 @@ protected slots:
      */
     void logon ();
 
+    /**
+     * Pops up a dialog to send the username in an email.
+     */
+    void forgotUsername ();
+
+    /**
+     * Pops up a dialog to send a password reset link in an email.
+     */
+    void forgotPassword ();
+
 protected:
 
     /**
@@ -66,6 +71,21 @@ protected:
      * will contain an error code.
      */
     Q_INVOKABLE void logonMaybeValidated (const QVariant& result);
+
+    /**
+     * Sends a username email if the provided address matches one in the database.
+     */
+    Q_INVOKABLE void maybeSendUsernameEmail (const QString& email);
+
+    /**
+     * Sends a username email if the provided address matches one in the database.
+     */
+    Q_INVOKABLE void maybeSendUsernameEmail (const QString& email, const QString& username);
+
+    /**
+     * Sends a password email if the provided username matches one in the database.
+     */
+    Q_INVOKABLE void maybeSendPasswordEmail (const QString& username);
 
     /**
      * Switches between account creation and logon mode.
@@ -107,12 +127,18 @@ protected:
     /** The cancel and logon buttons. */
     Button* _cancel, *_logon;
 
+    /** The forgot username/password buttons. */
+    Button* _forgotUsername, *_forgotPassword;
+
     /** If true, we're blocking logon (for a database query, e.g.) */
     bool _logonBlocked;
 };
 
 /** Expressions for partial and complete usernames. */
 const QRegExp PartialUsernameExp("[a-zA-Z0-9]{0,16}"), FullUsernameExp("[a-zA-Z0-9]{3,16}");
+
+/** The maximum allowed username length. */
+const int MaxUsernameLength = 16;
 
 /** Expressions for partial and complete passwords. */
 const QRegExp PartialPasswordExp(".{0,255}"), FullPasswordExp(".{6,255}");

@@ -23,10 +23,8 @@
 #include "scene/SceneManager.h"
 #include "ui/Border.h"
 #include "ui/Button.h"
-#include "ui/Component.h"
 #include "ui/Label.h"
 #include "ui/Layout.h"
-#include "ui/TextField.h"
 #include "ui/Window.h"
 
 // translate through the session
@@ -174,7 +172,7 @@ static Window* createDialog (Session* session, const QString& message, const QSt
     window->setBorder(title.isEmpty() ? new FrameBorder() : new TitledBorder(title));
     window->setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch));
     Label* label = new Label(message, Qt::AlignCenter);
-    label->setPreferredSize(QSize(40, -1));
+    label->setPreferredSize(QSize(45, -1));
     window->addChild(label);
     return window;
 }
@@ -236,11 +234,11 @@ protected:
 
 void Session::showInputDialog (
     const QString& message, const Callback& callback, const QString& title,
-    const QString& dismiss, const QString& accept)
+    const QString& dismiss, const QString& accept, Document* document, const QRegExp& acceptExp)
 {
     Window* window = createDialog(this, message, title);
 
-    TextField* field = new TextField();
+    TextField* field = new TextField(20, document);
     window->addChild(field);
 
     Button* cancel = new Button(dismiss.isEmpty() ? tr("Cancel") : dismiss);
@@ -251,7 +249,7 @@ void Session::showInputDialog (
     window->connect(ok, SIGNAL(pressed()), SLOT(deleteLater()));
     (new TextCallbackObject(callback, window, field))->connect(
         ok, SIGNAL(pressed()), SLOT(invoke()));
-    new FieldExpEnabler(ok, field);
+    new FieldExpEnabler(ok, field, acceptExp);
 
     window->addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, cancel, ok));
 

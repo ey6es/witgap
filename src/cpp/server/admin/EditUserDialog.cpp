@@ -20,7 +20,7 @@
 #define tr(...) session()->translate("EditUserDialog", __VA_ARGS__)
 
 EditUserDialog::EditUserDialog (Session* parent) :
-    Window(parent, parent->highestWindowLayer(), true, true),
+    EncryptedWindow(parent, parent->highestWindowLayer(), true, true),
     _user(NoUser)
 {
     setBorder(new FrameBorder());

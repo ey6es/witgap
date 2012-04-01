@@ -171,4 +171,25 @@ protected:
     bool _upToDate;
 };
 
+/**
+ * A window that enables encryption between client and server when open.
+ */
+class EncryptedWindow : public Window
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Creates a new encrypted window.
+     */
+    EncryptedWindow (QObject* parent, int layer = 0,
+        bool modal = false, bool deleteOnEscape = false);
+
+    /**
+     * Destroys the window.
+     */
+    virtual ~EncryptedWindow ();
+};
+
 #endif // WINDOW

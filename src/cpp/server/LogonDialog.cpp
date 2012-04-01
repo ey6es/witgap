@@ -21,7 +21,7 @@
 #define tr(...) session()->translate("LogonDialog", __VA_ARGS__)
 
 LogonDialog::LogonDialog (Session* parent, const QString& username) :
-    Window(parent, parent->highestWindowLayer(), true, true),
+    EncryptedWindow(parent, parent->highestWindowLayer(), true, true),
     _logonBlocked(false)
 {
     setBorder(new FrameBorder());
@@ -35,17 +35,18 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
     Container* icont = new Container(ilayout);
     addChild(icont);
     icont->addChild(new Label(tr("Username:")));
-    _username = new TextField(20, new RegExpDocument(PartialUsernameExp, username, 16));
+    _username = new TextField(20, new RegExpDocument(
+        PartialUsernameExp, username, MaxUsernameLength));
     icont->addChild(_username);
     connect(_username, SIGNAL(textChanged()), SLOT(updateLogon()));
 
     icont->addChild(new Label(tr("Password:")));
-    _password = new PasswordField(20, new RegExpDocument(PartialPasswordExp, "", 255));
+    _password = new PasswordField(20, new RegExpDocument(PartialPasswordExp));
     icont->addChild(_password);
     connect(_password, SIGNAL(textChanged()), SLOT(updateLogon()));
 
     icont->addChild(new Label(tr("Confirm Password:")));
-    _confirmPassword = new PasswordField(20, new RegExpDocument(PartialPasswordExp, "", 255));
+    _confirmPassword = new PasswordField(20, new RegExpDocument(PartialPasswordExp));
     icont->addChild(_confirmPassword);
     connect(_confirmPassword, SIGNAL(textChanged()), SLOT(updateLogon()));
 
@@ -67,7 +68,7 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
     icont->addChild(dcont);
 
     icont->addChild(new Label(tr("Email (Optional):")));
-    _email = new TextField(20, new RegExpDocument(PartialEmailExp, "", 255));
+    _email = new TextField(20, new RegExpDocument(PartialEmailExp));
     icont->addChild(_email);
     connect(_email, SIGNAL(textChanged()), SLOT(updateLogon()));
 
@@ -83,20 +84,16 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
     connect(_logon, SIGNAL(pressed()), SLOT(logon()));
     _logon->connect(_email, SIGNAL(enterPressed()), SLOT(doPress()));
 
-    addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, _cancel, _toggleCreateMode, _logon));
+    _forgotUsername = new Button(tr("Forgot Username"));
+    connect(_forgotUsername, SIGNAL(pressed()), SLOT(forgotUsername()));
+    _forgotPassword = new Button(tr("Forgot Password"));
+    connect(_forgotPassword, SIGNAL(pressed()), SLOT(forgotPassword()));
+
+    addChild(BoxLayout::createVBox(Qt::AlignCenter, 0,
+        BoxLayout::createHBox(Qt::AlignCenter, 2, _cancel, _toggleCreateMode, _logon),
+        BoxLayout::createHBox(Qt::AlignCenter, 2, _forgotUsername, _forgotPassword)));
 
     setCreateMode(username.isEmpty());
-
-    // we need to encrypt while the logon dialog is up
-    parent->incrementCryptoCount();
-}
-
-LogonDialog::~LogonDialog ()
-{
-    Session* session = this->session();
-    if (session != 0) {
-        session->decrementCryptoCount();
-    }
 }
 
 void LogonDialog::updateLogon ()
@@ -154,6 +151,22 @@ void LogonDialog::logon ()
     }
 }
 
+void LogonDialog::forgotUsername ()
+{
+    session()->showInputDialog(tr("Enter your email address.  If we have it on record, we'll send "
+        "a message with the associated username."), Callback(_this,
+            "maybeSendUsernameEmail(QString)"), "", "", "",
+        new RegExpDocument(PartialEmailExp), FullEmailExp);
+}
+
+void LogonDialog::forgotPassword ()
+{
+    session()->showInputDialog(tr("Enter your username.  If it has an email on record, we'll "
+        "send a message with a link allowing you to reset your password."), Callback(_this,
+            "maybeSendPasswordEmail(QString)"), "", "", "",
+            new RegExpDocument(PartialUsernameExp, "", MaxUsernameLength), FullUsernameExp);
+}
+
 void LogonDialog::userMaybeInserted (const UserRecord& user)
 {
     if (user.id == 0) {
@@ -192,6 +205,31 @@ void LogonDialog::logonMaybeValidated (const QVariant& result)
     updateLogon();
 }
 
+void LogonDialog::maybeSendUsernameEmail (const QString& email)
+{
+    // look up the username
+    QMetaObject::invokeMethod(
+        session()->app()->databaseThread()->userRepository(), "usernameForEmail",
+        Q_ARG(const QString&, email), Q_ARG(const Callback&, Callback(_this,
+            "maybeSendUsernameEmail(QString,QString)", Q_ARG(const QString&, email))));
+}
+
+void LogonDialog::maybeSendUsernameEmail (const QString& email, const QString& username)
+{
+    if (username.isEmpty()) {
+        flashStatus(tr("Sorry, that email was not in our database."));
+        return;
+    }
+    // send off the email
+
+    qDebug() << email << username;
+}
+
+void LogonDialog::maybeSendPasswordEmail (const QString& username)
+{
+    qDebug() << username;
+}
+
 void LogonDialog::setCreateMode (bool createMode)
 {
     if (_createMode = createMode) {
@@ -211,6 +249,9 @@ void LogonDialog::setCreateMode (bool createMode)
         children.at(ii)->setVisible(createMode);
     }
     _status->setVisible(false);
+    _forgotUsername->setVisible(!createMode);
+    _forgotPassword->setVisible(!createMode);
+
     _username->requestFocus();
     updateLogon();
     pack();

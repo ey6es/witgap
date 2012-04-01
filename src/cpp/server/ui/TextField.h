@@ -4,8 +4,6 @@
 #ifndef TEXT_FIELD
 #define TEXT_FIELD
 
-#include <limits>
-
 #include <QPair>
 #include <QRegExp>
 
@@ -21,7 +19,7 @@ public:
     /**
      * Creates a new document with the supplied initial text.
      */
-    Document (const QString& text = "", int maxLength = std::numeric_limits<int>::max());
+    Document (const QString& text = "", int maxLength = 255);
 
     /**
      * Returns the text of the document.
@@ -62,8 +60,7 @@ public:
     /**
      * Creates a new document with the supplied initial text.
      */
-    RegExpDocument (const QRegExp& regExp, const QString& text = "",
-        int maxLength = std::numeric_limits<int>::max());
+    RegExpDocument (const QRegExp& regExp, const QString& text = "", int maxLength = 255);
 
     /**
      * Attempts to insert a string into the document.

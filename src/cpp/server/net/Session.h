@@ -9,12 +9,12 @@
 
 #include "db/SessionRepository.h"
 #include "db/UserRepository.h"
+#include "ui/TextField.h"
 #include "util/Callback.h"
 
 class QEvent;
 class QTranslator;
 
-class Component;
 class Connection;
 class MainWindow;
 class Pawn;
@@ -159,10 +159,12 @@ public:
      * @param title the title to use for the dialog, or empty string for none.
      * @param dismiss the text to use for the dismiss button, or empty string for default (Cancel).
      * @param accept the text to use for the accept button, or empty string for default (OK).
+     * @param acceptExp the regular expression that, when matches, enables the accept button.
      */
     void showInputDialog (
         const QString& message, const Callback& callback, const QString& title = "",
-        const QString& dismiss = "", const QString& accept = "");
+        const QString& dismiss = "", const QString& accept = "",
+        Document* document = new Document(), const QRegExp& acceptExp = NonEmptyExp);
 
     /**
      * Shows the logon dialog.

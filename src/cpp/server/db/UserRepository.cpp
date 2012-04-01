@@ -27,7 +27,8 @@ void UserRepository::init ()
             "FLAGS int unsigned not null,"
             "AVATAR smallint unsigned not null,"
             "CREATED datetime not null,"
-            "LAST_ONLINE datetime not null)");
+            "LAST_ONLINE datetime not null,"
+            "index (EMAIL))");
 }
 
 /**
@@ -65,7 +66,7 @@ void UserRepository::insertUser (
     query.addBindValue(passwordHash);
     query.addBindValue(salt);
     query.addBindValue(dob);
-    query.addBindValue(email);
+    query.addBindValue(email.toLower());
     query.addBindValue(0);
     query.addBindValue(avatar);
     query.addBindValue(now);
@@ -142,6 +143,16 @@ void UserRepository::loadUser (const QString& name, const Callback& callback)
     callback.invoke(Q_ARG(const UserRecord&, loadUserRecord("NAME_LOWER", name.toLower())));
 }
 
+void UserRepository::usernameForEmail (const QString& email, const Callback& callback)
+{
+    QSqlQuery query;
+    query.prepare("select NAME from USERS where EMAIL = ?");
+    query.addBindValue(email.toLower());
+    query.exec();
+
+    callback.invoke(Q_ARG(const QString&, query.next() ? query.value(0).toString() : ""));
+}
+
 UserRecord UserRepository::loadUser (quint32 id)
 {
     return loadUserRecord("ID", id);
@@ -156,7 +167,7 @@ void UserRepository::updateUser (const UserRecord& urec, const Callback& callbac
     query.addBindValue(urec.name.toLower());
     query.addBindValue(urec.passwordHash);
     query.addBindValue(urec.dateOfBirth);
-    query.addBindValue(urec.email);
+    query.addBindValue(urec.email.toLower());
     query.addBindValue((int)urec.flags);
     query.addBindValue(urec.avatar);
     query.addBindValue(urec.id);

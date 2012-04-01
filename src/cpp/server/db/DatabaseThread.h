@@ -21,7 +21,7 @@ class DatabaseThread : public QThread
 public:
 
     /**
-     * Initializes the manager.
+     * Initializes the thread.
      */
     DatabaseThread (ServerApp* app);
 

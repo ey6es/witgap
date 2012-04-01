@@ -31,7 +31,7 @@ void SessionRepository::init ()
             "USER_ID int unsigned not null default 0,"
             "LAST_ONLINE datetime not null,"
             "index (LAST_ONLINE),"
-            "index (USER_ID)");
+            "index (USER_ID))");
 }
 
 /**

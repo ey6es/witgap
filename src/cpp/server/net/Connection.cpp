@@ -314,6 +314,7 @@ void Connection::readMessages ()
 void Connection::startMessage (quint16 length)
 {
     if (_crypto) {
+        // replace the socket with a buffer that will write to a byte array
         QBuffer* buffer = new QBuffer();
         buffer->open(QIODevice::WriteOnly);
         _stream.setDevice(buffer);
@@ -326,6 +327,7 @@ void Connection::startMessage (quint16 length)
 void Connection::endMessage ()
 {
     if (_crypto) {
+        // restore the socket, write the encrypted data, delete the buffer
         QBuffer* buffer = static_cast<QBuffer*>(_stream.device());
         _stream.setDevice(_socket);
         writeEncrypted(buffer->buffer());

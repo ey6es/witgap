@@ -57,6 +57,12 @@ public:
     Q_INVOKABLE void loadUser (const QString& name, const Callback& callback);
 
     /**
+     * Attempts to find the username corresponding to the specified email.  Returns an empty string
+     * if not found.
+     */
+    Q_INVOKABLE void usernameForEmail (const QString& email, const Callback& callback);
+
+    /**
      * Loads the record for the identified user.
      */
     UserRecord loadUser (quint32 id);

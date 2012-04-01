@@ -217,3 +217,17 @@ const QMetaMethod& Window::syncMetaMethod ()
         staticMetaObject.indexOfMethod("sync()"));
     return method;
 }
+
+EncryptedWindow::EncryptedWindow (QObject* parent, int layer, bool modal, bool deleteOnEscape) :
+    Window(parent, layer, modal, deleteOnEscape)
+{
+    session()->incrementCryptoCount();
+}
+
+EncryptedWindow::~EncryptedWindow ()
+{
+    Session* session = this->session();
+    if (session != 0) {
+        session->decrementCryptoCount();
+    }
+}

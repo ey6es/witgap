@@ -18,7 +18,7 @@ class TextField;
 /**
  * Allows admins to edit/delete user accounts.
  */
-class EditUserDialog : public Window
+class EditUserDialog : public EncryptedWindow
 {
     Q_OBJECT
 
