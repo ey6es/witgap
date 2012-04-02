@@ -58,12 +58,13 @@ EditUserDialog::EditUserDialog (Session* parent) :
 
     icont->addChild(new Label(tr("Password:")));
     icont->addChild(_password = new PasswordField(20,
-        new RegExpDocument(PartialPasswordExp, "", 255)));
+        new RegExpDocument(PartialPasswordExp)));
+    _password->setLabel(tr("(Use Current)"));
     connect(_password, SIGNAL(textChanged()), SLOT(updateApply()));
 
     icont->addChild(new Label(tr("Confirm Password:")));
     icont->addChild(_confirmPassword = new PasswordField(20,
-        new RegExpDocument(PartialPasswordExp, "", 255)));
+        new RegExpDocument(PartialPasswordExp)));
     connect(_confirmPassword, SIGNAL(textChanged()), SLOT(updateApply()));
 
     icont->addChild(new Label(tr("Date of Birth:")));
@@ -71,7 +72,7 @@ EditUserDialog::EditUserDialog (Session* parent) :
     connect(_dob, SIGNAL(textChanged()), SLOT(updateApply()));
 
     icont->addChild(new Label(tr("Email:")));
-    icont->addChild(_email = new TextField(20, new RegExpDocument(PartialEmailExp, "", 255)));
+    icont->addChild(_email = new TextField(20, new RegExpDocument(PartialEmailExp)));
     connect(_email, SIGNAL(textChanged()), SLOT(updateApply()));
 
     icont->addChild(new Label(tr("Banned:")));

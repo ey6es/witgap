@@ -36,6 +36,11 @@ public:
     const QSettings& config () const { return _config; }
 
     /**
+     * Returns the client URL.
+     */
+    const QString& clientUrl () const { return _clientUrl; }
+
+    /**
      * Returns a pointer to the connection manager.
      */
     ConnectionManager* connectionManager () const { return _connectionManager; }
@@ -79,14 +84,8 @@ protected:
     /** The application configuration. */
     QSettings _config;
 
-    /** The connection manager. */
-    ConnectionManager* _connectionManager;
-
-    /** The scene manager. */
-    SceneManager* _sceneManager;
-
-    /** The database thread. */
-    DatabaseThread* _databaseThread;
+    /** The client URL. */
+    QString _clientUrl;
 
     /** The email hostname. */
     QString _mailHostname;
@@ -96,6 +95,15 @@ protected:
 
     /** The email from address. */
     QString _mailFrom;
+
+    /** The connection manager. */
+    ConnectionManager* _connectionManager;
+
+    /** The scene manager. */
+    SceneManager* _sceneManager;
+
+    /** The database thread. */
+    DatabaseThread* _databaseThread;
 };
 
 #endif // SERVER_APP

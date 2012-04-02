@@ -1,18 +1,19 @@
 //
 // $Id$
 
-#ifndef PREFERENCES_DIALOG
-#define PREFERENCES_DIALOG
+#ifndef SETTINGS_DIALOG
+#define SETTINGS_DIALOG
 
 #include "ui/Window.h"
 
 class Button;
+class PasswordField;
 class TextField;
 
 /**
- * Allows the user to change his preferences.
+ * Allows the user to change his settings.
  */
-class PreferencesDialog : public Window
+class SettingsDialog : public EncryptedWindow
 {
     Q_OBJECT
 
@@ -21,7 +22,7 @@ public:
     /**
      * Initializes the dialog.
      */
-    PreferencesDialog (Session* parent);
+    SettingsDialog (Session* parent);
 
 protected slots:
 
@@ -37,6 +38,15 @@ protected slots:
 
 protected:
 
+    /** The password field. */
+    PasswordField* _password;
+
+    /** The password confirmation field. */
+    PasswordField* _confirmPassword;
+
+    /** The email field. */
+    TextField* _email;
+
     /** The avatar field. */
     TextField* _avatar;
 
@@ -44,4 +54,4 @@ protected:
     Button* _apply, *_ok;
 };
 
-#endif // PREFERENCES_DIALOG
+#endif // SETTINGS_DIALOG

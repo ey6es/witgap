@@ -4,6 +4,7 @@
 #ifndef GENERAL
 #define GENERAL
 
+#include <QByteArray>
 #include <QPoint>
 #include <QVector>
 
@@ -49,5 +50,10 @@ public:
  * Hash function for points.
  */
 inline uint qHash (const QPoint& point) { return point.x()*31 + point.y(); }
+
+/**
+ * Generates a random token of the specified length.
+ */
+QByteArray generateToken (int length);
 
 #endif // GENERAL

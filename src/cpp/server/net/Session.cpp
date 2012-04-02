@@ -13,9 +13,9 @@
 #include "LogonDialog.h"
 #include "MainWindow.h"
 #include "ServerApp.h"
+#include "SettingsDialog.h"
 #include "db/DatabaseThread.h"
 #include "db/SceneRepository.h"
-#include "db/SessionRepository.h"
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
@@ -90,6 +90,16 @@ void Session::setConnection (Connection* connection)
     // readd the windows
     foreach (Window* window, findChildren<Window*>()) {
         window->resend();
+    }
+
+    // check for a password reset request
+    quint32 resetId = _connection->query().value("resetId", "0").toUInt();
+    if (resetId != 0) {
+        QByteArray token = QByteArray::fromHex(
+            _connection->query().value("resetToken", "").toAscii());
+        QMetaObject::invokeMethod(_app->databaseThread()->userRepository(),
+            "validatePasswordReset", Q_ARG(quint32, resetId), Q_ARG(const QByteArray&, token),
+            Q_ARG(const Callback&, Callback(_this, "passwordResetMaybeValidated(QVariant)")));
     }
 }
 
@@ -314,15 +324,19 @@ void Session::moveToScene (quint32 id)
         Q_ARG(const Callback&, Callback(_this, "sceneMaybeResolved(QObject*)")));
 }
 
-void Session::setAvatar (QChar avatar)
+void Session::setSettings (const QString& password, const QString& email, QChar avatar)
 {
-    // set and persist in session record
-    _record.avatar = avatar;
-    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "updateSession",
-        Q_ARG(const SessionRecord&, _record));
+    // set and persist avatar in session record
+    if (_record.avatar != avatar) {
+        _record.avatar = avatar;
+        QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "updateSession",
+            Q_ARG(const SessionRecord&, _record));
+    }
 
     // if logged on, set and persist in user record
     if (_user.id != 0) {
+        _user.setPassword(password);
+        _user.email = email;
         _user.avatar = avatar;
         QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "updateUser",
             Q_ARG(const UserRecord&, _user), Q_ARG(const Callback&, Callback()));
@@ -497,6 +511,26 @@ void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
     QCoreApplication::sendEvent(
         _activeWindow == 0 ? this : (QObject*)(_activeWindow->focus() == 0 ?
             _activeWindow : _activeWindow->focus()), &event);
+}
+
+void Session::passwordResetMaybeValidated (const QVariant& result)
+{
+    UserRepository::LogonError error = (UserRepository::LogonError)result.toInt();
+    if (error != UserRepository::NoError) {
+        if (error == UserRepository::NoSuchUser) {
+            qWarning() << "Received invalid password reset request.";
+        }
+        return;
+    }
+    UserRecord urec = qVariantValue<UserRecord>(result);
+    qDebug() << "Activated password reset request." << urec.name << urec.email;
+    if (_user.id != 0) {
+        logoff();
+    }
+    loggedOn(urec);
+
+    // open the settings dialog in order to change the password
+    new SettingsDialog(this);
 }
 
 void Session::submitBugReport (const QString& description)

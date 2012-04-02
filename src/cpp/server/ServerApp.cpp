@@ -64,6 +64,7 @@ void logHandler (QtMsgType type, const char* msg)
 ServerApp::ServerApp (int& argc, char** argv, const QString& configFile) :
     QCoreApplication(argc, argv),
     _config(configFile, QSettings::IniFormat, this),
+    _clientUrl(_config.value("client_url").toString()),
     _mailHostname(_config.value("mail_hostname").toString()),
     _mailPort(_config.value("mail_port").toUInt()),
     _mailFrom(_config.value("mail_from").toString())

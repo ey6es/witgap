@@ -55,3 +55,12 @@ QIntVector::QIntVector (const QString& string, int style) :
         *dptr++ = (*sptr).unicode() | style;
     }
 }
+
+QByteArray generateToken (int length)
+{
+    QByteArray token(length, 0);
+    for (char* ptr = token.data(), *end = ptr + length; ptr < end; ptr++) {
+        *ptr = qrand() % 256;
+    }
+    return token;
+}

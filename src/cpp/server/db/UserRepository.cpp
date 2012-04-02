@@ -7,13 +7,14 @@
 
 #include "db/UserRepository.h"
 #include "util/Callback.h"
+#include "util/General.h"
 
 // register our types with the metatype system
 int userRecordType = qRegisterMetaType<UserRecord>();
 
 void UserRepository::init ()
 {
-    // create the table if it doesn't yet exist
+    // create the tables if they doesn't yet exist
     QSqlQuery query;
     query.exec(
         "create table if not exists USERS ("
@@ -29,6 +30,15 @@ void UserRepository::init ()
             "CREATED datetime not null,"
             "LAST_ONLINE datetime not null,"
             "index (EMAIL))");
+
+    query.exec(
+        "create table if not exists PASSWORD_RESETS ("
+            "ID int unsigned not null auto_increment primary key,"
+            "TOKEN binary(16) not null,"
+            "USER_ID int unsigned not null,"
+            "CREATED datetime not null,"
+            "index (CREATED),"
+            "index (USER_ID))");
 }
 
 /**
@@ -105,6 +115,28 @@ static UserRecord loadUserRecord (const QString& field, const QVariant& value)
     return urec;
 }
 
+/**
+ * Helper function for logon validation methods.
+ */
+static void validateLogon (const UserRecord& urec, const Callback& callback)
+{
+    // check the flags; make sure they're not banned
+    if (urec.flags.testFlag(UserRecord::Banned)) {
+        callback.invoke(Q_ARG(const QVariant&, QVariant(UserRepository::Banned)));
+        return;
+    }
+
+    // update the last online timestamp
+    QSqlQuery query;
+    query.prepare("update USERS set LAST_ONLINE = ? where ID = ?");
+    query.addBindValue(QDateTime::currentDateTime());
+    query.addBindValue(urec.id);
+    query.exec();
+
+    // report success
+    callback.invoke(Q_ARG(const QVariant&, QVariant(userRecordType, &urec)));
+}
+
 void UserRepository::validateLogon (
     const QString& name, const QString& password, const Callback& callback)
 {
@@ -121,21 +153,7 @@ void UserRepository::validateLogon (
         return;
     }
 
-    // check the flags; make sure they're not banned
-    if (urec.flags.testFlag(UserRecord::Banned)) {
-        callback.invoke(Q_ARG(const QVariant&, QVariant(Banned)));
-        return;
-    }
-
-    // update the last online timestamp
-    QSqlQuery query;
-    query.prepare("update USERS set LAST_ONLINE = ? where ID = ?");
-    query.addBindValue(QDateTime::currentDateTime());
-    query.addBindValue(urec.id);
-    query.exec();
-
-    // report success
-    callback.invoke(Q_ARG(const QVariant&, QVariant(userRecordType, &urec)));
+    ::validateLogon(urec, callback);
 }
 
 void UserRepository::loadUser (const QString& name, const Callback& callback)
@@ -181,6 +199,47 @@ void UserRepository::deleteUser (quint32 id)
     query.prepare("delete from USERS where ID = ?");
     query.addBindValue(id);
     query.exec();
+}
+
+void UserRepository::insertPasswordReset (quint32 userId, const Callback& callback)
+{
+    QSqlQuery query;
+    query.prepare("insert into PASSWORD_RESETS (TOKEN, USER_ID, CREATED) values (?, ?, ?)");
+    QByteArray token = generateToken(16);
+    query.addBindValue(token);
+    query.addBindValue(userId);
+    query.addBindValue(QDateTime::currentDateTime());
+    query.exec();
+
+    callback.invoke(Q_ARG(quint32, query.lastInsertId().toUInt()),
+        Q_ARG(const QByteArray&, token));
+}
+
+void UserRepository::validatePasswordReset (
+    quint32 id, const QByteArray& token, const Callback& callback)
+{
+    QSqlQuery query;
+    query.prepare("select USER_ID from PASSWORD_RESETS where ID = ? and TOKEN = ?");
+    query.addBindValue(id);
+    query.addBindValue(token);
+    query.exec();
+
+    // make sure it exists
+    if (!query.next()) {
+        callback.invoke(Q_ARG(const QVariant&, QVariant(NoSuchUser)));
+        return;
+    }
+    quint32 userId = query.value(0).toUInt();
+
+    // delete it, making sure that no one beat us to the punch
+    query.prepare("delete from PASSWORD_RESETS where ID = ?");
+    query.addBindValue(id);
+    query.exec();
+    if (query.numRowsAffected() == 0) {
+        callback.invoke(Q_ARG(const QVariant&, QVariant(NoSuchUser)));
+        return;
+    }
+    ::validateLogon(loadUser(userId), callback);
 }
 
 void UserRecord::setPassword (const QString& password)

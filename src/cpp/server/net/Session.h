@@ -202,6 +202,11 @@ public:
     void setAvatar (QChar avatar);
 
     /**
+     * Sets the user's settings.
+     */
+    void setSettings (const QString& password, const QString& email, QChar avatar);
+
+    /**
      * Translates a string using the user's preferred language.
      */
     QString translate (
@@ -250,6 +255,11 @@ protected slots:
     void dispatchKeyReleased (int key, QChar ch, bool numpad);
 
 protected:
+
+    /**
+     * Reports back with the result of a password reset validation attempt.
+     */
+    Q_INVOKABLE void passwordResetMaybeValidated (const QVariant& result);
 
     /**
      * Submits a bug report with the supplied description.

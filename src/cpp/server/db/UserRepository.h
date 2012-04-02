@@ -77,6 +77,19 @@ public:
      * Deletes the identified user.
      */
     Q_INVOKABLE void deleteUser (quint32 id);
+
+    /**
+     * Attempts to insert a password reset record for the identified user.  The callback will
+     * receive the reset id and token.
+     */
+    Q_INVOKABLE void insertPasswordReset (quint32 userId, const Callback& callback);
+
+    /**
+     * Attempts to validate a password reset.  The callback will receive a QVariant containing
+     * either the UserRecord or the error code (as in {@link #validateLogon}).
+     */
+    Q_INVOKABLE void validatePasswordReset (
+        quint32 id, const QByteArray& token, const Callback& callback);
 };
 
 /**

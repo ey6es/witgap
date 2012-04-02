@@ -88,6 +88,22 @@ protected:
     Q_INVOKABLE void maybeSendPasswordEmail (const QString& username);
 
     /**
+     * Sends a password email if the user record is valid and contains an email address.
+     */
+    Q_INVOKABLE void maybeSendPasswordEmail (const UserRecord& urec);
+
+    /**
+     * Sends the password email.
+     */
+    Q_INVOKABLE void sendPasswordEmail (
+        const QString& email, quint32 resetId, const QByteArray& resetToken);
+
+    /**
+     * Called to report the result of attempting to send the email.
+     */
+    Q_INVOKABLE void emailMaybeSent (const QString& email, const QString& result);
+
+    /**
      * Switches between account creation and logon mode.
      */
     void setCreateMode (bool createMode);

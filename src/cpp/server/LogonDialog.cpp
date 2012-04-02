@@ -220,15 +220,60 @@ void LogonDialog::maybeSendUsernameEmail (const QString& email, const QString& u
         flashStatus(tr("Sorry, that email was not in our database."));
         return;
     }
+    qDebug() << "Sending username reminder email." << username << email;
+
     // send off the email
     session()->app()->sendMail(email, tr("Witgap username reminder"),
         tr("Your username is %1.").arg(username),
-        Callback(_this, "maybeSendPasswordEmail(QString)"));
+        Callback(_this, "emailMaybeSent(QString,QString)", Q_ARG(const QString&, email)));
 }
 
 void LogonDialog::maybeSendPasswordEmail (const QString& username)
 {
-    qDebug() << username;
+    // look up the user record
+    QMetaObject::invokeMethod(
+        session()->app()->databaseThread()->userRepository(), "loadUser",
+        Q_ARG(const QString&, username), Q_ARG(const Callback&, Callback(_this,
+            "maybeSendPasswordEmail(UserRecord)")));
+}
+
+void LogonDialog::maybeSendPasswordEmail (const UserRecord& urec)
+{
+    if (urec.id == 0) {
+        flashStatus(tr("No account exists with that username."));
+        return;
+
+    } else if (urec.email.isEmpty()) {
+        flashStatus(tr("There is no email address associated with that account."));
+        return;
+    }
+    qDebug() << "Inserting password reset." << urec.name << urec.email;
+
+    // insert the reset
+    QMetaObject::invokeMethod(
+        session()->app()->databaseThread()->userRepository(), "insertPasswordReset",
+        Q_ARG(quint32, urec.id), Q_ARG(const Callback&, Callback(_this,
+            "sendPasswordEmail(QString,quint32,QByteArray)", Q_ARG(const QString&, urec.email))));
+}
+
+void LogonDialog::sendPasswordEmail (
+    const QString& email, quint32 resetId, const QByteArray& resetToken)
+{
+    ServerApp* app = session()->app();
+    app->sendMail(email, tr("Witgap password reset"),
+        tr("To reset your password, visit %1?resetId=%2&resetToken=%3").arg(
+            app->clientUrl(), QString::number(resetId), resetToken.toHex()),
+        Callback(_this, "emailMaybeSent(QString,QString)", Q_ARG(const QString&, email)));
+}
+
+void LogonDialog::emailMaybeSent (const QString& email, const QString& result)
+{
+    if (result.isEmpty()) {
+        flashStatus(tr("Email sent."));
+    } else {
+        qWarning() << "Failed to send email." << email << result;
+        flashStatus(tr("Sorry, we experienced an error sending the email."));
+    }
 }
 
 void LogonDialog::setCreateMode (bool createMode)

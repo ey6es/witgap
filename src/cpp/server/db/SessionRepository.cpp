@@ -10,6 +10,7 @@
 #include "db/SessionRepository.h"
 #include "db/UserRepository.h"
 #include "util/Callback.h"
+#include "util/General.h"
 
 // register our types with the metatype system
 int sessionRecordType = qRegisterMetaType<SessionRecord>();
@@ -80,10 +81,7 @@ void SessionRepository::validateToken (
     }
 
     // if that didn't work, we must generate a new id and token and a random avatar
-    QByteArray ntoken(16, 0);
-    for (int ii = 0; ii < 16; ii++) {
-        ntoken[ii] = qrand() % 256;
-    }
+    QByteArray ntoken = generateToken(16);
     QChar avatar = randomAvatar();
     query.prepare("insert into SESSIONS (TOKEN, AVATAR, LAST_ONLINE) values (?, ?, ?)");
     query.addBindValue(ntoken);
