@@ -221,8 +221,9 @@ void LogonDialog::maybeSendUsernameEmail (const QString& email, const QString& u
         return;
     }
     // send off the email
-
-    qDebug() << email << username;
+    session()->app()->sendMail(email, tr("Witgap username reminder"),
+        tr("Your username is %1.").arg(username),
+        Callback(_this, "maybeSendPasswordEmail(QString)"));
 }
 
 void LogonDialog::maybeSendPasswordEmail (const QString& username)

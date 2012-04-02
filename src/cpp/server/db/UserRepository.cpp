@@ -68,7 +68,7 @@ void UserRepository::insertUser (
     query.addBindValue(dob);
     query.addBindValue(email.toLower());
     query.addBindValue(0);
-    query.addBindValue(avatar);
+    query.addBindValue(avatar.unicode());
     query.addBindValue(now);
     query.addBindValue(now);
 
@@ -100,7 +100,7 @@ static UserRecord loadUserRecord (const QString& field, const QVariant& value)
     UserRecord urec = {
         query.value(0).toUInt(), query.value(1).toString(), query.value(2).toByteArray(),
         query.value(3).toByteArray(), query.value(4).toDate(), query.value(5).toString(),
-        (UserRecord::Flags)query.value(6).toUInt(), query.value(7).toChar(),
+        (UserRecord::Flags)query.value(6).toUInt(), QChar(query.value(7).toUInt()),
         query.value(8).toDateTime(), query.value(9).toDateTime() };
     return urec;
 }
@@ -169,7 +169,7 @@ void UserRepository::updateUser (const UserRecord& urec, const Callback& callbac
     query.addBindValue(urec.dateOfBirth);
     query.addBindValue(urec.email.toLower());
     query.addBindValue((int)urec.flags);
-    query.addBindValue(urec.avatar);
+    query.addBindValue(urec.avatar.unicode());
     query.addBindValue(urec.id);
 
     callback.invoke(Q_ARG(bool, query.exec()));

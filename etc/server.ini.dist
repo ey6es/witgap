@@ -14,5 +14,10 @@ database_username = witgap
 database_password = xxx
 database_connect_options =
 
+; Mail info
+mail_hostname = localhost
+mail_port = 25
+mail_from = noreply@witgap.com
+
 ; The number of threads to create for scenes, or -1 for max(1, number of cores - 1)
 scene_threads = -1

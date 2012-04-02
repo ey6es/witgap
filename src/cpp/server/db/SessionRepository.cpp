@@ -70,7 +70,7 @@ void SessionRepository::validateToken (
             query.exec();
             Q_ASSERT(query.next());
             SessionRecord srec = {
-                id, token, query.value(0).toChar(), query.value(1).toUInt(), now };
+                id, token, QChar(query.value(0).toUInt()), query.value(1).toUInt(), now };
             UserRecord urec = (srec.userId == 0) ? NoUser :
                 _app->databaseThread()->userRepository()->loadUser(srec.userId);
             qDebug() << "Session resumed." << id << urec.name;
@@ -87,7 +87,7 @@ void SessionRepository::validateToken (
     QChar avatar = randomAvatar();
     query.prepare("insert into SESSIONS (TOKEN, AVATAR, LAST_ONLINE) values (?, ?, ?)");
     query.addBindValue(ntoken);
-    query.addBindValue(avatar);
+    query.addBindValue(avatar.unicode());
     query.addBindValue(now);
     query.exec();
 
@@ -101,7 +101,7 @@ void SessionRepository::updateSession (const SessionRecord& session)
     QSqlQuery query;
     query.prepare("update SESSIONS set USER_ID = ?, AVATAR = ? where ID = ?");
     query.addBindValue(session.userId);
-    query.addBindValue(session.avatar);
+    query.addBindValue(session.avatar.unicode());
     query.addBindValue(session.id);
     query.exec();
 }

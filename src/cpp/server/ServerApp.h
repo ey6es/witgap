@@ -9,6 +9,7 @@
 
 class QByteArray;
 
+class Callback;
 class ConnectionManager;
 class DatabaseThread;
 class SceneManager;
@@ -49,6 +50,13 @@ public:
      */
     DatabaseThread* databaseThread () const { return _databaseThread; }
 
+    /**
+     * Attempts to send an email.  The provided callback will receive an empty string on success or
+     * an error message on failure.  This function is thread-safe.
+     */
+    void sendMail (const QString& to, const QString& subject,
+        const QString& body, const Callback& callback);
+
 protected slots:
 
     /**
@@ -79,6 +87,15 @@ protected:
 
     /** The database thread. */
     DatabaseThread* _databaseThread;
+
+    /** The email hostname. */
+    QString _mailHostname;
+
+    /** The email port. */
+    quint16 _mailPort;
+
+    /** The email from address. */
+    QString _mailFrom;
 };
 
 #endif // SERVER_APP

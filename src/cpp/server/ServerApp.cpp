@@ -8,6 +8,7 @@
 #include <QByteArray>
 #include <QDateTime>
 #include <QMetaObject>
+#include <QThreadPool>
 #include <QTimer>
 #include <QtDebug>
 
@@ -15,6 +16,7 @@
 #include "db/DatabaseThread.h"
 #include "net/ConnectionManager.h"
 #include "scene/SceneManager.h"
+#include "util/Mailer.h"
 
 using namespace std;
 
@@ -61,7 +63,10 @@ void logHandler (QtMsgType type, const char* msg)
 
 ServerApp::ServerApp (int& argc, char** argv, const QString& configFile) :
     QCoreApplication(argc, argv),
-    _config(configFile, QSettings::IniFormat, this)
+    _config(configFile, QSettings::IniFormat, this),
+    _mailHostname(_config.value("mail_hostname").toString()),
+    _mailPort(_config.value("mail_port").toUInt()),
+    _mailFrom(_config.value("mail_from").toString())
 {
     // register the signal handler for ^C/HUP
     signal(SIGINT, signalHandler);
@@ -91,6 +96,13 @@ ServerApp::ServerApp (int& argc, char** argv, const QString& configFile) :
 
     // note startup
     qDebug() << "Server initialized.";
+}
+
+void ServerApp::sendMail (const QString& to, const QString& subject,
+    const QString& body, const Callback& callback)
+{
+    QThreadPool::globalInstance()->start(new Mailer(
+        _mailHostname, _mailPort, _mailFrom, to, subject, body, callback));
 }
 
 void ServerApp::idle ()
