@@ -59,6 +59,11 @@ public:
     void setConnection (Connection* connection);
 
     /**
+     * Returns a string identifying the user.
+     */
+    QString who () const;
+
+    /**
      * Checks whether the session is associated with a logged-on user.
      */
     bool loggedOn () const { return _user.id != 0; }

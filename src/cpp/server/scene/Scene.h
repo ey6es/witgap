@@ -23,7 +23,7 @@ class Scene : public QObject
 public:
 
     /** The size of the scene blocks as a power of two. */
-    static const int BlockSize = 5;
+    static const int LgBlockSize = 5;
 
     /**
      * Creates a new scene.

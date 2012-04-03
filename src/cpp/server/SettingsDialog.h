@@ -8,6 +8,7 @@
 
 class Button;
 class PasswordField;
+class StatusLabel;
 class TextField;
 
 /**
@@ -49,6 +50,9 @@ protected:
 
     /** The avatar field. */
     TextField* _avatar;
+
+    /** The status label. */
+    StatusLabel* _status;
 
     /** The apply and OK buttons. */
     Button* _apply, *_ok;

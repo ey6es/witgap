@@ -41,6 +41,11 @@ public:
     const QString& clientUrl () const { return _clientUrl; }
 
     /**
+     * Returns the address to which bug reports should be sent.
+     */
+    const QString& bugReportAddress () const { return _bugReportAddress; }
+
+    /**
      * Returns a pointer to the connection manager.
      */
     ConnectionManager* connectionManager () const { return _connectionManager; }
@@ -86,6 +91,9 @@ protected:
 
     /** The client URL. */
     QString _clientUrl;
+
+    /** The email address to which bug reports are sent. */
+    QString _bugReportAddress;
 
     /** The email hostname. */
     QString _mailHostname;

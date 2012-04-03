@@ -56,6 +56,9 @@ SettingsDialog::SettingsDialog (Session* parent) :
         }
     }
 
+    addChild(_status = new StatusLabel());
+    _status->setVisible(false);
+
     Button* cancel = new Button(tr("Cancel"));
     connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
     connect(_apply = new Button(tr("Apply")), SIGNAL(pressed()), SLOT(apply()));
@@ -81,4 +84,9 @@ void SettingsDialog::updateApply ()
 void SettingsDialog::apply ()
 {
     session()->setSettings(_password->text(), _email->text(), _avatar->text().at(0));
+
+    _status->setVisible(true);
+    _status->setStatus(tr("Settings updated."), true);
+    pack();
+    center();
 }

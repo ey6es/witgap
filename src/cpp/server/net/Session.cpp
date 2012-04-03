@@ -103,6 +103,11 @@ void Session::setConnection (Connection* connection)
     }
 }
 
+QString Session::who () const
+{
+    return (_user.id == 0) ? QString::number(_record.id) : _user.name;
+}
+
 int Session::highestWindowLayer () const
 {
     int highest = 0;
@@ -535,7 +540,9 @@ void Session::passwordResetMaybeValidated (const QVariant& result)
 
 void Session::submitBugReport (const QString& description)
 {
-    qDebug() << description;
+    qDebug() << "Submitting bug report." << who() << description;
+    _app->sendMail(_app->bugReportAddress(), "Witgap bug report",
+        who() + ": " + description, Callback());
 }
 
 void Session::sceneCreated (quint32 id)
