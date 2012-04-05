@@ -32,10 +32,30 @@ void MainWindow::keyPressEvent (QKeyEvent* e)
         return;
     }
 
-    // all printable characters and various control characters are forwarded to the pawn (if any)
+    // give the pawn, if any, a chance to process the event
     Pawn* pawn = session()->pawn();
     if (pawn != 0) {
+        pawn->keyPressEvent(e);
+        if (e->isAccepted()) {
+            return;
+        }
     }
 
+    // pass up to the superclass
     Window::keyPressEvent(e);
+}
+
+void MainWindow::keyReleaseEvent (QKeyEvent* e)
+{
+    // give the pawn, if any, a chance to process the event
+    Pawn* pawn = session()->pawn();
+    if (pawn != 0) {
+        pawn->keyReleaseEvent(e);
+        if (e->isAccepted()) {
+            return;
+        }
+    }
+
+    // pass up to the superclass
+    Window::keyReleaseEvent(e);
 }

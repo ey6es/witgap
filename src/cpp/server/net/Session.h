@@ -202,11 +202,6 @@ public:
     void moveToScene (quint32 id);
 
     /**
-     * Sets the user's avatar.
-     */
-    void setAvatar (QChar avatar);
-
-    /**
      * Sets the user's settings.
      */
     void setSettings (const QString& password, const QString& email, QChar avatar);

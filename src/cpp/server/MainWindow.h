@@ -29,6 +29,11 @@ protected:
      */
     virtual void keyPressEvent (QKeyEvent* e);
 
+    /**
+     * Handles a key release event.
+     */
+    virtual void keyReleaseEvent (QKeyEvent* e);
+
     /** The scene view. */
     SceneView* _sceneView;
 };

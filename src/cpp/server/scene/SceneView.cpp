@@ -18,6 +18,6 @@ void SceneView::draw (DrawContext* ctx) const
     if (scene == 0) {
         return;
     }
-    const QHash<QPoint, QIntVector>& contents = scene->contents();
+    const QHash<QPoint, SceneBlock>& blocks = scene->blocks();
 
 }

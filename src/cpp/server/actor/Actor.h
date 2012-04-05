@@ -29,6 +29,16 @@ public:
     virtual ~Actor ();
 
     /**
+     * Sets the next actor in the linked list.
+     */
+    void setNext (Actor* next) { _next = next; }
+
+    /**
+     * Returns the next actor in the linked list.
+     */
+    Actor* next () const { return _next; }
+
+    /**
      * Sets the actor's character.
      */
     void setCharacter (int character);
@@ -52,6 +62,9 @@ protected:
 
     /** The scene containing the actor. */
     Scene* _scene;
+
+    /** The next actor in the list, if any. */
+    Actor* _next;
 
     /** The actor's character. */
     int _character;

@@ -7,6 +7,7 @@
 Actor::Actor (Scene* scene, int character, const QPoint& position) :
     QObject(scene),
     _scene(scene),
+    _next(0),
     _character(character),
     _position(position)
 {
