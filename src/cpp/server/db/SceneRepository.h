@@ -68,6 +68,53 @@ class SceneRecord
 {
 public:
 
+    /**
+     * Contains a block of scene data.
+     */
+    class Block : public QIntVector
+    {
+    public:
+
+        /** The width/height of each block as a power of two. */
+        static const int LgSize = 6;
+
+        /** The width/height of each block. */
+        static const int Size = 1 << LgSize;
+
+        /** The coordinate mask. */
+        static const int Mask = Size - 1;
+
+        /**
+         * Creates an empty block.
+         */
+        Block ();
+
+        /**
+         * Creates a block from the specified data.
+         */
+        Block (const int* data);
+
+        /**
+         * Returns the number of non-empty locations in the block.
+         */
+        int filled () const { return _filled; }
+
+        /**
+         * Sets the value at the specified location.
+         */
+        void set (const QPoint& pos, int character);
+
+        /**
+         * Returns the value at the specified location.
+         */
+        int get (const QPoint& pos) const;
+
+    protected:
+
+        /** The number of non-empty locations. */
+        int _filled;
+    };
+
     /** The scene id. */
     quint32 id;
 
@@ -89,8 +136,18 @@ public:
     /** The height of the scroll region. */
     quint16 scrollHeight;
 
-    /** The scene data. */
-    QHash<QPoint, QIntVector> data;
+    /** The scene blocks. */
+    QHash<QPoint, Block> blocks;
+
+    /**
+     * Sets the value at the specified location.
+     */
+    void set (const QPoint& pos, int character);
+
+    /**
+     * Returns the value at the specified location.
+     */
+    int get (const QPoint& pos) const;
 };
 
 Q_DECLARE_METATYPE(SceneRecord)

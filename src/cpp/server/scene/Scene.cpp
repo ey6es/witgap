@@ -9,13 +9,80 @@
 #include "db/DatabaseThread.h"
 #include "net/Session.h"
 #include "scene/Scene.h"
+#include "scene/SceneView.h"
+
+Scene::Block::Block () :
+    QIntVector(Size*Size, ' '),
+    _filled(0)
+{
+}
+
+void Scene::Block::set (const QPoint& pos, int character)
+{
+    int& value = (*this)[(pos.y() & Mask) << LgSize | pos.x() & Mask];
+    _filled += (value == ' ') - (character == ' ');
+    value = character;
+}
 
 Scene::Scene (ServerApp* app, const SceneRecord& record) :
     _record(record),
     _app(app)
 {
     // initialize the contents from the record
-//    _contents = _record.data;
+    for (QHash<QPoint, SceneRecord::Block>::const_iterator it = record.blocks.constBegin(),
+            end = record.blocks.constEnd(); it != end; it++) {
+        const QPoint& key = it.key();
+        const SceneRecord::Block& sblock = it.value();
+
+        // find the extents of the source block (inclusive)
+        int sx1 = key.x() << SceneRecord::Block::LgSize;
+        int sx2 = sx1 + SceneRecord::Block::Size - 1;
+        int sy1 = key.y() << SceneRecord::Block::LgSize;
+        int sy2 = sy1 + SceneRecord::Block::Size - 1;
+
+        // map them to destination blocks
+        int bx1 = sx1 >> Scene::Block::LgSize;
+        int bx2 = sx2 >> Scene::Block::LgSize;
+        int by1 = sy1 >> Scene::Block::LgSize;
+        int by2 = sy2 >> Scene::Block::LgSize;
+
+        // iterate over intersected destination blocks
+        for (int by = by1; by <= by2; by++) {
+            for (int bx = bx1; bx <= bx2; bx++) {
+                Block& dblock = _blocks[QPoint(bx, by)];
+
+                // find the extents of the destination block
+                int dx1 = bx << Scene::Block::LgSize;
+                int dx2 = dx1 + Scene::Block::Size - 1;
+                int dy1 = by << Scene::Block::LgSize;
+                int dy2 = dy1 + Scene::Block::Size - 1;
+
+                // find the intersection extents
+                int x1 = qMax(sx1, dx1);
+                int x2 = qMin(sx2, dx2);
+                int y1 = qMax(sy1, dy1);
+                int y2 = qMin(sy2, dy2);
+
+                // copy/process the area of intersection
+                const int* lsptr = sblock.constData() +
+                    (y1 - sy1 << SceneRecord::Block::LgSize) + (x1 - sx1);
+                int* ldptr = dblock.data() + (y1 - dy1 << Scene::Block::LgSize) + (x1 - dx1);
+                int filled = dblock.filled();
+                for (int yy = y1; yy <= y2; yy++) {
+                    const int *sptr = lsptr;
+                    int* dptr = ldptr;
+                    for (int xx = x1; xx <= x2; xx++) {
+                        if ((*dptr++ = *sptr++) != ' ') {
+                            filled++;
+                        }
+                    }
+                    lsptr += SceneRecord::Block::Size;
+                    ldptr += Scene::Block::Size;
+                }
+                dblock.setFilled(filled);
+            }
+        }
+    }
 }
 
 bool Scene::canSetProperties (Session* session) const
@@ -57,7 +124,7 @@ void Scene::removeSession (Session* session)
     session->setParent(0);
 }
 
-void Scene::addToContents (Actor* actor)
+void Scene::addSpatial (Actor* actor)
 {
     // ignore invisible actors
     int character = actor->character();
@@ -67,7 +134,7 @@ void Scene::addToContents (Actor* actor)
 
     // add to block
     const QPoint& pos = actor->position();
-    QPoint key(pos.x() >> SceneBlock::LgSize, pos.y() >> SceneBlock::LgSize);
+    QPoint key(pos.x() >> Block::LgSize, pos.y() >> Block::LgSize);
     _blocks[key].set(pos, character);
 
     // add to actor list
@@ -76,9 +143,20 @@ void Scene::addToContents (Actor* actor)
         actor->setNext(aref);
     }
     aref = actor;
+
+    // notify (dirty) all views that contain the location
+    QPoint vkey(pos.x() >> LgViewBlockSize, pos.y() >> LgViewBlockSize);
+    QHash<QPoint, SceneViewList>::const_iterator it = _views.constFind(vkey);
+    if (it != _views.constEnd()) {
+        foreach (SceneView* view, *it) {
+            if (view->worldBounds().contains(pos)) {
+                view->dirty(QRect(pos - view->location(), QSize(1, 1)));
+            }
+        }
+    }
 }
 
-void Scene::removeFromContents (Actor* actor)
+void Scene::removeSpatial (Actor* actor)
 {
     // ignore invisible actors
     if (actor->character() == ' ') {
@@ -102,7 +180,7 @@ void Scene::removeFromContents (Actor* actor)
     int character;
     if (next == 0) {
         _actors.remove(pos);
-        character = ' ';
+        character = _record.get(pos);
     } else {
         aref = next;
         actor->setNext(0);
@@ -110,30 +188,56 @@ void Scene::removeFromContents (Actor* actor)
     }
 
     // update block
-    QPoint key(pos.x() >> SceneBlock::LgSize, pos.y() >> SceneBlock::LgSize);
-    SceneBlock& block = _blocks[key];
+    QPoint key(pos.x() >> Block::LgSize, pos.y() >> Block::LgSize);
+    Block& block = _blocks[key];
     block.set(pos, character);
     if (block.filled() == 0) {
         _blocks.remove(key);
     }
-}
 
-SceneBlock::SceneBlock () :
-    QIntVector(Size*Size, ' '),
-    _filled(0)
-{
-}
-
-void SceneBlock::set (const QPoint& pos, int character)
-{
-    int& value = (*this)[(pos.y() & Mask) << LgSize | pos.x() & Mask];
-    bool oempty = (value == ' ');
-    value = character;
-    if (character == ' ') {
-        if (!oempty) {
-            _filled--;
+    // notify (dirty) all views that contain the location
+    QPoint vkey(pos.x() >> LgViewBlockSize, pos.y() >> LgViewBlockSize);
+    QHash<QPoint, SceneViewList>::const_iterator it = _views.constFind(vkey);
+    if (it != _views.constEnd()) {
+        foreach (SceneView* view, *it) {
+            if (view->worldBounds().contains(pos)) {
+                view->dirty(QRect(pos - view->location(), QSize(1, 1)));
+            }
         }
-    } else if (oempty) {
-        _filled++;
+    }
+}
+
+void Scene::addSpatial (SceneView* view)
+{
+    // add to lists for all intersecting blocks
+    const QRect& bounds = view->worldBounds();
+    int x1 = bounds.left() >> LgViewBlockSize;
+    int x2 = bounds.right() >> LgViewBlockSize;
+    int y1 = bounds.top() >> LgViewBlockSize;
+    int y2 = bounds.bottom() >> LgViewBlockSize;
+    for (int yy = y1; yy <= y2; yy++) {
+        for (int xx = x1; xx <= x2; xx++) {
+            _views[QPoint(xx, yy)].append(view);
+        }
+    }
+}
+
+void Scene::removeSpatial (SceneView* view)
+{
+    // remove from lists in all intersecting blocks
+    const QRect& bounds = view->worldBounds();
+    int x1 = bounds.left() >> LgViewBlockSize;
+    int x2 = bounds.right() >> LgViewBlockSize;
+    int y1 = bounds.top() >> LgViewBlockSize;
+    int y2 = bounds.bottom() >> LgViewBlockSize;
+    for (int yy = y1; yy <= y2; yy++) {
+        for (int xx = x1; xx <= x2; xx++) {
+            QPoint key(xx, yy);
+            SceneViewList& list = _views[key];
+            list.removeOne(view);
+            if (list.isEmpty()) {
+                _views.remove(key);
+            }
+        }
     }
 }

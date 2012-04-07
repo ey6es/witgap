@@ -11,28 +11,28 @@ Actor::Actor (Scene* scene, int character, const QPoint& position) :
     _character(character),
     _position(position)
 {
-    _scene->addToContents(this);
+    _scene->addSpatial(this);
 }
 
 Actor::~Actor ()
 {
-    _scene->removeFromContents(this);
+    _scene->removeSpatial(this);
 }
 
 void Actor::setCharacter (int character)
 {
     if (_character != character) {
-        _scene->removeFromContents(this);
+        _scene->removeSpatial(this);
         _character = character;
-        _scene->addToContents(this);
+        _scene->addSpatial(this);
     }
 }
 
 void Actor::setPosition (const QPoint& position)
 {
     if (_position != position) {
-        _scene->removeFromContents(this);
+        _scene->removeSpatial(this);
         _position = position;
-        _scene->addToContents(this);
+        _scene->addSpatial(this);
     }
 }

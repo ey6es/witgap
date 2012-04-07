@@ -2,7 +2,9 @@
 // $Id$
 
 #include <QDateTime>
+#include <QSqlDatabase>
 #include <QSqlQuery>
+#include <QStringList>
 #include <QtDebug>
 
 #include "ServerApp.h"
@@ -23,16 +25,21 @@ SessionRepository::SessionRepository (ServerApp* app) :
 void SessionRepository::init ()
 {
     // create the table if it doesn't yet exist
+    QSqlDatabase database = QSqlDatabase::database();
     QSqlQuery query;
-    query.exec(
-        "create table if not exists SESSIONS ("
-            "ID bigint unsigned not null auto_increment primary key,"
-            "TOKEN binary(16) not null,"
-            "AVATAR smallint unsigned not null,"
-            "USER_ID int unsigned not null default 0,"
-            "LAST_ONLINE datetime not null,"
-            "index (LAST_ONLINE),"
-            "index (USER_ID))");
+
+    if (!database.tables().contains("SESSIONS")) {
+        qDebug() << "Creating SESSIONS table.";
+        query.exec(
+            "create table SESSIONS ("
+                "ID bigint unsigned not null auto_increment primary key,"
+                "TOKEN binary(16) not null,"
+                "AVATAR smallint unsigned not null,"
+                "USER_ID int unsigned not null default 0,"
+                "LAST_ONLINE datetime not null,"
+                "index (LAST_ONLINE),"
+                "index (USER_ID))");
+    }
 }
 
 /**

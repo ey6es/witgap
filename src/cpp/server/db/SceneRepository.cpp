@@ -3,7 +3,11 @@
 
 #include <string.h>
 
+#include <QSqlDatabase>
+#include <QSqlError>
 #include <QSqlQuery>
+#include <QStringList>
+#include <QtDebug>
 
 #include "db/SceneRepository.h"
 #include "util/Callback.h"
@@ -15,27 +19,35 @@ int sceneDescriptorListType = qRegisterMetaType<SceneDescriptorList>("SceneDescr
 void SceneRepository::init ()
 {
     // create the tables if they don't yet exist
+    QSqlDatabase database = QSqlDatabase::database();
     QSqlQuery query;
-    query.exec(
-        "create table if not exists SCENES ("
-            "ID int unsigned not null auto_increment primary key,"
-            "NAME varchar(255) not null,"
-            "NAME_LOWER varchar(255) not null,"
-            "CREATOR_ID int unsigned not null,"
-            "CREATED datetime not null,"
-            "SCROLL_WIDTH smallint unsigned not null,"
-            "SCROLL_HEIGHT smallint unsigned not null,"
-            "index (NAME_LOWER),"
-            "index (CREATOR_ID))");
 
-    query.exec(
-        "create table if not exists SCENE_DATA ("
-            "SCENE_ID int unsigned not null,"
-            "X int not null,"
-            "Y int not null,"
-            "DATA binary(4096) not null,"
-            "index (SCENE_ID),"
-            "index (X, Y))");
+    if (!database.tables().contains("SCENES")) {
+        qDebug() << "Creating SCENES table.";
+        query.exec(
+            "create table SCENES ("
+                "ID int unsigned not null auto_increment primary key,"
+                "NAME varchar(255) not null,"
+                "NAME_LOWER varchar(255) not null,"
+                "CREATOR_ID int unsigned not null,"
+                "CREATED datetime not null,"
+                "SCROLL_WIDTH smallint unsigned not null,"
+                "SCROLL_HEIGHT smallint unsigned not null,"
+                "index (NAME_LOWER),"
+                "index (CREATOR_ID))");
+    }
+
+    if (!database.tables().contains("SCENE_BLOCKS")) {
+        qDebug() << "Creating SCENE_BLOCKS table.";
+        query.exec(
+            "create table SCENE_BLOCKS ("
+                "SCENE_ID int unsigned not null,"
+                "X int not null,"
+                "Y int not null,"
+                "DATA blob not null,"
+                "index (SCENE_ID),"
+                "index (X, Y))");
+    }
 }
 
 void SceneRepository::insertScene (
@@ -72,15 +84,14 @@ void SceneRepository::loadScene (quint32 id, const Callback& callback)
         id, query.value(0).toString(), query.value(1).toUInt(), query.value(2).toString(),
         query.value(3).toDateTime(), query.value(4).toUInt(), query.value(5).toUInt() };
 
-    query.prepare("select X, Y, DATA from SCENE_DATA where SCENE_ID = ?");
+    query.prepare("select X, Y, DATA from SCENE_BLOCKS where SCENE_ID = ?");
     query.addBindValue(id);
     query.exec();
 
     while (query.next()) {
-        QByteArray bdata = query.value(2).toByteArray();
-        QIntVector idata(bdata.length() / sizeof(int));
-        memcpy(idata.data(), bdata.constData(), bdata.length());
-        scene.data.insert(QPoint(query.value(0).toInt(), query.value(1).toInt()), idata);
+        QByteArray data = qUncompress(query.value(2).toByteArray());
+        scene.blocks.insert(QPoint(query.value(0).toInt(), query.value(1).toInt()),
+            SceneRecord::Block((int*)data.constData()));
     }
 
     callback.invoke(Q_ARG(const SceneRecord&, scene));
@@ -132,7 +143,51 @@ void SceneRepository::deleteScene (quint32 id)
     query.addBindValue(id);
     query.exec();
 
-    query.prepare("delete from SCENE_DATA where ID = ?");
+    query.prepare("delete from SCENE_BLOCKS where ID = ?");
     query.addBindValue(id);
     query.exec();
+}
+
+SceneRecord::Block::Block () :
+    QIntVector(Size*Size, ' '),
+    _filled(0)
+{
+}
+
+SceneRecord::Block::Block (const int* data) :
+    QIntVector(Size*Size, ' '),
+    _filled(0)
+{
+    for (int* ptr = this->data(), *end = ptr + Size*Size; ptr < end; ptr++, data++) {
+        _filled += ((*ptr = *data) != ' ');
+    }
+}
+
+void SceneRecord::Block::set (const QPoint& pos, int character)
+{
+    int& value = (*this)[(pos.y() & Mask) << LgSize | pos.x() & Mask];
+    _filled += (value == ' ') - (character == ' ');
+    value = character;
+}
+
+int SceneRecord::Block::get (const QPoint& pos) const
+{
+    return at((pos.y() & Mask) << LgSize | pos.x() & Mask);
+}
+
+void SceneRecord::set (const QPoint& pos, int character)
+{
+    QPoint key(pos.x() >> Block::LgSize, pos.y() >> Block::LgSize);
+    Block& block = blocks[key];
+    block.set(pos, character);
+    if (block.filled() == 0) {
+        blocks.remove(key);
+    }
+}
+
+int SceneRecord::get (const QPoint& pos) const
+{
+    QPoint key(pos.x() >> Block::LgSize, pos.y() >> Block::LgSize);
+    QHash<QPoint, Block>::const_iterator it = blocks.constFind(key);
+    return (it == blocks.constEnd()) ? ' ' : (*it).get(pos);
 }

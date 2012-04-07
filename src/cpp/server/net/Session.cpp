@@ -575,6 +575,8 @@ void Session::continueMovingToScene (QObject* scene)
 {
     _scene = static_cast<Scene*>(scene);
     _pawn = _scene->addSession(this);
+
+    emit sceneChanged();
 }
 
 bool Session::belowModal (Window* window) const

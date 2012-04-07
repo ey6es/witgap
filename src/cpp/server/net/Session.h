@@ -217,6 +217,13 @@ public:
      */
     virtual bool event (QEvent* e);
 
+signals:
+
+    /**
+     * Fired when the scene has changed.
+     */
+    void sceneChanged ();
+
 protected slots:
 
     /**

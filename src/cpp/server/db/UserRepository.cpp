@@ -2,7 +2,9 @@
 // $Id$
 
 #include <QCryptographicHash>
+#include <QSqlDatabase>
 #include <QSqlQuery>
+#include <QStringList>
 #include <QtDebug>
 
 #include "db/UserRepository.h"
@@ -14,31 +16,39 @@ int userRecordType = qRegisterMetaType<UserRecord>();
 
 void UserRepository::init ()
 {
-    // create the tables if they doesn't yet exist
+    // create the tables if they don't yet exist
+    QSqlDatabase database = QSqlDatabase::database();
     QSqlQuery query;
-    query.exec(
-        "create table if not exists USERS ("
-            "ID int unsigned not null auto_increment primary key,"
-            "NAME varchar(16) not null,"
-            "NAME_LOWER varchar(16) not null unique,"
-            "PASSWORD_HASH binary(16) not null,"
-            "PASSWORD_SALT binary(8) not null,"
-            "DATE_OF_BIRTH date not null,"
-            "EMAIL varchar(255) not null,"
-            "FLAGS int unsigned not null,"
-            "AVATAR smallint unsigned not null,"
-            "CREATED datetime not null,"
-            "LAST_ONLINE datetime not null,"
-            "index (EMAIL))");
 
-    query.exec(
-        "create table if not exists PASSWORD_RESETS ("
-            "ID int unsigned not null auto_increment primary key,"
-            "TOKEN binary(16) not null,"
-            "USER_ID int unsigned not null,"
-            "CREATED datetime not null,"
-            "index (CREATED),"
-            "index (USER_ID))");
+    if (!database.tables().contains("USERS")) {
+        qDebug() << "Creating USERS table.";
+        query.exec(
+            "create table USERS ("
+                "ID int unsigned not null auto_increment primary key,"
+                "NAME varchar(16) not null,"
+                "NAME_LOWER varchar(16) not null unique,"
+                "PASSWORD_HASH binary(16) not null,"
+                "PASSWORD_SALT binary(8) not null,"
+                "DATE_OF_BIRTH date not null,"
+                "EMAIL varchar(255) not null,"
+                "FLAGS int unsigned not null,"
+                "AVATAR smallint unsigned not null,"
+                "CREATED datetime not null,"
+                "LAST_ONLINE datetime not null,"
+                "index (EMAIL))");
+    }
+
+    if (!database.tables().contains("PASSWORD_RESETS")) {
+        qDebug() << "Creating PASSWORD_RESETS table.";
+        query.exec(
+            "create table PASSWORD_RESETS ("
+                "ID int unsigned not null auto_increment primary key,"
+                "TOKEN binary(16) not null,"
+                "USER_ID int unsigned not null,"
+                "CREATED datetime not null,"
+                "index (CREATED),"
+                "index (USER_ID))");
+    }
 }
 
 /**

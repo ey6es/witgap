@@ -4,6 +4,7 @@
 #ifndef SCENE
 #define SCENE
 
+#include <QList>
 #include <QObject>
 
 #include "db/SceneRepository.h"
@@ -11,6 +12,7 @@
 class Actor;
 class Pawn;
 class SceneBlock;
+class SceneView;
 class ServerApp;
 class Session;
 
@@ -22,6 +24,48 @@ class Scene : public QObject
     Q_OBJECT
 
 public:
+
+    /**
+     * Represents a directly renderable block of the scene.
+     */
+    class Block : public QIntVector
+    {
+    public:
+
+        /** The width/height of each block as a power of two. */
+        static const int LgSize = 5;
+
+        /** The width/height of each block. */
+        static const int Size = (1 << LgSize);
+
+        /** The mask for coordinates. */
+        static const int Mask = Size - 1;
+
+        /**
+         * Creates an empty scene block.
+         */
+        Block ();
+
+        /**
+         * Sets the number of non-empty locations in the block.
+         */
+        void setFilled (int filled) { _filled = filled; };
+
+        /**
+         * Returns the number of non-empty locations in the block.
+         */
+        int filled () const { return _filled; }
+
+        /**
+         * Sets the character at the specified position.
+         */
+        void set (const QPoint& pos, int character);
+
+    protected:
+
+        /** The number of non-empty locations in the block. */
+        int _filled;
+    };
 
     /**
      * Creates a new scene.
@@ -36,7 +80,7 @@ public:
     /**
      * Returns a reference to the scene block map.
      */
-    const QHash<QPoint, SceneBlock>& blocks () const { return _blocks; }
+    const QHash<QPoint, Block>& blocks () const { return _blocks; }
 
     /**
      * Checks whether the specified session can edit the scene properties.
@@ -66,16 +110,33 @@ public:
     void removeSession (Session* session);
 
     /**
-     * Adds the specified actor's visual representation to the scene contents.
+     * Adds the specified actor's visual representation to the scene contents.  This is done when
+     * the actor is created, and just after the actor is moved/changed.
      */
-    void addToContents (Actor* actor);
+    void addSpatial (Actor* actor);
 
     /**
-     * Removes the specified actor's visual representation from the scene contents.
+     * Removes the specified actor's visual representation from the scene contents.  This is done
+     * when the actor is destroyed, and just before the actor is moved/changed.
      */
-    void removeFromContents (Actor* actor);
+    void removeSpatial (Actor* actor);
+
+    /**
+     * Adds a scene view to the map.  This is done when the session is added, and just after the
+     * view is moved/resized.
+     */
+    void addSpatial (SceneView* view);
+
+    /**
+     * Removes a scene view from the map.  This is done when the session is removed, and just
+     * before the view is moved/resized.
+     */
+    void removeSpatial (SceneView* view);
 
 protected:
+
+    /** A list of scene views. */
+    typedef QList<SceneView*> SceneViewList;
 
     /** The application object. */
     ServerApp* _app;
@@ -84,47 +145,16 @@ protected:
     SceneRecord _record;
 
     /** The current set of scene blocks. */
-    QHash<QPoint, SceneBlock> _blocks;
+    QHash<QPoint, Block> _blocks;
 
     /** Maps locations to linked lists of actors. */
     QHash<QPoint, Actor*> _actors;
-};
 
-/**
- * Represents a directly renderable block of the scene.
- */
-class SceneBlock : public QIntVector
-{
-public:
+    /** Maps block locations to lists of intersecting views. */
+    QHash<QPoint, SceneViewList> _views;
 
-    /** The width/height of each block as a power of two. */
-    static const int LgSize = 5;
-
-    /** The width/height of each block. */
-    static const int Size = (1 << LgSize);
-
-    /** The mask for coordinates. */
-    static const int Mask = Size - 1;
-
-    /**
-     * Creates an empty scene block.
-     */
-    SceneBlock ();
-
-    /**
-     * Returns the number of non-empty locations in the block.
-     */
-    int filled () const { return _filled; }
-
-    /**
-     * Sets the character at the specified position.
-     */
-    void set (const QPoint& pos, int character);
-
-protected:
-
-    /** The number of non-empty locations in the block. */
-    int _filled;
+    /** The size of the view hash space blocks as a power of two. */
+    static const int LgViewBlockSize = 7;
 };
 
 #endif // SCENE

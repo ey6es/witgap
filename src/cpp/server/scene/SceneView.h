@@ -22,6 +22,16 @@ public:
      */
     SceneView (QObject* parent = 0);
 
+    /**
+     * Returns a reference to the view location.
+     */
+    const QPoint& location () const { return _location; }
+
+    /**
+     * Returns the bounds of the view in world space.
+     */
+    QRect worldBounds () const { return QRect(_location, _bounds.size()); };
+
 protected:
 
     /**
@@ -29,7 +39,7 @@ protected:
      */
     virtual void draw (DrawContext* ctx) const;
 
-    /** The location of the view. */
+    /** The location of the view in world space. */
     QPoint _location;
 };
 
