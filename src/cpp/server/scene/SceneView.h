@@ -8,6 +8,8 @@
 
 #include "ui/Component.h"
 
+class Scene;
+
 /**
  * A client's view of a scene.
  */
@@ -20,17 +22,39 @@ public:
     /**
      * Initializes the view.
      */
-    SceneView (QObject* parent = 0);
+    SceneView (Session* session);
 
     /**
-     * Returns a reference to the view location.
+     * Destroys the view.
      */
-    const QPoint& location () const { return _location; }
+    virtual ~SceneView ();
 
     /**
-     * Returns the bounds of the view in world space.
+     * Sets the bounds of the view in world space.
      */
-    QRect worldBounds () const { return QRect(_location, _bounds.size()); };
+    void setWorldBounds (const QRect& bounds);
+
+    /**
+     * Returns a reference to the bounds of the view in world space.
+     */
+    const QRect& worldBounds () const { return _worldBounds; };
+
+public slots:
+
+    /**
+     * Adds the view's spatial representation to the scene.
+     */
+    void addSpatial (Scene* scene);
+
+    /**
+     * Removes the view's spatial representation from the scene.
+     */
+    void removeSpatial (Scene* scene);
+
+    /**
+     * Invalidates the component.
+     */
+    virtual void invalidate ();
 
 protected:
 
@@ -39,8 +63,8 @@ protected:
      */
     virtual void draw (DrawContext* ctx) const;
 
-    /** The location of the view in world space. */
-    QPoint _location;
+    /** The bounds of the view in world space. */
+    QRect _worldBounds;
 };
 
 #endif // SCENE_VIEW

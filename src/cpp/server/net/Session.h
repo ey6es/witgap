@@ -220,9 +220,14 @@ public:
 signals:
 
     /**
-     * Fired when the scene has changed.
+     * Fired when the session has entered a scene.
      */
-    void sceneChanged ();
+    void didEnterScene (Scene* scene);
+
+    /**
+     * Fired just before the session leaves a scene.
+     */
+    void willLeaveScene (Scene* scene);
 
 protected slots:
 

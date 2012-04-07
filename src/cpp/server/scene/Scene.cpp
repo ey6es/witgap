@@ -149,8 +149,9 @@ void Scene::addSpatial (Actor* actor)
     QHash<QPoint, SceneViewList>::const_iterator it = _views.constFind(vkey);
     if (it != _views.constEnd()) {
         foreach (SceneView* view, *it) {
-            if (view->worldBounds().contains(pos)) {
-                view->dirty(QRect(pos - view->location(), QSize(1, 1)));
+            const QRect& vbounds = view->worldBounds();
+            if (vbounds.contains(pos)) {
+                view->dirty(QRect(pos - vbounds.topLeft(), QSize(1, 1)));
             }
         }
     }
@@ -200,8 +201,9 @@ void Scene::removeSpatial (Actor* actor)
     QHash<QPoint, SceneViewList>::const_iterator it = _views.constFind(vkey);
     if (it != _views.constEnd()) {
         foreach (SceneView* view, *it) {
-            if (view->worldBounds().contains(pos)) {
-                view->dirty(QRect(pos - view->location(), QSize(1, 1)));
+            const QRect& vbounds = view->worldBounds();
+            if (vbounds.contains(pos)) {
+                view->dirty(QRect(pos - vbounds.topLeft(), QSize(1, 1)));
             }
         }
     }

@@ -20,7 +20,7 @@ MainWindow::MainWindow (Session* parent) :
     setBorder(new TitledBorder(tr("witgap")));
     setLayout(new BorderLayout());
 
-    addChild(_sceneView = new SceneView(), BorderLayout::Center);
+    addChild(_sceneView = new SceneView(parent), BorderLayout::Center);
 }
 
 void MainWindow::keyPressEvent (QKeyEvent* e)

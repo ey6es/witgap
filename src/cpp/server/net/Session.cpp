@@ -560,6 +560,8 @@ void Session::sceneMaybeResolved (QObject* scene)
     }
     // move the session to the scene thread
     if (_scene != 0) {
+        emit willLeaveScene(_scene);
+
         _scene->removeSession(this);
         _scene = 0;
         _pawn = 0;
@@ -576,7 +578,7 @@ void Session::continueMovingToScene (QObject* scene)
     _scene = static_cast<Scene*>(scene);
     _pawn = _scene->addSession(this);
 
-    emit sceneChanged();
+    emit didEnterScene(_scene);
 }
 
 bool Session::belowModal (Window* window) const
