@@ -42,14 +42,19 @@ public:
 public slots:
 
     /**
-     * Adds the view's spatial representation to the scene.
+     * Notes that we just entered a scene.
      */
-    void addSpatial (Scene* scene);
+    void handleDidEnterScene (Scene* scene);
 
     /**
-     * Removes the view's spatial representation from the scene.
+     * Notes that we're about to leave a scene.
      */
-    void removeSpatial (Scene* scene);
+    void handleWillLeaveScene (Scene* scene);
+
+    /**
+     * Scrolls, if necessary, in response to the pawn's moving.
+     */
+    void maybeScroll ();
 
     /**
      * Invalidates the component.

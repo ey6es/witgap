@@ -32,7 +32,10 @@ void Actor::setPosition (const QPoint& position)
 {
     if (_position != position) {
         _scene->removeSpatial(this);
+        QPoint opos = _position;
         _position = position;
         _scene->addSpatial(this);
+
+        emit positionChanged(opos);
     }
 }

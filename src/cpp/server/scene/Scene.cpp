@@ -109,6 +109,9 @@ void Scene::setProperties (const QString& name, quint16 scrollWidth, quint16 scr
     // update in database
     QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "updateScene",
         Q_ARG(const SceneRecord&, _record));
+
+    // notify listeners
+    emit propertiesChanged();
 }
 
 void Scene::set (const QPoint& pos, int character)

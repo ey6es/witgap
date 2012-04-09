@@ -1,6 +1,7 @@
 //
 // $Id$
 
+#include "actor/Pawn.h"
 #include "net/Session.h"
 #include "scene/Scene.h"
 #include "scene/SceneView.h"
@@ -8,9 +9,8 @@
 SceneView::SceneView (Session* session) :
     Component(0)
 {
-    connect(session, SIGNAL(didEnterScene(Scene*)), SLOT(dirty()));
-    connect(session, SIGNAL(didEnterScene(Scene*)), SLOT(addSpatial(Scene*)));
-    connect(session, SIGNAL(willLeaveScene(Scene*)), SLOT(removeSpatial(Scene*)));
+    connect(session, SIGNAL(didEnterScene(Scene*)), SLOT(handleDidEnterScene(Scene*)));
+    connect(session, SIGNAL(willLeaveScene(Scene*)), SLOT(handleWillLeaveScene(Scene*)));
 
     Scene* scene = session->scene();
     if (scene != 0) {
@@ -40,17 +40,57 @@ void SceneView::setWorldBounds (const QRect& bounds)
             _worldBounds = bounds;
             scene->addSpatial(this);
         }
+        dirty();
     }
 }
 
-void SceneView::addSpatial (Scene* scene)
+void SceneView::handleDidEnterScene (Scene* scene)
 {
+    Pawn* pawn = session()->pawn();
+    if (pawn != 0) {
+        // center around the pawn and adjust when it moves
+        connect(pawn, SIGNAL(positionChanged(QPoint)), SLOT(maybeScroll()));
+        QSize size = _bounds.size();
+        setWorldBounds(QRect(pawn->position() - QPoint(size.width()/2, size.height()/2), size));
+    }
+    connect(scene, SIGNAL(propertiesChanged()), SLOT(maybeScroll()));
     scene->addSpatial(this);
+    dirty();
 }
 
-void SceneView::removeSpatial (Scene* scene)
+void SceneView::handleWillLeaveScene (Scene* scene)
 {
+    Pawn* pawn = session()->pawn();
+    if (pawn != 0) {
+        disconnect(pawn);
+    }
+    disconnect(scene);
     scene->removeSpatial(this);
+}
+
+/**
+ * Helper function for maybeScroll: returns the signed distance between the specified value and the
+ * given range.
+ */
+static int getDelta (int value, int start, int end)
+{
+    return (value < start) ? (value - start) : (value > end ? (value - end) : 0);
+}
+
+void SceneView::maybeScroll ()
+{
+    Session* session = this->session();
+    const SceneRecord& record = session->scene()->record();
+    QRect scrollBounds(
+        _worldBounds.left() + _worldBounds.width()/2 - record.scrollWidth/2,
+        _worldBounds.top() + _worldBounds.height()/2 - record.scrollHeight/2,
+        record.scrollWidth, record.scrollHeight);
+
+    // scroll to fit the pawn position within the scroll bounds
+    const QPoint& pos = session->pawn()->position();
+    setWorldBounds(_worldBounds.translated(
+        getDelta(pos.x(), scrollBounds.left(), scrollBounds.right()),
+        getDelta(pos.y(), scrollBounds.top(), scrollBounds.bottom())));
 }
 
 void SceneView::invalidate ()

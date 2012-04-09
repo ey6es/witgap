@@ -143,6 +143,13 @@ public:
      */
     void removeSpatial (SceneView* view);
 
+signals:
+
+    /**
+     * Fired when the scene properties have been modified.
+     */
+    void propertiesChanged ();
+
 protected:
 
     /**

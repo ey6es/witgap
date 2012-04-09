@@ -58,6 +58,15 @@ public:
      */
     const QPoint& position () const { return _position; }
 
+signals:
+
+    /**
+     * Fired when the actor's position has changed.
+     *
+     * @param opos the actor's original position.
+     */
+    void positionChanged (const QPoint& opos);
+
 protected:
 
     /** The scene containing the actor. */
