@@ -56,6 +56,11 @@ public:
     Q_INVOKABLE void updateScene (const SceneRecord& srec);
 
     /**
+     * Updates a scene's blocks.
+     */
+    Q_INVOKABLE void updateSceneBlocks (const SceneRecord& srec);
+
+    /**
      * Deletes the identified scene.
      */
     Q_INVOKABLE void deleteScene (quint32 id);
@@ -113,6 +118,9 @@ public:
 
         /** The number of non-empty locations. */
         int _filled;
+
+        /** Whether or not the block is dirty and should be flushed to the database. */
+        bool _dirty;
     };
 
     /** The scene id. */
@@ -138,6 +146,9 @@ public:
 
     /** The scene blocks. */
     QHash<QPoint, Block> blocks;
+
+    /** Whether or not any of the blocks are dirty and should be flushed to the database. */
+    bool blocksDirty;
 
     /**
      * Sets the value at the specified location.

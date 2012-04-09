@@ -85,6 +85,15 @@ Scene::Scene (ServerApp* app, const SceneRecord& record) :
     }
 }
 
+Scene::~Scene ()
+{
+    // flush the record to the database if dirty
+    if (_record.blocksDirty) {
+        QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "updateSceneBlocks",
+            Q_ARG(const SceneRecord&, _record));
+    }
+}
+
 bool Scene::canSetProperties (Session* session) const
 {
     return session->admin() || session->user().id == _record.creatorId;
@@ -100,6 +109,17 @@ void Scene::setProperties (const QString& name, quint16 scrollWidth, quint16 scr
     // update in database
     QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "updateScene",
         Q_ARG(const SceneRecord&, _record));
+}
+
+void Scene::set (const QPoint& pos, int character)
+{
+    // set in the record
+    _record.set(pos, character);
+
+    // if there's no actor at the location, set in the contents
+    if (!_actors.contains(pos)) {
+        setInBlocks(pos, character);
+    }
 }
 
 void Scene::remove ()
@@ -132,29 +152,16 @@ void Scene::addSpatial (Actor* actor)
         return;
     }
 
-    // add to block
-    const QPoint& pos = actor->position();
-    QPoint key(pos.x() >> Block::LgSize, pos.y() >> Block::LgSize);
-    _blocks[key].set(pos, character);
-
     // add to actor list
+    const QPoint& pos = actor->position();
     Actor*& aref = _actors[pos];
     if (aref != 0) {
         actor->setNext(aref);
     }
     aref = actor;
 
-    // notify (dirty) all views that contain the location
-    QPoint vkey(pos.x() >> LgViewBlockSize, pos.y() >> LgViewBlockSize);
-    QHash<QPoint, SceneViewList>::const_iterator it = _views.constFind(vkey);
-    if (it != _views.constEnd()) {
-        foreach (SceneView* view, *it) {
-            const QRect& vbounds = view->worldBounds();
-            if (vbounds.contains(pos)) {
-                view->dirty(QRect(pos - vbounds.topLeft(), QSize(1, 1)));
-            }
-        }
-    }
+    // set in block and dirty
+    setInBlocks(pos, character);
 }
 
 void Scene::removeSpatial (Actor* actor)
@@ -188,25 +195,8 @@ void Scene::removeSpatial (Actor* actor)
         character = next->character();
     }
 
-    // update block
-    QPoint key(pos.x() >> Block::LgSize, pos.y() >> Block::LgSize);
-    Block& block = _blocks[key];
-    block.set(pos, character);
-    if (block.filled() == 0) {
-        _blocks.remove(key);
-    }
-
-    // notify (dirty) all views that contain the location
-    QPoint vkey(pos.x() >> LgViewBlockSize, pos.y() >> LgViewBlockSize);
-    QHash<QPoint, SceneViewList>::const_iterator it = _views.constFind(vkey);
-    if (it != _views.constEnd()) {
-        foreach (SceneView* view, *it) {
-            const QRect& vbounds = view->worldBounds();
-            if (vbounds.contains(pos)) {
-                view->dirty(QRect(pos - vbounds.topLeft(), QSize(1, 1)));
-            }
-        }
-    }
+    // update block and dirty
+    setInBlocks(pos, character);
 }
 
 void Scene::addSpatial (SceneView* view)
@@ -239,6 +229,31 @@ void Scene::removeSpatial (SceneView* view)
             list.removeOne(view);
             if (list.isEmpty()) {
                 _views.remove(key);
+            }
+        }
+    }
+}
+
+void Scene::setInBlocks (const QPoint& pos, int character)
+{
+    QPoint key(pos.x() >> Block::LgSize, pos.y() >> Block::LgSize);
+    Block& block = _blocks[key];
+    block.set(pos, character);
+    if (block.filled() == 0) {
+        _blocks.remove(key);
+    }
+    dirty(pos);
+}
+
+void Scene::dirty (const QPoint& pos)
+{
+    QPoint vkey(pos.x() >> LgViewBlockSize, pos.y() >> LgViewBlockSize);
+    QHash<QPoint, SceneViewList>::const_iterator it = _views.constFind(vkey);
+    if (it != _views.constEnd()) {
+        foreach (SceneView* view, *it) {
+            const QRect& vbounds = view->worldBounds();
+            if (vbounds.contains(pos)) {
+                view->dirty(QRect(pos - vbounds.topLeft(), QSize(1, 1)));
             }
         }
     }

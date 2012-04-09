@@ -443,6 +443,16 @@ public:
     void untranslate (const QPoint& offset) { _pos -= offset; }
 
     /**
+     * Returns a reference to the position.
+     */
+    const QPoint& pos () const { return _pos; }
+
+    /**
+     * Returns a reference to the dirty region.
+     */
+    const QRegion& dirty () const { return _dirty; }
+
+    /**
      * Determines whether the dirty region intersects the specified rectangle.
      */
     bool isDirty (const QRect& rect) const { return _dirty.intersects(rect.translated(_pos)); }

@@ -136,6 +136,15 @@ void SceneRepository::updateScene (const SceneRecord& srec)
     query.exec();
 }
 
+void SceneRepository::updateSceneBlocks (const SceneRecord& srec)
+{
+    for (QHash<QPoint, SceneRecord::Block>::const_iterator it = srec.blocks.constBegin(),
+            end = srec.blocks.constEnd(); it != end; it++) {
+        const SceneRecord::Block& block = it.value();
+
+    }
+}
+
 void SceneRepository::deleteScene (quint32 id)
 {
     QSqlQuery query;
@@ -150,13 +159,15 @@ void SceneRepository::deleteScene (quint32 id)
 
 SceneRecord::Block::Block () :
     QIntVector(Size*Size, ' '),
-    _filled(0)
+    _filled(0),
+    _dirty(false)
 {
 }
 
 SceneRecord::Block::Block (const int* data) :
     QIntVector(Size*Size, ' '),
-    _filled(0)
+    _filled(0),
+    _dirty(false)
 {
     for (int* ptr = this->data(), *end = ptr + Size*Size; ptr < end; ptr++, data++) {
         _filled += ((*ptr = *data) != ' ');
@@ -168,6 +179,7 @@ void SceneRecord::Block::set (const QPoint& pos, int character)
     int& value = (*this)[(pos.y() & Mask) << LgSize | pos.x() & Mask];
     _filled += (value == ' ') - (character == ' ');
     value = character;
+    _dirty = true;
 }
 
 int SceneRecord::Block::get (const QPoint& pos) const
@@ -183,6 +195,7 @@ void SceneRecord::set (const QPoint& pos, int character)
     if (block.filled() == 0) {
         blocks.remove(key);
     }
+    blocksDirty = true;
 }
 
 int SceneRecord::get (const QPoint& pos) const

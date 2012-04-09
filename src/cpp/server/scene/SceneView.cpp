@@ -71,11 +71,17 @@ void SceneView::draw (DrawContext* ctx) const
     }
     const QHash<QPoint, Scene::Block>& blocks = scene->blocks();
 
-    // draw all blocks that intersect the view region
-    int bx1 = _worldBounds.left() >> Scene::Block::LgSize;
-    int bx2 = _worldBounds.right() >> Scene::Block::LgSize;
-    int by1 = _worldBounds.top() >> Scene::Block::LgSize;
-    int by2 = _worldBounds.bottom() >> Scene::Block::LgSize;
+    // find the intersection of the dirty bounds in world space and the world bounds
+    QRect dirty = ctx->dirty().boundingRect();
+    dirty.translate(-ctx->pos());
+    dirty.translate(_worldBounds.topLeft());
+    dirty &= _worldBounds;
+
+    // draw all blocks that intersect
+    int bx1 = dirty.left() >> Scene::Block::LgSize;
+    int bx2 = dirty.right() >> Scene::Block::LgSize;
+    int by1 = dirty.top() >> Scene::Block::LgSize;
+    int by2 = dirty.bottom() >> Scene::Block::LgSize;
     for (int by = by1; by <= by2; by++) {
         for (int bx = bx1; bx <= bx2; bx++) {
             QHash<QPoint, Scene::Block>::const_iterator it = blocks.constFind(QPoint(bx, by));

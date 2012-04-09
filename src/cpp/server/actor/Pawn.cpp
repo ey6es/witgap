@@ -5,6 +5,7 @@
 
 #include "Protocol.h"
 #include "actor/Pawn.h"
+#include "scene/Scene.h"
 
 Pawn::Pawn (Scene* scene, QChar character, const QPoint& position) :
     Actor(scene, character.unicode() | REVERSE_FLAG, position)
@@ -13,6 +14,15 @@ Pawn::Pawn (Scene* scene, QChar character, const QPoint& position) :
 
 void Pawn::keyPressEvent (QKeyEvent* e)
 {
+    QString text = e->text();
+    if (!text.isEmpty()) {
+        QChar character = text.at(0);
+        if (character.isPrint()) {
+            _scene->set(_position, character.unicode());
+            setPosition(QPoint(_position.x() + 1, _position.y()));
+            return;
+        }
+    }
     Qt::KeyboardModifiers modifiers = e->modifiers();
     if (modifiers != Qt::ShiftModifier && modifiers != Qt::NoModifier) {
         e->ignore();

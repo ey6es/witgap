@@ -80,7 +80,7 @@ void UserRepository::insertUser (
 
     query.prepare(
         "insert into USERS (NAME, NAME_LOWER, PASSWORD_HASH, PASSWORD_SALT, DATE_OF_BIRTH, "
-        "EMAIL, FLAGS, AVATAR, CREATED, LAST_ONLINE) values (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        "EMAIL, FLAGS, AVATAR, CREATED, LAST_ONLINE) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     query.addBindValue(name);
     query.addBindValue(name.toLower());
     query.addBindValue(passwordHash);

@@ -73,6 +73,11 @@ public:
     Scene (ServerApp* app, const SceneRecord& record);
 
     /**
+     * Destroys the scene.
+     */
+    ~Scene ();
+
+    /**
      * Returns a reference to the scene record.
      */
     const SceneRecord& record () const { return _record; }
@@ -91,6 +96,11 @@ public:
      * Sets the scene properties.
      */
     void setProperties (const QString& name, quint16 scrollWidth, quint16 scrollHeight);
+
+    /**
+     * Sets a location in the scene.
+     */
+    void set (const QPoint& pos, int character);
 
     /**
      * Removes the scene from the database.
@@ -134,6 +144,16 @@ public:
     void removeSpatial (SceneView* view);
 
 protected:
+
+    /**
+     * Sets a character in the scene blocks.
+     */
+    void setInBlocks (const QPoint& pos, int character);
+
+    /**
+     * Dirties a single location in all views that can see it.
+     */
+    void dirty (const QPoint& pos);
 
     /** A list of scene views. */
     typedef QList<SceneView*> SceneViewList;
