@@ -78,6 +78,11 @@ public:
     ~Scene ();
 
     /**
+     * Initializes the scene, having moved it to an appropriate thread.
+     */
+    Q_INVOKABLE void init ();
+
+    /**
      * Returns a reference to the scene record.
      */
     const SceneRecord& record () const { return _record; }
@@ -149,6 +154,13 @@ signals:
      * Fired when the scene properties have been modified.
      */
     void propertiesChanged ();
+
+public slots:
+
+    /**
+     * Flushes the scene to the database.
+     */
+    void flush ();
 
 protected:
 

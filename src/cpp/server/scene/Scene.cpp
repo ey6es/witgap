@@ -2,6 +2,7 @@
 // $Id$
 
 #include <QMetaObject>
+#include <QtDebug>
 
 #include "Protocol.h"
 #include "ServerApp.h"
@@ -9,6 +10,7 @@
 #include "db/DatabaseThread.h"
 #include "net/Session.h"
 #include "scene/Scene.h"
+#include "scene/SceneManager.h"
 #include "scene/SceneView.h"
 
 Scene::Block::Block () :
@@ -28,9 +30,17 @@ Scene::Scene (ServerApp* app, const SceneRecord& record) :
     _record(record),
     _app(app)
 {
+}
+
+Scene::~Scene ()
+{
+}
+
+void Scene::init ()
+{
     // initialize the contents from the record
-    for (QHash<QPoint, SceneRecord::Block>::const_iterator it = record.blocks.constBegin(),
-            end = record.blocks.constEnd(); it != end; it++) {
+    for (QHash<QPoint, SceneRecord::Block>::const_iterator it = _record.blocks.constBegin(),
+            end = _record.blocks.constEnd(); it != end; it++) {
         const QPoint& key = it.key();
         const SceneRecord::Block& sblock = it.value();
 
@@ -82,15 +92,6 @@ Scene::Scene (ServerApp* app, const SceneRecord& record) :
                 dblock.setFilled(filled);
             }
         }
-    }
-}
-
-Scene::~Scene ()
-{
-    // flush the record to the database if dirty
-    if (_record.blocksDirty) {
-        QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "updateSceneBlocks",
-            Q_ARG(const SceneRecord&, _record));
     }
 }
 
@@ -234,6 +235,15 @@ void Scene::removeSpatial (SceneView* view)
                 _views.remove(key);
             }
         }
+    }
+}
+
+void Scene::flush ()
+{
+    if (_record.dirty()) {
+        QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "updateSceneBlocks",
+            Q_ARG(const SceneRecord&, _record));
+        _record.clean();
     }
 }
 

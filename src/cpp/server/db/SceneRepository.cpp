@@ -138,10 +138,34 @@ void SceneRepository::updateScene (const SceneRecord& srec)
 
 void SceneRepository::updateSceneBlocks (const SceneRecord& srec)
 {
-    for (QHash<QPoint, SceneRecord::Block>::const_iterator it = srec.blocks.constBegin(),
-            end = srec.blocks.constEnd(); it != end; it++) {
-        const SceneRecord::Block& block = it.value();
+    QSqlQuery query;
 
+    query.prepare("insert into SCENE_BLOCKS (SCENE_ID, X, Y, DATA) values (?, ?, ?, ?)");
+    foreach (const QPoint& key, srec.added) {
+        query.addBindValue(srec.id);
+        query.addBindValue(key.x());
+        query.addBindValue(key.y());
+        query.addBindValue(qCompress((const uchar*)srec.blocks[key].constData(),
+            SceneRecord::Block::Size*SceneRecord::Block::Size*sizeof(int)));
+        query.exec();
+    }
+
+    query.prepare("update SCENE_BLOCKS set DATA = ? where SCENE_ID = ? and X = ? and Y = ?");
+    foreach (const QPoint& key, srec.updated) {
+        query.addBindValue(qCompress((const uchar*)srec.blocks[key].constData(),
+            SceneRecord::Block::Size*SceneRecord::Block::Size*sizeof(int)));
+        query.addBindValue(srec.id);
+        query.addBindValue(key.x());
+        query.addBindValue(key.y());
+        query.exec();
+    }
+
+    query.prepare("delete from SCENE_BLOCKS where SCENE_ID = ? and X = ? and Y = ?");
+    foreach (const QPoint& key, srec.removed) {
+        query.addBindValue(srec.id);
+        query.addBindValue(key.x());
+        query.addBindValue(key.y());
+        query.exec();
     }
 }
 
@@ -159,15 +183,13 @@ void SceneRepository::deleteScene (quint32 id)
 
 SceneRecord::Block::Block () :
     QIntVector(Size*Size, ' '),
-    _filled(0),
-    _dirty(false)
+    _filled(0)
 {
 }
 
 SceneRecord::Block::Block (const int* data) :
     QIntVector(Size*Size, ' '),
-    _filled(0),
-    _dirty(false)
+    _filled(0)
 {
     for (int* ptr = this->data(), *end = ptr + Size*Size; ptr < end; ptr++, data++) {
         _filled += ((*ptr = *data) != ' ');
@@ -179,7 +201,6 @@ void SceneRecord::Block::set (const QPoint& pos, int character)
     int& value = (*this)[(pos.y() & Mask) << LgSize | pos.x() & Mask];
     _filled += (value == ' ') - (character == ' ');
     value = character;
-    _dirty = true;
 }
 
 int SceneRecord::Block::get (const QPoint& pos) const
@@ -191,11 +212,31 @@ void SceneRecord::set (const QPoint& pos, int character)
 {
     QPoint key(pos.x() >> Block::LgSize, pos.y() >> Block::LgSize);
     Block& block = blocks[key];
+    int ofilled = block.filled();
     block.set(pos, character);
+
+    // perhaps remove, update delta sets
     if (block.filled() == 0) {
         blocks.remove(key);
+        if (ofilled != 0) { // removed
+            if (!added.remove(key)) {
+                updated.remove(key);
+                removed.insert(key);
+            }
+        }
+    } else {
+        if (ofilled == 0) { // added
+            if (removed.remove(key)) {
+                updated.insert(key);
+            } else {
+                added.insert(key);
+            }
+        } else { // updated
+            if (!added.contains(key)) {
+                updated.insert(key);
+            }
+        }
     }
-    blocksDirty = true;
 }
 
 int SceneRecord::get (const QPoint& pos) const
@@ -203,4 +244,11 @@ int SceneRecord::get (const QPoint& pos) const
     QPoint key(pos.x() >> Block::LgSize, pos.y() >> Block::LgSize);
     QHash<QPoint, Block>::const_iterator it = blocks.constFind(key);
     return (it == blocks.constEnd()) ? ' ' : (*it).get(pos);
+}
+
+void SceneRecord::clean ()
+{
+    added.clear();
+    updated.clear();
+    removed.clear();
 }

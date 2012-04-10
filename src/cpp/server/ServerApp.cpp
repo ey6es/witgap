@@ -127,6 +127,9 @@ void ServerApp::cleanup ()
     // shut down the database thread
     _databaseThread->exit();
     _databaseThread->wait();
+
+    // process events again in case debug messages were enqueued
+    processEvents();
 }
 
 void ServerApp::log (const QByteArray& msg)

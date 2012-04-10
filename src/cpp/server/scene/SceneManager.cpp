@@ -34,6 +34,9 @@ void SceneManager::startThreads ()
 
 void SceneManager::stopThreads ()
 {
+    foreach (Scene* scene, _scenes) {
+        QMetaObject::invokeMethod(scene, "flush");
+    }
     foreach (QThread* thread, _threads) {
         thread->exit();
         thread->wait();
@@ -67,11 +70,12 @@ void SceneManager::sceneMaybeLoaded (quint32 id, const SceneRecord& record)
     // create the scene if it resolved
     Scene* scene = 0;
     if (record.id != 0) {
-        scene = new Scene(_app, record);
+        _scenes.insert(id, scene = new Scene(_app, record));
 
         // assign to a thread in round-robin fashion
         _lastThreadIdx = (_lastThreadIdx + 1) % _threads.size();
         scene->moveToThread(_threads.at(_lastThreadIdx));
+        QMetaObject::invokeMethod(scene, "init");
     }
 
     // remove and notify the penders

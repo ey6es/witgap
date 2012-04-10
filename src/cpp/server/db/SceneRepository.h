@@ -10,6 +10,7 @@
 #include <QMetaType>
 #include <QObject>
 #include <QPoint>
+#include <QSet>
 
 #include "util/General.h"
 
@@ -118,9 +119,6 @@ public:
 
         /** The number of non-empty locations. */
         int _filled;
-
-        /** Whether or not the block is dirty and should be flushed to the database. */
-        bool _dirty;
     };
 
     /** The scene id. */
@@ -147,8 +145,8 @@ public:
     /** The scene blocks. */
     QHash<QPoint, Block> blocks;
 
-    /** Whether or not any of the blocks are dirty and should be flushed to the database. */
-    bool blocksDirty;
+    /** Keys of blocks added, updated, and removed since the last flush. */
+    QSet<QPoint> added, updated, removed;
 
     /**
      * Sets the value at the specified location.
@@ -159,6 +157,16 @@ public:
      * Returns the value at the specified location.
      */
     int get (const QPoint& pos) const;
+
+    /**
+     * Checks whether the blocks have changed.
+     */
+    bool dirty () const { return !(added.isEmpty() && updated.isEmpty() && removed.isEmpty()); }
+
+    /**
+     * Clears the update sets.
+     */
+    void clean ();
 };
 
 Q_DECLARE_METATYPE(SceneRecord)
