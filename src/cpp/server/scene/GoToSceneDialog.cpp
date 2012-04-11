@@ -30,6 +30,10 @@ GoToSceneDialog::GoToSceneDialog (Session* parent) :
     ncont->addChild(_name = new TextField(20, new Document("", 255)));
     connect(_name, SIGNAL(textChanged()), SLOT(updateSelection()));
 
+    addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, _showAll = new CheckBox(tr("Show All"))));
+    connect(_showAll, SIGNAL(pressed()), SLOT(updateList()));
+    _showAll->setVisible(parent->admin());
+
     addChild(_list = new ScrollingList());
     connect(_list, SIGNAL(selectionChanged()), SLOT(updateGo()));
 
@@ -44,9 +48,15 @@ GoToSceneDialog::GoToSceneDialog (Session* parent) :
     pack();
     center();
 
-    // request the list of the user's scenes
-    QMetaObject::invokeMethod(parent->app()->databaseThread()->sceneRepository(), "findScenes",
-        Q_ARG(const QString&, ""), Q_ARG(quint32, parent->user().id),
+    // request the list of scenes
+    updateList();
+}
+
+void GoToSceneDialog::updateList ()
+{
+    Session* session = this->session();
+    QMetaObject::invokeMethod(session->app()->databaseThread()->sceneRepository(), "findScenes",
+        Q_ARG(const QString&, ""), Q_ARG(quint32, _showAll->selected() ? 0 : session->user().id),
         Q_ARG(const Callback&, Callback(this, "setScenes(SceneDescriptorList)")));
 }
 

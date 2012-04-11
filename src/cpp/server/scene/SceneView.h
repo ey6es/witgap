@@ -66,10 +66,13 @@ protected:
     /**
      * Draws the component.
      */
-    virtual void draw (DrawContext* ctx) const;
+    virtual void draw (DrawContext* ctx);
 
     /** The bounds of the view in world space. */
     QRect _worldBounds;
+
+    /** The amount scrolled since the last render. */
+    QPoint _scrollAmount;
 };
 
 #endif // SCENE_VIEW

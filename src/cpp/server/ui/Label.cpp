@@ -140,7 +140,7 @@ void Label::validate ()
     _lines.append(Line(start, length));
 }
 
-void Label::draw (DrawContext* ctx) const
+void Label::draw (DrawContext* ctx)
 {
     Component::draw(ctx);
 
@@ -199,7 +199,7 @@ void StatusLabel::updateMargins ()
     _margins.setRight(_margins.right() + 1);
 }
 
-void StatusLabel::draw (DrawContext* ctx) const
+void StatusLabel::draw (DrawContext* ctx)
 {
     Label::draw(ctx);
 

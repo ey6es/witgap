@@ -46,6 +46,11 @@ public:
     static const QMetaMethod& setContentsMetaMethod ();
 
     /**
+     * Returns the meta-method for {@link #moveContents}.
+     */
+    static const QMetaMethod& moveContentsMetaMethod ();
+
+    /**
      * Returns the meta-method for {@link #setCookie}.
      */
     static const QMetaMethod& setCookieMetaMethod ();
@@ -116,7 +121,7 @@ public:
     Q_INVOKABLE void moveContents (int id, const QRect& source, const QPoint& dest, int fill);
 
     /**
-     * Sets the a client cookie.
+     * Sets a client cookie.
      */
     Q_INVOKABLE void setCookie (const QString& name, const QString& value);
 

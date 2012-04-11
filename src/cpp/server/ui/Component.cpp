@@ -181,7 +181,7 @@ void Component::maybeValidate ()
     }
 }
 
-void Component::maybeDraw (DrawContext* ctx) const
+void Component::maybeDraw (DrawContext* ctx)
 {
     if (_visible && ctx->isDirty(_bounds)) {
         QPoint tl = _bounds.topLeft();
@@ -287,6 +287,20 @@ void Component::dirty (const QRect& region)
     }
 }
 
+void Component::scrollDirty (const QPoint& delta)
+{
+    scrollDirty(QRect(0, 0, _bounds.width(), _bounds.height()), delta);
+}
+
+void Component::scrollDirty (const QRect& region, const QPoint& delta)
+{
+    // translate into parent coordinates
+    Component* pcomp = qobject_cast<Component*>(parent());
+    if (pcomp != 0) {
+        pcomp->scrollDirty(region.translated(_bounds.topLeft()), delta);
+    }
+}
+
 void Component::updateMargins ()
 {
     _margins = (_border == 0) ? QMargins() : _border->margins();
@@ -302,7 +316,7 @@ void Component::validate ()
     // nothing by default
 }
 
-void Component::draw (DrawContext* ctx) const
+void Component::draw (DrawContext* ctx)
 {
     // draw the background
     ctx->fillRect(0, 0, _bounds.width(), _bounds.height(), _background);
@@ -533,7 +547,7 @@ void Container::validate ()
     }
 }
 
-void Container::draw (DrawContext* ctx) const
+void Container::draw (DrawContext* ctx)
 {
     Component::draw(ctx);
 
@@ -660,6 +674,12 @@ void DrawContext::drawString (int x, int y, const QChar* string, int length, int
             *dptr++ = (*sptr).unicode() | style;
         }
     }
+}
+
+void DrawContext::moveContents (int x, int y, int width, int height, int dx, int dy)
+{
+    moveContents(QRect(x + _pos.x(), y + _pos.y(), width, height),
+        QPoint(dx + _pos.x(), dy + _pos.y()));
 }
 
 void DrawContext::prepareForDrawing ()

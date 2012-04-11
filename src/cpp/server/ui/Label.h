@@ -87,7 +87,7 @@ protected:
     /**
      * Draws the component.
      */
-    virtual void draw (DrawContext* ctx) const;
+    virtual void draw (DrawContext* ctx);
 
     /** The label text. */
     QIntVector _text;
@@ -129,7 +129,7 @@ protected:
     /**
      * Draws the component.
      */
-    virtual void draw (DrawContext* ctx) const;
+    virtual void draw (DrawContext* ctx);
 
     /**
      * Handles a timer event.

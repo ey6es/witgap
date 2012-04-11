@@ -107,6 +107,11 @@ public slots:
      */
     virtual void dirty (const QRect& region);
 
+    /**
+     * Scrolls a section of the dirty region.
+     */
+    virtual void scrollDirty (const QRect& region, const QPoint& delta);
+
 protected slots:
 
     /**
@@ -135,6 +140,11 @@ protected:
      * Handles a key press event.
      */
     virtual void keyPressEvent (QKeyEvent* e);
+
+    /**
+     * Moves part of the contents.
+     */
+    virtual void moveContents (const QRect& source, const QPoint& dest);
 
     /**
      * Updates the state of the window and synchronizes the client's state with it.

@@ -55,7 +55,7 @@ protected:
     /**
      * Draws the component.
      */
-    virtual void draw (DrawContext* ctx) const;
+    virtual void draw (DrawContext* ctx);
 
     /**
      * Handles a focus in event.
@@ -125,7 +125,7 @@ protected:
     /**
      * Draws the component.
      */
-    virtual void draw (DrawContext* ctx) const;
+    virtual void draw (DrawContext* ctx);
 
     /**
      * Handles a focus in event.

@@ -40,7 +40,7 @@ void Button::updateMargins ()
     _margins.setRight(_margins.right() + 1);
 }
 
-void Button::draw (DrawContext* ctx) const
+void Button::draw (DrawContext* ctx)
 {
     Label::draw(ctx);
 
@@ -110,7 +110,7 @@ void CheckBox::updateMargins ()
     _margins.setLeft(_margins.left() + 4);
 }
 
-void CheckBox::draw (DrawContext* ctx) const
+void CheckBox::draw (DrawContext* ctx)
 {
     Label::draw(ctx);
 

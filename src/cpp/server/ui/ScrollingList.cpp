@@ -64,7 +64,7 @@ QSize ScrollingList::computePreferredSize (int whint, int hhint) const
     return QSize(qMax(whint, maxLength + 2), qMax(hhint, _minHeight));
 }
 
-void ScrollingList::draw (DrawContext* ctx) const
+void ScrollingList::draw (DrawContext* ctx)
 {
     Component::draw(ctx);
 

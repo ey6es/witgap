@@ -35,12 +35,22 @@ void SceneView::setWorldBounds (const QRect& bounds)
         Scene* scene = session()->scene();
         if (scene == 0) {
             _worldBounds = bounds;
+            _scrollAmount = QPoint(0, 0);
+
         } else {
+            // detect scrolling
+            if (_worldBounds.size() == bounds.size() && _worldBounds.intersects(bounds)) {
+                QPoint delta = _worldBounds.topLeft() - bounds.topLeft();
+                _scrollAmount += delta;
+                scrollDirty(delta);
+            } else {
+                _scrollAmount = QPoint(0, 0);
+                dirty();
+            }
             scene->removeSpatial(this);
             _worldBounds = bounds;
             scene->addSpatial(this);
         }
-        dirty();
     }
 }
 
@@ -55,6 +65,7 @@ void SceneView::handleDidEnterScene (Scene* scene)
     }
     connect(scene, SIGNAL(propertiesChanged()), SLOT(maybeScroll()));
     scene->addSpatial(this);
+    _scrollAmount = QPoint(0, 0);
     dirty();
 }
 
@@ -101,9 +112,18 @@ void SceneView::invalidate ()
     setWorldBounds(QRect(_worldBounds.topLeft(), _bounds.size()));
 }
 
-void SceneView::draw (DrawContext* ctx) const
+void SceneView::draw (DrawContext* ctx)
 {
     Component::draw(ctx);
+
+    // apply scroll, if any
+    if (_scrollAmount != QPoint(0, 0)) {
+        QRect base(0, 0, _bounds.width(), _bounds.height());
+        QRect overlap = base.intersected(base.translated(_scrollAmount));
+        ctx->moveContents(overlap.x() - _scrollAmount.x(), overlap.y() - _scrollAmount.y(),
+            overlap.width(), overlap.height(), overlap.x(), overlap.y());
+        _scrollAmount = QPoint(0, 0);
+    }
 
     Scene* scene = session()->scene();
     if (scene == 0) {

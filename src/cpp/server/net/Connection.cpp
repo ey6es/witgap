@@ -40,6 +40,13 @@ const QMetaMethod& Connection::setContentsMetaMethod ()
     return method;
 }
 
+const QMetaMethod& Connection::moveContentsMetaMethod ()
+{
+    static QMetaMethod method = staticMetaObject.method(
+        staticMetaObject.indexOfMethod("moveContents(int,QRect,QPoint,int)"));
+    return method;
+}
+
 const QMetaMethod& Connection::setCookieMetaMethod ()
 {
     static QMetaMethod method = staticMetaObject.method(

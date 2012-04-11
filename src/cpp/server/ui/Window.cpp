@@ -134,6 +134,18 @@ void Window::dirty (const QRect& region)
     maybeEnqueueSync();
 }
 
+void Window::scrollDirty (const QRect& region, const QPoint& delta)
+{
+    QRect overlap = region.intersected(region.translated(delta));
+    QRegion moved = _dirty.intersected(overlap.translated(-delta.x(), -delta.y()));
+    moved.translate(delta);
+    _dirty += region;
+    _dirty -= QRegion(overlap);
+    _dirty += moved;
+
+    maybeEnqueueSync();
+}
+
 void Window::noteNeedsUpdate ()
 {
     _upToDate = false;
@@ -177,6 +189,12 @@ void Window::keyPressEvent (QKeyEvent* e)
     } else {
         Container::keyPressEvent(e);
     }
+}
+
+void Window::moveContents (const QRect& source, const QPoint& dest)
+{
+    Connection::moveContentsMetaMethod().invoke(session()->connection(), Q_ARG(int, _id),
+        Q_ARG(const QRect&, source), Q_ARG(const QPoint&, dest), Q_ARG(int, _background));
 }
 
 void Window::sync ()

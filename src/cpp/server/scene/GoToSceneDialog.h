@@ -8,6 +8,7 @@
 #include "ui/Window.h"
 
 class Button;
+class CheckBox;
 class ScrollingList;
 class Session;
 class TextField;
@@ -27,6 +28,11 @@ public:
     GoToSceneDialog (Session* parent);
 
 protected slots:
+
+    /**
+     * Updates the list based on the value of the show all checkbox.
+     */
+    void updateList ();
 
     /**
      * Updates the selected field based on the entered name.
@@ -52,6 +58,9 @@ protected:
 
     /** The scene name field. */
     TextField* _name;
+
+    /** The check box for showing all scenes, rather than just the ones owned. */
+    CheckBox* _showAll;
 
     /** The list of scene names. */
     ScrollingList* _list;

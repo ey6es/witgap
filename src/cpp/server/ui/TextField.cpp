@@ -116,7 +116,7 @@ void TextField::validate ()
     updateDocumentPos();
 }
 
-void TextField::draw (DrawContext* ctx) const
+void TextField::draw (DrawContext* ctx)
 {
     Component::draw(ctx);
 

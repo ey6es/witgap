@@ -59,7 +59,7 @@ EditUserDialog::EditUserDialog (Session* parent) :
     icont->addChild(new Label(tr("Password:")));
     icont->addChild(_password = new PasswordField(20,
         new RegExpDocument(PartialPasswordExp)));
-    _password->setLabel(tr("(Use Current)"));
+    _password->setLabel(tr("(Keep Current)"));
     connect(_password, SIGNAL(textChanged()), SLOT(updateApply()));
 
     icont->addChild(new Label(tr("Confirm Password:")));

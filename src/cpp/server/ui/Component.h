@@ -165,7 +165,7 @@ public:
     /**
      * Draws the component if necessary.
      */
-    void maybeDraw (DrawContext* ctx) const;
+    void maybeDraw (DrawContext* ctx);
 
     /**
      * Checks whether the component accepts input focus.
@@ -220,12 +220,22 @@ public slots:
     /**
      * Dirties the entire component.
      */
-    void dirty () { dirty(QRect(0, 0, _bounds.width(), _bounds.height())); };
+    void dirty () { dirty(QRect(0, 0, _bounds.width(), _bounds.height())); }
 
     /**
      * Marks the specified region as dirty.
      */
     virtual void dirty (const QRect& region);
+
+    /**
+     * Scrolls the entire component by the specified delta.
+     */
+    void scrollDirty (const QPoint& delta);
+
+    /**
+     * Scrolls a section of the dirty region.
+     */
+    virtual void scrollDirty (const QRect& region, const QPoint& delta);
 
 protected:
 
@@ -247,7 +257,7 @@ protected:
     /**
      * Draws the component.
      */
-    virtual void draw (DrawContext* ctx) const;
+    virtual void draw (DrawContext* ctx);
 
     /**
      * Handles a focus in event.
@@ -416,7 +426,7 @@ protected:
     /**
      * Draws the component.
      */
-    virtual void draw (DrawContext* ctx) const;
+    virtual void draw (DrawContext* ctx);
 
     /** The container's layout, if any. */
     Layout* _layout;
@@ -485,12 +495,22 @@ public:
      */
     void drawString (int x, int y, const QChar* string, int length, int style = 0);
 
+    /**
+     * Moves part of the contents.
+     */
+    void moveContents (int x, int y, int width, int height, int dx, int dy);
+
 protected:
 
     /**
      * Prepares the context for drawing.
      */
     void prepareForDrawing ();
+
+    /**
+     * Moves part of the contents.
+     */
+    virtual void moveContents (const QRect& source, const QPoint& dest) = 0;
 
     /** The draw position. */
     QPoint _pos;

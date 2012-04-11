@@ -171,7 +171,7 @@ protected:
     /**
      * Draws the component.
      */
-    virtual void draw (DrawContext* ctx) const;
+    virtual void draw (DrawContext* ctx);
 
     /**
      * Draws part of the text.

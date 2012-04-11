@@ -192,7 +192,7 @@ public class ClientApp extends Sprite {
             _socket.writeBytes(remainder);
         });
         var errorHandler :Function = function (event :Event) :void {
-            fatalError("No connection to server.  Please wait a while, then reload the page.");
+            fatalError("No connection to server.  Please wait a moment, then reload the page.");
         };
         _socket.addEventListener(Event.CLOSE, errorHandler);
         _socket.addEventListener(IOErrorEvent.IO_ERROR, errorHandler);
