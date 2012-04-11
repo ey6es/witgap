@@ -5,6 +5,7 @@ package {
 
 import flash.display.Bitmap;
 import flash.display.BitmapData;
+import flash.display.Shape;
 import flash.display.SimpleButton;
 import flash.display.Sprite;
 
@@ -17,6 +18,7 @@ import flash.events.KeyboardEvent;
 import flash.events.MouseEvent;
 import flash.events.ProgressEvent;
 import flash.events.SecurityErrorEvent;
+import flash.events.TimerEvent;
 
 import flash.external.ExternalInterface;
 
@@ -41,6 +43,7 @@ import flash.ui.Keyboard;
 import flash.utils.ByteArray;
 import flash.utils.IDataInput;
 import flash.utils.IDataOutput;
+import flash.utils.Timer;
 
 import com.hurlant.crypto.prng.Random;
 import com.hurlant.crypto.rsa.RSAKey;
@@ -133,6 +136,15 @@ public class ClientApp extends Sprite {
             showColorPicker();
         });
         setColors(getForeground(), getBackground());
+
+        // add the debug regions toggle if we're in development
+        if (DEBUG) {
+            contextMenu.customItems[1] = new ContextMenuItem("Toggle Debug Regions");
+            contextMenu.customItems[1].addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+                    function (event :ContextMenuEvent) :void {
+                _debugRegions = !_debugRegions;
+            });
+        }
 
         // listen for mouse and key events
         _field.addEventListener(MouseEvent.MOUSE_DOWN, sendMouseMessage);
@@ -729,7 +741,7 @@ public class ClientApp extends Sprite {
         var window :Window = getWindow(id);
         if (window != null) {
             addDirtyRegion(new Rectangle(window.bounds.x + bounds.x, window.bounds.y + bounds.y,
-                bounds.width, bounds.height));
+                bounds.width, bounds.height), 0x0000FF);
             window.setContents(bounds, contents);
         }
     }
@@ -743,9 +755,9 @@ public class ClientApp extends Sprite {
         var window :Window = getWindow(id);
         if (window != null) {
             addDirtyRegion(new Rectangle(window.bounds.x + source.x, window.bounds.y + source.y,
-                source.width, source.height));
+                source.width, source.height), 0xFF0000);
             addDirtyRegion(new Rectangle(window.bounds.x + dest.x, window.bounds.y + dest.y,
-                source.width, source.height));
+                source.width, source.height), 0x00FF00);
             window.moveContents(source, dest, fill);
         }
     }
@@ -780,9 +792,31 @@ public class ClientApp extends Sprite {
     /**
      * Adds a region to the rectangle that will need updating.
      */
-    protected function addDirtyRegion (region :Rectangle) :void
+    protected function addDirtyRegion (region :Rectangle, color :uint = 0xFFFFFF) :void
     {
         _dirty = _dirty.union(region);
+
+        if (_debugRegions) {
+            var cbounds :Rectangle = _field.getCharBoundaries(0);
+
+            // add the outline of the region
+            var shape :Shape = new Shape();
+            shape.graphics.lineStyle(1, color);
+            shape.graphics.drawRect(0, 0, cbounds.width*region.width,
+                cbounds.height*region.height);
+            shape.x = _field.x + cbounds.width*region.x +
+                (_field.width - cbounds.width*_width)/2;
+            shape.y = _field.y + cbounds.height*region.y +
+                (_field.height - cbounds.height*_height)/2;
+            addChild(shape);
+
+            // remove it after a second
+            var timer :Timer = new Timer(1000, 1);
+            timer.addEventListener(TimerEvent.TIMER_COMPLETE, function (event :TimerEvent) :void {
+                removeChild(shape);
+            });
+            timer.start();
+        }
     }
 
     /**
@@ -1020,6 +1054,12 @@ public class ClientApp extends Sprite {
 
     /** The current dirty region. */
     protected var _dirty :Rectangle = new Rectangle();
+
+    /** Whether or not to show the redraw regions. */
+    protected var _debugRegions :Boolean = false;
+
+    /** Whether or not we're running in debug mode. */
+    protected static var DEBUG :Boolean = true;
 
     /** Flag indicating that the character should be displayed in reverse. */
     protected static var REVERSE_FLAG :int = 0x10000;
