@@ -5,6 +5,7 @@
 
 #include "CommandMenu.h"
 #include "SettingsDialog.h"
+#include "actor/Pawn.h"
 #include "admin/AdminMenu.h"
 #include "net/Session.h"
 #include "scene/GoToSceneDialog.h"
@@ -30,9 +31,14 @@ CommandMenu::CommandMenu (Session* parent) :
     if (loggedOn) {
         addChild(new Label(QIntVector::createHighlighted(tr("&Go to Scene"))));
         addChild(new Label(QIntVector::createHighlighted(tr("&New Scene"))));
+
         Scene* scene = parent->scene();
-        if (scene != 0 && scene->canSetProperties(parent)) {
+        if (scene != 0 && scene->canEdit(parent)) {
             addChild(new Label(QIntVector::createHighlighted(tr("Scene &Properties"))));
+
+            if (parent->pawn() != 0) {
+                addChild(new Label(QIntVector::createHighlighted(tr("Toggle &Edit Mode"))));
+            }
         }
     }
 
@@ -47,11 +53,18 @@ void CommandMenu::keyPressEvent (QKeyEvent* e)
 {
     Session* session = this->session();
     Scene* scene = session->scene();
+    Pawn* pawn = session->pawn();
     switch (e->key()) {
         case Qt::Key_A:
             if (session->admin()) {
                 new AdminMenu(session);
                 deleteLater();
+            }
+            break;
+
+        case Qt::Key_E:
+            if (pawn != 0 && scene->canEdit(session)) {
+                pawn->setCursor(!pawn->cursor());
             }
             break;
 
@@ -79,7 +92,7 @@ void CommandMenu::keyPressEvent (QKeyEvent* e)
             break;
 
         case Qt::Key_P:
-            if (scene != 0 && scene->canSetProperties(session)) {
+            if (scene != 0 && scene->canEdit(session)) {
                 new ScenePropertiesDialog(session);
                 deleteLater();
             }

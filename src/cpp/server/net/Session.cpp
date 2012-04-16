@@ -10,6 +10,7 @@
 #include <QTranslator>
 #include <QtDebug>
 
+#include "ChatWindow.h"
 #include "LogonDialog.h"
 #include "MainWindow.h"
 #include "ServerApp.h"
@@ -55,6 +56,10 @@ Session::Session (ServerApp* app, Connection* connection,
     // create the main window
     _mainWindow = new MainWindow(this);
 
+    // and the chat windows
+    _chatWindow = new ChatWindow(this);
+    _chatEntryWindow = new ChatEntryWindow(this);
+
     setConnection(connection);
 }
 
@@ -84,12 +89,15 @@ void Session::setConnection (Connection* connection)
     // clear the modifiers
     _modifiers = Qt::KeyboardModifiers();
 
-    // position the main window
-    _mainWindow->setBounds(QRect(0, 0, _displaySize.width(), _displaySize.height()));
+    // position the main and chat windows
+    int width = _displaySize.width(), height = _displaySize.height();
+    _mainWindow->setBounds(QRect(0, 0, width, height));
+    _chatWindow->setBounds(QRect(3, height - 13, 40, 10));
+    _chatEntryWindow->setBounds(QRect(3, height - 2, 40, 1));
 
     // readd the windows
     foreach (Window* window, findChildren<Window*>()) {
-        window->resend();
+        window->maybeResend();
     }
 
     // check for a password reset request
@@ -135,13 +143,13 @@ void Session::setActiveWindow (Window* window)
 void Session::updateActiveWindow ()
 {
     if (_activeWindow != 0 && (_activeWindow->modal() || _activeWindow->focus() != 0) &&
-            !belowModal(_activeWindow)) {
+            _activeWindow->visible() && !belowModal(_activeWindow)) {
         return;
     }
     int hlayer = numeric_limits<int>::min();
     Window* hwindow = 0;
     foreach (Window* window, findChildren<Window*>()) {
-        if (window->layer() < hlayer) {
+        if (!window->visible() || window->layer() < hlayer) {
             continue;
         }
         // we want the highest window that's modal or that has a focus
@@ -159,7 +167,7 @@ void Session::requestFocus (Component* component)
     nwindow->setFocus(component);
 
     // we can only make it the active window if there are no modal windows above
-    if (!(nwindow == _activeWindow || belowModal(nwindow))) {
+    if (nwindow->visible() && !(nwindow == _activeWindow || belowModal(nwindow))) {
         setActiveWindow(nwindow);
     }
 }
@@ -419,7 +427,7 @@ void Session::dispatchMousePressed (int x, int y)
     Component* target = 0;
     QPoint absolute(x, y), relative(x, y);
     foreach (Window* window, findChildren<Window*>()) {
-        if (window->layer() < hlayer) {
+        if (!window->visible() || window->layer() < hlayer) {
             continue;
         }
         if (window->modal()) {
@@ -586,6 +594,9 @@ bool Session::belowModal (Window* window) const
     int layer = window->layer();
     bool after = false;
     foreach (Window* owindow, findChildren<Window*>()) {
+        if (!owindow->visible()) {
+            continue;
+        }
         int olayer = owindow->layer();
         if (owindow == window) {
             after = true;

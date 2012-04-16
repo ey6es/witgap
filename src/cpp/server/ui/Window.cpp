@@ -19,6 +19,7 @@ Window::Window (QObject* parent, int layer, bool modal, bool deleteOnEscape) :
     _focus(0),
     _active(false),
     _syncEnqueued(true),
+    _added(false),
     _upToDate(false)
 {
     // use an opaque background
@@ -40,7 +41,7 @@ Window::~Window ()
 {
     // if the session still exists and is connected, send a remove window message
     Session* session = this->session();
-    if (session != 0) {
+    if (session != 0 && _added) {
         Connection* connection = session->connection();
         if (connection != 0) {
             Connection::removeWindowMetaMethod().invoke(connection, Q_ARG(int, _id));
@@ -116,10 +117,27 @@ void Window::center ()
         (dsize.height() - wsize.height())/2), wsize));
 }
 
-void Window::resend()
+void Window::maybeResend ()
 {
-    noteNeedsUpdate();
-    Component::dirty();
+    _added = false;
+
+    if (_visible) {
+        noteNeedsUpdate();
+        Component::dirty();
+    }
+}
+
+void Window::setVisible (bool visible)
+{
+    if (_visible != visible) {
+        _visible = visible;
+        maybeEnqueueSync();
+        session()->updateActiveWindow();
+
+        if (visible) {
+            Component::dirty();
+        }
+    }
 }
 
 void Window::invalidate ()
@@ -180,6 +198,15 @@ void Window::validate ()
     }
 }
 
+void Window::draw (DrawContext* ctx)
+{
+    // if the background is zero, we must force a fill (else Component::draw will take care of it)
+    if (_background == 0) {
+        ctx->fillRect(0, 0, _bounds.width(), _bounds.height(), 0, true);
+    }
+    Container::draw(ctx);
+}
+
 void Window::keyPressEvent (QKeyEvent* e)
 {
     Qt::KeyboardModifiers modifiers = e->modifiers();
@@ -199,32 +226,48 @@ void Window::moveContents (const QRect& source, const QPoint& dest)
 
 void Window::sync ()
 {
+    // make sure we have a connection
     Connection* connection = session()->connection();
-    if (connection != 0) {
-        if (!_upToDate) {
-            Connection::updateWindowMetaMethod().invoke(connection, Q_ARG(int, _id),
-                Q_ARG(int, _layer), Q_ARG(const QRect&, _bounds), Q_ARG(int, _background));
-            _upToDate = true;
+    if (connection == 0) {
+        _syncEnqueued = false;
+        return;
+    }
+
+    // remove window if hidden
+    if (!_visible) {
+        if (_added) {
+            Connection::removeWindowMetaMethod().invoke(connection, Q_ARG(int, _id));
+            _added = false;
+        }
+        _syncEnqueued = false;
+        return;
+    }
+
+    // add or update window if necessary
+    if (!(_added && _upToDate)) {
+        Connection::updateWindowMetaMethod().invoke(connection, Q_ARG(int, _id),
+            Q_ARG(int, _layer), Q_ARG(const QRect&, _bounds), Q_ARG(int, _background));
+        _added = true;
+        _upToDate = true;
+    }
+
+    maybeValidate();
+
+    // clip the dirty region to the window bounds
+    _dirty &= QRect(0, 0, _bounds.width(), _bounds.height());
+    if (!_dirty.isEmpty()) {
+        prepareForDrawing();
+        draw(this);
+
+        // send the contents of the affected regions
+        const QMetaMethod& method = Connection::setContentsMetaMethod();
+        for (int ii = 0, nn = _rects.size(); ii < nn; ii++) {
+            method.invoke(connection, Q_ARG(int, _id), Q_ARG(const QRect&, _rects.at(ii)),
+                Q_ARG(const QIntVector&, _buffers.at(ii)));
         }
 
-        maybeValidate();
-
-        // clip the dirty region to the window bounds
-        _dirty &= QRect(0, 0, _bounds.width(), _bounds.height());
-        if (!_dirty.isEmpty()) {
-            prepareForDrawing();
-            draw(this);
-
-            // send the contents of the affected regions
-            const QMetaMethod& method = Connection::setContentsMetaMethod();
-            for (int ii = 0, nn = _rects.size(); ii < nn; ii++) {
-                method.invoke(connection, Q_ARG(int, _id), Q_ARG(const QRect&, _rects.at(ii)),
-                    Q_ARG(const QIntVector&, _buffers.at(ii)));
-            }
-
-            // clear the dirty region
-            _dirty = QRegion();
-        }
+        // clear the dirty region
+        _dirty = QRegion();
     }
     _syncEnqueued = false;
 }

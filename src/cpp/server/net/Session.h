@@ -15,6 +15,8 @@
 class QEvent;
 class QTranslator;
 
+class ChatEntryWindow;
+class ChatWindow;
 class Connection;
 class MainWindow;
 class Pawn;
@@ -115,6 +117,16 @@ public:
      * encryption will be disabled.
      */
     void decrementCryptoCount ();
+
+    /**
+     * Returns a pointer to the chat window.
+     */
+    ChatWindow* chatWindow () const { return _chatWindow; }
+
+    /**
+     * Returns a pointer to the chat entry window.
+     */
+    ChatEntryWindow* chatEntryWindow () const { return _chatEntryWindow; }
 
     /**
      * Sets the active window.
@@ -319,6 +331,12 @@ protected:
 
     /** The main client window. */
     MainWindow* _mainWindow;
+
+    /** The chat display window. */
+    ChatWindow* _chatWindow;
+
+    /** The chat entry window. */
+    ChatEntryWindow* _chatEntryWindow;
 
     /** The current set of key modifiers. */
     Qt::KeyboardModifiers _modifiers;

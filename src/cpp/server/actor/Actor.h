@@ -58,6 +58,11 @@ public:
      */
     const QPoint& position () const { return _position; }
 
+    /**
+     * Notifies the actor that the location under it has changed in the scene record.
+     */
+    virtual void sceneChangedUnderneath (int character) { };
+
 signals:
 
     /**

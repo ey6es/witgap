@@ -22,9 +22,9 @@ Actor::~Actor ()
 void Actor::setCharacter (int character)
 {
     if (_character != character) {
-        _scene->removeSpatial(this);
+        int ochar = _character;
         _character = character;
-        _scene->addSpatial(this);
+        _scene->characterChanged(this, ochar);
     }
 }
 

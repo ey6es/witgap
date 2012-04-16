@@ -4,6 +4,7 @@
 #include <QMetaObject>
 #include <QtDebug>
 
+#include "ChatWindow.h"
 #include "Protocol.h"
 #include "ServerApp.h"
 #include "actor/Pawn.h"
@@ -95,7 +96,7 @@ void Scene::init ()
     }
 }
 
-bool Scene::canSetProperties (Session* session) const
+bool Scene::canEdit (Session* session) const
 {
     return session->admin() || session->user().id == _record.creatorId;
 }
@@ -120,8 +121,11 @@ void Scene::set (const QPoint& pos, int character)
     // set in the record
     _record.set(pos, character);
 
-    // if there's no actor at the location, set in the contents
-    if (!_actors.contains(pos)) {
+    // notify the top actor at the position, if any; otherwise, set in the contents
+    Actor* actor = _actors.value(pos);
+    if (actor != 0) {
+        actor->sceneChangedUnderneath(character);
+    } else {
         setInBlocks(pos, character);
     }
 }
@@ -136,7 +140,7 @@ void Scene::remove ()
 Pawn* Scene::addSession (Session* session)
 {
     session->setParent(this);
-    return new Pawn(this, session->record().avatar, QPoint(0, 0));
+    return new Pawn(this, session, QPoint(0, 0));
 }
 
 void Scene::removeSession (Session* session)
@@ -168,10 +172,10 @@ void Scene::addSpatial (Actor* actor)
     setInBlocks(pos, character);
 }
 
-void Scene::removeSpatial (Actor* actor)
+void Scene::removeSpatial (Actor* actor, int character)
 {
     // ignore invisible actors
-    if (actor->character() == ' ') {
+    if (character == ' ') {
         return;
     }
 
@@ -189,18 +193,39 @@ void Scene::removeSpatial (Actor* actor)
         return;
     }
     Actor* next = actor->next();
-    int character;
+    int nchar;
     if (next == 0) {
         _actors.remove(pos);
-        character = _record.get(pos);
+        nchar = _record.get(pos);
     } else {
         aref = next;
         actor->setNext(0);
-        character = next->character();
+        nchar = next->character();
     }
 
     // update block and dirty
-    setInBlocks(pos, character);
+    setInBlocks(pos, nchar);
+}
+
+void Scene::characterChanged (Actor* actor, int ochar)
+{
+    // handle transitions between visible and invisible
+    int nchar = actor->character();
+    if (nchar == ' ') {
+        if (ochar != ' ') {
+            removeSpatial(actor, ochar);
+        }
+        return;
+    }
+    if (ochar == ' ') {
+        addSpatial(actor);
+        return;
+    }
+    const QPoint& pos = actor->position();
+    Actor* pactor = _actors.value(pos);
+    if (pactor == actor) {
+        setInBlocks(pos, nchar);
+    }
 }
 
 void Scene::addSpatial (SceneView* view)
@@ -233,6 +258,20 @@ void Scene::removeSpatial (SceneView* view)
             list.removeOne(view);
             if (list.isEmpty()) {
                 _views.remove(key);
+            }
+        }
+    }
+}
+
+void Scene::say (const QPoint& pos, const QString& speaker, const QString& message)
+{
+    QPoint key(pos.x() >> LgViewBlockSize, pos.y() >> LgViewBlockSize);
+    QHash<QPoint, SceneViewList>::const_iterator it = _views.constFind(key);
+    if (it != _views.constEnd()) {
+        foreach (SceneView* view, *it) {
+            const QRect& vbounds = view->worldBounds();
+            if (vbounds.contains(pos)) {
+                view->session()->chatWindow()->displayMessage(speaker, message);
             }
         }
     }

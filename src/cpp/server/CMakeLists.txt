@@ -10,8 +10,9 @@ add_subdirectory(net)
 add_subdirectory(scene)
 add_subdirectory(ui)
 
-set(HEADERS CommandMenu.h LogonDialog.h MainWindow.h ServerApp.h SettingsDialog.h)
-set(SOURCES CommandMenu.cpp LogonDialog.cpp MainWindow.cpp ServerApp.cpp SettingsDialog.cpp)
+set(HEADERS ChatWindow.h CommandMenu.h LogonDialog.h MainWindow.h ServerApp.h SettingsDialog.h)
+set(SOURCES ChatWindow.cpp CommandMenu.cpp LogonDialog.cpp
+    MainWindow.cpp ServerApp.cpp SettingsDialog.cpp)
 
 qt4_wrap_cpp(SOURCES ${HEADERS})
 add_executable(witgap-server ${SOURCES} ${HEADERS} main.cpp)

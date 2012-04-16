@@ -7,9 +7,9 @@
 #include <QList>
 #include <QObject>
 
+#include "actor/Actor.h"
 #include "db/SceneRepository.h"
 
-class Actor;
 class Pawn;
 class SceneBlock;
 class SceneView;
@@ -93,9 +93,9 @@ public:
     const QHash<QPoint, Block>& blocks () const { return _blocks; }
 
     /**
-     * Checks whether the specified session can edit the scene properties.
+     * Checks whether the specified session can edit the scene.
      */
-    bool canSetProperties (Session* session) const;
+    bool canEdit (Session* session) const;
 
     /**
      * Sets the scene properties.
@@ -126,15 +126,28 @@ public:
 
     /**
      * Adds the specified actor's visual representation to the scene contents.  This is done when
-     * the actor is created, and just after the actor is moved/changed.
+     * the actor is created, and just after the actor is moved.
      */
     void addSpatial (Actor* actor);
 
     /**
      * Removes the specified actor's visual representation from the scene contents.  This is done
-     * when the actor is destroyed, and just before the actor is moved/changed.
+     * when the actor is destroyed, and just before the actor is moved.
      */
-    void removeSpatial (Actor* actor);
+    void removeSpatial (Actor* actor) { removeSpatial(actor, actor->character()); };
+
+    /**
+     * Removes the specified actor's visual representation from the scene contents.  This is done
+     * when the actor is destroyed, and just before the actor is moved.
+     */
+    void removeSpatial (Actor* actor, int character);
+
+    /**
+     * Notes that an actor's character has changed.
+     *
+     * @param ocharacter the previous character.
+     */
+    void characterChanged (Actor* actor, int ochar);
 
     /**
      * Adds a scene view to the map.  This is done when the session is added, and just after the
@@ -147,6 +160,11 @@ public:
      * before the view is moved/resized.
      */
     void removeSpatial (SceneView* view);
+
+    /**
+     * Sends a message to all views intersecting the specified location.
+     */
+    void say (const QPoint& pos, const QString& speaker, const QString& message);
 
 signals:
 

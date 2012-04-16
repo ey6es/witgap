@@ -3,6 +3,7 @@
 
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QtDebug>
 
 #include "Protocol.h"
 #include "ui/TextField.h"

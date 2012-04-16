@@ -91,9 +91,14 @@ public:
     void center ();
 
     /**
-     * Causes the window's state and contents to be resent (called on reconnect).
+     * Causes the window's state and contents to be resent if visible (called on reconnect).
      */
-    void resend();
+    void maybeResend ();
+
+    /**
+     * Renders the window visible or invisible.
+     */
+    virtual void setVisible (bool visible);
 
 public slots:
 
@@ -137,6 +142,11 @@ protected:
     virtual void validate ();
 
     /**
+     * Draws the component.
+     */
+    virtual void draw (DrawContext* ctx);
+
+    /**
      * Handles a key press event.
      */
     virtual void keyPressEvent (QKeyEvent* e);
@@ -176,6 +186,9 @@ protected:
 
     /** Whether or not a sync is currently enqueued. */
     bool _syncEnqueued;
+
+    /** Whether or not the window has been added on the client. */
+    bool _added;
 
     /** Whether or not the window is up-to-date. */
     bool _upToDate;

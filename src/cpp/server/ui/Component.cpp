@@ -578,10 +578,10 @@ void DrawContext::drawChar (int x, int y, int ch)
     }
 }
 
-void DrawContext::fillRect (int x, int y, int width, int height, int ch)
+void DrawContext::fillRect (int x, int y, int width, int height, int ch, bool force)
 {
     // zero implies transparent
-    if (ch == 0) {
+    if (ch == 0 && !force) {
         return;
     }
 

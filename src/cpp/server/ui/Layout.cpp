@@ -247,7 +247,7 @@ void BoxLayout::apply (Container* container) const
             if (valign == Qt::AlignVCenter) {
                 y += (height - totalHeight) / 2;
             } else if (valign == Qt::AlignBottom) {
-                x += height - totalHeight;
+                y += height - totalHeight;
             }
         }
 

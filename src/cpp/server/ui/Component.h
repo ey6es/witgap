@@ -150,7 +150,7 @@ public:
     /**
      * Renders the component visible or invisible.
      */
-    void setVisible (bool visible);
+    virtual void setVisible (bool visible);
 
     /**
      * Checks whether the component is visible.
@@ -474,8 +474,10 @@ public:
 
     /**
      * Fills a rectangle with the supplied character.
+     *
+     * @param force if true, fill the rectangle even if the character is zero.
      */
-    void fillRect (int x, int y, int width, int height, int ch);
+    void fillRect (int x, int y, int width, int height, int ch, bool force = false);
 
     /**
      * Draws the supplied contents.

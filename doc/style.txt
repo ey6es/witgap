@@ -64,3 +64,7 @@ don't repeat yourself: a couple repetitions is OK, but once you repeat something
 times, or if it's a lengthy block, break it out into a function/class
 
 break overlong functions/overlarge classes into multiple functions/contained classes
+
+YAGNI
+
+Use local variables rather than repeating the same getter(s)

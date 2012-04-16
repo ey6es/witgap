@@ -2,7 +2,9 @@
 // $Id$
 
 #include <QKeyEvent>
+#include <QtDebug>
 
+#include "ChatWindow.h"
 #include "CommandMenu.h"
 #include "MainWindow.h"
 #include "actor/Pawn.h"
@@ -25,15 +27,24 @@ MainWindow::MainWindow (Session* parent) :
 
 void MainWindow::keyPressEvent (QKeyEvent* e)
 {
-    int key = e->key();
     Qt::KeyboardModifiers modifiers = e->modifiers();
-    if ((key == Qt::Key_Alt || key == Qt::Key_Escape) && modifiers == Qt::NoModifier) {
-        new CommandMenu(session());
-        return;
+    Session* session = this->session();
+    if (modifiers == Qt::NoModifier) {
+        switch (e->key()) {
+            case Qt::Key_Alt:
+            case Qt::Key_Escape:
+                new CommandMenu(session);
+                return;
+
+            case Qt::Key_Enter:
+            case Qt::Key_Return:
+                session->chatEntryWindow()->setVisible(true);
+                return;
+        }
     }
 
     // give the pawn, if any, a chance to process the event
-    Pawn* pawn = session()->pawn();
+    Pawn* pawn = session->pawn();
     if (pawn != 0) {
         pawn->keyPressEvent(e);
         if (e->isAccepted()) {

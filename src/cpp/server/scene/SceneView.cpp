@@ -56,6 +56,9 @@ void SceneView::setWorldBounds (const QRect& bounds)
 
 void SceneView::handleDidEnterScene (Scene* scene)
 {
+    scene->addSpatial(this);
+    connect(scene, SIGNAL(propertiesChanged()), SLOT(maybeScroll()));
+
     Pawn* pawn = session()->pawn();
     if (pawn != 0) {
         // center around the pawn and adjust when it moves
@@ -63,8 +66,6 @@ void SceneView::handleDidEnterScene (Scene* scene)
         QSize size = _bounds.size();
         setWorldBounds(QRect(pawn->position() - QPoint(size.width()/2, size.height()/2), size));
     }
-    connect(scene, SIGNAL(propertiesChanged()), SLOT(maybeScroll()));
-    scene->addSpatial(this);
     _scrollAmount = QPoint(0, 0);
     dirty();
 }
