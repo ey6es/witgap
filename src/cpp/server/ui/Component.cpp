@@ -463,6 +463,14 @@ void Container::removeChild (Component* child)
     }
 }
 
+void Container::removeChildAt (int idx)
+{
+    Component* child = _children.takeAt(idx);
+    dirty(child->bounds());
+    child->setParent(0);
+    invalidate();
+}
+
 int Container::visibleChildCount () const
 {
     int total = 0;

@@ -271,7 +271,7 @@ void Scene::say (const QPoint& pos, const QString& speaker, const QString& messa
         foreach (SceneView* view, *it) {
             const QRect& vbounds = view->worldBounds();
             if (vbounds.contains(pos)) {
-                view->session()->chatWindow()->displayMessage(speaker, message);
+                view->session()->chatWindow()->display(speaker, message);
             }
         }
     }

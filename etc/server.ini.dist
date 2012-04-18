@@ -27,3 +27,10 @@ mail_from = noreply@witgap.com
 
 ; The number of threads to create for scenes, or -1 for max(1, number of cores - 1)
 scene_threads = -1
+
+; The directory in which translation files are stored
+translation_directory = /export/witgap/etc
+
+; The space-delimited supported translation locales.  Always put en first, and country-specific
+; locales after their corresponding languages (e.g., "fr" before "fr_CA")
+translation_locales = en

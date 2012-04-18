@@ -4,8 +4,13 @@
 #ifndef CHAT_WINDOW
 #define CHAT_WINDOW
 
+#include <QHash>
+#include <QMap>
+#include <QStringList>
+
 #include "ui/Window.h"
 
+class ChatCommandHandler;
 class Label;
 class TextField;
 
@@ -26,7 +31,12 @@ public:
     /**
      * Displays a message.
      */
-    void displayMessage (const QString& speaker, const QString& message);
+    void display (const QString& speaker, const QString& message);
+
+    /**
+     * Displays message text.
+     */
+    void display (const QString& text);
 };
 
 /**
@@ -67,6 +77,9 @@ protected:
 
     /** The entry field. */
     TextField* _field;
+
+    /** Maps command aliases to handlers. */
+    QMap<QString, ChatCommandHandler*> _commands;
 };
 
 #endif // CHAT_WINDOW

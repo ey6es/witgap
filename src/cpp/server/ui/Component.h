@@ -386,6 +386,11 @@ public:
     void removeChild (Component* child);
 
     /**
+     * Removes the child at the specified index.
+     */
+    void removeChildAt (int idx);
+
+    /**
      * Returns the container's child list.
      */
     const QList<Component*>& children () const { return _children; }

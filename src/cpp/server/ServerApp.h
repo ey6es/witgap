@@ -5,9 +5,11 @@
 #define SERVER_APP
 
 #include <QCoreApplication>
+#include <QHash>
 #include <QSettings>
 
 class QByteArray;
+class QTranslator;
 
 class Callback;
 class ConnectionManager;
@@ -44,6 +46,16 @@ public:
      * Returns the address to which bug reports should be sent.
      */
     const QString& bugReportAddress () const { return _bugReportAddress; }
+
+    /**
+     * Given a locale code, returns the best supported locale.
+     */
+    QString translationLocale (const QString& locale) const;
+
+    /**
+     * Returns a reference to the map from supported locales to translators.
+     */
+    const QHash<QString, QTranslator*>& translators () const { return _translators; }
 
     /**
      * Returns a pointer to the connection manager.
@@ -103,6 +115,9 @@ protected:
 
     /** The email from address. */
     QString _mailFrom;
+
+    /** Translators for supported locales. */
+    QHash<QString, QTranslator*> _translators;
 
     /** The connection manager. */
     ConnectionManager* _connectionManager;

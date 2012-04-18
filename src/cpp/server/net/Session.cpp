@@ -116,6 +116,11 @@ QString Session::who () const
     return (_user.id == 0) ? QString::number(_record.id) : _user.name;
 }
 
+QString Session::locale () const
+{
+    return "en";
+}
+
 int Session::highestWindowLayer () const
 {
     int highest = 0;

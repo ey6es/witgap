@@ -8,8 +8,10 @@
 #include <QByteArray>
 #include <QDateTime>
 #include <QMetaObject>
+#include <QStringList>
 #include <QThreadPool>
 #include <QTimer>
+#include <QTranslator>
 #include <QtDebug>
 
 #include "ServerApp.h"
@@ -61,6 +63,63 @@ void logHandler (QtMsgType type, const char* msg)
     }
 }
 
+/**
+ * A translator that returns the untranslated text if a translation isn't found.
+ */
+class SourceTranslator : public QTranslator
+{
+public:
+
+    /**
+     * Creates a new source translator.
+     */
+    SourceTranslator (QObject* parent = 0) : QTranslator(parent) { }
+
+    /**
+     * Translates a string.
+     */
+    virtual QString translate (
+        const char* context, const char* sourceText, const char* disambiguation = 0) const;
+};
+
+QString SourceTranslator::translate (
+    const char* context, const char* sourceText, const char* disambiguation) const
+{
+    QString result = QTranslator::translate(context, sourceText, disambiguation);
+    return result.isEmpty() ? sourceText : result;
+}
+
+/**
+ * A translator that forwards requests without translations to a parent.
+ */
+class ForwardingTranslator : public QTranslator
+{
+public:
+
+    /**
+     * Creates a new forwarding translator.
+     */
+    ForwardingTranslator (QTranslator* parent) : QTranslator(parent), _parent(parent) { }
+
+    /**
+     * Translates a string.
+     */
+    virtual QString translate (
+        const char* context, const char* sourceText, const char* disambiguation = 0) const;
+
+protected:
+
+    /** The parent translator. */
+    QTranslator* _parent;
+};
+
+QString ForwardingTranslator::translate (
+    const char* context, const char* sourceText, const char* disambiguation) const
+{
+    QString result = QTranslator::translate(context, sourceText, disambiguation);
+    return result.isEmpty() ? _parent->translate(context, sourceText, disambiguation) : result;
+}
+
 ServerApp::ServerApp (int& argc, char** argv, const QString& configFile) :
     QCoreApplication(argc, argv),
     _config(configFile, QSettings::IniFormat, this),
@@ -76,6 +135,24 @@ ServerApp::ServerApp (int& argc, char** argv, const QString& configFile) :
 
     // register the log handler
     qInstallMsgHandler(logHandler);
+
+    // load translators for supported locales
+    QString tdir = _config.value("translation_directory").toString();
+    foreach (const QString& locale, _config.value("translation_locales").toString().split(' ')) {
+        QTranslator* translator;
+        if (locale == "en") {
+            translator = new SourceTranslator(this);
+        } else {
+            // forward to the parent language, if any; else, to English
+            int idx = locale.indexOf('_');
+            translator = new ForwardingTranslator(_translators.value(
+                idx == -1 ? "en" : locale.left(idx)));
+        }
+        if (!translator->load(locale, tdir)) {
+            qWarning() << "Failed to load translation file." << locale;
+        }
+        _translators.insert(locale, translator);
+    }
 
     // start the idle timer
     QTimer* timer = new QTimer(this);
@@ -98,6 +175,27 @@ ServerApp::ServerApp (int& argc, char** argv, const QString& configFile) :
 
     // note startup
     qDebug() << "Server initialized.";
+}
+
+QString ServerApp::translationLocale (const QString& locale) const
+{
+    // first look for an exact match
+    if (_translators.contains(locale)) {
+        return locale;
+    }
+    // if there's a separator, look for just the language
+    int idx = locale.indexOf('-');
+    if (idx == -1) {
+        idx = locale.indexOf('_');
+    }
+    if (idx != -1) {
+        QString language = locale.left(idx);
+        if (_translators.contains(language)) {
+            return language;
+        }
+    }
+    // return the default
+    return "en";
 }
 
 void ServerApp::sendMail (const QString& to, const QString& subject,

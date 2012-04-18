@@ -66,6 +66,11 @@ public:
     QString who () const;
 
     /**
+     * Returns the supported locale of the session.
+     */
+    QString locale () const;
+
+    /**
      * Checks whether the session is associated with a logged-on user.
      */
     bool loggedOn () const { return _user.id != 0; }
