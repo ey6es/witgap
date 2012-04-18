@@ -2,6 +2,7 @@
 // $Id$
 
 #include <QKeyEvent>
+#include <QTranslator>
 
 #include "CommandMenu.h"
 #include "SettingsDialog.h"
@@ -16,7 +17,7 @@
 #include "ui/Layout.h"
 
 // translate through the session
-#define tr(...) session()->translate("CommandMenu", __VA_ARGS__)
+#define tr(...) this->session()->translator()->translate("CommandMenu", __VA_ARGS__)
 
 CommandMenu::CommandMenu (Session* parent) :
     Window(parent, parent->highestWindowLayer(), true, true)

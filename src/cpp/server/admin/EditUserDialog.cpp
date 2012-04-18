@@ -2,6 +2,7 @@
 // $Id$
 
 #include <QMetaObject>
+#include <QTranslator>
 
 #include "LogonDialog.h"
 #include "ServerApp.h"
@@ -17,7 +18,7 @@
 #include "util/Callback.h"
 
 // translate through the session
-#define tr(...) session()->translate("EditUserDialog", __VA_ARGS__)
+#define tr(...) this->session()->translator()->translate("EditUserDialog", __VA_ARGS__)
 
 EditUserDialog::EditUserDialog (Session* parent) :
     EncryptedWindow(parent, parent->highestWindowLayer(), true, true),

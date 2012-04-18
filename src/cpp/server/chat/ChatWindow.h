@@ -54,6 +54,17 @@ public:
     ChatEntryWindow (Session* parent);
 
     /**
+     * Returns the command handler for the specified command (or command prefix), or
+     * 0 if not found/ambiguous (in which case a message will be posted to the display).
+     */
+    ChatCommandHandler* getCommandHandler (const QString& cmd) const;
+
+    /**
+     * Returns a reference to the active command handler map.
+     */
+    const QMap<QString, ChatCommandHandler*>& commandHandlers () const { return _commandHandlers; }
+
+    /**
      * Renders the window visible or invisible.
      */
     virtual void setVisible (bool visible);
@@ -79,7 +90,7 @@ protected:
     TextField* _field;
 
     /** Maps command aliases to handlers. */
-    QMap<QString, ChatCommandHandler*> _commands;
+    QMap<QString, ChatCommandHandler*> _commandHandlers;
 };
 
 #endif // CHAT_WINDOW

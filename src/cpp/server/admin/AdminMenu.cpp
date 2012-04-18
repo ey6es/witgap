@@ -2,6 +2,7 @@
 // $Id$
 
 #include <QKeyEvent>
+#include <QTranslator>
 
 #include "admin/AdminMenu.h"
 #include "admin/EditUserDialog.h"
@@ -11,7 +12,7 @@
 #include "ui/Layout.h"
 
 // translate through the session
-#define tr(...) session()->translate("AdminMenu", __VA_ARGS__)
+#define tr(...) this->session()->translator()->translate("AdminMenu", __VA_ARGS__)
 
 AdminMenu::AdminMenu (Session* parent) :
     Window(parent, parent->highestWindowLayer())

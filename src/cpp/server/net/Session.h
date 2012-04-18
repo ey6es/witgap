@@ -149,6 +149,11 @@ public:
     void updateActiveWindow ();
 
     /**
+     * Returns a pointer to the translator used by the session.
+     */
+    QTranslator* translator () const { return _translator; }
+
+    /**
      * Requests focus for the specified component.
      */
     void requestFocus (Component* component);
@@ -222,12 +227,6 @@ public:
      * Sets the user's settings.
      */
     void setSettings (const QString& password, const QString& email, QChar avatar);
-
-    /**
-     * Translates a string using the user's preferred language.
-     */
-    QString translate (
-        const char* context, const char* sourceText, const char* disambiguation = 0, int n = -1);
 
     /**
      * Handles an event.

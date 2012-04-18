@@ -1,6 +1,8 @@
 //
 // $Id$
 
+#include <QTranslator>
+
 #include <limits>
 
 #include "net/Session.h"
@@ -14,7 +16,7 @@
 #include "util/Callback.h"
 
 // translate through the session
-#define tr(...) session()->translate("ScenePropertiesDialog", __VA_ARGS__)
+#define tr(...) this->session()->translator()->translate("ScenePropertiesDialog", __VA_ARGS__)
 
 using namespace std;
 

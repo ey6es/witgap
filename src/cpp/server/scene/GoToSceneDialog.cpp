@@ -2,6 +2,7 @@
 // $Id$
 
 #include <QMetaObject>
+#include <QTranslator>
 
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
@@ -16,7 +17,7 @@
 #include "util/Callback.h"
 
 // translate through the session
-#define tr(...) session()->translate("GoToSceneDialog", __VA_ARGS__)
+#define tr(...) this->session()->translator()->translate("GoToSceneDialog", __VA_ARGS__)
 
 GoToSceneDialog::GoToSceneDialog (Session* parent) :
     Window(parent, parent->highestWindowLayer(), true, true)

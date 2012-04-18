@@ -4,10 +4,10 @@
 #include <QMetaObject>
 #include <QtDebug>
 
-#include "ChatWindow.h"
 #include "Protocol.h"
 #include "ServerApp.h"
 #include "actor/Pawn.h"
+#include "chat/ChatWindow.h"
 #include "db/DatabaseThread.h"
 #include "net/Session.h"
 #include "scene/Scene.h"

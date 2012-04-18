@@ -2,6 +2,7 @@
 // $Id$
 
 #include <QDate>
+#include <QTranslator>
 #include <QtDebug>
 
 #include "LogonDialog.h"
@@ -18,7 +19,7 @@
 #include "util/Callback.h"
 
 // translate through the session
-#define tr(...) session()->translate("LogonDialog", __VA_ARGS__)
+#define tr(...) this->session()->translator()->translate("LogonDialog", __VA_ARGS__)
 
 LogonDialog::LogonDialog (Session* parent, const QString& username) :
     EncryptedWindow(parent, parent->highestWindowLayer(), true, true),

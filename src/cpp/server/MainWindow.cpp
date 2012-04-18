@@ -2,19 +2,20 @@
 // $Id$
 
 #include <QKeyEvent>
+#include <QTranslator>
 #include <QtDebug>
 
-#include "ChatWindow.h"
 #include "CommandMenu.h"
 #include "MainWindow.h"
 #include "actor/Pawn.h"
+#include "chat/ChatWindow.h"
 #include "net/Session.h"
 #include "scene/SceneView.h"
 #include "ui/Border.h"
 #include "ui/Layout.h"
 
 // translate through the session
-#define tr(...) session()->translate("MainWindow", __VA_ARGS__)
+#define tr(...) this->session()->translator()->translate("MainWindow", __VA_ARGS__)
 
 MainWindow::MainWindow (Session* parent) :
     Window(parent, 0, true)

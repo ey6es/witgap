@@ -1,6 +1,8 @@
 //
 // $Id$
 
+#include <QTranslator>
+
 #include "LogonDialog.h"
 #include "SettingsDialog.h"
 #include "net/Session.h"
@@ -11,7 +13,7 @@
 #include "ui/TextField.h"
 
 // translate through the session
-#define tr(...) session()->translate("CommandMenu", __VA_ARGS__)
+#define tr(...) this->session()->translator()->translate("CommandMenu", __VA_ARGS__)
 
 /** The avatar expression. */
 const QRegExp AvatarExp("[a-zA-Z0-9]?");

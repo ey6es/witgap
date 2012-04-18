@@ -10,11 +10,11 @@
 #include <QTranslator>
 #include <QtDebug>
 
-#include "ChatWindow.h"
 #include "LogonDialog.h"
 #include "MainWindow.h"
 #include "ServerApp.h"
 #include "SettingsDialog.h"
+#include "chat/ChatWindow.h"
 #include "db/DatabaseThread.h"
 #include "db/SceneRepository.h"
 #include "net/Connection.h"
@@ -28,8 +28,8 @@
 #include "ui/Layout.h"
 #include "ui/Window.h"
 
-// translate through the session
-#define tr(...) translate("Session", __VA_ARGS__)
+// translate through the translator
+#define tr(...) _translator->translate("Session", __VA_ARGS__)
 
 using namespace std;
 
@@ -44,7 +44,7 @@ Session::Session (ServerApp* app, Connection* connection,
     _mousePressed(false),
     _moused(0),
     _activeWindow(0),
-    _translator(0),
+    _translator(app->translators().value(locale())),
     _user(user),
     _scene(0),
     _pawn(0)
@@ -359,18 +359,6 @@ void Session::setSettings (const QString& password, const QString& email, QChar 
         QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "updateUser",
             Q_ARG(const UserRecord&, _user), Q_ARG(const Callback&, Callback()));
     }
-}
-
-QString Session::translate (
-    const char* context, const char* sourceText, const char* disambiguation, int n)
-{
-    if (_translator != 0) {
-        QString translated = _translator->translate(context, sourceText, disambiguation, n);
-        if (!translated.isEmpty()) {
-            return translated;
-        }
-    }
-    return QString(sourceText);
 }
 
 bool Session::event (QEvent* e)
