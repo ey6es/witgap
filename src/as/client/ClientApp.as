@@ -5,6 +5,7 @@ package {
 
 import flash.display.Bitmap;
 import flash.display.BitmapData;
+import flash.display.DisplayObject;
 import flash.display.Shape;
 import flash.display.SimpleButton;
 import flash.display.Sprite;
@@ -25,6 +26,7 @@ import flash.external.ExternalInterface;
 import flash.filters.BevelFilter;
 import flash.filters.BitmapFilterType;
 
+import flash.geom.Matrix;
 import flash.geom.Point;
 import flash.geom.Rectangle;
 
@@ -85,47 +87,38 @@ public class ClientApp extends Sprite {
      */
     protected function init (event :Event) :void
     {
-        // create and add the text field display
-        _field = new TextField();
-        addChild(_field);
-        _field.autoSize = TextFieldAutoSize.CENTER;
-        _field.text = " ";
-        _field.selectable = false;
+        // create the text field used to render characters
+        _charField = new TextField();
+        _charField.text = " ";
         _normalFormat = new TextFormat();
-        _normalFormat.color = _field.textColor = 0x00FF00;
+        _normalFormat.color = 0x00FF00;
         _reverseFormat = new TextFormat();
         _reverseFormat.color = 0x000000;
         _dimFormat = new TextFormat();
         _dimFormat.color = 0x008000;
         _normalFormat.font = _reverseFormat.font = _dimFormat.font = "_typewriter";
-        _field.setTextFormat(_normalFormat);
+        _charField.setTextFormat(_normalFormat);
 
         // get the size of a character and use it to determine the char width/height
-        var bounds :Rectangle = _field.getCharBoundaries(0);
-        _width = loaderInfo.width / bounds.width;
-        _height = loaderInfo.height / bounds.height;
-        var line :String = "", text :String = "";
-        for (var ii :int = 0; ii < _width; ii++) {
-            line += " ";
-        }
-        line += '\n';
-        for (ii = 0; ii < _height; ii++) {
-            text += line;
-        }
-        _field.text = text;
-        _field.setTextFormat(_normalFormat);
-        _field.x = (loaderInfo.width - _field.width) / 2;
-        _field.y = (loaderInfo.height - _field.height) / 2;
+        var bounds :Rectangle = _charField.getCharBoundaries(0);
+        _charWidth = bounds.width;
+        _charHeight = bounds.height;
+        _width = loaderInfo.width / _charWidth;
+        _height = loaderInfo.height / _charHeight;
+
+        // center the display
+        _x = (loaderInfo.width - (_charWidth * _width)) / 2;
+        _y = (loaderInfo.height - (_charHeight * _height)) / 2;
 
         // create and initialize the combined contents array
         _contents = new Array(_width * _height);
-        for (ii = 0; ii < _contents.length; ii++) {
+        for (var ii :int = 0; ii < _contents.length; ii++) {
             _contents[ii] = 0x20;
         }
 
-        // create the highlight bitmap data and highlight array
-        _highlightData = new BitmapData(bounds.width, bounds.height, false);
-        _highlights = new Array(_width * _height);
+        // create the bitmap data cache and bitmap array
+        _bitmapData = new Object();
+        _bitmaps = new Array(_width * _height);
 
         // add the context menu to change colors
         contextMenu = new ContextMenu();
@@ -147,8 +140,13 @@ public class ClientApp extends Sprite {
         }
 
         // listen for mouse and key events
-        _field.addEventListener(MouseEvent.MOUSE_DOWN, sendMouseMessage);
-        _field.addEventListener(MouseEvent.MOUSE_UP, sendMouseMessage);
+        var mousePad :Sprite = new Sprite();
+        addChild(mousePad);
+        mousePad.graphics.beginFill(0x0, 0.0);
+        mousePad.graphics.drawRect(_x, _y, _width*_charWidth, _height*_charHeight);
+        mousePad.graphics.endFill();
+        mousePad.addEventListener(MouseEvent.MOUSE_DOWN, sendMouseMessage);
+        mousePad.addEventListener(MouseEvent.MOUSE_UP, sendMouseMessage);
         addEventListener(KeyboardEvent.KEY_DOWN, sendKeyMessage);
         addEventListener(KeyboardEvent.KEY_UP, sendKeyMessage);
 
@@ -156,6 +154,9 @@ public class ClientApp extends Sprite {
         stage.focus = this;
         addEventListener(FocusEvent.FOCUS_OUT, function (event :FocusEvent) :void {
             addClientWindow(int.MAX_VALUE - 1, "Click to restore input focus.");
+
+            // attempt to reacquire
+            stage.focus = mousePad.parent;
         });
         addEventListener(FocusEvent.FOCUS_IN, function (event :FocusEvent) :void {
             removeWindow(int.MAX_VALUE - 1, false);
@@ -414,9 +415,8 @@ public class ClientApp extends Sprite {
         var fg :uint = parseInt(foreground, 16);
         var bg :uint = parseInt(background, 16);
 
-        _normalFormat.color = _field.textColor = fg;
-
-        stage.color = bg;
+        _normalFormat.color = fg;
+        _reverseFormat.color = stage.color = bg;
 
         // the dim color is halfway between foreground and background
         var r :uint = ((fg >> 16) + (bg >> 16)) / 2;
@@ -424,16 +424,18 @@ public class ClientApp extends Sprite {
         var b :uint = ((fg & 0xFF) + (bg & 0xFF)) / 2;
         _dimFormat.color = (r << 16) | (g << 8) | b;
 
-        _highlightData.fillRect(_highlightData.rect, fg);
+        // dispose of all cached bitmaps and refresh
+        for (var key :* in _bitmapData) {
+            _bitmapData[uint(key)].dispose();
+        }
+        _bitmapData = new Object();
+
         for (var yy :int = 0; yy < _height; yy++) {
             for (var xx :int = 0; xx < _width; xx++) {
-                // we must reapply the reverse and dim formats
-                var val :int = _contents[yy*_width + xx];
-                var tidx :int = yy*(_width + 1) + xx;
-                if ((val & REVERSE_FLAG) != 0) {
-                    _field.setTextFormat(_reverseFormat, tidx, tidx + 1);
-                } else if ((val & DIM_FLAG) != 0) {
-                    _field.setTextFormat(_dimFormat, tidx, tidx + 1);
+                var idx :int = yy*_width + xx;
+                var bitmap :Bitmap = _bitmaps[idx];
+                if (bitmap != null) {
+                    bitmap.bitmapData = getBitmapData(_contents[idx]);
                 }
             }
         }
@@ -498,16 +500,16 @@ public class ClientApp extends Sprite {
         if (!_socket.connected) {
             return;
         }
-        var idx :int = _field.getCharIndexAtPoint(
-            event.stageX - _field.x, event.stageY - _field.y);
-        if (idx == -1) {
+        var x :int = (event.stageX - _x) / _charWidth;
+        var y :int = (event.stageY - _y) / _charHeight;
+        if (x < 0 || y < 0 || x >= _width || y >= _height) {
             return;
         }
         var out :IDataOutput = startMessage();
         out.writeByte(event.type == MouseEvent.MOUSE_DOWN ?
             MOUSE_PRESSED_MSG : MOUSE_RELEASED_MSG);
-        out.writeShort(idx % (_width + 1));
-        out.writeShort(idx / (_width + 1));
+        out.writeShort(x);
+        out.writeShort(y);
         endMessage(out);
     }
 
@@ -797,17 +799,12 @@ public class ClientApp extends Sprite {
         _dirty = _dirty.union(region);
 
         if (_debugRegions) {
-            var cbounds :Rectangle = _field.getCharBoundaries(0);
-
             // add the outline of the region
             var shape :Shape = new Shape();
             shape.graphics.lineStyle(1, color);
-            shape.graphics.drawRect(0, 0, cbounds.width*region.width,
-                cbounds.height*region.height);
-            shape.x = _field.x + cbounds.width*region.x +
-                (_field.width - cbounds.width*_width)/2;
-            shape.y = _field.y + cbounds.height*region.y +
-                (_field.height - cbounds.height*_height)/2;
+            shape.graphics.drawRect(0, 0, _charWidth*region.width, _charHeight*region.height);
+            shape.x = _x + _charWidth*region.x;
+            shape.y = _y + _charHeight*region.y;
             addChild(shape);
 
             // remove it after a second
@@ -862,45 +859,47 @@ public class ClientApp extends Sprite {
                 }
                 _contents[idx] = nvalue;
 
-                var tidx :int = yy*(_width + 1) + xx;
-                var ochar :int = ovalue & 0xFFFF;
-                var nchar :int = nvalue & 0xFFFF;
-                var nrev :int = (nvalue & REVERSE_FLAG);
-                var ndim :int = (nvalue & DIM_FLAG);
-                if (ochar != nchar) {
-                    _field.replaceText(tidx, tidx + 1, String.fromCharCode(nchar));
-                    _field.setTextFormat(nrev == REVERSE_FLAG ? _reverseFormat :
-                        (ndim == DIM_FLAG ? _dimFormat : _normalFormat), tidx, tidx + 1);
-                }
-                if ((ovalue & REVERSE_FLAG) != nrev) {
-                    if (nrev == REVERSE_FLAG) {
-                        // the char boundaries might not be valid yet, so we compute the location
-                        // assuming the text is centered within the field
-                        var highlight :Bitmap = new Bitmap(_highlightData);
-                        addChildAt(_highlights[idx] = highlight, 0);
-                        var cbounds :Rectangle = _field.getCharBoundaries(0);
-                        highlight.x = _field.x + cbounds.width*xx +
-                            (_field.width - cbounds.width*_width)/2;
-                        highlight.y = _field.y + cbounds.height*yy +
-                            (_field.height - cbounds.height*_height)/2;
-                        if (ochar == nchar) {
-                            _field.setTextFormat(_reverseFormat, tidx, tidx + 1);
-                        }
-                    } else {
-                        removeChild(_highlights[idx]);
-                        _highlights[idx] = null;
-                        if (ochar == nchar) {
-                            _field.setTextFormat(ndim == DIM_FLAG ? _dimFormat : _normalFormat,
-                                tidx, tidx + 1);
-                        }
+                var bitmap :Bitmap = _bitmaps[idx];
+                if (nvalue != 0x20) {
+                    if (bitmap == null) {
+                        _bitmaps[idx] = bitmap = new Bitmap();
+                        bitmap.x = _x + xx*_charWidth;
+                        bitmap.y = _y + yy*_charHeight;
+                        addChildAt(bitmap, 0);
                     }
-                }
-                if ((ovalue & DIM_FLAG) != ndim && nrev != REVERSE_FLAG && ochar == nchar) {
-                    _field.setTextFormat(ndim == DIM_FLAG ? _dimFormat : _normalFormat,
-                        tidx, tidx + 1);
+                    bitmap.bitmapData = getBitmapData(nvalue);
+
+                } else if (bitmap != null) {
+                    removeChild(bitmap);
+                    _bitmaps[idx] = null;
                 }
             }
         }
+    }
+
+    /**
+     * Returns through the cache the bitmap corresponding to the specified value.
+     */
+    protected function getBitmapData (value :int) :BitmapData
+    {
+        var data :BitmapData = _bitmapData[value];
+        if (data == null) {
+            _charField.text = String.fromCharCode(value & 0xFFFF);
+            var bg :uint;
+            if ((value & REVERSE_FLAG) == 0) {
+                bg = _reverseFormat.color as uint;
+                _charField.setTextFormat((value & DIM_FLAG) == 0 ? _normalFormat : _dimFormat);
+            } else {
+                bg = _normalFormat.color as uint;
+                _charField.setTextFormat((value & DIM_FLAG) == 0 ? _reverseFormat : _dimFormat);
+            }
+            _bitmapData[value] = data = new BitmapData(_charWidth, _charHeight, false, bg);
+            var bounds :Rectangle = _charField.getCharBoundaries(0);
+            var matrix :Matrix = new Matrix();
+            matrix.translate(-bounds.x, -bounds.y);
+            data.draw(_charField, matrix);
+        }
+        return data;
     }
 
     /**
@@ -1019,23 +1018,29 @@ public class ClientApp extends Sprite {
         }
     }
 
-    /** Our gigantic text field. */
-    protected var _field :TextField;
-
-    /** The contents of our field as integers. */
+    /** The contents of the display as integers. */
     protected var _contents :Array;
 
     /** Formats for normal, reverse, and dim text. */
     protected var _normalFormat :TextFormat, _reverseFormat :TextFormat, _dimFormat :TextFormat;
 
-    /** The highlight bitmap data. */
-    protected var _highlightData :BitmapData;
+    /** The field we reuse to create character bitmaps. */
+    protected var _charField :TextField;
 
-    /** The highlight bitmaps for each location (if active). */
-    protected var _highlights :Array;
+    /** The character bitmaps for each location. */
+    protected var _bitmaps :Array;
+
+    /** The cached bitmap data for each character. */
+    protected var _bitmapData :Object;
 
     /** The width and height of the display in characters. */
     protected var _width :int, _height :int;
+
+    /** The width and height of each character. */
+    protected var _charWidth :int, _charHeight :int;
+
+    /** The location of the character grid. */
+    protected var _x :int, _y :int;
 
     /** The socket via which we communicate with the server. */
     protected var _socket :Socket;
