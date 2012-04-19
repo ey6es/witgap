@@ -454,20 +454,46 @@ void Container::addChild (Component* child, const QVariant& constraint)
     invalidate();
 }
 
-void Container::removeChild (Component* child)
+/**
+ * Helper function for removal: clears the parent or deletes the object, depending on
+ * the value of destroy.
+ */
+void destroyOrUnparent (Component* child, bool destroy)
+{
+    if (destroy) {
+        delete child;
+    } else {
+        child->setParent(0);
+    }
+}
+
+void Container::removeChild (Component* child, bool destroy)
 {
     if (_children.removeOne(child)) {
         dirty(child->bounds());
-        child->setParent(0);
+        destroyOrUnparent(child, destroy);
         invalidate();
     }
 }
 
-void Container::removeChildAt (int idx)
+void Container::removeChildAt (int idx, bool destroy)
 {
     Component* child = _children.takeAt(idx);
     dirty(child->bounds());
-    child->setParent(0);
+    destroyOrUnparent(child, destroy);
+    invalidate();
+}
+
+void Container::removeAllChildren (bool destroy)
+{
+    if (_children.isEmpty()) {
+        return;
+    }
+    foreach (Component* child, _children) {
+        dirty(child->bounds());
+        destroyOrUnparent(child, destroy);
+    }
+    _children.clear();
     invalidate();
 }
 

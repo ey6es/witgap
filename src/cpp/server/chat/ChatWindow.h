@@ -6,11 +6,12 @@
 
 #include <QHash>
 #include <QMap>
+#include <QPair>
 #include <QStringList>
 
 #include "ui/Window.h"
 
-class ChatCommandHandler;
+class ChatCommand;
 class Label;
 class TextField;
 
@@ -23,6 +24,9 @@ class ChatWindow : public Window
 
 public:
 
+    /** The available modes of speech. */
+    enum SpeakMode { NormalMode, EmoteMode, ShoutMode, BroadcastMode };
+
     /**
      * Initializes the window.
      */
@@ -31,12 +35,17 @@ public:
     /**
      * Displays a message.
      */
-    void display (const QString& speaker, const QString& message);
+    void display (const QString& speaker, const QString& message, SpeakMode mode);
 
     /**
      * Displays message text.
      */
     void display (const QString& text);
+
+    /**
+     * Clears the display.
+     */
+    void clear ();
 };
 
 /**
@@ -54,15 +63,16 @@ public:
     ChatEntryWindow (Session* parent);
 
     /**
-     * Returns the command handler for the specified command (or command prefix), or
-     * 0 if not found/ambiguous (in which case a message will be posted to the display).
+     * Returns the command name and handler for the specified command (or command prefix), or
+     * a default-constructed pair if not found/ambiguous (in which case a message will be posted
+     * to the display).
      */
-    ChatCommandHandler* getCommandHandler (const QString& cmd) const;
+    QPair<QString, ChatCommand*> getCommand (const QString& cmd) const;
 
     /**
-     * Returns a reference to the active command handler map.
+     * Returns a reference to the active command map.
      */
-    const QMap<QString, ChatCommandHandler*>& commandHandlers () const { return _commandHandlers; }
+    const QMap<QString, ChatCommand*>& commands () const { return _commands; }
 
     /**
      * Renders the window visible or invisible.
@@ -90,7 +100,7 @@ protected:
     TextField* _field;
 
     /** Maps command aliases to handlers. */
-    QMap<QString, ChatCommandHandler*> _commandHandlers;
+    QMap<QString, ChatCommand*> _commands;
 };
 
 #endif // CHAT_WINDOW

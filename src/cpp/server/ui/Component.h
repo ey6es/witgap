@@ -382,13 +382,24 @@ public:
 
     /**
      * Removes a child from the container.
+     *
+     * @param destroy if true, delete the child.
      */
-    void removeChild (Component* child);
+    void removeChild (Component* child, bool destroy = true);
 
     /**
      * Removes the child at the specified index.
+     *
+     * @param destroy if true, delete the child.
      */
-    void removeChildAt (int idx);
+    void removeChildAt (int idx, bool destroy = true);
+
+    /**
+     * Removes all of the container's children.
+     *
+     * @param destroy if true, delete the child.
+     */
+    void removeAllChildren (bool destroy = true);
 
     /**
      * Returns the container's child list.

@@ -1,8 +1,8 @@
 //
 // $Id$
 
-#ifndef CHAT_COMMAND_HANDLER
-#define CHAT_COMMAND_HANDLER
+#ifndef CHAT_COMMANDS
+#define CHAT_COMMANDS
 
 #include <QMap>
 #include <QString>
@@ -13,9 +13,9 @@ class ServerApp;
 class Session;
 
 /**
- * Base class for chat command handlers.
+ * Base class for chat commands.
  */
-class ChatCommandHandler
+class ChatCommand
 {
 public:
 
@@ -49,9 +49,9 @@ public:
 };
 
 /**
- * Base class for admin command handlers.
+ * Base class for admin commands.
  */
-class AdminChatCommandHandler : public ChatCommandHandler
+class AdminChatCommand : public ChatCommand
 {
 public:
 
@@ -62,11 +62,11 @@ public:
 };
 
 /** Type for map from command alias to handler pointer. */
-typedef QMap<QString, ChatCommandHandler*> CommandHandlerMap;
+typedef QMap<QString, ChatCommand*> CommandMap;
 
 /**
- * Returns the command handler map for the specified language.
+ * Returns the command map for the specified language.
  */
-CommandHandlerMap getChatCommandHandlers (ServerApp* app, const QString& language);
+CommandMap getChatCommands (ServerApp* app, const QString& language);
 
-#endif // CHAT_COMMAND_HANDLER
+#endif // CHAT_COMMANDS

@@ -8,6 +8,7 @@
 #include <QObject>
 
 #include "actor/Actor.h"
+#include "chat/ChatWindow.h"
 #include "db/SceneRepository.h"
 
 class Pawn;
@@ -164,7 +165,8 @@ public:
     /**
      * Sends a message to all views intersecting the specified location.
      */
-    void say (const QPoint& pos, const QString& speaker, const QString& message);
+    void say (const QPoint& pos, const QString& speaker,
+        const QString& message, ChatWindow::SpeakMode mode);
 
 signals:
 

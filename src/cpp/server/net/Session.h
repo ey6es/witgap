@@ -7,6 +7,7 @@
 #include <QSet>
 #include <QSize>
 
+#include "chat/ChatWindow.h"
 #include "db/SessionRepository.h"
 #include "db/UserRepository.h"
 #include "ui/TextField.h"
@@ -16,7 +17,6 @@ class QEvent;
 class QTranslator;
 
 class ChatEntryWindow;
-class ChatWindow;
 class Connection;
 class MainWindow;
 class Pawn;
@@ -227,6 +227,11 @@ public:
      * Sets the user's settings.
      */
     void setSettings (const QString& password, const QString& email, QChar avatar);
+
+    /**
+     * Speaks a message in the current place.
+     */
+    void say (const QString& message, ChatWindow::SpeakMode mode = ChatWindow::NormalMode);
 
     /**
      * Handles an event.

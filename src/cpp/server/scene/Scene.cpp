@@ -7,7 +7,6 @@
 #include "Protocol.h"
 #include "ServerApp.h"
 #include "actor/Pawn.h"
-#include "chat/ChatWindow.h"
 #include "db/DatabaseThread.h"
 #include "net/Session.h"
 #include "scene/Scene.h"
@@ -263,15 +262,23 @@ void Scene::removeSpatial (SceneView* view)
     }
 }
 
-void Scene::say (const QPoint& pos, const QString& speaker, const QString& message)
+void Scene::say (
+    const QPoint& pos, const QString& speaker, const QString& message, ChatWindow::SpeakMode mode)
 {
+    if (mode == ChatWindow::ShoutMode) {
+        // at least for now, shouting reaches everyone in the scene
+        foreach (Session* session, findChildren<Session*>()) {
+            session->chatWindow()->display(speaker, message, mode);
+        }
+        return;
+    }
     QPoint key(pos.x() >> LgViewBlockSize, pos.y() >> LgViewBlockSize);
     QHash<QPoint, SceneViewList>::const_iterator it = _views.constFind(key);
     if (it != _views.constEnd()) {
         foreach (SceneView* view, *it) {
             const QRect& vbounds = view->worldBounds();
             if (vbounds.contains(pos)) {
-                view->session()->chatWindow()->display(speaker, message);
+                view->session()->chatWindow()->display(speaker, message, mode);
             }
         }
     }

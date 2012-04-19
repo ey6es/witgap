@@ -14,7 +14,7 @@
 #include "MainWindow.h"
 #include "ServerApp.h"
 #include "SettingsDialog.h"
-#include "chat/ChatWindow.h"
+#include "actor/Pawn.h"
 #include "db/DatabaseThread.h"
 #include "db/SceneRepository.h"
 #include "net/Connection.h"
@@ -358,6 +358,16 @@ void Session::setSettings (const QString& password, const QString& email, QChar 
         _user.avatar = avatar;
         QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "updateUser",
             Q_ARG(const UserRecord&, _user), Q_ARG(const Callback&, Callback()));
+    }
+}
+
+void Session::say (const QString& message, ChatWindow::SpeakMode mode)
+{
+    if (_scene != 0 && _pawn != 0) {
+        // replace double with single quotes to prevent spoofing
+        QString msg = message;
+        msg.replace('\"', '\'');
+        _scene->say(_pawn->position(), _user.name, msg, mode);
     }
 }
 

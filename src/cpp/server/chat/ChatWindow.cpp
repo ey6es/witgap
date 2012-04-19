@@ -7,7 +7,7 @@
 #include <QtDebug>
 
 #include "actor/Pawn.h"
-#include "chat/ChatCommandHandler.h"
+#include "chat/ChatCommands.h"
 #include "chat/ChatWindow.h"
 #include "net/Session.h"
 #include "scene/Scene.h"
@@ -25,9 +25,27 @@ ChatWindow::ChatWindow (Session* parent) :
     setBackground(0);
 }
 
-void ChatWindow::display (const QString& speaker, const QString& message)
+void ChatWindow::display (const QString& speaker, const QString& message, SpeakMode mode)
 {
-    display(tr("%1 says, \"%2\"").arg(speaker, message));
+    QString format;
+    switch (mode) {
+        case NormalMode:
+            format = tr("%1 says, \"%2\"");
+            break;
+
+        case EmoteMode:
+            format = tr("%1 %2");
+            break;
+
+        case ShoutMode:
+            format = tr("%1 shouts, \"%2\"");
+            break;
+
+        case BroadcastMode:
+            format = tr("%1 broadcasts, \"%2\"");
+            break;
+    }
+    display(format.arg(speaker, message));
 }
 
 void ChatWindow::display (const QString& text)
@@ -77,6 +95,11 @@ void ChatWindow::display (const QString& text)
     }
 }
 
+void ChatWindow::clear ()
+{
+    removeAllChildren();
+}
+
 ChatEntryWindow::ChatEntryWindow (Session* parent) :
     Window(parent, 1)
 {
@@ -88,18 +111,18 @@ ChatEntryWindow::ChatEntryWindow (Session* parent) :
 
     setVisible(false);
 
-    _commandHandlers = getChatCommandHandlers(parent->app(), parent->locale());
+    _commands = getChatCommands(parent->app(), parent->locale());
 }
 
-ChatCommandHandler* ChatEntryWindow::getCommandHandler (const QString& cmd) const
+QPair<QString, ChatCommand*> ChatEntryWindow::getCommand (const QString& cmd) const
 {
     Session* session = this->session();
-    QVarLengthArray<CommandHandlerMap::const_iterator, 4> matches;
-    for (CommandHandlerMap::const_iterator it = _commandHandlers.lowerBound(cmd),
-            end = _commandHandlers.constEnd(); it != end; it++) {
+    QVarLengthArray<CommandMap::const_iterator, 4> matches;
+    for (CommandMap::const_iterator it = _commands.lowerBound(cmd),
+            end = _commands.constEnd(); it != end; it++) {
         if (it.key() == cmd) { // exact match
             if (it.value()->canAccess(session)) {
-                return it.value();
+                return QPair<QString, ChatCommand*>(cmd, it.value());
             }
         } else if (it.key().startsWith(cmd)) { // partial match
             if (it.value()->canAccess(session)) {
@@ -114,16 +137,23 @@ ChatCommandHandler* ChatEntryWindow::getCommandHandler (const QString& cmd) cons
         session->chatWindow()->display(tr("Unknown command '%1'.  Try '/help'.").arg(cmd));
 
     } else if (nmatches == 1) { // only one partial match
-        return matches[0].value();
+        return QPair<QString, ChatCommand*>(matches[0].key(), matches[0].value());
 
     } else { // multiple partial matches
         QString list = matches[0].key();
+        ChatCommand* common = matches[0].value();
         for (int ii = 1; ii < nmatches; ii++) {
             list.append(' ').append(matches[ii].key());
+            if (matches[ii].value() != common) {
+                common = 0;
+            }
+        }
+        if (common != 0) { // false alarm; they all point to the same handler
+            return QPair<QString, ChatCommand*>(matches[0].key(), common);
         }
         session->chatWindow()->display(tr("Ambiguous command.  Did you mean '%1'?").arg(list));
     }
-    return 0;
+    return QPair<QString, ChatCommand*>();
 }
 
 void ChatEntryWindow::setVisible (bool visible)
@@ -148,13 +178,7 @@ void ChatEntryWindow::maybeSubmit ()
     }
     Session* session = this->session();
     if (text.at(0) != '/') {
-        Scene* scene = session->scene();
-        if (scene != 0) {
-            Pawn* pawn = session->pawn();
-            if (pawn != 0) {
-                scene->say(pawn->position(), session->user().name, text);
-            }
-        }
+        session->say(text);
         return;
     }
     // process as command or command prefix
@@ -170,9 +194,9 @@ void ChatEntryWindow::maybeSubmit ()
     if (cmd.isEmpty()) {
         return;
     }
-    ChatCommandHandler* handler = getCommandHandler(cmd);
-    if (handler != 0) {
-        handler->handle(session, cmd, args);
+    QPair<QString, ChatCommand*> pair = getCommand(cmd);
+    if (pair.second != 0) {
+        pair.second->handle(session, pair.first, args);
     }
 }
 
