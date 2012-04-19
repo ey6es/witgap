@@ -83,6 +83,32 @@ public:
 };
 
 /**
+ * Handles the bug command.
+ */
+class BugCommand : public ChatCommand
+{
+    Q_DECLARE_TR_FUNCTIONS(ChatCommands)
+
+public:
+
+    virtual QString aliases (QTranslator* translator) { return tr("bug"); }
+
+    virtual QString usage (QTranslator* translator, const QString& cmd) {
+        return tr("Usage: /%1 description\n"
+            "  Submits a bug report.").arg(cmd);
+    }
+
+    virtual QString handle (Session* session, QTranslator* translator,
+            const QString& cmd, const QString& args) {
+        if (args.isEmpty()) {
+            return usage(translator, cmd);
+        }
+        session->submitBugReport(args);
+        return tr("Report submitted.  Thanks!");
+    }
+};
+
+/**
  * Handles the say command.
  */
 class SayCommand : public ChatCommand
@@ -161,6 +187,32 @@ public:
 };
 
 /**
+ * Handles the tell command.
+ */
+class TellCommand : public ChatCommand
+{
+    Q_DECLARE_TR_FUNCTIONS(ChatCommands)
+
+public:
+
+    virtual QString aliases (QTranslator* translator) { return tr("tell"); }
+
+    virtual QString usage (QTranslator* translator, const QString& cmd) {
+        return tr("Usage: /%1 username message\n"
+            "  Sends a message to a single user.").arg(cmd);
+    }
+
+    virtual QString handle (Session* session, QTranslator* translator,
+            const QString& cmd, const QString& args) {
+        if (args.isEmpty()) {
+            return usage(translator, cmd);
+        }
+
+        return "";
+    }
+};
+
+/**
  * Handles the broadcast command.
  */
 class BroadcastCommand : public AdminChatCommand
@@ -192,8 +244,8 @@ public:
 static QHash<QString, CommandMap> createCommandMapMap (ServerApp* app)
 {
     ChatCommand* handlers[] = {
-        new HelpCommand(), new ClearCommand(), new SayCommand(),
-        new EmoteCommand(), new ShoutCommand(), new BroadcastCommand() };
+        new HelpCommand(), new ClearCommand(), new BugCommand(), new SayCommand(),
+        new EmoteCommand(), new ShoutCommand(), new TellCommand(), new BroadcastCommand() };
 
     QHash<QString, CommandMap> map;
     for (int ii = 0; ii < sizeof(handlers) / sizeof(handlers[0]); ii++) {

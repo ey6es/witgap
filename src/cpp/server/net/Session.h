@@ -234,6 +234,11 @@ public:
     void say (const QString& message, ChatWindow::SpeakMode mode = ChatWindow::NormalMode);
 
     /**
+     * Submits a bug report with the supplied description.
+     */
+    Q_INVOKABLE void submitBugReport (const QString& description);
+
+    /**
      * Handles an event.
      */
     virtual bool event (QEvent* e);
@@ -293,11 +298,6 @@ protected:
      * Reports back with the result of a password reset validation attempt.
      */
     Q_INVOKABLE void passwordResetMaybeValidated (const QVariant& result);
-
-    /**
-     * Submits a bug report with the supplied description.
-     */
-    Q_INVOKABLE void submitBugReport (const QString& description);
 
     /**
      * Reports back with id of the newly created scene.

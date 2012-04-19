@@ -371,6 +371,13 @@ void Session::say (const QString& message, ChatWindow::SpeakMode mode)
     }
 }
 
+void Session::submitBugReport (const QString& description)
+{
+    qDebug() << "Submitting bug report." << who() << description;
+    _app->sendMail(_app->bugReportAddress(), "Witgap bug report",
+        who() + ": " + description, Callback());
+}
+
 bool Session::event (QEvent* e)
 {
     if (e->type() != QEvent::KeyPress) {
@@ -547,13 +554,6 @@ void Session::passwordResetMaybeValidated (const QVariant& result)
 
     // open the settings dialog in order to change the password
     new SettingsDialog(this);
-}
-
-void Session::submitBugReport (const QString& description)
-{
-    qDebug() << "Submitting bug report." << who() << description;
-    _app->sendMail(_app->bugReportAddress(), "Witgap bug report",
-        who() + ": " + description, Callback());
 }
 
 void Session::sceneCreated (quint32 id)
