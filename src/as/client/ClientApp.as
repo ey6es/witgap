@@ -106,19 +106,19 @@ public class ClientApp extends Sprite {
         _width = loaderInfo.width / _charWidth;
         _height = loaderInfo.height / _charHeight;
 
-        // center the display
-        _x = (loaderInfo.width - (_charWidth * _width)) / 2;
-        _y = (loaderInfo.height - (_charHeight * _height)) / 2;
+        // create and add the big ol' bitmap with all the characters
+        var bitmapData :BitmapData = new BitmapData(
+            _charWidth*_width, _charHeight*_height, false, 0x0);
+        _bitmap = new Bitmap(bitmapData);
+        _bitmap.x = (loaderInfo.width - (_charWidth * _width)) / 2;
+        _bitmap.y = (loaderInfo.height - (_charHeight * _height)) / 2;
+        addChild(_bitmap);
 
         // create and initialize the combined contents array
         _contents = new Array(_width * _height);
         for (var ii :int = 0; ii < _contents.length; ii++) {
             _contents[ii] = 0x20;
         }
-
-        // create the bitmap data cache and bitmap array
-        _bitmapData = new Object();
-        _bitmaps = new Array(_width * _height);
 
         // add the context menu to change colors
         contextMenu = new ContextMenu();
@@ -143,8 +143,10 @@ public class ClientApp extends Sprite {
         var mousePad :Sprite = new Sprite();
         addChild(mousePad);
         mousePad.graphics.beginFill(0x0, 0.0);
-        mousePad.graphics.drawRect(_x, _y, _width*_charWidth, _height*_charHeight);
+        mousePad.graphics.drawRect(0, 0, _bitmap.width, _bitmap.height);
         mousePad.graphics.endFill();
+        mousePad.x = _bitmap.x;
+        mousePad.y = _bitmap.y;
         mousePad.addEventListener(MouseEvent.MOUSE_DOWN, sendMouseMessage);
         mousePad.addEventListener(MouseEvent.MOUSE_UP, sendMouseMessage);
         addEventListener(KeyboardEvent.KEY_DOWN, sendKeyMessage);
@@ -156,7 +158,9 @@ public class ClientApp extends Sprite {
             addClientWindow(int.MAX_VALUE - 1, "Click to restore input focus.");
 
             // attempt to reacquire
-            stage.focus = mousePad.parent;
+            if (stage.focus == null) {
+                stage.focus = _bitmap.parent;
+            }
         });
         addEventListener(FocusEvent.FOCUS_IN, function (event :FocusEvent) :void {
             removeWindow(int.MAX_VALUE - 1, false);
@@ -430,15 +434,12 @@ public class ClientApp extends Sprite {
         }
         _bitmapData = new Object();
 
-        for (var yy :int = 0; yy < _height; yy++) {
-            for (var xx :int = 0; xx < _width; xx++) {
-                var idx :int = yy*_width + xx;
-                var bitmap :Bitmap = _bitmaps[idx];
-                if (bitmap != null) {
-                    bitmap.bitmapData = getBitmapData(_contents[idx]);
-                }
-            }
+        // invalidate the contents, make everything dirty, refresh
+        for (var ii :int = 0; ii < _contents.length; ii++) {
+            _contents[ii] = -1;
         }
+        _dirty.setTo(0, 0, _width, _height);
+        updateDisplay();
     }
 
     /**
@@ -500,8 +501,8 @@ public class ClientApp extends Sprite {
         if (!_socket.connected) {
             return;
         }
-        var x :int = (event.stageX - _x) / _charWidth;
-        var y :int = (event.stageY - _y) / _charHeight;
+        var x :int = (event.stageX - _bitmap.x) / _charWidth;
+        var y :int = (event.stageY - _bitmap.y) / _charHeight;
         if (x < 0 || y < 0 || x >= _width || y >= _height) {
             return;
         }
@@ -812,8 +813,8 @@ public class ClientApp extends Sprite {
             var shape :Shape = new Shape();
             shape.graphics.lineStyle(1, color);
             shape.graphics.drawRect(0, 0, _charWidth*region.width, _charHeight*region.height);
-            shape.x = _x + _charWidth*region.x;
-            shape.y = _y + _charHeight*region.y;
+            shape.x = _bitmap.x + _charWidth*region.x;
+            shape.y = _bitmap.y + _charHeight*region.y;
             addChild(shape);
 
             // remove it after a second
@@ -856,7 +857,11 @@ public class ClientApp extends Sprite {
             }
         }
 
-        // now update the field/highlights with the new contents
+        // now update the bitmap with the new contents
+        _bitmap.bitmapData.lock();
+        var srect :Rectangle = new Rectangle(0, 0, _charWidth, _charHeight);
+        var dpoint :Point = new Point();
+        var drect :Rectangle = new Rectangle(0, 0, _charWidth, _charHeight);
         for (yy = bounds.top; yy < bounds.bottom; yy++) {
             for (xx = bounds.left; xx < bounds.right; xx++) {
                 var obj :Object = combined[(yy - bounds.y) * bounds.width + (xx - bounds.x)];
@@ -868,25 +873,19 @@ public class ClientApp extends Sprite {
                 }
                 _contents[idx] = nvalue;
 
-                var bitmap :Bitmap = _bitmaps[idx];
-                if (nvalue != 0x20) {
-                    if (bitmap == null) {
-                        _bitmaps[idx] = bitmap = (_bitmapPool.length == 0) ?
-                            new Bitmap() : _bitmapPool.pop();
-                        bitmap.x = _x + xx*_charWidth;
-                        bitmap.y = _y + yy*_charHeight;
-                        addChildAt(bitmap, 1);
-                    }
-                    bitmap.bitmapData = getBitmapData(nvalue);
+                if (nvalue == 0x20) {
+                    drect.x = xx*_charWidth;
+                    drect.y = yy*_charHeight;
+                    _bitmap.bitmapData.fillRect(drect, stage.color);
 
-                } else if (bitmap != null) {
-                    removeChild(bitmap);
-                    _bitmaps[idx] = null;
-                    bitmap.bitmapData = null;
-                    _bitmapPool.push(bitmap);
+                } else {
+                    dpoint.x = xx*_charWidth;
+                    dpoint.y = yy*_charHeight;
+                    _bitmap.bitmapData.copyPixels(getBitmapData(nvalue), srect, dpoint);
                 }
             }
         }
+        _bitmap.bitmapData.unlock();
     }
 
     /**
@@ -1039,23 +1038,17 @@ public class ClientApp extends Sprite {
     /** The field we reuse to create character bitmaps. */
     protected var _charField :TextField;
 
-    /** The character bitmaps for each location. */
-    protected var _bitmaps :Array;
-
-    /** A pool of bitmaps to reuse. */
-    protected var _bitmapPool :Array = new Array();
+    /** Big ol' bitmap. */
+    protected var _bitmap :Bitmap;
 
     /** The cached bitmap data for each character. */
-    protected var _bitmapData :Object;
+    protected var _bitmapData :Object = new Object();
 
     /** The width and height of the display in characters. */
     protected var _width :int, _height :int;
 
     /** The width and height of each character. */
     protected var _charWidth :int, _charHeight :int;
-
-    /** The location of the character grid. */
-    protected var _x :int, _y :int;
 
     /** The socket via which we communicate with the server. */
     protected var _socket :Socket;
@@ -1143,7 +1136,6 @@ public class ClientApp extends Sprite {
 }
 }
 
-import flash.display.Sprite;
 import flash.geom.Point;
 import flash.geom.Rectangle;
 
