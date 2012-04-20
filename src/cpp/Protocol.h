@@ -159,6 +159,11 @@ const quint8 CLOSE_MSG = 5;
  */
 const quint8 TOGGLE_CRYPTO_MSG = 6;
 
+/**
+ * Server -> client: compound message.  The data is simply the sub-messages.
+ */
+const quint8 COMPOUND_MSG = 7;
+
 /** A flag indicating that the character should be displayed in reverse. */
 const int REVERSE_FLAG = 0x10000;
 

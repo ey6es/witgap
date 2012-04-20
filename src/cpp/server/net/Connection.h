@@ -31,6 +31,29 @@ class Connection : public QObject
 public:
 
     /**
+     * Ensures that all messages are compounded when in scope.
+     */
+    class Compounder
+    {
+    public:
+
+        /**
+         * Creates a new compounder for the specified connection.
+         */
+        Compounder (Connection* connection);
+
+        /**
+         * Destroys the compounder.
+         */
+        ~Compounder ();
+
+    protected:
+
+        /** The connection whose messages should be compounded. */
+        Connection* _connection;
+    };
+
+    /**
      * Returns the meta-method for {@link #updateWindow}.
      */
     static const QMetaMethod& updateWindowMetaMethod ();
@@ -59,6 +82,16 @@ public:
      * Returns the meta-method for {@link #toggleCrypto}.
      */
     static const QMetaMethod& toggleCryptoMetaMethod ();
+
+    /**
+     * Returns the meta-method for {@link #startCompound}.
+     */
+    static const QMetaMethod& startCompoundMetaMethod ();
+
+    /**
+     * Returns the meta-method for {@link #commitCompound}.
+     */
+    static const QMetaMethod& commitCompoundMetaMethod ();
 
     /**
      * Initializes the connection.
@@ -129,6 +162,16 @@ public:
      * Toggles encryption.
      */
     Q_INVOKABLE void toggleCrypto ();
+
+    /**
+     * Starts a compound message.
+     */
+    Q_INVOKABLE void startCompound ();
+
+    /**
+     * Commits a compound message.
+     */
+    Q_INVOKABLE void commitCompound ();
 
 signals:
 
@@ -233,6 +276,9 @@ protected:
 
     /** Whether or not the client is encrypting its messages. */
     bool _clientCrypto;
+
+    /** The number of compound requests.  When it drops to zero, we can submit the compound. */
+    int _compoundCount;
 };
 
 #endif // CONNECTION

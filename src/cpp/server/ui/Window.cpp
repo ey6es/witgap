@@ -233,6 +233,9 @@ void Window::sync ()
         return;
     }
 
+    // compound all messages in the sync
+    Connection::Compounder compound(connection);
+
     // remove window if hidden
     if (!_visible) {
         if (_added) {

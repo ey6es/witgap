@@ -614,6 +614,15 @@ public class ClientApp extends Sprite {
                 _crypto = !_crypto;
                 break;
 
+            case COMPOUND_MSG:
+                while (bytes.bytesAvailable > 0) {
+                    var mbytes :ByteArray = new ByteArray();
+                    bytes.readBytes(mbytes, 0, bytes.readUnsignedShort());
+                    mbytes.position = 0;
+                    decodeMessage(mbytes);
+                }
+                break;
+
             default:
                 trace("Unknown message type.", type);
         }
@@ -865,7 +874,7 @@ public class ClientApp extends Sprite {
                         _bitmaps[idx] = bitmap = new Bitmap();
                         bitmap.x = _x + xx*_charWidth;
                         bitmap.y = _y + yy*_charHeight;
-                        addChildAt(bitmap, 0);
+                        addChildAt(bitmap, 1);
                     }
                     bitmap.bitmapData = getBitmapData(nvalue);
 
@@ -1122,6 +1131,9 @@ public class ClientApp extends Sprite {
 
     /** Incoming message: toggle encryption. */
     protected static var TOGGLE_CRYPTO_MSG :int = 6;
+
+    /** Incoming message: compound message follows. */
+    protected static var COMPOUND_MSG :int = 7;
 }
 }
 

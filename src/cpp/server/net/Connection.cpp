@@ -19,6 +19,17 @@
 #include "net/ConnectionManager.h"
 #include "util/General.h"
 
+Connection::Compounder::Compounder (Connection* connection) :
+    _connection(connection)
+{
+    startCompoundMetaMethod().invoke(connection);
+}
+
+Connection::Compounder::~Compounder ()
+{
+    commitCompoundMetaMethod().invoke(_connection);
+}
+
 const QMetaMethod& Connection::updateWindowMetaMethod ()
 {
     static QMetaMethod method = staticMetaObject.method(
@@ -61,13 +72,28 @@ const QMetaMethod& Connection::toggleCryptoMetaMethod ()
     return method;
 }
 
+const QMetaMethod& Connection::startCompoundMetaMethod ()
+{
+    static QMetaMethod method = staticMetaObject.method(
+        staticMetaObject.indexOfMethod("startCompound()"));
+    return method;
+}
+
+const QMetaMethod& Connection::commitCompoundMetaMethod ()
+{
+    static QMetaMethod method = staticMetaObject.method(
+        staticMetaObject.indexOfMethod("commitCompound()"));
+    return method;
+}
+
 Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     QObject(app->connectionManager()),
     _app(app),
     _socket(socket),
     _stream(socket),
     _crypto(false),
-    _clientCrypto(false)
+    _clientCrypto(false),
+    _compoundCount(0)
 {
     // init crypto bits
     EVP_CIPHER_CTX_init(&_ectx);
@@ -201,6 +227,40 @@ void Connection::toggleCrypto ()
     _crypto = !_crypto;
 }
 
+void Connection::startCompound ()
+{
+    if (_compoundCount++ != 0) {
+        return;
+    }
+
+    // replace the socket with a buffer that will write to a byte array
+    QBuffer* buffer = new QBuffer();
+    buffer->open(QIODevice::WriteOnly);
+    _stream.setDevice(buffer);
+}
+
+void Connection::commitCompound ()
+{
+    if (--_compoundCount != 0) {
+        return;
+    }
+
+    // restore the socket, write the data, delete the buffer
+    QBuffer* buffer = static_cast<QBuffer*>(_stream.device());
+    _stream.setDevice(_socket);
+
+    const QByteArray& bytes = buffer->buffer();
+    int blen = bytes.length();
+    if (blen > 0) {
+        startMessage(1 + blen);
+        _stream << COMPOUND_MSG;
+        _stream.writeRawData(bytes.constData(), blen);
+        endMessage();
+    }
+
+    delete buffer;
+}
+
 /**
  * Helper function for readHeader: puts an int back in the socket buffer.
  */
@@ -320,7 +380,7 @@ void Connection::readMessages ()
 
 void Connection::startMessage (quint16 length)
 {
-    if (_crypto) {
+    if (_crypto && _compoundCount == 0) {
         // replace the socket with a buffer that will write to a byte array
         QBuffer* buffer = new QBuffer();
         buffer->open(QIODevice::WriteOnly);
@@ -333,7 +393,7 @@ void Connection::startMessage (quint16 length)
 
 void Connection::endMessage ()
 {
-    if (_crypto) {
+    if (_crypto && _compoundCount == 0) {
         // restore the socket, write the encrypted data, delete the buffer
         QBuffer* buffer = static_cast<QBuffer*>(_stream.device());
         _stream.setDevice(_socket);
