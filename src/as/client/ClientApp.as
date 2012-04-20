@@ -871,7 +871,8 @@ public class ClientApp extends Sprite {
                 var bitmap :Bitmap = _bitmaps[idx];
                 if (nvalue != 0x20) {
                     if (bitmap == null) {
-                        _bitmaps[idx] = bitmap = new Bitmap();
+                        _bitmaps[idx] = bitmap = (_bitmapPool.length == 0) ?
+                            new Bitmap() : _bitmapPool.pop();
                         bitmap.x = _x + xx*_charWidth;
                         bitmap.y = _y + yy*_charHeight;
                         addChildAt(bitmap, 1);
@@ -881,6 +882,8 @@ public class ClientApp extends Sprite {
                 } else if (bitmap != null) {
                     removeChild(bitmap);
                     _bitmaps[idx] = null;
+                    bitmap.bitmapData = null;
+                    _bitmapPool.push(bitmap);
                 }
             }
         }
@@ -1038,6 +1041,9 @@ public class ClientApp extends Sprite {
 
     /** The character bitmaps for each location. */
     protected var _bitmaps :Array;
+
+    /** A pool of bitmaps to reuse. */
+    protected var _bitmapPool :Array = new Array();
 
     /** The cached bitmap data for each character. */
     protected var _bitmapData :Object;
