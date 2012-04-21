@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include <QBuffer>
+#include <QDateTime>
 #include <QMetaMethod>
 #include <QPoint>
 #include <QRect>
@@ -379,6 +380,23 @@ void Connection::readMessages ()
     }
 }
 
+/**
+ * Helper function for ping/pong: returns the current time as milliseconds since the epoch.
+ */
+static quint64 currentTime ()
+{
+    QDateTime now = QDateTime::currentDateTime();
+    return (quint64)now.toTime_t()*1000 + now.time().msec();
+}
+
+void Connection::ping ()
+{
+    startMessage(9);
+    _stream << PING_MSG;
+    _stream << currentTime();
+    endMessage();
+}
+
 void Connection::startMessage (quint16 length)
 {
     if (_crypto && _compoundCount == 0) {
@@ -455,6 +473,15 @@ bool Connection::maybeReadMessage (QDataStream& stream, qint64 available)
 
     } else if (type == CRYPTO_TOGGLED_MSG) {
         _clientCrypto = !_clientCrypto;
+
+    } else if (type == PONG_MSG) {
+        if (available < 9) {
+            _socket->ungetChar(type);
+            return false; // wait until we have the data
+        }
+        quint64 then;
+        stream >> then;
+        qDebug() << "rtt" << (currentTime() - then);
 
     } else if (type == MOUSE_PRESSED_MSG || type == MOUSE_RELEASED_MSG) {
         if (available < 5) {

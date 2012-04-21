@@ -572,6 +572,7 @@ public class ClientApp extends Sprite {
     protected function decodeMessage (bytes :ByteArray) :void
     {
         var type :int = bytes.readUnsignedByte();
+        var out :IDataOutput;
         switch (type) {
             case UPDATE_WINDOW_MSG:
                 updateWindow(bytes.readInt(), bytes.readInt(),
@@ -608,7 +609,7 @@ public class ClientApp extends Sprite {
 
             case TOGGLE_CRYPTO_MSG:
                 // respond immediately in the affirmative and toggle
-                var out :IDataOutput = startMessage();
+                out = startMessage();
                 out.writeByte(CRYPTO_TOGGLED_MSG);
                 endMessage(out);
                 _crypto = !_crypto;
@@ -621,6 +622,14 @@ public class ClientApp extends Sprite {
                     mbytes.position = 0;
                     decodeMessage(mbytes);
                 }
+                break;
+
+            case PING_MSG:
+                // respond immediately with the pong
+                out = startMessage();
+                out.writeByte(PONG_MSG);
+                out.writeBytes(bytes, bytes.position, bytes.bytesAvailable);
+                endMessage(out);
                 break;
 
             default:
@@ -1109,6 +1118,9 @@ public class ClientApp extends Sprite {
     /** Outgoing message: encryption toggled. */
     protected static var CRYPTO_TOGGLED_MSG :int = 7;
 
+    /** Outgoing message: pong. */
+    protected static var PONG_MSG :int = 8;
+
     /** Incoming message: add or update window. */
     protected static var UPDATE_WINDOW_MSG :int = 0;
 
@@ -1132,6 +1144,9 @@ public class ClientApp extends Sprite {
 
     /** Incoming message: compound message follows. */
     protected static var COMPOUND_MSG :int = 7;
+
+    /** Incoming message: ping. */
+    protected static var PING_MSG :int = 8;
 }
 }
 

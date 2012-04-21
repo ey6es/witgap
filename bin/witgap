@@ -7,7 +7,8 @@ SERVER_PIDFILE=/var/run/witgap-server.pid
 
 termHandler () {
     if [ -f $SERVER_PIDFILE ]; then
-        kill `cat $SERVER_PIDFILE`
+        kill -INT `cat $SERVER_PIDFILE`
+        wait
         rm $SERVER_PIDFILE
     fi
     exit
@@ -21,8 +22,12 @@ cd `dirname $0`/..
 # Store our pid
 echo $$ > $PIDFILE
 
+# Make sure the log directory exists
+mkdir -p log
+chown andrzej:andrzej log
+
 while true; do
-    ./bin/witgap-server etc/server.ini >> log/witgap-server.log &
+    sudo -n -u andrzej ./bin/witgap-server etc/server.ini >> log/witgap-server.log &
     echo $! > $SERVER_PIDFILE
     wait
     rm $SERVER_PIDFILE

@@ -99,6 +99,12 @@ const quint8 WINDOW_CLOSED_MSG = 6;
 const quint8 CRYPTO_TOGGLED_MSG = 7;
 
 /**
+ * Client -> server: ping response.  Data:
+ *     clock : quint64 : the server clock value
+ */
+const quint8 PONG_MSG = 8;
+
+/**
  * Server -> client: add or update a window.  Data:
  *     id : qint32 : the unique window id
  *     layer : qint32 : the window layer
@@ -163,6 +169,12 @@ const quint8 TOGGLE_CRYPTO_MSG = 6;
  * Server -> client: compound message.  The data is simply the sub-messages.
  */
 const quint8 COMPOUND_MSG = 7;
+
+/**
+ * Server -> client: ping request.  Data:
+ *     clock : quint64 : the server clock value
+ */
+const quint8 PING_MSG = 8;
 
 /** A flag indicating that the character should be displayed in reverse. */
 const int REVERSE_FLAG = 0x10000;

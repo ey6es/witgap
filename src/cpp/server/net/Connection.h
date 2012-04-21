@@ -212,6 +212,11 @@ protected slots:
      */
     void readMessages ();
 
+    /**
+     * Pings the client.
+     */
+    void ping ();
+
 protected:
 
     /**
