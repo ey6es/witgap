@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# Witgap daemon script
+
+PIDFILE=$1
+SERVER_PIDFILE=/var/run/witgap-server.pid
+
+termHandler () {
+    if [ -f $SERVER_PIDFILE ]; then
+        kill `cat $SERVER_PIDFILE`
+        rm $SERVER_PIDFILE
+    fi
+    exit
+}
+
+trap termHandler TERM
+
+# Start from the base directory
+cd `dirname $0`/..
+
+# Store our pid
+echo $$ > $PIDFILE
+
+while true; do
+    ./bin/witgap-server etc/server.ini >> log/witgap-server.log &
+    echo $! > $SERVER_PIDFILE
+    wait
+    rm $SERVER_PIDFILE
+done

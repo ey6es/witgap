@@ -99,8 +99,9 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     EVP_CIPHER_CTX_init(&_ectx);
     EVP_CIPHER_CTX_init(&_dctx);
 
-    // take over ownership of the socket
+    // take over ownership of the socket and set its low delay option
     _socket->setParent(this);
+    _socket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
 
     // connect initial slots
     connect(socket, SIGNAL(readyRead()), SLOT(readHeader()));

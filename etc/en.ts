@@ -40,44 +40,71 @@
     </message>
     <message>
         <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="94"/>
-        <source>say</source>
+        <source>bug</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="97"/>
-        <source>Usage: /%1 message
-  Speaks a message aloud.</source>
+        <source>Usage: /%1 description
+  Submits a bug report.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="107"/>
+        <source>Report submitted.  Thanks!</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="120"/>
-        <source>emote me</source>
+        <source>say</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="123"/>
         <source>Usage: /%1 message
-  Displays an emote.</source>
+  Speaks a message aloud.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="146"/>
-        <source>shout</source>
+        <source>emote me</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="149"/>
         <source>Usage: /%1 message
-  Shouts a message.</source>
+  Displays an emote.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="172"/>
-        <source>broadcast</source>
+        <source>shout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="175"/>
+        <source>Usage: /%1 message
+  Shouts a message.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="198"/>
+        <source>tell</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="201"/>
+        <source>Usage: /%1 username message
+  Sends a message to a single user.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="224"/>
+        <source>broadcast</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="227"/>
         <source>Usage: /%1 message
   Broadcasts a message to everyone.</source>
         <translation type="unfinished"></translation>
@@ -565,7 +592,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="381"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="388"/>
         <source>Please enter a brief bug description.</source>
         <translation type="unfinished"></translation>
     </message>
