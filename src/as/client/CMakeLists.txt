@@ -1,5 +1,5 @@
 set(SOURCES ClientApp.as)
-set(OUTPUT ${CMAKE_SOURCE_DIR}/web/client.swf)
+set(OUTPUT ${CMAKE_SOURCE_DIR}/www/client.swf)
 
 find_program(MXMLC mxmlc)
 
