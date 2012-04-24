@@ -380,20 +380,11 @@ void Connection::readMessages ()
     }
 }
 
-/**
- * Helper function for ping/pong: returns the current time as milliseconds since the epoch.
- */
-static quint64 currentTime ()
-{
-    QDateTime now = QDateTime::currentDateTime();
-    return (quint64)now.toTime_t()*1000 + now.time().msec();
-}
-
 void Connection::ping ()
 {
     startMessage(9);
     _stream << PING_MSG;
-    _stream << currentTime();
+    _stream << currentTimeMillis();
     endMessage();
 }
 
@@ -481,7 +472,7 @@ bool Connection::maybeReadMessage (QDataStream& stream, qint64 available)
         }
         quint64 then;
         stream >> then;
-        qDebug() << "rtt" << (currentTime() - then);
+        qDebug() << "rtt" << (currentTimeMillis() - then);
 
     } else if (type == MOUSE_PRESSED_MSG || type == MOUSE_RELEASED_MSG) {
         if (available < 5) {

@@ -46,8 +46,30 @@ public:
 
 protected:
 
+    /**
+     * Generates a random name that isn't used by any session/user.
+     */
+    QString uniqueRandomName () const;
+
+    /**
+     * Generates a random name using the loaded Markov chain probabilities.
+     */
+    QString randomName () const;
+
     /** The server application. */
     ServerApp* _app;
+
+    /** The minimum and maximum random name lengths. */
+    static const int MinNameLength = 4, MaxNameLength = 12;
+
+    /** Probabilities for each name length. */
+    double _nameLengths[MaxNameLength - MinNameLength + 1];
+
+    /** The number of states in the name chain (letters plus start/end). */
+    static const int NameChainStates = 26 + 1;
+
+    /** The Markov chain for random name letters. */
+    double _nameChain[NameChainStates][NameChainStates];
 };
 
 /**
@@ -62,6 +84,9 @@ public:
 
     /** The session token. */
     QByteArray token;
+
+    /** The session name. */
+    QString name;
 
     /** The session avatar. */
     QChar avatar;

@@ -46,6 +46,19 @@ public:
      */
     void connectionEstablished (Connection* connection);
 
+    /**
+     * Broadcasts a message to all online users.
+     */
+    Q_INVOKABLE void broadcast (const QString& speaker, const QString& message);
+
+    /**
+     * Attempts to send a tell to the named recipient.  The callback will receive the
+     * tell result: a bool indicating whether the recipient could be reached.
+     */
+    Q_INVOKABLE void tell (
+        const QString& speaker, const QString& message,
+        const QString& recipient, const Callback& callback);
+
 protected slots:
 
     /**
@@ -74,6 +87,9 @@ protected:
 
     /** The set of active sessions, mapped by session id. */
     QHash<quint64, Session*> _sessions;
+
+    /** Sessions mapped by username. */
+    QHash<QString, Session*> _usernames;
 
     /** Synchronized pointer for callbacks. */
     CallablePointer _this;

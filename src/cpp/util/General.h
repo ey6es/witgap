@@ -56,4 +56,14 @@ inline uint qHash (const QPoint& point) { return point.x()*31 + point.y(); }
  */
 QByteArray generateToken (int length);
 
+/**
+ * Returns the current time in milliseconds since the epoch.
+ */
+quint64 currentTimeMillis ();
+
+/**
+ * Returns a random index corresponding to the given probabilities (which must sum up to one).
+ */
+int randomIndex (const double* probs);
+
 #endif // GENERAL

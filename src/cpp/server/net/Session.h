@@ -234,6 +234,11 @@ public:
     void say (const QString& message, ChatWindow::SpeakMode mode = ChatWindow::NormalMode);
 
     /**
+     * Attempts to send a tell to the named recipient.
+     */
+    void tell (const QString& recipient, const QString& message);
+
+    /**
      * Submits a bug report with the supplied description.
      */
     Q_INVOKABLE void submitBugReport (const QString& description);
@@ -314,6 +319,11 @@ protected:
      * to the scene thread.
      */
     Q_INVOKABLE void continueMovingToScene (QObject* scene);
+
+    /**
+     * Reports back from a tell request.
+     */
+    Q_INVOKABLE void maybeTold (const QString& recipient, const QString& message, bool success);
 
     /**
      * Determines whether the specified window is beneath another, modal window.

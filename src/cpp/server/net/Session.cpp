@@ -307,8 +307,9 @@ void Session::loggedOn (const UserRecord& user)
             Q_ARG(const QString&, "username"), Q_ARG(const QString&, user.name));
     }
 
-    // set the user id and avatar in the session record
+    // set the user id and name/avatar in the session record
     _record.userId = user.id;
+    _record.name = user.name;
     _record.avatar = user.avatar;
     QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "updateSession",
         Q_ARG(const SessionRecord&, _record));
@@ -318,9 +319,9 @@ void Session::logoff ()
 {
     qDebug() << "Logged off." << _record.id << _user.name;
 
-    _user.id = 0;
+    _user = NoUser;
 
-    // clear the user id in the session record
+    // clear the user id and name in the session record
     _record.userId = 0;
     QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "updateSession",
         Q_ARG(const SessionRecord&, _record));
@@ -363,12 +364,26 @@ void Session::setSettings (const QString& password, const QString& email, QChar 
 
 void Session::say (const QString& message, ChatWindow::SpeakMode mode)
 {
+    if (mode == ChatWindow::BroadcastMode) {
+        QMetaObject::invokeMethod(_app->connectionManager(), "broadcast",
+            Q_ARG(const QString&, _user.name), Q_ARG(const QString&, message));
+        return;
+    }
     if (_scene != 0 && _pawn != 0) {
         // replace double with single quotes to prevent spoofing
         QString msg = message;
         msg.replace('\"', '\'');
         _scene->say(_pawn->position(), _user.name, msg, mode);
     }
+}
+
+void Session::tell (const QString& recipient, const QString& message)
+{
+    QMetaObject::invokeMethod(_app->connectionManager(), "tell",
+        Q_ARG(const QString&, _user.name), Q_ARG(const QString&, message),
+        Q_ARG(const QString&, recipient), Q_ARG(const Callback&, Callback(_this,
+            "maybeTold(QString,QString,bool)", Q_ARG(const QString&, recipient),
+            Q_ARG(const QString&, message))));
 }
 
 void Session::submitBugReport (const QString& description)
@@ -590,6 +605,12 @@ void Session::continueMovingToScene (QObject* scene)
     _pawn = _scene->addSession(this);
 
     emit didEnterScene(_scene);
+}
+
+void Session::maybeTold (const QString& recipient, const QString& message, bool success)
+{
+    _chatWindow->display(success ? tr("You tell %1, \"%2\"").arg(recipient, message) :
+        tr("There is no one online named %1.").arg(recipient));
 }
 
 bool Session::belowModal (Window* window) const

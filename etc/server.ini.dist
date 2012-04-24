@@ -34,3 +34,6 @@ translation_directory = /export/witgap/etc
 ; The space-delimited supported translation locales.  Always put en first, and country-specific
 ; locales after their corresponding languages (e.g., "fr" before "fr_CA")
 translation_locales = en
+
+; The file containing the Markov chain probabilities used to generate random names
+name_chain = /export/witgap/etc/name_chain.dat

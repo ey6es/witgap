@@ -2,6 +2,7 @@
 // $Id$
 
 #include <QKeyEvent>
+#include <QMetaType>
 #include <QTranslator>
 #include <QVarLengthArray>
 #include <QtDebug>
@@ -17,6 +18,9 @@
 
 // translate through the session
 #define tr(...) this->session()->translator()->translate("ChatWindow", __VA_ARGS__)
+
+// register our types with the metatype system
+int speakModeType = qRegisterMetaType<ChatWindow::SpeakMode>("ChatWindow::SpeakMode");
 
 ChatWindow::ChatWindow (Session* parent) :
     Window(parent, 1)
@@ -43,6 +47,10 @@ void ChatWindow::display (const QString& speaker, const QString& message, SpeakM
 
         case BroadcastMode:
             format = tr("%1 broadcasts, \"%2\"");
+            break;
+
+        case TellMode:
+            format = tr("%1 tells you, \"%2\"");
             break;
     }
     display(format.arg(speaker, message));

@@ -9,6 +9,7 @@
 #include <openssl/rsa.h>
 
 #include "ServerApp.h"
+#include "chat/ChatWindow.h"
 #include "db/DatabaseThread.h"
 #include "db/SessionRepository.h"
 #include "net/Connection.h"
@@ -75,6 +76,30 @@ void ConnectionManager::connectionEstablished (Connection* connection)
         Q_ARG(const Callback&, Callback(_this,
             "tokenValidated(QWeakObjectPointer,SessionRecord,UserRecord)",
             Q_ARG(const QWeakObjectPointer&, QWeakObjectPointer(connection)))));
+}
+
+void ConnectionManager::broadcast (const QString& speaker, const QString& message)
+{
+    foreach (Session* session, _sessions) {
+        QMetaObject::invokeMethod(session->chatWindow(), "display",
+            Q_ARG(const QString&, speaker), Q_ARG(const QString&, message),
+            Q_ARG(ChatWindow::SpeakMode, ChatWindow::BroadcastMode));
+    }
+}
+
+void ConnectionManager::tell (
+    const QString& speaker, const QString& message,
+    const QString& recipient, const Callback& callback)
+{
+    Session* session = _usernames.value(recipient.toLower());
+    if (session == 0) {
+        callback.invoke(Q_ARG(bool, false));
+    } else {
+        QMetaObject::invokeMethod(session->chatWindow(), "display",
+            Q_ARG(const QString&, speaker), Q_ARG(const QString&, message),
+            Q_ARG(ChatWindow::SpeakMode, ChatWindow::TellMode));
+        callback.invoke(Q_ARG(bool, true));
+    }
 }
 
 void ConnectionManager::acceptConnections ()

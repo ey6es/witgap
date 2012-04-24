@@ -1,7 +1,10 @@
 //
 // $Id$
 
+#include <time.h>
+
 #include <QDateTime>
+#include <QFile>
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QStringList>
@@ -20,6 +23,18 @@ int sessionRecordType = qRegisterMetaType<SessionRecord>();
 SessionRepository::SessionRepository (ServerApp* app) :
     _app(app)
 {
+    // read the letter probability matrix
+    QFile pfile(app->config().value("name_chain").toString());
+    pfile.open(QIODevice::ReadOnly);
+    QDataStream pin(&pfile);
+    for (int ii = 0; ii < MaxNameLength - MinNameLength + 1; ii++) {
+        pin >> _nameLengths[ii];
+    }
+    for (int ii = 0; ii < NameChainStates; ii++) {
+        for (int jj = 0; jj < NameChainStates; jj++) {
+            pin >> _nameChain[ii][jj];
+        }
+    }
 }
 
 void SessionRepository::init ()
@@ -34,11 +49,13 @@ void SessionRepository::init ()
             "create table SESSIONS ("
                 "ID bigint unsigned not null auto_increment primary key,"
                 "TOKEN binary(16) not null,"
+                "NAME varchar(16) not null,"
                 "AVATAR smallint unsigned not null,"
                 "USER_ID int unsigned not null default 0,"
                 "LAST_ONLINE datetime not null,"
                 "index (LAST_ONLINE),"
-                "index (USER_ID))");
+                "index (USER_ID),"
+                "index (NAME))");
     }
 }
 
@@ -73,30 +90,33 @@ void SessionRepository::validateToken (
         query.exec();
         if (query.numRowsAffected() > 0) { // valid; return what we were passed
             // look up the user record
-            query.prepare("select AVATAR, USER_ID from SESSIONS where ID = ?");
+            query.prepare("select NAME, AVATAR, USER_ID from SESSIONS where ID = ?");
             query.addBindValue(id);
             query.exec();
             Q_ASSERT(query.next());
             SessionRecord srec = {
-                id, token, QChar(query.value(0).toUInt()), query.value(1).toUInt(), now };
+                id, token, query.value(0).toString(), QChar(query.value(1).toUInt()),
+                query.value(2).toUInt(), now };
             UserRecord urec = (srec.userId == 0) ? NoUser :
                 _app->databaseThread()->userRepository()->loadUser(srec.userId);
-            qDebug() << "Session resumed." << id << urec.name;
+            qDebug() << "Session resumed." << id << srec.name;
             callback.invoke(Q_ARG(const SessionRecord&, srec), Q_ARG(const UserRecord&, urec));
             return;
         }
     }
 
-    // if that didn't work, we must generate a new id and token and a random avatar
+    // if that didn't work, we must generate a new id and token and a random name/avatar
     QByteArray ntoken = generateToken(16);
+    QString name = uniqueRandomName();
     QChar avatar = randomAvatar();
-    query.prepare("insert into SESSIONS (TOKEN, AVATAR, LAST_ONLINE) values (?, ?, ?)");
+    query.prepare("insert into SESSIONS (TOKEN, NAME, AVATAR, LAST_ONLINE) values (?, ?, ?, ?)");
     query.addBindValue(ntoken);
+    query.addBindValue(name);
     query.addBindValue(avatar.unicode());
     query.addBindValue(now);
     query.exec();
 
-    SessionRecord srec = { query.lastInsertId().toULongLong(), ntoken, avatar, 0, now };
+    SessionRecord srec = { query.lastInsertId().toULongLong(), ntoken, name, avatar, 0, now };
     qDebug() << "Session created." << srec.id;
     callback.invoke(Q_ARG(const SessionRecord&, srec), Q_ARG(const UserRecord&, NoUser));
 }
@@ -104,9 +124,59 @@ void SessionRepository::validateToken (
 void SessionRepository::updateSession (const SessionRecord& session)
 {
     QSqlQuery query;
-    query.prepare("update SESSIONS set USER_ID = ?, AVATAR = ? where ID = ?");
+    query.prepare("update SESSIONS set USER_ID = ?, NAME = ?, AVATAR = ? where ID = ?");
     query.addBindValue(session.userId);
+    query.addBindValue(session.name);
     query.addBindValue(session.avatar.unicode());
     query.addBindValue(session.id);
     query.exec();
+}
+
+QString SessionRepository::uniqueRandomName () const
+{
+    for (int ii = 0;; ii++) {
+        // generate a list of possible names
+        QStringList names;
+        for (int jj = 0; jj < 10; jj++) {
+            QString name = randomName();
+            if (ii > 1) {
+                // start inserting numbers after the first failed iterations
+                name.insert(qrand() % (name.length() + 1), QString::number(ii));
+            }
+            names.append(name);
+        }
+
+        // remove names used by sessions
+        QSqlQuery query;
+        query.prepare("select NAME from SESSIONS where NAME in ?");
+        query.addBindValue(names);
+        query.exec();
+        while (query.next()) {
+            names.removeAll(query.value(0).toString());
+        }
+
+        // and those used by users
+        query.prepare("select NAME_LOWER from USERS where NAME_LOWER in ?");
+        query.addBindValue(names);
+        query.exec();
+        while (query.next()) {
+            names.removeAll(query.value(0).toString());
+        }
+
+        if (!names.isEmpty()) {
+            return names.at(0);
+        }
+    }
+}
+
+QString SessionRepository::randomName () const
+{
+    int length = MinNameLength + randomIndex(_nameLengths);
+    QString name(length, ' ');
+    int last = 0;
+    for (int ii = 0; ii < length; ii++) {
+        last = randomIndex(_nameChain[last]);
+        name[ii] = 'a' + (last - 1);
+    }
+    return name;
 }

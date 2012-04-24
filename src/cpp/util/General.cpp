@@ -3,6 +3,7 @@
 
 #include <string.h>
 
+#include <QDateTime>
 #include <QMetaType>
 #include <QString>
 #include <QVariant>
@@ -63,4 +64,20 @@ QByteArray generateToken (int length)
         *ptr = qrand() % 256;
     }
     return token;
+}
+
+quint64 currentTimeMillis ()
+{
+    QDateTime now = QDateTime::currentDateTime();
+    return (quint64)now.toTime_t()*1000 + now.time().msec();
+}
+
+int randomIndex (const double* probs)
+{
+    double total = qrand() / (double)RAND_MAX;
+    for (int ii = 0;; ii++) {
+        if ((total -= probs[ii]) <= 0.0) {
+            return ii;
+        }
+    }
 }

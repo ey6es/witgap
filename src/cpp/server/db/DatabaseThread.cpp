@@ -12,6 +12,7 @@
 #include "db/SceneRepository.h"
 #include "db/SessionRepository.h"
 #include "db/UserRepository.h"
+#include "util/General.h"
 
 DatabaseThread::DatabaseThread (ServerApp* app) :
     QThread(app),
@@ -36,7 +37,7 @@ DatabaseThread::DatabaseThread (ServerApp* app) :
 void DatabaseThread::run ()
 {
     // seed the random number generator for this thread
-    qsrand(clock());
+    qsrand(currentTimeMillis());
 
     // connect to the configured database
     QString connectionName;

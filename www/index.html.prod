@@ -1,0 +1,46 @@
+<html>
+    <head>
+        <title>witgap</title>
+        <meta name="description" content="..."/>
+        <meta name="keywords" content="ASCII,online,game,sandbox,MMO"/>
+        <meta name="author" content="Andrzej Kapolka"/>
+        <script type="text/javascript">
+            function setCookie (key, value)
+            {
+                var expires = new Date();
+                expires.setFullYear(expires.getFullYear() + 5);
+                document.cookie = key + "=" + escape(value) + "; expires=" + expires.toUTCString();
+                if (key == "foreground") {
+                    document.body.style.color = "#" + value;
+                } else if (key == "background") {
+                    document.body.style.backgroundColor = "#" + value;
+                }
+            }
+            window.onbeforeunload = function () {
+                (document.getElementById("inner") ||
+                    document.getElementById("outer")).willBeUnloaded();
+            };
+        </script>
+    </head>
+
+    <body style="background-color: #000000;">
+        <object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000"
+                width="800" height="600" id="outer" align="middle">
+            <param name="movie" value="client.swf"/>
+            <param name="FlashVars" value="server_host=www.witgap.com&server_port=4015&public_key=ACDD1383FF248EC3179EECAF0CD406E5BD9F77B8248B207ACF14573515B60B9C8D3A4045D33AB169FC7505F6CC3DE85C1350AC589C65C9269548999B413102A244635BDC08EF261A3451CB51B1A582D464BFF9BA6DEEF46AE8FAD1D850E421AD6FA5BA37915E40264EB8D5E8543C61EF346CB0489B3D1303ADE2BF44FC49F87D"/>
+            <!--[if !IE]>-->
+            <object type="application/x-shockwave-flash" data="client.swf"
+                    width="800" height="600" id="inner">
+                <param name="movie" value="client.swf"/>
+                <param name="FlashVars" value="server_host=www.witgap.com&server_port=4015&public_key=ACDD1383FF248EC3179EECAF0CD406E5BD9F77B8248B207ACF14573515B60B9C8D3A4045D33AB169FC7505F6CC3DE85C1350AC589C65C9269548999B413102A244635BDC08EF261A3451CB51B1A582D464BFF9BA6DEEF46AE8FAD1D850E421AD6FA5BA37915E40264EB8D5E8543C61EF346CB0489B3D1303ADE2BF44FC49F87D"/>
+            <!--<![endif]-->
+                <a href="http://www.adobe.com/go/getflash">
+                    <img src="http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif"
+                         alt="Get Adobe Flash player"/>
+                </a>
+            <!--[if !IE]>-->
+            </object>
+            <!--<![endif]-->
+        </object>
+    </body>
+</html>

@@ -2,6 +2,7 @@
 // $Id$
 
 #include <QHash>
+#include <QMetaObject>
 #include <QTranslator>
 
 #include "ServerApp.h"
@@ -204,10 +205,15 @@ public:
 
     virtual QString handle (Session* session, QTranslator* translator,
             const QString& cmd, const QString& args) {
-        if (args.isEmpty()) {
+        int idx = args.indexOf(' ');
+        if (idx == -1) {
             return usage(translator, cmd);
         }
-
+        QString recipient = args.left(idx);
+        if (recipient.toLower() == session->user().name.toLower()) {
+            return tr("Talking to yourself is a sign of insanity.");
+        }
+        session->tell(recipient, args.mid(idx + 1));
         return "";
     }
 };

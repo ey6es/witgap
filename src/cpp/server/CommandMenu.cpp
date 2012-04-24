@@ -66,6 +66,7 @@ void CommandMenu::keyPressEvent (QKeyEvent* e)
         case Qt::Key_E:
             if (pawn != 0 && scene->canEdit(session)) {
                 pawn->setCursor(!pawn->cursor());
+                deleteLater();
             }
             break;
 

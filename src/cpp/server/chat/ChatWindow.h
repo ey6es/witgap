@@ -25,7 +25,7 @@ class ChatWindow : public Window
 public:
 
     /** The available modes of speech. */
-    enum SpeakMode { NormalMode, EmoteMode, ShoutMode, BroadcastMode };
+    enum SpeakMode { NormalMode, EmoteMode, ShoutMode, BroadcastMode, TellMode };
 
     /**
      * Initializes the window.
@@ -35,7 +35,8 @@ public:
     /**
      * Displays a message.
      */
-    void display (const QString& speaker, const QString& message, SpeakMode mode);
+    Q_INVOKABLE void display (
+        const QString& speaker, const QString& message, ChatWindow::SpeakMode mode);
 
     /**
      * Displays message text.

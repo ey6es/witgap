@@ -36,8 +36,8 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
     Container* icont = new Container(ilayout);
     addChild(icont);
     icont->addChild(new Label(tr("Username:")));
-    _username = new TextField(20, new RegExpDocument(
-        PartialUsernameExp, username, MaxUsernameLength));
+    _username = new TextField(20, new RegExpDocument(PartialUsernameExp,
+        username.isEmpty() ? parent->record().name : username, MaxUsernameLength));
     icont->addChild(_username);
     connect(_username, SIGNAL(textChanged()), SLOT(updateLogon()));
 
