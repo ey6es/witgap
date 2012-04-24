@@ -136,8 +136,9 @@ void LogonDialog::logon ()
         Session* session = this->session();
         QMetaObject::invokeMethod(
             session->app()->databaseThread()->userRepository(), "insertUser",
-            Q_ARG(const QString&, _username->text()), Q_ARG(const QString&, _password->text()),
-            Q_ARG(const QDate&, dob), Q_ARG(const QString&, _email->text().trimmed()),
+            Q_ARG(quint64, session->record().id), Q_ARG(const QString&, _username->text()),
+            Q_ARG(const QString&, _password->text()), Q_ARG(const QDate&, dob),
+            Q_ARG(const QString&, _email->text().trimmed()),
             Q_ARG(QChar, session->record().avatar), Q_ARG(const Callback&,
                 Callback(_this, "userMaybeInserted(UserRecord)")));
 

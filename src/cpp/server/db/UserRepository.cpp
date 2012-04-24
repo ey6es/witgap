@@ -63,11 +63,22 @@ QByteArray hashPassword (const QString& password, const QByteArray& salt)
 }
 
 void UserRepository::insertUser (
-    const QString& name, const QString& password, const QDate& dob,
+    quint64 sessionId, const QString& name, const QString& password, const QDate& dob,
     const QString& email, QChar avatar, const Callback& callback)
 {
     QSqlQuery query;
     QDateTime now = QDateTime::currentDateTime();
+
+    // make sure the name isn't in use for a session other than the one inserting
+    query.prepare("select ID from SESSIONS where NAME = ?");
+    query.addBindValue(name);
+    query.exec();
+    while (query.next()) {
+        if (query.value(0).toULongLong() != sessionId) {
+            callback.invoke(Q_ARG(const UserRecord&, NoUser));
+            return;
+        }
+    }
 
     // generate a random salt
     QByteArray salt(8, 0);

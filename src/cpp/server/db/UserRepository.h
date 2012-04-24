@@ -38,7 +38,7 @@ public:
      * user, or 0 if the name was already taken.
      */
     Q_INVOKABLE void insertUser (
-        const QString& name, const QString& password, const QDate& dob,
+        quint64 sessionId, const QString& name, const QString& password, const QDate& dob,
         const QString& email, QChar avatar, const Callback& callback);
 
     /**

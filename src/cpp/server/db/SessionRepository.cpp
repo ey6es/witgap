@@ -23,13 +23,17 @@ int sessionRecordType = qRegisterMetaType<SessionRecord>();
 SessionRepository::SessionRepository (ServerApp* app) :
     _app(app)
 {
-    // read the letter probability matrix
+    // read the name chain data
     QFile pfile(app->config().value("name_chain").toString());
     pfile.open(QIODevice::ReadOnly);
     QDataStream pin(&pfile);
+
+    // first, the probabilities for each name length
     for (int ii = 0; ii < MaxNameLength - MinNameLength + 1; ii++) {
         pin >> _nameLengths[ii];
     }
+
+    // then, the probabilities that each state will follow each other
     for (int ii = 0; ii < NameChainStates; ii++) {
         for (int jj = 0; jj < NameChainStates; jj++) {
             pin >> _nameChain[ii][jj];
@@ -106,12 +110,12 @@ void SessionRepository::validateToken (
     }
 
     // if that didn't work, we must generate a new id and token and a random name/avatar
-    QByteArray ntoken = generateToken(16);
-    QString name = uniqueRandomName();
-    QChar avatar = randomAvatar();
     query.prepare("insert into SESSIONS (TOKEN, NAME, AVATAR, LAST_ONLINE) values (?, ?, ?, ?)");
+    QByteArray ntoken = generateToken(16);
     query.addBindValue(ntoken);
+    QString name = uniqueRandomName();
     query.addBindValue(name);
+    QChar avatar = randomAvatar();
     query.addBindValue(avatar.unicode());
     query.addBindValue(now);
     query.exec();
@@ -130,6 +134,19 @@ void SessionRepository::updateSession (const SessionRecord& session)
     query.addBindValue(session.avatar.unicode());
     query.addBindValue(session.id);
     query.exec();
+}
+
+void SessionRepository::logoffSession (quint64 id, const Callback& callback)
+{
+    QSqlQuery query;
+    query.prepare("update SESSIONS set USER_ID = ?, NAME = ? where ID = ?");
+    query.addBindValue(0);
+    QString name = uniqueRandomName();
+    query.addBindValue(name);
+    query.addBindValue(id);
+    query.exec();
+
+    callback.invoke(Q_ARG(const QString&, name));
 }
 
 QString SessionRepository::uniqueRandomName () const

@@ -113,7 +113,7 @@ void Session::setConnection (Connection* connection)
 
 QString Session::who () const
 {
-    return (_user.id == 0) ? QString::number(_record.id) : _user.name;
+    return _record.name;
 }
 
 QString Session::locale () const
@@ -309,10 +309,15 @@ void Session::loggedOn (const UserRecord& user)
 
     // set the user id and name/avatar in the session record
     _record.userId = user.id;
+    QString oname = _record.name;
     _record.name = user.name;
     _record.avatar = user.avatar;
     QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "updateSession",
         Q_ARG(const SessionRecord&, _record));
+
+    // let the connection manager update its mappings
+    QMetaObject::invokeMethod(_app->connectionManager(), "sessionNameChanged",
+        Q_ARG(QObject*, this), Q_ARG(const QString&, oname), Q_ARG(const QString&, _record.name));
 }
 
 void Session::logoff ()
@@ -323,8 +328,8 @@ void Session::logoff ()
 
     // clear the user id and name in the session record
     _record.userId = 0;
-    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "updateSession",
-        Q_ARG(const SessionRecord&, _record));
+    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "logoffSession",
+        Q_ARG(quint64, _record.id), Q_ARG(const Callback&, Callback(_this, "loggedOff(QString)")));
 }
 
 void Session::createScene ()
@@ -366,21 +371,21 @@ void Session::say (const QString& message, ChatWindow::SpeakMode mode)
 {
     if (mode == ChatWindow::BroadcastMode) {
         QMetaObject::invokeMethod(_app->connectionManager(), "broadcast",
-            Q_ARG(const QString&, _user.name), Q_ARG(const QString&, message));
+            Q_ARG(const QString&, _record.name), Q_ARG(const QString&, message));
         return;
     }
     if (_scene != 0 && _pawn != 0) {
         // replace double with single quotes to prevent spoofing
         QString msg = message;
         msg.replace('\"', '\'');
-        _scene->say(_pawn->position(), _user.name, msg, mode);
+        _scene->say(_pawn->position(), _record.name, msg, mode);
     }
 }
 
 void Session::tell (const QString& recipient, const QString& message)
 {
     QMetaObject::invokeMethod(_app->connectionManager(), "tell",
-        Q_ARG(const QString&, _user.name), Q_ARG(const QString&, message),
+        Q_ARG(const QString&, _record.name), Q_ARG(const QString&, message),
         Q_ARG(const QString&, recipient), Q_ARG(const Callback&, Callback(_this,
             "maybeTold(QString,QString,bool)", Q_ARG(const QString&, recipient),
             Q_ARG(const QString&, message))));
@@ -573,7 +578,7 @@ void Session::passwordResetMaybeValidated (const QVariant& result)
 
 void Session::sceneCreated (quint32 id)
 {
-    qDebug() << "Created scene." << _user.name << id;
+    qDebug() << "Created scene." << _record.name << id;
 
     moveToScene(id);
 }
@@ -611,6 +616,17 @@ void Session::maybeTold (const QString& recipient, const QString& message, bool 
 {
     _chatWindow->display(success ? tr("You tell %1, \"%2\"").arg(recipient, message) :
         tr("There is no one online named %1.").arg(recipient));
+}
+
+void Session::loggedOff (const QString& name)
+{
+    // set the name in the session record
+    QString oname = _record.name;
+    _record.name = name;
+
+    // let the connection manager update its mappings
+    QMetaObject::invokeMethod(_app->connectionManager(), "sessionNameChanged",
+        Q_ARG(QObject*, this), Q_ARG(const QString&, oname), Q_ARG(const QString&, _record.name));
 }
 
 bool Session::belowModal (Window* window) const

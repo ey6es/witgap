@@ -5,6 +5,7 @@
 #define CONNECTION_MANAGER
 
 #include <QHash>
+#include <QMultiHash>
 #include <QTcpServer>
 
 #include <openssl/pem.h>
@@ -59,6 +60,12 @@ public:
         const QString& speaker, const QString& message,
         const QString& recipient, const Callback& callback);
 
+    /**
+     * Notifies the manager that a session's name has changed (because of logon/logoff).
+     */
+    Q_INVOKABLE void sessionNameChanged (
+        QObject* sessobj, const QString& oldName, const QString& newName);
+
 protected slots:
 
     /**
@@ -88,8 +95,8 @@ protected:
     /** The set of active sessions, mapped by session id. */
     QHash<quint64, Session*> _sessions;
 
-    /** Sessions mapped by username. */
-    QHash<QString, Session*> _usernames;
+    /** Sessions mapped by name. */
+    QMultiHash<QString, Session*> _names;
 
     /** Synchronized pointer for callbacks. */
     CallablePointer _this;

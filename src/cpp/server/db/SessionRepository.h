@@ -44,6 +44,12 @@ public:
      */
     Q_INVOKABLE void updateSession (const SessionRecord& session);
 
+    /**
+     * Logs a session off.  The callback will receive the random name generated for the logged-off
+     * session.
+     */
+    Q_INVOKABLE void logoffSession (quint64 id, const Callback& callback);
+
 protected:
 
     /**

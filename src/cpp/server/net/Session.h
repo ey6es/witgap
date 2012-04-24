@@ -326,6 +326,13 @@ protected:
     Q_INVOKABLE void maybeTold (const QString& recipient, const QString& message, bool success);
 
     /**
+     * Reports back from a logoff request.
+     *
+     * @param name the new session name.
+     */
+    Q_INVOKABLE void loggedOff (const QString& name);
+
+    /**
      * Determines whether the specified window is beneath another, modal window.
      */
     bool belowModal (Window* window) const;
