@@ -51,8 +51,18 @@ public:
     virtual QString handle (Session* session, QTranslator* translator,
             const QString& cmd, const QString& args) {
         if (args.isEmpty()) {
-            QStringList commands = session->chatEntryWindow()->commands().keys();
-            return tr("Available commands: %1").arg(commands.join(" "));
+            QString list;
+            const QMap<QString, ChatCommand*>& commands = session->chatEntryWindow()->commands();
+            for (QMap<QString, ChatCommand*>::const_iterator it = commands.constBegin(),
+                    end = commands.constEnd(); it != end; it++) {
+                if (it.value()->canAccess(session)) {
+                    if (!list.isEmpty()) {
+                        list += ' ';
+                    }
+                    list += it.key();
+                }
+            }
+            return tr("Available commands: %1").arg(list);
         }
         QString hcmd = args.toLower();
         QPair<QString, ChatCommand*> pair = session->chatEntryWindow()->getCommand(hcmd);

@@ -2,17 +2,40 @@
 // $Id$
 
 #include <QCryptographicHash>
+#include <QFile>
 #include <QSqlDatabase>
+#include <QSqlError>
 #include <QSqlQuery>
 #include <QStringList>
 #include <QtDebug>
 
+#include "ServerApp.h"
 #include "db/UserRepository.h"
 #include "util/Callback.h"
 #include "util/General.h"
 
 // register our types with the metatype system
 int userRecordType = qRegisterMetaType<UserRecord>();
+
+UserRepository::UserRepository (ServerApp* app)
+{
+    // load the blocked named list
+    QFile pfile(app->config().value("blocked_names").toString());
+    pfile.open(QIODevice::ReadOnly | QIODevice::Text);
+
+    QString pattern;
+    while (!pfile.atEnd()) {
+        QString line = pfile.readLine().trimmed();
+        if (line.isEmpty()) {
+            continue;
+        }
+        if (!pattern.isEmpty()) {
+            pattern += '|';
+        }
+        pattern += line;
+    }
+    _blockedNameExp = QRegExp(pattern);
+}
 
 void UserRepository::init ()
 {
@@ -69,6 +92,13 @@ void UserRepository::insertUser (
     QSqlQuery query;
     QDateTime now = QDateTime::currentDateTime();
 
+    // check the name against our block list
+    QString nameLower = name.toLower();
+    if (nameLower.contains(_blockedNameExp)) {
+        callback.invoke(Q_ARG(const UserRecord&, NoUser));
+        return;
+    }
+
     // make sure the name isn't in use for a session other than the one inserting
     query.prepare("select ID from SESSIONS where NAME = ?");
     query.addBindValue(name);
@@ -93,7 +123,7 @@ void UserRepository::insertUser (
         "insert into USERS (NAME, NAME_LOWER, PASSWORD_HASH, PASSWORD_SALT, DATE_OF_BIRTH, "
         "EMAIL, FLAGS, AVATAR, CREATED, LAST_ONLINE) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     query.addBindValue(name);
-    query.addBindValue(name.toLower());
+    query.addBindValue(nameLower);
     query.addBindValue(passwordHash);
     query.addBindValue(salt);
     query.addBindValue(dob);

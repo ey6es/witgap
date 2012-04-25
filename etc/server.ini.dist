@@ -37,3 +37,6 @@ translation_locales = en
 
 ; The file containing the Markov chain probabilities used to generate random names
 name_chain = /export/witgap/etc/name_chain.dat
+
+; The file containing the list of patterns that cannot be used in names
+blocked_names = /export/witgap/etc/blocked_names.txt

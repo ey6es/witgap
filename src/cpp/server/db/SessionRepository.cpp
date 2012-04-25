@@ -160,7 +160,10 @@ QString SessionRepository::uniqueRandomName () const
                 // start inserting numbers after the first failed iterations
                 name.insert(qrand() % (name.length() + 1), QString::number(ii));
             }
-            names.append(name);
+            // make sure it isn't in the blocked name list
+            if (!name.contains(_app->databaseThread()->userRepository()->blockedNameExp())) {
+                names.append(name);
+            }
         }
 
         // remove names used by sessions

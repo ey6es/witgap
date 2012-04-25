@@ -9,9 +9,11 @@
 #include <QDateTime>
 #include <QMetaType>
 #include <QObject>
+#include <QRegExp>
 #include <QString>
 
 class Callback;
+class ServerApp;
 class UserRecord;
 
 /**
@@ -25,6 +27,16 @@ public:
 
     /** The possible errors in logon validation. */
     enum LogonError { NoError, NoSuchUser, WrongPassword, Banned };
+
+    /**
+     * Creates the user repository.
+     */
+    UserRepository (ServerApp* app);
+
+    /**
+     * Returns a reference to the blocked name expression.
+     */
+    const QRegExp& blockedNameExp () const { return _blockedNameExp; }
 
     /**
      * Initializes the repository, performing any necessary migrations.
@@ -90,6 +102,11 @@ public:
      */
     Q_INVOKABLE void validatePasswordReset (
         quint32 id, const QByteArray& token, const Callback& callback);
+
+protected:
+
+    /** The expression that matches blocked names. */
+    QRegExp _blockedNameExp;
 };
 
 /**

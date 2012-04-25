@@ -26,7 +26,7 @@ DatabaseThread::DatabaseThread (ServerApp* app) :
     _connectOptions(app->config().value("database_connect_options").toString()),
     _sceneRepository(new SceneRepository()),
     _sessionRepository(new SessionRepository(app)),
-    _userRepository(new UserRepository())
+    _userRepository(new UserRepository(app))
 {
     // move the repositories to this thread
     _sceneRepository->moveToThread(this);
