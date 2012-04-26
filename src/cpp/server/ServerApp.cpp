@@ -18,9 +18,13 @@
 #include "db/DatabaseThread.h"
 #include "net/ConnectionManager.h"
 #include "scene/SceneManager.h"
+#include "util/General.h"
 #include "util/Mailer.h"
 
 using namespace std;
+
+// anything we "translate" needs to be an untranslated key
+#define tr(...) TranslationKey("ServerApp", __VA_ARGS__)
 
 volatile int pendingSignal = 0;
 
@@ -159,6 +163,10 @@ ServerApp::ServerApp (int& argc, char** argv, const QString& configFile) :
     connect(timer, SIGNAL(timeout()), SLOT(idle()));
     timer->start(100);
 
+    // create and connect the reboot timer
+    _rebootTimer = new QTimer(this);
+    connect(_rebootTimer, SIGNAL(timeout()), SLOT(updateReboot()));
+
     // create the database thread
     _databaseThread = new DatabaseThread(this);
 
@@ -205,6 +213,29 @@ void ServerApp::sendMail (const QString& to, const QString& subject,
         _mailHostname, _mailPort, _mailFrom, to, subject, body, callback));
 }
 
+/** The times in minutes of the stages of the reboot countdown. */
+static const int RebootCountdownMinutes[] = { 30, 15, 10, 5, 2, 0 };
+
+/** The number of stages in the reboot countdown. */
+static const int RebootCountdownLength = sizeof(RebootCountdownMinutes) / sizeof(int);
+
+void ServerApp::scheduleReboot (int minutes, const QString& message)
+{
+    for (int ii = 0; ii < RebootCountdownLength; ii++) {
+        if (minutes >= RebootCountdownMinutes[ii]) {
+            _rebootCountdownIdx = ii;
+            _rebootTimer->start((minutes - RebootCountdownMinutes[ii]) * 60 * 1000);
+            break;
+        }
+    }
+    _rebootMessage = message.isEmpty() ? message : ("  " + message);
+}
+
+void ServerApp::cancelReboot ()
+{
+    _rebootTimer->stop();
+}
+
 void ServerApp::idle ()
 {
     if (pendingSignal == SIGINT) {
@@ -214,6 +245,24 @@ void ServerApp::idle ()
         // TODO: some kind of debug output
 
         pendingSignal = 0;
+    }
+}
+
+void ServerApp::updateReboot ()
+{
+    if (_rebootCountdownIdx == RebootCountdownLength) {
+        exit();
+        return;
+    }
+    int minutes = RebootCountdownMinutes[_rebootCountdownIdx++];
+    if (minutes == 0) {
+        _connectionManager->broadcast(tr("The server will now reboot!"));
+        _rebootTimer->start(2 * 1000);
+    } else {
+        _connectionManager->broadcast(
+            tr("The server will be rebooted in %1 minutes.%2").arg(
+                QString::number(minutes), _rebootMessage));
+        _rebootTimer->start((minutes - RebootCountdownMinutes[_rebootCountdownIdx]) * 60 * 1000);
     }
 }
 

@@ -14,6 +14,7 @@
 class ChatCommand;
 class Label;
 class TextField;
+class TranslationKey;
 
 /**
  * The window in which chat messages are displayed.
@@ -37,6 +38,11 @@ public:
      */
     Q_INVOKABLE void display (
         const QString& speaker, const QString& message, ChatWindow::SpeakMode mode);
+
+    /**
+     * Translates and displays message text.
+     */
+    Q_INVOKABLE void display (const TranslationKey& key);
 
     /**
      * Displays message text.

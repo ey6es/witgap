@@ -41,6 +41,11 @@ public:
         const SessionRecord& record, const UserRecord& user);
 
     /**
+     * Destroys the session.
+     */
+    ~Session ();
+
+    /**
      * Returns a pointer to the application object.
      */
     ServerApp* app () const { return _app; }
@@ -313,6 +318,11 @@ protected:
      * Reports back with the resolved scene object, if successful.
      */
     Q_INVOKABLE void sceneMaybeResolved (QObject* scene);
+
+    /**
+     * Leaves the current scene, if any.
+     */
+    void leaveScene ();
 
     /**
      * Enters the now-resolved scene.  This is called after the session has been transferred

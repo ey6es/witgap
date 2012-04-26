@@ -15,6 +15,7 @@
 #include "ui/Label.h"
 #include "ui/Layout.h"
 #include "ui/TextField.h"
+#include "util/General.h"
 
 // translate through the session
 #define tr(...) this->session()->translator()->translate("ChatWindow", __VA_ARGS__)
@@ -54,6 +55,11 @@ void ChatWindow::display (const QString& speaker, const QString& message, SpeakM
             break;
     }
     display(format.arg(speaker, message));
+}
+
+void ChatWindow::display (const TranslationKey& key)
+{
+    display(key.translate(session()->translator()));
 }
 
 void ChatWindow::display (const QString& text)

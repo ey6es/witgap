@@ -255,16 +255,58 @@ public:
 };
 
 /**
+ * Handles the reboot command.
+ */
+class RebootCommand : public AdminChatCommand
+{
+    Q_DECLARE_TR_FUNCTIONS(ChatCommands)
+
+public:
+
+    virtual QString aliases (QTranslator* translator) { return tr("reboot"); }
+
+    virtual QString usage (QTranslator* translator, const QString& cmd) {
+        return tr("Usage: /%1 minutes [message]\n"
+            "  Schedules or cancels a system reboot.").arg(cmd);
+    }
+
+    virtual QString handle (Session* session, QTranslator* translator,
+            const QString& cmd, const QString& args) {
+        if (args.isEmpty()) {
+            QMetaObject::invokeMethod(session->app(), "cancelReboot");
+            return tr("Reboot canceled.");
+        }
+        int idx = args.indexOf(' ');
+        QString number, message;
+        if (idx == -1) {
+            number = args;
+        } else {
+            number = args.left(idx);
+            message = args.mid(idx + 1);
+        }
+        bool ok;
+        int minutes = number.toInt(&ok);
+        if (!ok) {
+            return usage(translator, cmd);
+        }
+        QMetaObject::invokeMethod(session->app(), "scheduleReboot", Q_ARG(int, minutes),
+            Q_ARG(const QString&, message));
+        return "Reboot scheduled.";
+    }
+};
+
+/**
  * Creates the map from language codes to command maps.
  */
 static QHash<QString, CommandMap> createCommandMapMap (ServerApp* app)
 {
     ChatCommand* handlers[] = {
         new HelpCommand(), new ClearCommand(), new BugCommand(), new SayCommand(),
-        new EmoteCommand(), new ShoutCommand(), new TellCommand(), new BroadcastCommand() };
+        new EmoteCommand(), new ShoutCommand(), new TellCommand(), new BroadcastCommand(),
+        new RebootCommand() };
 
     QHash<QString, CommandMap> map;
-    for (int ii = 0; ii < sizeof(handlers) / sizeof(handlers[0]); ii++) {
+    for (int ii = 0; ii < sizeof(handlers) / sizeof(ChatCommand*); ii++) {
         ChatCommand* handler = handlers[ii];
         for (QHash<QString, QTranslator*>::const_iterator it = app->translators().constBegin(),
                 end = app->translators().constEnd(); it != end; it++) {

@@ -9,6 +9,7 @@
 #include <QVector>
 
 class QString;
+class QTranslator;
 
 /**
  * A vector of integers.
@@ -44,6 +45,104 @@ public:
      * Creates a new vector from the supplied string.
      */
     QIntVector (const QString& string, int style = 0);
+};
+
+/**
+ * Packages up a translation key with optional arguments.
+ */
+class TranslationKey
+{
+public:
+
+    /**
+     * Creates a new translation key.
+     */
+    TranslationKey (
+        const char* context, const char* sourceText, const char* disambiguation = 0, int n = -1);
+
+    /**
+     * Creates an empty, invalid translation key.
+     */
+    TranslationKey ();
+
+    /**
+     * Populates the key's arguments.
+     */
+    TranslationKey& arg (const QString& a1);
+
+    /**
+     * Populates the key's arguments.
+     */
+    TranslationKey& arg (const QString& a1, const QString& a2);
+
+    /**
+     * Populates the key's arguments.
+     */
+    TranslationKey& arg (const QString& a1, const QString& a2, const QString& a3);
+
+    /**
+     * Populates the key's arguments.
+     */
+    TranslationKey& arg (
+        const QString& a1, const QString& a2, const QString& a3, const QString& a4);
+
+    /**
+     * Populates the key's arguments.
+     */
+    TranslationKey& arg (
+        const QString& a1, const QString& a2, const QString& a3, const QString& a4,
+        const QString& a5);
+
+    /**
+     * Populates the key's arguments.
+     */
+    TranslationKey& arg (
+        const QString& a1, const QString& a2, const QString& a3, const QString& a4,
+        const QString& a5, const QString& a6);
+
+    /**
+     * Populates the key's arguments.
+     */
+    TranslationKey& arg (
+        const QString& a1, const QString& a2, const QString& a3, const QString& a4,
+        const QString& a5, const QString& a6, const QString& a7);
+
+    /**
+     * Populates the key's arguments.
+     */
+    TranslationKey& arg (
+        const QString& a1, const QString& a2, const QString& a3, const QString& a4,
+        const QString& a5, const QString& a6, const QString& a7, const QString& a8);
+
+    /**
+     * Populates the key's arguments.
+     */
+    TranslationKey& arg (
+        const QString& a1, const QString& a2, const QString& a3, const QString& a4,
+        const QString& a5, const QString& a6, const QString& a7, const QString& a8,
+        const QString& a9);
+
+    /**
+     * Translates using the supplied translator.
+     */
+    QString translate (const QTranslator* translator) const;
+
+protected:
+
+    /** The translation context. */
+    QByteArray _context;
+
+    /** The source text for translation. */
+    QByteArray _sourceText;
+
+    /** The disambiguation string, if any. */
+    QByteArray _disambiguation;
+
+    /** The number, or -1 for none. */
+    int _n;
+
+    /** Arguments to insert into the translated string. */
+    QVector<QString> _args;
 };
 
 /**

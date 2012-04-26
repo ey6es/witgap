@@ -15,6 +15,7 @@
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
+#include "util/General.h"
 
 ConnectionManager::ConnectionManager (ServerApp* app) :
     QTcpServer(app),
@@ -84,6 +85,14 @@ void ConnectionManager::broadcast (const QString& speaker, const QString& messag
         QMetaObject::invokeMethod(session->chatWindow(), "display",
             Q_ARG(const QString&, speaker), Q_ARG(const QString&, message),
             Q_ARG(ChatWindow::SpeakMode, ChatWindow::BroadcastMode));
+    }
+}
+
+void ConnectionManager::broadcast (const TranslationKey& key)
+{
+    foreach (Session* session, _sessions) {
+        QMetaObject::invokeMethod(session->chatWindow(), "display",
+            Q_ARG(const TranslationKey&, key));
     }
 }
 

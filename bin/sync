@@ -4,7 +4,8 @@
 cd `dirname $0`/..
 
 rsync -avz bin/witgap bin/witgap-server witgap.com:/export/witgap/bin
-rsync -avz etc/en.qm etc/private_key.pem etc/init.d/witgap witgap.com:/export/witgap/etc
+rsync -avz etc/blocked_names.txt etc/name_chain.dat etc/en.qm etc/private_key.pem \
+    etc/init.d/witgap witgap.com:/export/witgap/etc
 rsync -avz etc/server.ini.prod witgap.com:/export/witgap/etc/server.ini
 rsync -avz www/client.swf www/crossdomain.xml witgap.com:/export/witgap/www
 rsync -avz www/index.html.prod witgap.com:/export/witgap/www/index.html

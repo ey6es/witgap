@@ -16,6 +16,7 @@ class Connection;
 class ServerApp;
 class Session;
 class SessionRecord;
+class TranslationKey;
 class UserRecord;
 
 /**
@@ -51,6 +52,11 @@ public:
      * Broadcasts a message to all online users.
      */
     Q_INVOKABLE void broadcast (const QString& speaker, const QString& message);
+
+    /**
+     * Broadcasts a message to all online users.
+     */
+    Q_INVOKABLE void broadcast (const TranslationKey& key);
 
     /**
      * Attempts to send a tell to the named recipient.  The callback will receive the

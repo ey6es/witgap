@@ -9,6 +9,7 @@
 #include <QSettings>
 
 class QByteArray;
+class QTimer;
 class QTranslator;
 
 class Callback;
@@ -79,12 +80,27 @@ public:
     void sendMail (const QString& to, const QString& subject,
         const QString& body, const Callback& callback);
 
+    /**
+     * (Re)schedules a reboot.
+     */
+    Q_INVOKABLE void scheduleReboot (int minutes, const QString& message);
+
+    /**
+     * Cancels any scheduled reboot.
+     */
+    Q_INVOKABLE void cancelReboot ();
+
 protected slots:
 
     /**
      * Handles idle processing.
      */
     void idle ();
+
+    /**
+     * Updates the reboot state.
+     */
+    void updateReboot ();
 
     /**
      * Called just before exiting.
@@ -127,6 +143,15 @@ protected:
 
     /** The database thread. */
     DatabaseThread* _databaseThread;
+
+    /** The reboot timer. */
+    QTimer* _rebootTimer;
+
+    /** The current index in the reboot countdown. */
+    int _rebootCountdownIdx;
+
+    /** The custom reboot message, if any. */
+    QString _rebootMessage;
 };
 
 #endif // SERVER_APP

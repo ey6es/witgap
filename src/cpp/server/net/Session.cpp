@@ -63,6 +63,11 @@ Session::Session (ServerApp* app, Connection* connection,
     setConnection(connection);
 }
 
+Session::~Session ()
+{
+    leaveScene();
+}
+
 void Session::setConnection (Connection* connection)
 {
     if (_connection != 0) {
@@ -590,6 +595,16 @@ void Session::sceneMaybeResolved (QObject* scene)
         return;
     }
     // move the session to the scene thread
+    leaveScene();
+    setParent(0);
+    moveToThread(scene->thread());
+
+    // continue the process in the scene thread
+    QMetaObject::invokeMethod(this, "continueMovingToScene", Q_ARG(QObject*, scene));
+}
+
+void Session::leaveScene ()
+{
     if (_scene != 0) {
         emit willLeaveScene(_scene);
 
@@ -597,11 +612,6 @@ void Session::sceneMaybeResolved (QObject* scene)
         _scene = 0;
         _pawn = 0;
     }
-    setParent(0);
-    moveToThread(scene->thread());
-
-    // continue the process in the scene thread
-    QMetaObject::invokeMethod(this, "continueMovingToScene", Q_ARG(QObject*, scene));
 }
 
 void Session::continueMovingToScene (QObject* scene)
