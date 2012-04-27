@@ -18,7 +18,6 @@
 #include "ServerApp.h"
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
-#include "util/General.h"
 
 Connection::Compounder::Compounder (Connection* connection) :
     _connection(connection)
@@ -94,7 +93,8 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     _stream(socket),
     _crypto(false),
     _clientCrypto(false),
-    _compoundCount(0)
+    _compoundCount(0),
+    _throttle(50, 1000)
 {
     // init crypto bits
     EVP_CIPHER_CTX_init(&_ectx);
@@ -509,6 +509,11 @@ bool Connection::maybeReadMessage (QDataStream& stream, qint64 available)
                 emit keyReleased(key, ch, true);
                 break;
         }
+    }
+    // make sure they're not exceeding the message limit
+    if (!_throttle.attemptOp()) {
+        qDebug() << "Message limit exceeded." << _address;
+        deactivate("Message limit exceeded.");
     }
     return true;
 }

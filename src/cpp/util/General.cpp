@@ -212,6 +212,24 @@ QString TranslationKey::translate (const QTranslator* translator) const
     }
 }
 
+Throttle::Throttle (int count, quint64 interval) :
+    _buckets(count),
+    _interval(interval),
+    _bucketIdx(0)
+{
+}
+
+bool Throttle::attemptOp ()
+{
+    quint64 now = currentTimeMillis();
+    if (now - _buckets.at(_bucketIdx) < _interval) {
+        return false;
+    }
+    _buckets[_bucketIdx] = now;
+    _bucketIdx = (_bucketIdx + 1) % _buckets.size();
+    return true;
+}
+
 QByteArray generateToken (int length)
 {
     QByteArray token(length, 0);

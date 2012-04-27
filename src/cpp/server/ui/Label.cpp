@@ -41,6 +41,14 @@ void Label::setTextFlags (int flags, int mask)
     dirty();
 }
 
+void Label::toggleTextFlags (int flags)
+{
+    for (int* ptr = _text.data(), *end = ptr + _text.size(); ptr < end; ptr++) {
+        *ptr ^= flags;
+    }
+    dirty();
+}
+
 void Label::setEnabled (bool enabled)
 {
     if (_enabled != enabled) {

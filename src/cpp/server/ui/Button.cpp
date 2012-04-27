@@ -7,10 +7,20 @@
 #include "Protocol.h"
 #include "ui/Button.h"
 
-Button::Button (const QIntVector& text, Qt::Alignment alignment, QObject* parent) :
-    Label(text, alignment, parent)
+Button::Button (const QString& label, Qt::Alignment alignment, QObject* parent) :
+    Label(QIntVector(), alignment, parent),
+    _label(label)
 {
+    updateText();
     updateMargins();
+}
+
+void Button::setLabel (const QString& label)
+{
+    if (_label != label) {
+        _label = label;
+        updateText();
+    }
 }
 
 void Button::doPress ()
@@ -22,13 +32,6 @@ void Button::doPress ()
         requestFocus();
     }
     emit pressed();
-}
-
-void Button::invalidate ()
-{
-    Component::invalidate();
-    setTextFlags((_enabled ? 0 : DIM_FLAG) | (_focused ? REVERSE_FLAG : 0),
-        ~(DIM_FLAG | REVERSE_FLAG));
 }
 
 void Button::updateMargins ()
@@ -52,12 +55,12 @@ void Button::draw (DrawContext* ctx)
 
 void Button::focusInEvent (QFocusEvent* e)
 {
-    setTextFlag(REVERSE_FLAG, true);
+    updateText();
 }
 
 void Button::focusOutEvent (QFocusEvent* e)
 {
-    setTextFlag(REVERSE_FLAG, false);
+    updateText();
 }
 
 void Button::mouseButtonReleaseEvent (QMouseEvent* e)
@@ -80,9 +83,20 @@ void Button::keyPressEvent (QKeyEvent* e)
     }
 }
 
+void Button::updateText ()
+{
+    QIntVector text = QIntVector::createHighlighted(_label);
+    if (_focused) {
+        for (int* ptr = text.data(), *end = ptr + text.size(); ptr < end; ptr++) {
+            *ptr ^= REVERSE_FLAG;
+        }
+    }
+    setText(text);
+}
+
 CheckBox::CheckBox (
-        const QIntVector& text, bool selected, Qt::Alignment alignment, QObject* parent) :
-    Button(text, alignment, parent),
+        const QString& label, bool selected, Qt::Alignment alignment, QObject* parent) :
+    Button(label, alignment, parent),
     _selected(selected)
 {
     connect(this, SIGNAL(pressed()), SLOT(toggleSelected()));
@@ -95,11 +109,6 @@ void CheckBox::setSelected (bool selected)
         _selected = selected;
         dirty(QRect(_margins.left() - 3, _margins.top(), 1, 1));
     }
-}
-
-void CheckBox::invalidate ()
-{
-    Label::invalidate();
 }
 
 void CheckBox::updateMargins ()
@@ -130,4 +139,9 @@ void CheckBox::focusInEvent (QFocusEvent* e)
 void CheckBox::focusOutEvent (QFocusEvent* e)
 {
     dirty(QRect(_margins.left() - 3, _margins.top(), 1, 1));
+}
+
+void CheckBox::updateText ()
+{
+    setText(QIntVector::createHighlighted(_label));
 }

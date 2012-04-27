@@ -282,13 +282,13 @@ void LogonDialog::setCreateMode (bool createMode)
 {
     if (_createMode = createMode) {
         _label->setText(tr("Enter desired account details."));
-        _toggleCreateMode->setText(tr("I Have an Account"));
-        _logon->setText(tr("Create"));
+        _toggleCreateMode->setLabel(tr("I Have an Account"));
+        _logon->setLabel(tr("Create"));
         _password->disconnect(_logon);
     } else {
         _label->setText(tr("Enter account details."));
-        _toggleCreateMode->setText(tr("Create New Account"));
-        _logon->setText(tr("Logon"));
+        _toggleCreateMode->setLabel(tr("Create New Account"));
+        _logon->setLabel(tr("Logon"));
         _logon->connect(_password, SIGNAL(enterPressed()), SLOT(doPress()));
     }
     // everything after the fourth child is only for account creation

@@ -58,6 +58,11 @@ public:
     void setTextFlags (int flags, int mask = 0xFFFF);
 
     /**
+     * Toggles a set of flags for all characters in the text.
+     */
+    void toggleTextFlags (int flags);
+
+    /**
      * Enables or disables the component.
      */
     virtual void setEnabled (bool enabled);

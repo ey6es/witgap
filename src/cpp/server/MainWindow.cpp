@@ -33,6 +33,7 @@ void MainWindow::keyPressEvent (QKeyEvent* e)
     if (modifiers == Qt::NoModifier) {
         switch (e->key()) {
             case Qt::Key_Alt:
+            case Qt::Key_Control:
             case Qt::Key_Escape:
                 new CommandMenu(session);
                 return;

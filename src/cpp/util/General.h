@@ -146,6 +146,42 @@ protected:
 };
 
 /**
+ * Provides a means of throttling operations that should not occur too frequently (i.e., more than
+ * N times per time interval T).
+ */
+class Throttle
+{
+public:
+
+    /**
+     * Creates a new throttle.
+     *
+     * @param count the maximum number of operations.
+     * @param interval the interval in ms over which the maximum may occur.
+     */
+    Throttle (int count, quint64 interval);
+
+    /**
+     * Attempts an operation.
+     *
+     * @return true if the operation may proceed; false to throttle the operation because there
+     * have been too many, too quickly.
+     */
+    bool attemptOp ();
+
+protected:
+
+    /** The timestamp buckets. */
+    QVector<quint64> _buckets;
+
+    /** The interval over which we track. */
+    quint64 _interval;
+
+    /** The current index in the bucket vector. */
+    int _bucketIdx;
+};
+
+/**
  * Hash function for points.
  */
 inline uint qHash (const QPoint& point) { return point.x()*31 + point.y(); }

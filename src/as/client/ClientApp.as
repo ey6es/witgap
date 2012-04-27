@@ -45,6 +45,7 @@ import flash.utils.ByteArray;
 import flash.utils.IDataInput;
 import flash.utils.IDataOutput;
 import flash.utils.Timer;
+import flash.utils.getTimer;
 
 import com.hurlant.crypto.prng.Random;
 import com.hurlant.crypto.rsa.RSAKey;
@@ -520,6 +521,17 @@ public class ClientApp extends Sprite {
     {
         if (!_socket.connected) {
             return;
+        }
+        if (event.type == KeyboardEvent.KEY_DOWN) {
+            var now :int = getTimer();
+            var then :int = _keyPressedTimes[event.keyCode];
+            if (now - then < MIN_KEY_REPEAT_DELAY) {
+                return; // repeat rate is too high; drop it
+            }
+            _keyPressedTimes[event.keyCode] = now;
+
+        } else { // event.type == KeyboardEvent.KEY_UP
+            _keyPressedTimes[event.keyCode] = 0;
         }
         var out :IDataOutput = startMessage();
         var numpad :Boolean = (event.keyLocation == KeyLocation.NUM_PAD);
@@ -1076,11 +1088,17 @@ public class ClientApp extends Sprite {
     /** The current dirty region. */
     protected var _dirty :Rectangle = new Rectangle();
 
+    /** The time at which each key was pressed. */
+    protected var _keyPressedTimes :Object = new Object();
+
     /** Whether or not to show the redraw regions. */
     protected var _debugRegions :Boolean = false;
 
     /** Whether or not we're running in debug mode. */
     protected static var DEBUG :Boolean = true;
+
+    /** The minimum delay, in ms, between key repeats. */
+    protected static var MIN_KEY_REPEAT_DELAY :int = 30;
 
     /** Flag indicating that the character should be displayed in reverse. */
     protected static var REVERSE_FLAG :int = 0x10000;

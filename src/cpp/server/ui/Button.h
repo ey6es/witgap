@@ -18,13 +18,23 @@ public:
     /**
      * Initializes the button.
      */
-    Button (const QIntVector& text = QIntVector(), Qt::Alignment alignment = Qt::AlignLeft,
+    Button (const QString& label = QString(), Qt::Alignment alignment = Qt::AlignLeft,
         QObject* parent = 0);
 
     /**
      * Checks whether the component accepts input focus.
      */
     virtual bool acceptsFocus () const { return _enabled && _visible; }
+
+    /**
+     * Sets the button label text.
+     */
+    void setLabel (const QString& label);
+
+    /**
+     * Returns a reference to the label text.
+     */
+    const QString& label () const { return _label; }
 
 signals:
 
@@ -39,11 +49,6 @@ public slots:
      * Programmatically performs a button press.
      */
     void doPress ();
-
-    /**
-     * Invalidates the button.
-     */
-    virtual void invalidate ();
 
 protected:
 
@@ -76,6 +81,14 @@ protected:
      * Handles a key press event.
      */
     virtual void keyPressEvent (QKeyEvent* e);
+
+    /**
+     * Updates the button text based on the label and state.
+     */
+    virtual void updateText ();
+
+    /** The button label. */
+    QString _label;
 };
 
 /**
@@ -90,7 +103,7 @@ public:
     /**
      * Initializes the box.
      */
-    CheckBox (const QIntVector& text = QIntVector(), bool selected = false,
+    CheckBox (const QString& label = QString(), bool selected = false,
         Qt::Alignment alignment = Qt::AlignLeft, QObject* parent = 0);
 
     /**
@@ -104,11 +117,6 @@ public:
     bool selected () const { return _selected; }
 
 public slots:
-
-    /**
-     * Invalidates the box.
-     */
-    virtual void invalidate ();
 
     /**
      * Toggles the selected state.
@@ -136,6 +144,11 @@ protected:
      * Handles a focus out event.
      */
     virtual void focusOutEvent (QFocusEvent* e);
+
+    /**
+     * Updates the button text based on the label and state.
+     */
+    virtual void updateText ();
 
     /** Whether or not the box is selected. */
     bool _selected;

@@ -13,6 +13,7 @@
 #include <openssl/evp.h>
 
 #include "util/Callback.h"
+#include "util/General.h"
 
 class QMetaMethod;
 class QIntVector;
@@ -284,6 +285,9 @@ protected:
 
     /** The number of compound requests.  When it drops to zero, we can submit the compound. */
     int _compoundCount;
+
+    /** The incoming message throttle. */
+    Throttle _throttle;
 };
 
 #endif // CONNECTION

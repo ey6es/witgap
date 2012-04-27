@@ -113,7 +113,7 @@ void CommandMenu::keyPressEvent (QKeyEvent* e)
 
 void CommandMenu::keyReleaseEvent (QKeyEvent* e)
 {
-    if (e->key() == Qt::Key_Alt) {
+    if (e->key() == Qt::Key_Alt || e->key() == Qt::Key_Control) {
         deleteLater();
 
     } else {
