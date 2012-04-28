@@ -33,6 +33,9 @@
 
 using namespace std;
 
+// register our types with the metatype system
+int sessionPointerType = qRegisterMetaType<Session*>("Session*");
+
 Session::Session (ServerApp* app, Connection* connection,
         const SessionRecord& record, const UserRecord& user) :
     CallableObject(app->connectionManager()),
@@ -290,16 +293,6 @@ void Session::showInputDialog (
     window->center();
 }
 
-void Session::showLogonDialog ()
-{
-    new LogonDialog(this, _connection == 0 ? "" : _connection->cookies().value("username", ""));
-}
-
-void Session::showLogoffDialog ()
-{
-    showConfirmDialog(tr("Are you sure you want to log off?"), Callback(_this, "logoff()"));
-}
-
 void Session::loggedOn (const UserRecord& user)
 {
     qDebug() << "Logged on." << _record.id << user.name;
@@ -335,14 +328,6 @@ void Session::logoff ()
     _record.userId = 0;
     QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "logoffSession",
         Q_ARG(quint64, _record.id), Q_ARG(const Callback&, Callback(_this, "loggedOff(QString)")));
-}
-
-void Session::createScene ()
-{
-    // insert the scene into the database
-    QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "insertScene",
-        Q_ARG(const QString&, tr("Untitled Scene")), Q_ARG(quint32, _user.id),
-        Q_ARG(const Callback&, Callback(_this, "sceneCreated(quint32)")));
 }
 
 void Session::moveToScene (quint32 id)
@@ -418,6 +403,24 @@ bool Session::event (QEvent* e)
         ke->ignore();
         return false;
     }
+}
+
+void Session::showLogonDialog ()
+{
+    new LogonDialog(this, _connection == 0 ? "" : _connection->cookies().value("username", ""));
+}
+
+void Session::showLogoffDialog ()
+{
+    showConfirmDialog(tr("Are you sure you want to log off?"), Callback(_this, "logoff()"));
+}
+
+void Session::createScene ()
+{
+    // insert the scene into the database
+    QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "insertScene",
+        Q_ARG(const QString&, tr("Untitled Scene")), Q_ARG(quint32, _user.id),
+        Q_ARG(const Callback&, Callback(_this, "sceneCreated(quint32)")));
 }
 
 void Session::clearConnection ()

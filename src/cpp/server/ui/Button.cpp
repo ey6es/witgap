@@ -88,7 +88,7 @@ void Button::updateText ()
     QIntVector text = QIntVector::createHighlighted(_label);
     if (_focused) {
         for (int* ptr = text.data(), *end = ptr + text.size(); ptr < end; ptr++) {
-            *ptr ^= REVERSE_FLAG;
+            *ptr |= REVERSE_FLAG;
         }
     }
     setText(text);

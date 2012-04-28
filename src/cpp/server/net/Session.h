@@ -43,7 +43,7 @@ public:
     /**
      * Destroys the session.
      */
-    ~Session ();
+    virtual ~Session ();
 
     /**
      * Returns a pointer to the application object.
@@ -199,16 +199,6 @@ public:
         Document* document = new Document(), const QRegExp& acceptExp = NonEmptyExp);
 
     /**
-     * Shows the logon dialog.
-     */
-    void showLogonDialog ();
-
-    /**
-     * Shows the logoff confirmation dialog.
-     */
-    void showLogoffDialog ();
-
-    /**
      * Notes that the specified user has logged on.
      */
     void loggedOn (const UserRecord& user);
@@ -217,11 +207,6 @@ public:
      * Logs off the current user.
      */
     Q_INVOKABLE void logoff ();
-
-    /**
-     * Initiates the process of creating a new scene and transferring the user to it.
-     */
-    void createScene ();
 
     /**
      * Moves the user to the identified scene.
@@ -264,6 +249,23 @@ signals:
      * Fired just before the session leaves a scene.
      */
     void willLeaveScene (Scene* scene);
+
+public slots:
+
+    /**
+     * Shows the logon dialog.
+     */
+    void showLogonDialog ();
+
+    /**
+     * Shows the logoff confirmation dialog.
+     */
+    void showLogoffDialog ();
+
+    /**
+     * Initiates the process of creating a new scene and transferring the user to it.
+     */
+    void createScene ();
 
 protected slots:
 

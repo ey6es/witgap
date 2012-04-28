@@ -23,7 +23,7 @@ public:
     /**
      * Initializes the dialog.
      */
-    SettingsDialog (Session* parent);
+    Q_INVOKABLE SettingsDialog (Session* parent);
 
 protected slots:
 

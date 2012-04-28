@@ -27,7 +27,7 @@ public:
     /**
      * Initializes the dialog.
      */
-    EditUserDialog (Session* parent);
+    Q_INVOKABLE EditUserDialog (Session* parent);
 
 protected slots:
 

@@ -22,7 +22,7 @@ public:
     /**
      * Initializes the dialog.
      */
-    ScenePropertiesDialog (Session* parent);
+    Q_INVOKABLE ScenePropertiesDialog (Session* parent);
 
 protected slots:
 

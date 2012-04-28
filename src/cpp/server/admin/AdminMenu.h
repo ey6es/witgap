@@ -4,16 +4,12 @@
 #ifndef ADMIN_MENU
 #define ADMIN_MENU
 
-#include "ui/Window.h"
-
-class QKeyEvent;
-
-class Session;
+#include "ui/Menu.h"
 
 /**
  * Pops up to provide access to admin commands.
  */
-class AdminMenu : public Window
+class AdminMenu : public Menu
 {
     Q_OBJECT
 
@@ -22,19 +18,7 @@ public:
     /**
      * Initializes the menu.
      */
-    AdminMenu (Session* parent);
-
-protected:
-
-    /**
-     * Handles a key press event.
-     */
-    virtual void keyPressEvent (QKeyEvent* e);
-
-    /**
-     * Handles a key release event.
-     */
-    virtual void keyReleaseEvent (QKeyEvent* e);
+    Q_INVOKABLE AdminMenu (Session* parent);
 };
 
 #endif // ADMIN_MENU

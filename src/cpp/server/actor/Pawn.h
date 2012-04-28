@@ -49,6 +49,13 @@ public:
      */
     virtual void sceneChangedUnderneath (int character);
 
+public slots:
+
+    /**
+     * Toggles the pawn's cursor status.
+     */
+    void toggleCursor () { setCursor(!_cursor); }
+
 protected slots:
 
     /**

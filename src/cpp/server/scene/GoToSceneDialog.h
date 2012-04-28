@@ -25,7 +25,7 @@ public:
     /**
      * Initializes the dialog.
      */
-    GoToSceneDialog (Session* parent);
+    Q_INVOKABLE GoToSceneDialog (Session* parent);
 
 protected slots:
 
