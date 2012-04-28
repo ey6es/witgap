@@ -11,11 +11,16 @@
 #include "ui/Menu.h"
 #include "util/Callback.h"
 
-Menu::Menu (Session* parent) :
-    Window(parent, parent->highestWindowLayer(), true, true)
+Menu::Menu (Session* parent, int deleteOnReleaseKey) :
+    Window(parent, parent->highestWindowLayer(), true, true),
+    _deleteOnReleaseKey(deleteOnReleaseKey)
 {
     setBorder(new FrameBorder());
     setLayout(new TableLayout(1));
+
+    if (deleteOnReleaseKey != -1) {
+        setFocus(this);
+    }
 }
 
 Button* Menu::addButton (const QString& label, const QMetaObject* metaObject,
@@ -63,7 +68,7 @@ void Menu::keyPressEvent (QKeyEvent* e)
 
 void Menu::keyReleaseEvent (QKeyEvent* e)
 {
-    if (e->key() == Qt::Key_Alt || e->key() == Qt::Key_Control) {
+    if (e->key() == _deleteOnReleaseKey) {
         deleteLater();
 
     } else {

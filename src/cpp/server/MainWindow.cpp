@@ -31,11 +31,12 @@ void MainWindow::keyPressEvent (QKeyEvent* e)
     Qt::KeyboardModifiers modifiers = e->modifiers();
     Session* session = this->session();
     if (modifiers == Qt::NoModifier) {
-        switch (e->key()) {
+        int key = e->key();
+        switch (key) {
             case Qt::Key_Alt:
             case Qt::Key_Control:
             case Qt::Key_Escape:
-                new CommandMenu(session);
+                new CommandMenu(session, (key == Qt::Key_Escape) ? -1 : key);
                 return;
 
             case Qt::Key_Enter:

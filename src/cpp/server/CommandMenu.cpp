@@ -15,11 +15,12 @@
 // translate through the session
 #define tr(...) this->session()->translator()->translate("CommandMenu", __VA_ARGS__)
 
-CommandMenu::CommandMenu (Session* parent) :
-    Menu(parent)
+CommandMenu::CommandMenu (Session* parent, int deleteOnReleaseKey) :
+    Menu(parent, deleteOnReleaseKey)
 {
     if (parent->admin()) {
-        addButton(tr("&Admin"), &AdminMenu::staticMetaObject, Q_ARG(Session*, parent));
+        addButton(tr("&Admin"), &AdminMenu::staticMetaObject,
+            Q_ARG(Session*, parent), Q_ARG(int, deleteOnReleaseKey));
     }
     bool loggedOn = parent->loggedOn();
     if (loggedOn) {

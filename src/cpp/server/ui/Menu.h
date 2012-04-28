@@ -20,7 +20,12 @@ public:
     /**
      * Creates a new menu.
      */
-    Menu (Session* parent);
+    Menu (Session* parent, int deleteOnReleaseKey = -1);
+
+    /**
+     * Checks whether the component accepts input focus.
+     */
+    virtual bool acceptsFocus () const { return _deleteOnReleaseKey != -1; }
 
     /**
      * Adds a button that will create an instance of the specified type with the provided
@@ -49,6 +54,9 @@ protected:
      * Handles a key release event.
      */
     virtual void keyReleaseEvent (QKeyEvent* e);
+
+    /** The key that, when released, deletes the menu. */
+    int _deleteOnReleaseKey;
 };
 
 #endif // MENU

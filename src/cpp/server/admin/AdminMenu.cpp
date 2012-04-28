@@ -10,8 +10,8 @@
 // translate through the session
 #define tr(...) this->session()->translator()->translate("AdminMenu", __VA_ARGS__)
 
-AdminMenu::AdminMenu (Session* parent) :
-    Menu(parent)
+AdminMenu::AdminMenu (Session* parent, int deleteOnReleaseKey) :
+    Menu(parent, deleteOnReleaseKey)
 {
     addButton(tr("Edit &User"), &EditUserDialog::staticMetaObject, Q_ARG(Session*, parent));
 

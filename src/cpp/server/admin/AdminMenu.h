@@ -18,7 +18,7 @@ public:
     /**
      * Initializes the menu.
      */
-    Q_INVOKABLE AdminMenu (Session* parent);
+    Q_INVOKABLE AdminMenu (Session* parent, int deleteOnReleaseKey = -1);
 };
 
 #endif // ADMIN_MENU

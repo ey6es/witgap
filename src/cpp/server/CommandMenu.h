@@ -18,7 +18,7 @@ public:
     /**
      * Initializes the menu.
      */
-    CommandMenu (Session* parent);
+    CommandMenu (Session* parent, int deleteOnReleaseKey = -1);
 };
 
 #endif // COMMAND_MENU
