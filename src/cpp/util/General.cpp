@@ -18,6 +18,39 @@ int qIntVectorType = qRegisterMetaType<QIntVector>("QIntVector");
 int translationKeyType = qRegisterMetaType<TranslationKey>("TranslationKey");
 int qVariantType = qRegisterMetaType<QVariant>("QVariant");
 
+Creator::Creator (QObject* parent, const QMetaObject* metaObject,
+    QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
+    QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
+    QGenericArgument val8, QGenericArgument val9) :
+        QObject(parent),
+        _metaObject(metaObject)
+{
+    QGenericArgument args[] = { val0, val1, val2, val3, val4, val5, val6, val7, val8, val9 };
+    for (int ii = 0; ii < 10 && args[ii].name() != 0; ii++) {
+        int type = QMetaType::type(args[ii].name());
+        _args[ii].first = type;
+        _args[ii].second = QMetaType::construct(type, args[ii].data());
+    }
+}
+
+Creator::~Creator ()
+{
+    // destroy the copies we created
+    for (int ii = 0; ii < 10 && _args[ii].first != 0; ii++) {
+        QMetaType::destroy(_args[ii].first, _args[ii].second);
+    }
+}
+
+QObject* Creator::create ()
+{
+    QGenericArgument args[10];
+    for (int ii = 0; ii < 10 && _args[ii].first != 0; ii++) {
+        args[ii] = QGenericArgument(QMetaType::typeName(_args[ii].first), _args[ii].second);
+    }
+    return _metaObject->newInstance(args[0], args[1], args[2], args[3], args[4],
+        args[5], args[6], args[7], args[8], args[9]);
+}
+
 QIntVector QIntVector::createHighlighted (const QString& string)
 {
     QIntVector vector;

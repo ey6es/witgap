@@ -16,6 +16,7 @@
 
 class Callback;
 class SceneRecord;
+class ZoneRecord;
 
 /**
  * Handles database queries associated with scenes.
@@ -65,6 +66,35 @@ public:
      * Deletes the identified scene.
      */
     Q_INVOKABLE void deleteScene (quint32 id);
+
+    /**
+     * Inserts a new zone into the database.  The callback will receive the (quint32) zone id.
+     */
+    Q_INVOKABLE void insertZone (const QString& name, quint32 creatorId, const Callback& callback);
+
+    /**
+     * Loads a zone.  The callback will receive the {@link ZoneRecord}.
+     */
+    Q_INVOKABLE void loadZone (quint32 id, const Callback& callback);
+
+    /**
+     * Finds zones whose names start with the specified prefix.  The callback will receive a
+     * ZoneRecordList containing the zone records.
+     *
+     * @param creatorId the id of the creator whose zones are desired, or 0 for all creators.
+     */
+    Q_INVOKABLE void findZones (
+        const QString& prefix, quint32 creatorId, const Callback& callback);
+
+    /**
+     * Updates a zone record.
+     */
+    Q_INVOKABLE void updateZone (const ZoneRecord& zrec);
+
+    /**
+     * Deletes the identified zone.
+     */
+    Q_INVOKABLE void deleteZone (quint32 id);
 };
 
 /**
@@ -199,5 +229,42 @@ public:
 
 /** A list of scene descriptors that we'll register with the metatype system. */
 typedef QList<SceneDescriptor> SceneDescriptorList;
+
+/**
+ * Holds the metadata associated with a zone.
+ */
+class ZoneRecord
+{
+public:
+
+    /** The zone identifier. */
+    quint32 id;
+
+    /** The zone name. */
+    QString name;
+
+    /** The user id of the zone creator. */
+    quint32 creatorId;
+
+    /** The name of the zone creator. */
+    QString creatorName;
+
+    /** The time at which the zone was created. */
+    QDateTime created;
+
+    /** The maximum number of people to place in each instance. */
+    quint16 maxPopulation;
+
+    /** The id of the default scene for the zone. */
+    quint32 defaultSceneId;
+};
+
+Q_DECLARE_METATYPE(ZoneRecord)
+
+/** A record for the lack of a zone. */
+const ZoneRecord NoZone = { 0 };
+
+/** A list of zone records that we'll register with the metatype system. */
+typedef QList<ZoneRecord> ZoneRecordList;
 
 #endif // SCENE_REPOSITORY

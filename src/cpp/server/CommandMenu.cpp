@@ -10,7 +10,9 @@
 #include "net/Session.h"
 #include "scene/GoToSceneDialog.h"
 #include "scene/Scene.h"
+#include "scene/Zone.h"
 #include "scene/ScenePropertiesDialog.h"
+#include "scene/ZonePropertiesDialog.h"
 
 // translate through the session
 #define tr(...) this->session()->translator()->translate("CommandMenu", __VA_ARGS__)
@@ -19,17 +21,18 @@ CommandMenu::CommandMenu (Session* parent, int deleteOnReleaseKey) :
     Menu(parent, deleteOnReleaseKey)
 {
     if (parent->admin()) {
-        addButton(tr("&Admin"), &AdminMenu::staticMetaObject,
+        addButton(tr("&Admin >"), &AdminMenu::staticMetaObject,
             Q_ARG(Session*, parent), Q_ARG(int, deleteOnReleaseKey));
     }
     bool loggedOn = parent->loggedOn();
     if (loggedOn) {
-        addButton(tr("&Go to Scene"), &GoToSceneDialog::staticMetaObject, Q_ARG(Session*, parent));
-        addButton(tr("&New Scene"), parent, SLOT(createScene()));
+        addButton(tr("&Go to Scene..."), &GoToSceneDialog::staticMetaObject,
+            Q_ARG(Session*, parent));
+        addButton(tr("&New >"), this, SLOT(createNewMenu()));
 
         Scene* scene = parent->scene();
         if (scene != 0 && scene->canEdit(parent)) {
-            addButton(tr("Scene &Properties"), &ScenePropertiesDialog::staticMetaObject,
+            addButton(tr("Scene &Properties..."), &ScenePropertiesDialog::staticMetaObject,
                 Q_ARG(Session*, parent));
 
             Pawn* pawn = parent->pawn();
@@ -39,13 +42,46 @@ CommandMenu::CommandMenu (Session* parent, int deleteOnReleaseKey) :
         }
     }
 
-    addButton(tr("&Settings"), &SettingsDialog::staticMetaObject, Q_ARG(Session*, parent));
+    addButton(tr("&Settings..."), &SettingsDialog::staticMetaObject, Q_ARG(Session*, parent));
     if (loggedOn) {
         addButton(tr("&Logoff"), parent, SLOT(showLogoffDialog()));
     } else {
-        addButton(tr("&Logon"), parent, SLOT(showLogonDialog()));
+        addButton(tr("&Logon..."), parent, SLOT(showLogonDialog()));
     }
 
     pack();
     center();
+}
+
+void CommandMenu::createNewMenu ()
+{
+    Session* session = this->session();
+    Menu* menu = new Menu(session, _deleteOnReleaseKey);
+
+    menu->addButton(tr("&Scene"), session, SLOT(createScene()));
+    menu->addButton(tr("&Zone"), session, SLOT(createZone()));
+
+    menu->pack();
+    menu->center();
+}
+
+void CommandMenu::createEditMenu ()
+{
+    Session* session = this->session();
+    Menu* menu = new Menu(session, _deleteOnReleaseKey);
+
+    Scene* scene = session->scene();
+    if (scene != 0 && scene->canEdit(session)) {
+        menu->addButton(tr("&Scene Properties..."), &ScenePropertiesDialog::staticMetaObject,
+            Q_ARG(Session*, session));
+    }
+
+    Instance* instance = session->instance();
+    if (instance != 0) {
+        menu->addButton(tr("&Zone Properties..."), &ZonePropertiesDialog::staticMetaObject,
+            Q_ARG(Session*, session));
+    }
+
+    menu->pack();
+    menu->center();
 }

@@ -22,6 +22,7 @@
 #include "net/Session.h"
 #include "scene/Scene.h"
 #include "scene/SceneManager.h"
+#include "scene/Zone.h"
 #include "ui/Border.h"
 #include "ui/Button.h"
 #include "ui/Label.h"
@@ -338,6 +339,14 @@ void Session::moveToScene (quint32 id)
         Q_ARG(const Callback&, Callback(_this, "sceneMaybeResolved(QObject*)")));
 }
 
+void Session::moveToZone (quint32 id)
+{
+    // resolve the zone via the manager
+    QMetaObject::invokeMethod(_app->sceneManager(), "resolveZone",
+        Q_ARG(quint32, id),
+        Q_ARG(const Callback&, Callback(_this, "zoneMaybeResolved(QObject*)")));
+}
+
 void Session::setSettings (const QString& password, const QString& email, QChar avatar)
 {
     // set and persist avatar in session record
@@ -421,6 +430,14 @@ void Session::createScene ()
     QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "insertScene",
         Q_ARG(const QString&, tr("Untitled Scene")), Q_ARG(quint32, _user.id),
         Q_ARG(const Callback&, Callback(_this, "sceneCreated(quint32)")));
+}
+
+void Session::createZone ()
+{
+    // insert the zone into the database
+    QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "insertZone",
+        Q_ARG(const QString&, tr("Untitled Zone")), Q_ARG(quint32, _user.id),
+        Q_ARG(const Callback&, Callback(_this, "zoneCreated(quint32)")));
 }
 
 void Session::clearConnection ()
@@ -591,6 +608,13 @@ void Session::sceneCreated (quint32 id)
     moveToScene(id);
 }
 
+void Session::zoneCreated (quint32 id)
+{
+    qDebug() << "Created zone." << _record.name << id;
+
+    moveToZone(id);
+}
+
 void Session::sceneMaybeResolved (QObject* scene)
 {
     if (scene == 0) {
@@ -623,6 +647,41 @@ void Session::continueMovingToScene (QObject* scene)
     _pawn = _scene->addSession(this);
 
     emit didEnterScene(_scene);
+}
+
+void Session::zoneMaybeResolved (QObject* zone)
+{
+    if (zone == 0) {
+        showInfoDialog(tr("Failed to resolve zone."));
+        return;
+    }
+
+    // reserve a place in an instance
+    QMetaObject::invokeMethod(zone, "reserveInstancePlace",
+        Q_ARG(const Callback&, Callback(_this, "instancePlaceReserved(QObject*)")));
+}
+
+void Session::instancePlaceReserved (QObject* instance)
+{
+    // move the session to the instance thread
+    leaveZone();
+    setParent(0);
+    moveToThread(instance->thread());
+
+    // continue the process in the instance thread
+    QMetaObject::invokeMethod(this, "continueMovingToZone", Q_ARG(QObject*, instance));
+}
+
+void Session::leaveZone ()
+{
+    if (_instance != 0) {
+        _instance = 0;
+    }
+}
+
+void Session::continueMovingToZone (QObject* instance)
+{
+    _instance = static_cast<Instance*>(instance);
 }
 
 void Session::maybeTold (const QString& recipient, const QString& message, bool success)

@@ -33,7 +33,7 @@ bool AdminChatCommand::canAccess (Session* session)
 }
 
 /**
- * Handles the help command.
+ * Handles the /help command.
  */
 class HelpCommand : public ChatCommand
 {
@@ -71,7 +71,7 @@ public:
 };
 
 /**
- * Handles the clear command.
+ * Handles the /clear command.
  */
 class ClearCommand : public ChatCommand
 {
@@ -94,7 +94,7 @@ public:
 };
 
 /**
- * Handles the bug command.
+ * Handles the /bug command.
  */
 class BugCommand : public ChatCommand
 {
@@ -120,7 +120,7 @@ public:
 };
 
 /**
- * Handles the say command.
+ * Handles the /say command.
  */
 class SayCommand : public ChatCommand
 {
@@ -146,7 +146,7 @@ public:
 };
 
 /**
- * Handles the emote command.
+ * Handles the /emote command.
  */
 class EmoteCommand : public ChatCommand
 {
@@ -172,7 +172,7 @@ public:
 };
 
 /**
- * Handles the shout command.
+ * Handles the /shout command.
  */
 class ShoutCommand : public ChatCommand
 {
@@ -198,7 +198,7 @@ public:
 };
 
 /**
- * Handles the tell command.
+ * Handles the /tell command.
  */
 class TellCommand : public ChatCommand
 {
@@ -229,7 +229,7 @@ public:
 };
 
 /**
- * Handles the broadcast command.
+ * Handles the /broadcast command.
  */
 class BroadcastCommand : public AdminChatCommand
 {
@@ -255,7 +255,7 @@ public:
 };
 
 /**
- * Handles the reboot command.
+ * Handles the /reboot command.
  */
 class RebootCommand : public AdminChatCommand
 {
@@ -296,6 +296,110 @@ public:
 };
 
 /**
+ * Handles the /sgo command.
+ */
+class SGoCommand : public AdminChatCommand
+{
+    Q_DECLARE_TR_FUNCTIONS(ChatCommands)
+
+public:
+
+    virtual QString aliases (QTranslator* translator) { return tr("sgo"); }
+
+    virtual QString usage (QTranslator* translator, const QString& cmd) {
+        return tr("Usage: /%1 scene name\n"
+            "  Moves to the named scene.").arg(cmd);
+    }
+
+    virtual QString handle (Session* session, QTranslator* translator,
+            const QString& cmd, const QString& args) {
+        if (args.isEmpty()) {
+            return usage(translator, cmd);
+        }
+
+        return "";
+    }
+};
+
+/**
+ * Handles the /zgo command.
+ */
+class ZGoCommand : public AdminChatCommand
+{
+    Q_DECLARE_TR_FUNCTIONS(ChatCommands)
+
+public:
+
+    virtual QString aliases (QTranslator* translator) { return tr("zgo"); }
+
+    virtual QString usage (QTranslator* translator, const QString& cmd) {
+        return tr("Usage: /%1 zone name\n"
+            "  Moves to the named zone.").arg(cmd);
+    }
+
+    virtual QString handle (Session* session, QTranslator* translator,
+            const QString& cmd, const QString& args) {
+        if (args.isEmpty()) {
+            return usage(translator, cmd);
+        }
+
+        return "";
+    }
+};
+
+/**
+ * Handles the /pgo command.
+ */
+class PGoCommand : public AdminChatCommand
+{
+    Q_DECLARE_TR_FUNCTIONS(ChatCommands)
+
+public:
+
+    virtual QString aliases (QTranslator* translator) { return tr("pgo"); }
+
+    virtual QString usage (QTranslator* translator, const QString& cmd) {
+        return tr("Usage: /%1 player name\n"
+            "  Moves to the named player.").arg(cmd);
+    }
+
+    virtual QString handle (Session* session, QTranslator* translator,
+            const QString& cmd, const QString& args) {
+        if (args.isEmpty()) {
+            return usage(translator, cmd);
+        }
+
+        return "";
+    }
+};
+
+/**
+ * Handles the /summon command.
+ */
+class SummonCommand : public AdminChatCommand
+{
+    Q_DECLARE_TR_FUNCTIONS(ChatCommands)
+
+public:
+
+    virtual QString aliases (QTranslator* translator) { return tr("summon"); }
+
+    virtual QString usage (QTranslator* translator, const QString& cmd) {
+        return tr("Usage: /%1 player name\n"
+            "  Moves the named player to you.").arg(cmd);
+    }
+
+    virtual QString handle (Session* session, QTranslator* translator,
+            const QString& cmd, const QString& args) {
+        if (args.isEmpty()) {
+            return usage(translator, cmd);
+        }
+
+        return "";
+    }
+};
+
+/**
  * Creates the map from language codes to command maps.
  */
 static QHash<QString, CommandMap> createCommandMapMap (ServerApp* app)
@@ -303,7 +407,8 @@ static QHash<QString, CommandMap> createCommandMapMap (ServerApp* app)
     ChatCommand* handlers[] = {
         new HelpCommand(), new ClearCommand(), new BugCommand(), new SayCommand(),
         new EmoteCommand(), new ShoutCommand(), new TellCommand(), new BroadcastCommand(),
-        new RebootCommand() };
+        new RebootCommand(), new SGoCommand(), new ZGoCommand(), new PGoCommand(),
+        new SummonCommand() };
 
     QHash<QString, CommandMap> map;
     for (int ii = 0; ii < sizeof(handlers) / sizeof(ChatCommand*); ii++) {

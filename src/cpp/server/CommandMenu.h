@@ -19,6 +19,18 @@ public:
      * Initializes the menu.
      */
     CommandMenu (Session* parent, int deleteOnReleaseKey = -1);
+
+protected slots:
+
+    /**
+     * Creates the "new" submenu.
+     */
+    void createNewMenu ();
+
+    /**
+     * Creates the "edit" submenu.
+     */
+    void createEditMenu ();
 };
 
 #endif // COMMAND_MENU

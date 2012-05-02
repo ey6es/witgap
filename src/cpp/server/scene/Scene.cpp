@@ -27,16 +27,8 @@ void Scene::Block::set (const QPoint& pos, int character)
 }
 
 Scene::Scene (ServerApp* app, const SceneRecord& record) :
-    _record(record),
-    _app(app)
-{
-}
-
-Scene::~Scene ()
-{
-}
-
-void Scene::init ()
+    _app(app),
+    _record(record)
 {
     // initialize the contents from the record
     for (QHash<QPoint, SceneRecord::Block>::const_iterator it = _record.blocks.constBegin(),

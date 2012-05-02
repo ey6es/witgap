@@ -9,6 +9,7 @@
 #include "db/SceneRepository.h"
 #include "scene/Scene.h"
 #include "scene/SceneManager.h"
+#include "scene/Zone.h"
 
 SceneManager::SceneManager (ServerApp* app) :
     CallableObject(app),
@@ -43,17 +44,23 @@ void SceneManager::stopThreads ()
     }
 }
 
+QThread* SceneManager::nextThread ()
+{
+    _lastThreadIdx = (_lastThreadIdx + 1) % _threads.size();
+    return _threads.at(_lastThreadIdx);
+}
+
 void SceneManager::resolveScene (quint32 id, const Callback& callback)
 {
     // see if it's loaded already
     Scene* scene = _scenes.value(id);
     if (scene != 0) {
-        callback.invoke(Q_ARG(Scene*, scene));
+        callback.invoke(Q_ARG(QObject*, scene));
         return;
     }
 
     // add the callback to the penders list
-    QList<Callback>& callbacks = _penders[id];
+    QList<Callback>& callbacks = _scenePenders[id];
     callbacks.append(callback);
     if (callbacks.size() > 1) {
         return; // database request already pending
@@ -65,6 +72,28 @@ void SceneManager::resolveScene (quint32 id, const Callback& callback)
             Callback(_this, "sceneMaybeLoaded(quint32,SceneRecord)", Q_ARG(quint32, id))));
 }
 
+void SceneManager::resolveZone (quint32 id, const Callback& callback)
+{
+    // see if it's loaded already
+    Zone* zone = _zones.value(id);
+    if (zone != 0) {
+        callback.invoke(Q_ARG(QObject*, zone));
+        return;
+    }
+
+    // add the callback to the penders list
+    QList<Callback>& callbacks = _zonePenders[id];
+    callbacks.append(callback);
+    if (callbacks.size() > 1) {
+        return; // database request already pending
+    }
+
+    // fetch the scene from the database
+    QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "loadZone",
+        Q_ARG(quint32, id), Q_ARG(const Callback&,
+            Callback(_this, "zoneMaybeLoaded(quint32,ZoneRecord)", Q_ARG(quint32, id))));
+}
+
 void SceneManager::sceneMaybeLoaded (quint32 id, const SceneRecord& record)
 {
     // create the scene if it resolved
@@ -73,14 +102,28 @@ void SceneManager::sceneMaybeLoaded (quint32 id, const SceneRecord& record)
         _scenes.insert(id, scene = new Scene(_app, record));
 
         // assign to a thread in round-robin fashion
-        _lastThreadIdx = (_lastThreadIdx + 1) % _threads.size();
-        scene->moveToThread(_threads.at(_lastThreadIdx));
+        scene->moveToThread(nextThread());
         QMetaObject::invokeMethod(scene, "init");
     }
 
     // remove and notify the penders
-    QList<Callback> callbacks = _penders.take(id);
+    QList<Callback> callbacks = _scenePenders.take(id);
     foreach (const Callback& callback, callbacks) {
         callback.invoke(Q_ARG(QObject*, scene));
+    }
+}
+
+void SceneManager::zoneMaybeLoaded (quint32 id, const ZoneRecord& record)
+{
+    // create the zone if it resolved
+    Zone* zone = 0;
+    if (record.id != 0) {
+        _zones.insert(id, zone = new Zone(_app, record));
+    }
+
+    // remove and notify the penders
+    QList<Callback> callbacks = _zonePenders.take(id);
+    foreach (const Callback& callback, callbacks) {
+        callback.invoke(Q_ARG(QObject*, zone));
     }
 }

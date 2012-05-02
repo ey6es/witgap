@@ -15,6 +15,8 @@
 // register our types with the metatype system
 int sceneRecordType = qRegisterMetaType<SceneRecord>();
 int sceneDescriptorListType = qRegisterMetaType<SceneDescriptorList>("SceneDescriptorList");
+int zoneRecordType = qRegisterMetaType<ZoneRecord>();
+int zoneRecordListType = qRegisterMetaType<ZoneRecordList>("ZoneRecordList");
 
 void SceneRepository::init ()
 {
@@ -48,6 +50,21 @@ void SceneRepository::init ()
                 "index (SCENE_ID),"
                 "index (X, Y))");
     }
+
+    if (!database.tables().contains("ZONES")) {
+        qDebug() << "Creating ZONES table.";
+        query.exec(
+            "create table ZONES ("
+                "ID int unsigned not null auto_increment primary key,"
+                "NAME varchar(255) not null,"
+                "NAME_LOWER varchar(255) not null,"
+                "CREATOR_ID int unsigned not null,"
+                "CREATED datetime not null,"
+                "MAX_POPULATION smallint unsigned not null,"
+                "DEFAULT_SCENE_ID int unsigned not null,"
+                "index (NAME_LOWER),"
+                "index (CREATOR_ID))");
+    }
 }
 
 void SceneRepository::insertScene (
@@ -61,7 +78,7 @@ void SceneRepository::insertScene (
     query.addBindValue(creatorId);
     query.addBindValue(QDateTime::currentDateTime());
     query.addBindValue(100);
-    query.addBindValue(100);
+    query.addBindValue(50);
     query.exec();
 
     callback.invoke(Q_ARG(quint32, query.lastInsertId().toUInt()));
@@ -97,19 +114,28 @@ void SceneRepository::loadScene (quint32 id, const Callback& callback)
     callback.invoke(Q_ARG(const SceneRecord&, scene));
 }
 
+/**
+ * Helper function for find methods: turns a prefix into a "like" pattern with appropriate
+ * escaping.
+ */
+static QString likePattern (const QString& prefix)
+{
+    return prefix.toLower().replace('%', "\\%").replace('_', "\\_") += '%';
+}
+
 void SceneRepository::findScenes (
     const QString& prefix, quint32 creatorId, const Callback& callback)
 {
     QSqlQuery query;
-    QString escaped = prefix.toLower().replace('%', "\\%").replace('_', "\\_") += '%';
+    QString pattern = likePattern(prefix);
     QString base = "select SCENES.ID, SCENES.NAME, CREATOR_ID, USERS.NAME, SCENES.CREATED from "
         "SCENES, USERS where SCENES.CREATOR_ID = USERS.ID and SCENES.NAME_LOWER like ?";
     if (creatorId == 0) {
         query.prepare(base);
-        query.addBindValue(escaped);
+        query.addBindValue(pattern);
     } else {
         query.prepare(base + " and CREATOR_ID = ?");
-        query.addBindValue(escaped);
+        query.addBindValue(pattern);
         query.addBindValue(creatorId);
     }
     query.exec();
@@ -177,6 +203,90 @@ void SceneRepository::deleteScene (quint32 id)
     query.exec();
 
     query.prepare("delete from SCENE_BLOCKS where ID = ?");
+    query.addBindValue(id);
+    query.exec();
+}
+
+void SceneRepository::insertZone (const QString& name, quint32 creatorId, const Callback& callback)
+{
+    QSqlQuery query;
+    query.prepare("insert into ZONES (NAME, NAME_LOWER, CREATOR_ID, CREATED, MAX_POPULATION) "
+        "values (?, ?, ?, ?, ?, ?)");
+    query.addBindValue(name);
+    query.addBindValue(name.toLower());
+    query.addBindValue(creatorId);
+    query.addBindValue(QDateTime::currentDateTime());
+    query.addBindValue(100);
+    query.exec();
+
+    callback.invoke(Q_ARG(quint32, query.lastInsertId().toUInt()));
+}
+
+void SceneRepository::loadZone (quint32 id, const Callback& callback)
+{
+    QSqlQuery query;
+    query.prepare(
+        "select ZONES.NAME, CREATOR_ID, USERS.NAME, ZONES.CREATED, MAX_POPULATION, "
+            "DEFAULT_SCENE_ID from ZONES, USERS where ZONES.CREATOR_ID = USERS.ID "
+            "and ZONES.ID = ?");
+    query.addBindValue(id);
+    query.exec();
+
+    if (!query.next()) {
+        callback.invoke(Q_ARG(const ZoneRecord&, NoZone));
+        return;
+    }
+    ZoneRecord zone = {
+        id, query.value(0).toString(), query.value(1).toUInt(), query.value(2).toString(),
+        query.value(3).toDateTime(), query.value(4).toUInt(), query.value(5).toUInt() };
+    callback.invoke(Q_ARG(const ZoneRecord&, zone));
+}
+
+void SceneRepository::findZones (
+    const QString& prefix, quint32 creatorId, const Callback& callback)
+{
+    QSqlQuery query;
+    QString pattern = likePattern(prefix);
+    QString base = "select ZONES.ID, ZONES.NAME, CREATOR_ID, USERS.NAME, ZONES.CREATED, "
+        "MAX_POPULATION, DEFAULT_SCENE_ID from ZONES, USERS where ZONES.CREATOR_ID = USERS.ID "
+        "and ZONES.NAME_LOWER like ?";
+    if (creatorId == 0) {
+        query.prepare(base);
+        query.addBindValue(pattern);
+    } else {
+        query.prepare(base + " and CREATOR_ID = ?");
+        query.addBindValue(pattern);
+        query.addBindValue(creatorId);
+    }
+    query.exec();
+
+    ZoneRecordList zones;
+    while (query.next()) {
+        ZoneRecord zone = { query.value(0).toUInt(), query.value(1).toString(),
+            query.value(2).toUInt(), query.value(3).toString(), query.value(4).toDateTime(),
+            query.value(5).toUInt(), query.value(6).toUInt() };
+        zones.append(zone);
+    }
+    callback.invoke(Q_ARG(const ZoneRecordList&, zones));
+}
+
+void SceneRepository::updateZone (const ZoneRecord& zrec)
+{
+    QSqlQuery query;
+    query.prepare("update ZONES set NAME = ?, NAME_LOWER = ?, MAX_POPULATION = ?, "
+        "DEFAULT_SCENE_ID = ? where ID = ?");
+    query.addBindValue(zrec.name);
+    query.addBindValue(zrec.name.toLower());
+    query.addBindValue(zrec.maxPopulation);
+    query.addBindValue(zrec.defaultSceneId);
+    query.addBindValue(zrec.id);
+    query.exec();
+}
+
+void SceneRepository::deleteZone (quint32 id)
+{
+    QSqlQuery query;
+    query.prepare("delete from ZONES where ID = ?");
     query.addBindValue(id);
     query.exec();
 }

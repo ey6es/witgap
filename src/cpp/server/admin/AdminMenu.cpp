@@ -13,7 +13,7 @@
 AdminMenu::AdminMenu (Session* parent, int deleteOnReleaseKey) :
     Menu(parent, deleteOnReleaseKey)
 {
-    addButton(tr("Edit &User"), &EditUserDialog::staticMetaObject, Q_ARG(Session*, parent));
+    addButton(tr("Edit &User..."), &EditUserDialog::staticMetaObject, Q_ARG(Session*, parent));
 
     pack();
     center();

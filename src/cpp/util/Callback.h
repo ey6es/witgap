@@ -199,44 +199,4 @@ protected:
     CallablePointer _this;
 };
 
-/**
- * Provides a means to create an object on receipt of a signal.
- */
-class Creator : public QObject
-{
-    Q_OBJECT
-
-public:
-
-    /**
-     * Creates a new creator.
-     */
-    Creator (QObject* parent, const QMetaObject* metaObject,
-        QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
-        QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
-        QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
-        QGenericArgument val6 = QGenericArgument(), QGenericArgument val7 = QGenericArgument(),
-        QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument());
-
-    /**
-     * Destroys the creator.
-     */
-    virtual ~Creator ();
-
-public slots:
-
-    /**
-     * Creates the configured object.
-     */
-    QObject* create ();
-
-protected:
-
-    /** The meta-object to instantiate. */
-    const QMetaObject* _metaObject;
-
-    /** The constructor-specified constructor arguments. */
-    QPair<int, void*> _args[10];
-};
-
 #endif // CALLBACK

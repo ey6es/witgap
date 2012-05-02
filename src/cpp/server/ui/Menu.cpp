@@ -9,7 +9,7 @@
 #include "ui/Button.h"
 #include "ui/Layout.h"
 #include "ui/Menu.h"
-#include "util/Callback.h"
+#include "util/General.h"
 
 Menu::Menu (Session* parent, int deleteOnReleaseKey) :
     Window(parent, parent->highestWindowLayer(), true, true),

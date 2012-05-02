@@ -74,16 +74,6 @@ public:
     Scene (ServerApp* app, const SceneRecord& record);
 
     /**
-     * Destroys the scene.
-     */
-    ~Scene ();
-
-    /**
-     * Initializes the scene, having moved it to an appropriate thread.
-     */
-    Q_INVOKABLE void init ();
-
-    /**
      * Returns a reference to the scene record.
      */
     const SceneRecord& record () const { return _record; }

@@ -18,6 +18,7 @@ class QTranslator;
 
 class ChatEntryWindow;
 class Connection;
+class Instance;
 class MainWindow;
 class Pawn;
 class Scene;
@@ -89,6 +90,11 @@ public:
      * Returns a reference to the user record.
      */
     const UserRecord& user () const { return _user; }
+
+    /**
+     * Returns the instance pointer, if the user is in a zone instance.
+     */
+    Instance* instance () const { return _instance; }
 
     /**
      * Returns the scene pointer, if the user is in a scene.
@@ -214,6 +220,11 @@ public:
     void moveToScene (quint32 id);
 
     /**
+     * Moves the user to the identified zone.
+     */
+    void moveToZone (quint32 id);
+
+    /**
      * Sets the user's settings.
      */
     void setSettings (const QString& password, const QString& email, QChar avatar);
@@ -267,6 +278,11 @@ public slots:
      */
     void createScene ();
 
+    /**
+     * Initiates the process of creating a new zone and transferring the user to it.
+     */
+    void createZone ();
+
 protected slots:
 
     /**
@@ -317,9 +333,19 @@ protected:
     Q_INVOKABLE void sceneCreated (quint32 id);
 
     /**
+     * Reports back with the id of the newly created zone.
+     */
+    Q_INVOKABLE void zoneCreated (quint32 id);
+
+    /**
      * Reports back with the resolved scene object, if successful.
      */
     Q_INVOKABLE void sceneMaybeResolved (QObject* scene);
+
+    /**
+     * Reports back with the resolved zone object, if successful.
+     */
+    Q_INVOKABLE void zoneMaybeResolved (QObject* zone);
 
     /**
      * Leaves the current scene, if any.
@@ -331,6 +357,22 @@ protected:
      * to the scene thread.
      */
     Q_INVOKABLE void continueMovingToScene (QObject* scene);
+
+    /**
+     * Reports back with the instance in which a place has been reserved.
+     */
+    Q_INVOKABLE void instancePlaceReserved (QObject* instance);
+
+    /**
+     * Leaves the current zone, if any.
+     */
+    void leaveZone ();
+
+    /**
+     * Enters the instance in which a place has been reserved for us.  This is called after the
+     * session has been transferred to the instance thread.
+     */
+    Q_INVOKABLE void continueMovingToZone (QObject* instance);
 
     /**
      * Reports back from a tell request.
@@ -396,6 +438,9 @@ protected:
 
     /** The currently logged in user. */
     UserRecord _user;
+
+    /** The currently occupied zone instance. */
+    Instance* _instance;
 
     /** The currently occupied scene. */
     Scene* _scene;
