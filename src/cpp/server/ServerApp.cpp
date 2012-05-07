@@ -17,6 +17,7 @@
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
 #include "net/ConnectionManager.h"
+#include "peer/PeerManager.h"
 #include "scene/SceneManager.h"
 #include "util/General.h"
 #include "util/Mailer.h"
@@ -172,6 +173,7 @@ ServerApp::ServerApp (int& argc, char** argv, const QString& configFile) :
 
     // create the managers
     _connectionManager = new ConnectionManager(this);
+    _peerManager = new PeerManager(this);
     _sceneManager = new SceneManager(this);
 
     // start the database and scene threads

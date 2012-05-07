@@ -5,6 +5,10 @@ client_url = http://localhost
 listen_address = 0.0.0.0
 listen_port = 4015
 
+; The address and port on which the server listens for peer connections
+peer_listen_address = 0.0.0.0
+peer_listen_port = 4016
+
 ; The location of the private RSA key
 private_key = /export/witgap/etc/private_key.pem
 

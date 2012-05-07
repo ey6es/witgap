@@ -6,6 +6,7 @@
 
 #include <QThread>
 
+class PeerRepository;
 class SceneRepository;
 class ServerApp;
 class SessionRepository;
@@ -26,17 +27,22 @@ public:
     DatabaseThread (ServerApp* app);
 
     /**
-     * Returns a reference to the scene repository.
+     * Returns a pointer to the peer repository.
+     */
+    PeerRepository* peerRepository () const { return _peerRepository; }
+
+    /**
+     * Returns a pointer to the scene repository.
      */
     SceneRepository* sceneRepository () const { return _sceneRepository; }
 
     /**
-     * Returns a reference to the session repository.
+     * Returns a pointer to the session repository.
      */
     SessionRepository* sessionRepository () const { return _sessionRepository; }
 
     /**
-     * Returns a reference to the user repository.
+     * Returns a pointer to the user repository.
      */
     UserRepository* userRepository () const { return _userRepository; }
 
@@ -70,6 +76,9 @@ protected:
 
     /** The options to use when connecting. */
     QString _connectOptions;
+
+    /** The peer repository. */
+    PeerRepository* _peerRepository;
 
     /** The scene repository. */
     SceneRepository* _sceneRepository;

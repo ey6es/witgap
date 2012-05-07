@@ -8,6 +8,7 @@ add_subdirectory(admin)
 add_subdirectory(chat)
 add_subdirectory(db)
 add_subdirectory(net)
+add_subdirectory(peer)
 add_subdirectory(scene)
 add_subdirectory(ui)
 
@@ -17,4 +18,5 @@ set(SOURCES CommandMenu.cpp LogonDialog.cpp MainWindow.cpp ServerApp.cpp Setting
 qt4_wrap_cpp(SOURCES ${HEADERS})
 add_executable(witgap-server ${SOURCES} ${HEADERS} main.cpp)
 target_link_libraries(witgap-server ${QT_LIBRARIES} ${OPENSSL_LIBRARIES}
-    server-admin server-net server-chat server-db server-scene server-actor server-ui util)
+    server-admin server-net server-chat server-db server-peer
+    server-scene server-actor server-ui util)

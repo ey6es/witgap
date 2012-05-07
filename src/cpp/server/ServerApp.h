@@ -15,6 +15,7 @@ class QTranslator;
 class Callback;
 class ConnectionManager;
 class DatabaseThread;
+class PeerManager;
 class SceneManager;
 
 /**
@@ -62,6 +63,11 @@ public:
      * Returns a pointer to the connection manager.
      */
     ConnectionManager* connectionManager () const { return _connectionManager; }
+
+    /**
+     * Returns a pointer to the peer manager.
+     */
+    PeerManager* peerManager () const { return _peerManager; }
 
     /**
      * Returns a pointer to the scene manager.
@@ -137,6 +143,9 @@ protected:
 
     /** The connection manager. */
     ConnectionManager* _connectionManager;
+
+    /** The peer manager. */
+    PeerManager* _peerManager;
 
     /** The scene manager. */
     SceneManager* _sceneManager;
