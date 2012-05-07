@@ -6,12 +6,16 @@
 
 #include <QCoreApplication>
 #include <QHash>
+#include <QList>
 #include <QSettings>
+#include <QVariant>
+#include <QVector>
 
 class QByteArray;
 class QTimer;
 class QTranslator;
 
+class ArgumentDescriptorList;
 class Callback;
 class ConnectionManager;
 class DatabaseThread;
@@ -32,7 +36,12 @@ public:
      *
      * @param configFile the path to the application configuration file.
      */
-    ServerApp (int& argc, char** argv, const QString& configFile);
+    ServerApp (int& argc, char** argv);
+
+    /**
+     * Returns the processed command line arguments.
+     */
+    const QVariantHash& args () const { return _args; }
 
     /**
      * Returns the application configuration.
@@ -120,6 +129,9 @@ protected:
      */
     Q_INVOKABLE void log (const QByteArray& msg);
 
+    /** The processed command line arguments. */
+    QVariantHash _args;
+
     /** The application configuration. */
     QSettings _config;
 
@@ -161,6 +173,43 @@ protected:
 
     /** The custom reboot message, if any. */
     QString _rebootMessage;
+};
+
+/**
+ * Describes a command line argument.
+ */
+class ArgumentDescriptor
+{
+public:
+
+    /** The argument name. */
+    QString name;
+
+    /** The argument description. */
+    QString description;
+
+    /** The default value. */
+    QVariant defvalue;
+
+    /** The parameter types. */
+    QVector<QVariant::Type> parameterTypes;
+};
+
+/**
+ * A list of argument descriptors.
+ */
+class ArgumentDescriptorList : public QList<ArgumentDescriptor>
+{
+public:
+
+    /**
+     * Adds a description to the list.
+     */
+    void append (
+        const QString& name, const QString& description, const QVariant& defvalue = QVariant(),
+        QVariant::Type t1 = QVariant::Invalid, QVariant::Type t2 = QVariant::Invalid,
+        QVariant::Type t3 = QVariant::Invalid, QVariant::Type t4 = QVariant::Invalid,
+        QVariant::Type t5 = QVariant::Invalid);
 };
 
 #endif // SERVER_APP

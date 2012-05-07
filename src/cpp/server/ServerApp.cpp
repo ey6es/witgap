@@ -125,9 +125,112 @@ QString ForwardingTranslator::translate (
     return result.isEmpty() ? _parent->translate(context, sourceText, disambiguation) : result;
 }
 
-ServerApp::ServerApp (int& argc, char** argv, const QString& configFile) :
+/**
+ * Helper function for argumentDescriptors: creates argument list.
+ */
+static ArgumentDescriptorList createArgumentDescriptors ()
+{
+    ArgumentDescriptorList args;
+    args.append("config_file", "The path of the configuration file.",
+        QVariant(), QVariant::String);
+    args.append("port_offset", "The offset of the server ports.", 0, QVariant::UInt);
+
+    PeerManager::appendArguments(&args);
+    return args;
+}
+
+/**
+ * Returns the argument descriptor list.
+ */
+static ArgumentDescriptorList& argumentDescriptors ()
+{
+    static ArgumentDescriptorList args = createArgumentDescriptors();
+    return args;
+}
+
+/**
+ * Returns the usage text.
+ */
+static QString usage ()
+{
+    QString base = "Usage: witgap-server [OPTION]... [config file]\n";
+        "Where options include:\n";
+    foreach (const ArgumentDescriptor& arg, argumentDescriptors()) {
+        QString defstr;
+        if (arg.defvalue.isValid()) {
+            defstr = "  Default: " + arg.defvalue.toString();
+        }
+        base += "  --" + arg.name + ": " + arg.description + defstr + "\n";
+    }
+    return base;
+}
+
+/**
+ * Helper function for ServerApp: processes the command line arguments and returns a variant
+ * hash with the result.  Throws a QString error message if we're missing mandatory arguments
+ * or any arguments are of the wrong format.
+ */
+static QVariantHash processArguments (const QStringList& args)
+{
+    QVariantHash result;
+    for (QStringList::const_iterator it = ++args.constBegin(), end = args.constEnd();
+            it != end; it++) {
+        const QString& arg = *it;
+        if (!arg.startsWith("--")) { // our one potential unmarked argument
+            result.insert("config_file", arg);
+            continue;
+        }
+        QStringRef name = arg.midRef(2);
+        bool found = false;
+        foreach (const ArgumentDescriptor& desc, argumentDescriptors()) {
+            if (desc.name != name) {
+                continue;
+            }
+            QVariantList values;
+            foreach (QVariant::Type type, desc.parameterTypes) {
+                if (++it == end) {
+                    throw "Missing argument for " + arg + "\n";
+                }
+                QVariant value(*it);
+                if (!value.convert(type)) {
+                    throw "Invalid argument for " + arg + "\n";
+                }
+                values.append(value);
+            }
+            int nvalues = values.size();
+            if (nvalues == 0) {
+                result.insert(desc.name, QVariant());
+            } else if (nvalues == 1) {
+                result.insert(desc.name, values.at(0));
+            } else {
+                result.insert(desc.name, values);
+            }
+            found = true;
+            break;
+        }
+        if (!found) {
+            throw "Unknown argument: " + arg + "\n";
+        }
+    }
+
+    // add defaults, make sure we have any mandatory arguments
+    foreach (const ArgumentDescriptor& arg, argumentDescriptors()) {
+        if (!result.contains(arg.name)) {
+            if (arg.defvalue.isValid() || arg.parameterTypes.isEmpty()) {
+                result.insert(arg.name, arg.defvalue);
+            } else {
+                throw usage();
+            }
+        }
+    }
+
+    return result;
+}
+
+ServerApp::ServerApp (int& argc, char** argv) :
     QCoreApplication(argc, argv),
-    _config(configFile, QSettings::IniFormat, this),
+    _args(processArguments(arguments())),
+    _config(_args.value("config_file").toString(), QSettings::IniFormat, this),
     _clientUrl(_config.value("client_url").toString()),
     _bugReportAddress(_config.value("bug_report_address").toString()),
     _mailHostname(_config.value("mail_hostname").toString()),
@@ -284,4 +387,17 @@ void ServerApp::cleanup ()
 void ServerApp::log (const QByteArray& msg)
 {
     cout << msg.constData() << endl;
+}
+
+void ArgumentDescriptorList::append (
+    const QString& name, const QString& description, const QVariant& defvalue, QVariant::Type t1,
+    QVariant::Type t2, QVariant::Type t3, QVariant::Type t4, QVariant::Type t5)
+{
+    ArgumentDescriptor arg = { name, description, defvalue };
+    QVariant::Type types[] = { t1, t2, t3, t4, t5 };
+    for (int ii = 0; ii < sizeof(types) / sizeof(types[0]) && types[ii] != QVariant::Invalid;
+            ii++) {
+        arg.parameterTypes.append(types[ii]);
+    }
+    QList<ArgumentDescriptor>::append(arg);
 }

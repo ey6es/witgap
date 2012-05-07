@@ -14,12 +14,13 @@ using namespace std;
  */
 int main (int argc, char** argv)
 {
-    // we expect a single argument: the path to the server configuration file
-    if (argc != 2) {
-        cout << "Usage: witgap-server inifile" << endl;
-        return 0;
+    try {
+        int result = ServerApp(argc, argv).exec();
+        qDebug() << "Server shutdown.";
+        return result;
+
+    } catch (QString error) {
+        cerr << error.toStdString();
+        return 1;
     }
-    int result = ServerApp(argc, argv, argv[1]).exec();
-    qDebug() << "Server shutdown.";
-    return result;
 }

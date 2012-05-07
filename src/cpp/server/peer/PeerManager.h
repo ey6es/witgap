@@ -6,6 +6,9 @@
 
 #include <QTcpServer>
 
+#include "db/PeerRepository.h"
+
+class ArgumentDescriptorList;
 class ServerApp;
 
 /**
@@ -16,6 +19,11 @@ class PeerManager : public QTcpServer
     Q_OBJECT
 
 public:
+
+    /**
+     * Appends the peer-related command line arguments to the specified list.
+     */
+    static void appendArguments (ArgumentDescriptorList* args);
 
     /**
      * Initializes the manager.
@@ -31,6 +39,9 @@ protected:
 
     /** The server application. */
     ServerApp* _app;
+
+    /** Our own peer record. */
+    PeerRecord _record;
 };
 
 #endif // PEER_MANAGER
