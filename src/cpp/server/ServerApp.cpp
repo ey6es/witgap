@@ -135,6 +135,7 @@ static ArgumentDescriptorList createArgumentDescriptors ()
         QVariant(), QVariant::String);
     args.append("port_offset", "The offset of the server ports.", 0, QVariant::UInt);
 
+    // add descriptors for arguments required by other modules
     PeerManager::appendArguments(&args);
     return args;
 }
