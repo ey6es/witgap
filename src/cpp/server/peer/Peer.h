@@ -43,6 +43,11 @@ protected slots:
      */
     void connectToPeer ();
 
+    /**
+     * Sends our header, having established an encrypted connection.
+     */
+    void sendHeader ();
+
 protected:
 
     /**

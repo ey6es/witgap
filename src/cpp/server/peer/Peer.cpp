@@ -13,7 +13,10 @@ Peer::Peer (ServerApp* app) :
     _app(app),
     _socket(new QSslSocket(this))
 {
+    app->peerManager()->configureSocket(_socket);
+
     connect(_socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(reconnectLater()));
+    connect(_socket, SIGNAL(encrypted()), SLOT(sendHeader()));
 }
 
 void Peer::update (const PeerRecord& record)
@@ -44,6 +47,11 @@ void Peer::connectToPeer ()
     QString hostname = this->hostname();
     qDebug() << "Connecting to peer." << _record.name << hostname << _record.port;
     _socket->connectToHostEncrypted(hostname, _record.port);
+}
+
+void Peer::sendHeader ()
+{
+    qDebug() << "HELLO.";
 }
 
 const QString& Peer::hostname () const

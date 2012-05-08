@@ -7,7 +7,10 @@ listen_port = 4015
 
 ; The address and port on which the server listens for peer connections
 peer_listen_address = 0.0.0.0
-peer_listen_port = 4016
+peer_listen_port = 4025
+
+; The location of our self-signed SSL certificate
+certificate = /export/witgap/etc/cert.pem
 
 ; The location of the private RSA key
 private_key = /export/witgap/etc/private_key.pem

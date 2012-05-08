@@ -16,11 +16,12 @@ PeerConnection::PeerConnection (ServerApp* app, QSslSocket* socket) :
     // take over ownership of the socket
     _socket->setParent(this);
 
-    // start encryption
-//    _socket->startServerEncryption();
+    // configure the socket and start encryption
+    app->peerManager()->configureSocket(_socket);
+    _socket->startServerEncryption();
 
     // connect initial slots
-    // connect(socket, SIGNAL(readyRead()), SLOT(readHeader()));
+    connect(socket, SIGNAL(readyRead()), SLOT(readHeader()));
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(deleteLater()));
     connect(socket, SIGNAL(disconnected()), SLOT(deleteLater()));
 
@@ -36,4 +37,9 @@ PeerConnection::~PeerConnection ()
     if (_socket->error() != QAbstractSocket::UnknownSocketError) {
         base << _socket->errorString();
     }
+}
+
+void PeerConnection::readHeader ()
+{
+
 }

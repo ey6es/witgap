@@ -5,10 +5,15 @@
 #define PEER_MANAGER
 
 #include <QHash>
+#include <QList>
+#include <QSslConfiguration>
+#include <QSslError>
 #include <QTcpServer>
 
 #include "db/PeerRepository.h"
 #include "util/Callback.h"
+
+class QSslSocket;
 
 class ArgumentDescriptorList;
 class Peer;
@@ -37,6 +42,11 @@ public:
      * Returns a reference to our own peer record.
      */
     const PeerRecord& record () const { return _record; }
+
+    /**
+     * Configures an SSL socket for peer use.
+     */
+    void configureSocket (QSslSocket* socket) const;
 
 protected slots:
 
@@ -67,6 +77,12 @@ protected:
 
     /** Our own peer record. */
     PeerRecord _record;
+
+    /** The shared SSL configuration. */
+    QSslConfiguration _sslConfig;
+
+    /** The SSL "errors" that we expect (due to the self-signed certificate). */
+    QList<QSslError> _expectedSslErrors;
 
     /** Peers mapped by name. */
     QHash<QString, Peer*> _peers;

@@ -30,6 +30,13 @@ public:
      */
     ~PeerConnection ();
 
+protected slots:
+
+    /**
+     * Reads a chunk of incoming header (before transitioning to messages).
+     */
+    void readHeader ();
+
 protected:
 
     /** The server application. */

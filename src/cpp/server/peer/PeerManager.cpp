@@ -1,7 +1,10 @@
 //
 // $Id$
 
+#include <QFile>
 #include <QMetaObject>
+#include <QSslCipher>
+#include <QSslKey>
 #include <QSslSocket>
 #include <QTimer>
 #include <QtDebug>
@@ -42,6 +45,29 @@ PeerManager::PeerManager (ServerApp* app) :
         app->args().value("port_offset").toInt();
     _record.active = true;
 
+    // prepare the shared SSL configuration
+    QFile cert(app->config().value("certificate").toString());
+    if (cert.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        _sslConfig.setLocalCertificate(QSslCertificate(&cert));
+        if (_sslConfig.localCertificate().isNull()) {
+            qCritical() << "Invalid certificate file." << cert.fileName();
+        }
+    } else {
+        qCritical() << "Missing certificate file." << cert.fileName();
+    }
+    QFile key(app->config().value("private_key").toString());
+    if (key.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        _sslConfig.setPrivateKey(QSslKey(&key, QSsl::Rsa));
+        if (_sslConfig.privateKey().isNull()) {
+            qCritical() << "Invalid private key file." << key.fileName();
+        }
+    } else {
+        qCritical() << "Missing private key file." << key.fileName();
+    }
+    _sslConfig.setCiphers(QSslSocket::supportedCiphers());
+    _expectedSslErrors.append(QSslError(
+        QSslError::SelfSignedCertificate, _sslConfig.localCertificate()));
+
     // start listening on the configured port
     QHostAddress address(app->config().value("peer_listen_address").toString());
     if (!listen(address, _record.port)) {
@@ -63,6 +89,12 @@ PeerManager::PeerManager (ServerApp* app) :
     QTimer* timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), SLOT(refreshPeers()));
     timer->start(PeerRefreshInterval);
+}
+
+void PeerManager::configureSocket (QSslSocket* socket) const
+{
+    socket->setSslConfiguration(_sslConfig);
+    socket->ignoreSslErrors(_expectedSslErrors);
 }
 
 void PeerManager::refreshPeers ()
