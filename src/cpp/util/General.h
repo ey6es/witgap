@@ -10,6 +10,7 @@
 #include <QPoint>
 #include <QVector>
 
+class QIODevice;
 class QString;
 class QTranslator;
 
@@ -242,5 +243,10 @@ quint64 currentTimeMillis ();
  * Returns a random index corresponding to the given probabilities (which must sum up to one).
  */
 int randomIndex (const double* probs);
+
+/**
+ * "Ungets" an integer (in big endian order) from the specified device.
+ */
+void unget (QIODevice* device, quint32 value);
 
 #endif // GENERAL

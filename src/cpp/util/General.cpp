@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <QDateTime>
+#include <QIODevice>
 #include <QMetaType>
 #include <QString>
 #include <QTranslator>
@@ -286,4 +287,12 @@ int randomIndex (const double* probs)
             return ii;
         }
     }
+}
+
+void unget (QIODevice* device, quint32 value)
+{
+    device->ungetChar(value & 0xFF);
+    device->ungetChar((value >> 8) & 0xFF);
+    device->ungetChar((value >> 16) & 0xFF);
+    device->ungetChar(value >> 24);
 }

@@ -263,17 +263,6 @@ void Connection::commitCompound ()
     delete buffer;
 }
 
-/**
- * Helper function for readHeader: puts an int back in the socket buffer.
- */
-static void ungetInt (QTcpSocket* socket, quint32 value)
-{
-    socket->ungetChar(value & 0xFF);
-    socket->ungetChar((value >> 8) & 0xFF);
-    socket->ungetChar((value >> 16) & 0xFF);
-    socket->ungetChar(value >> 24);
-}
-
 void Connection::readHeader ()
 {
     // if we don't have the full header, wait until we do
@@ -297,9 +286,9 @@ void Connection::readHeader ()
     _stream >> length;
     if (_socket->bytesAvailable() < length) {
         // push back what we read and wait for the rest
-        ungetInt(_socket, length);
-        ungetInt(_socket, PROTOCOL_VERSION);
-        ungetInt(_socket, PROTOCOL_MAGIC);
+        unget(_socket, length);
+        unget(_socket, PROTOCOL_VERSION);
+        unget(_socket, PROTOCOL_MAGIC);
         return;
     }
     quint16 width, height;
@@ -350,7 +339,7 @@ void Connection::readHeader ()
     }
 
     // disable the connection until we're ready to read subsequent messages
-    _socket->disconnect(this);
+    _socket->disconnect(this, SLOT(readHeader()));
 
     // log the establishment
     qDebug() << "Connection established." << _displaySize;

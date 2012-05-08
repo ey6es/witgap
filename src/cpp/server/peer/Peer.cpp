@@ -7,16 +7,20 @@
 #include "ServerApp.h"
 #include "peer/Peer.h"
 #include "peer/PeerManager.h"
+#include "peer/PeerProtocol.h"
 
 Peer::Peer (ServerApp* app) :
-    QObject(app->peerManager()),
-    _app(app),
-    _socket(new QSslSocket(this))
+    AbstractPeer(app, new QSslSocket())
 {
-    app->peerManager()->configureSocket(_socket);
-
+    connect(_socket, SIGNAL(readyRead()), SLOT(readMessages()));
     connect(_socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(reconnectLater()));
     connect(_socket, SIGNAL(encrypted()), SLOT(sendHeader()));
+}
+
+Peer::~Peer ()
+{
+    // log the destruction
+    qDebug() << "Disconnected from peer." << _record.name;
 }
 
 void Peer::update (const PeerRecord& record)
@@ -34,10 +38,8 @@ void Peer::update (const PeerRecord& record)
 
 void Peer::reconnectLater ()
 {
-    QString error;
-    QDebug base = qDebug() << "Disconnected from peer." << _record.name;
     if (_socket->error() != QAbstractSocket::UnknownSocketError) {
-        base << _socket->errorString();
+        qDebug() << "Peer connection error." << _record.name << _socket->errorString();
     }
     QTimer::singleShot(5000, this, SLOT(connectToPeer()));
 }
@@ -51,7 +53,14 @@ void Peer::connectToPeer ()
 
 void Peer::sendHeader ()
 {
-    qDebug() << "HELLO.";
+    _stream << PeerProtocolMagic;
+    _stream << PeerProtocolVersion;
+    _socket->write(_app->peerManager()->sharedSecret());
+}
+
+void Peer::handle (const PeerMessage* message)
+{
+    message->handle(this);
 }
 
 const QString& Peer::hostname () const

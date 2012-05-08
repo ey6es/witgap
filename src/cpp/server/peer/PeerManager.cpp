@@ -45,6 +45,9 @@ PeerManager::PeerManager (ServerApp* app) :
         app->args().value("port_offset").toInt();
     _record.active = true;
 
+    // get the shared secret
+    _sharedSecret = app->config().value("peer_secret").toByteArray();
+
     // prepare the shared SSL configuration
     QFile cert(app->config().value("certificate").toString());
     if (cert.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -108,6 +111,12 @@ void PeerManager::refreshPeers ()
         Q_ARG(const Callback&, Callback(_this, "updatePeers(PeerRecordList)")));
 }
 
+void PeerManager::unmapPeer (QObject* object)
+{
+    Peer* peer = static_cast<Peer*>(object);
+    _peers.remove(peer->record().name);
+}
+
 void PeerManager::deactivate ()
 {
     // note in the database that we're no longer active
@@ -139,6 +148,9 @@ void PeerManager::updatePeers (const PeerRecordList& records)
             Peer*& peer = _peers[record.name];
             if (peer == 0) {
                 peer = new Peer(_app);
+
+                // listen for destruction in order to unmap
+                connect(peer, SIGNAL(destroyed(QObject*)), SLOT(unmapPeer(QObject*)));
             }
             peer->update(record);
 

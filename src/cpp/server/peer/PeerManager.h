@@ -4,6 +4,7 @@
 #ifndef PEER_MANAGER
 #define PEER_MANAGER
 
+#include <QByteArray>
 #include <QHash>
 #include <QList>
 #include <QSslConfiguration>
@@ -44,6 +45,11 @@ public:
     const PeerRecord& record () const { return _record; }
 
     /**
+     * Returns a reference to the secret shared by all peers.
+     */
+    const QByteArray& sharedSecret () const { return _sharedSecret; }
+
+    /**
      * Configures an SSL socket for peer use.
      */
     void configureSocket (QSslSocket* socket) const;
@@ -54,6 +60,11 @@ protected slots:
      * Updates our entry in the peer database and (re)loads everyone else's.
      */
     void refreshPeers ();
+
+    /**
+     * Unmaps a destroyed peer.
+     */
+    void unmapPeer (QObject* object);
 
     /**
      * Deactivates the manager.
@@ -77,6 +88,9 @@ protected:
 
     /** Our own peer record. */
     PeerRecord _record;
+
+    /** The secret shared by all peers. */
+    QByteArray _sharedSecret;
 
     /** The shared SSL configuration. */
     QSslConfiguration _sslConfig;

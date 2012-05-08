@@ -5,16 +5,13 @@
 #define PEER_CONNECTION
 
 #include <QHostAddress>
-#include <QObject>
 
-class QSslSocket;
-
-class ServerApp;
+#include "peer/AbstractPeer.h"
 
 /**
  * Handles a single incoming peer connection.
  */
-class PeerConnection : public QObject
+class PeerConnection : public AbstractPeer
 {
     Q_OBJECT
 
@@ -28,7 +25,7 @@ public:
     /**
      * Destroys the connection.
      */
-    ~PeerConnection ();
+    virtual ~PeerConnection ();
 
 protected slots:
 
@@ -39,11 +36,10 @@ protected slots:
 
 protected:
 
-    /** The server application. */
-    ServerApp* _app;
-
-    /** The underlying socket. */
-    QSslSocket* _socket;
+    /**
+     * Handles an incoming message.
+     */
+    virtual void handle (const PeerMessage* message);
 
     /** The stored address. */
     QHostAddress _address;

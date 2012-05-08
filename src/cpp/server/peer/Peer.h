@@ -4,18 +4,13 @@
 #ifndef PEER
 #define PEER
 
-#include <QObject>
-
 #include "db/PeerRepository.h"
-
-class QSslSocket;
-
-class ServerApp;
+#include "peer/AbstractPeer.h"
 
 /**
  * Handles a single peer.
  */
-class Peer : public QObject
+class Peer : public AbstractPeer
 {
     Q_OBJECT
 
@@ -25,6 +20,16 @@ public:
      * Initializes the peer.
      */
     Peer (ServerApp* app);
+
+    /**
+     * Destroys the peer.
+     */
+    virtual ~Peer ();
+
+    /**
+     * Returns a reference to the latest peer record.
+     */
+    const PeerRecord& record () const { return _record; }
 
     /**
      * Updates the peer with its most recent record.
@@ -51,18 +56,17 @@ protected slots:
 protected:
 
     /**
+     * Handles an incoming message.
+     */
+    virtual void handle (const PeerMessage* message);
+
+    /**
      * Returns the hostname to use when connecting to the peer.
      */
     const QString& hostname () const;
 
-    /** The server application. */
-    ServerApp* _app;
-
     /** The latest peer record. */
     PeerRecord _record;
-
-    /** The socket through which we connect. */
-    QSslSocket* _socket;
 };
 
 #endif // PEER

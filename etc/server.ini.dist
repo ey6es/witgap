@@ -9,6 +9,9 @@ listen_port = 4015
 peer_listen_address = 0.0.0.0
 peer_listen_port = 4025
 
+; The secret passphrase used to ensure peer validity
+peer_secret = xxx
+
 ; The location of our self-signed SSL certificate
 certificate = /export/witgap/etc/cert.pem
 
