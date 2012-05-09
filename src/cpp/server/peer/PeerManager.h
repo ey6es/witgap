@@ -15,6 +15,7 @@
 #include "util/Callback.h"
 
 class QSslSocket;
+class QVariant;
 
 class ArgumentDescriptorList;
 class Peer;
@@ -53,6 +54,11 @@ public:
      * Configures an SSL socket for peer use.
      */
     void configureSocket (QSslSocket* socket) const;
+
+    /**
+     * Executes an action on this peer and all others.
+     */
+    void execute (const QVariant& action);
 
 protected slots:
 

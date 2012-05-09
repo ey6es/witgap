@@ -7,6 +7,7 @@
 #include <QSslKey>
 #include <QSslSocket>
 #include <QTimer>
+#include <QVariant>
 #include <QtDebug>
 
 #include "ServerApp.h"
@@ -14,6 +15,7 @@
 #include "peer/Peer.h"
 #include "peer/PeerConnection.h"
 #include "peer/PeerManager.h"
+#include "peer/PeerProtocol.h"
 
 void PeerManager::appendArguments (ArgumentDescriptorList* args)
 {
@@ -98,6 +100,16 @@ void PeerManager::configureSocket (QSslSocket* socket) const
 {
     socket->setSslConfiguration(_sslConfig);
     socket->ignoreSslErrors(_expectedSslErrors);
+}
+
+void PeerManager::execute (const QVariant& action)
+{
+    ExecuteMessage msg;
+    msg.action = action;
+    QByteArray bytes = AbstractPeer::encodeMessage(msg);
+    foreach (Peer* peer, _peers) {
+        peer->sendMessage(bytes);
+    }
 }
 
 void PeerManager::refreshPeers ()

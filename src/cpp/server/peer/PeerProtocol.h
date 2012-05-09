@@ -4,6 +4,8 @@
 #ifndef PEER_PROTOCOL
 #define PEER_PROTOCOL
 
+#include <QMetaType>
+#include <QVariant>
 #include <QtGlobal>
 
 /**
@@ -18,14 +20,9 @@
  * If the server rejects the preamble, it will disconnect immediately.  Otherwise, both parties
  * may begin sending messages.
  *
- * Messages sent from client to server have the following format:
- *     type : quint8 : the message type, one of the constants enumerated below
- *     data : ... : the message data as described in the type documentation
- *
- * Messages sent from server to client have the following format:
- *     length : quint16 : the length in bytes of the message (excluding this field)
- *     type : quint8 : the message type, one of the constants enumerated below
- *     data : ... : the message data as described in the type documentation
+ * Messages have the following format:
+ *     length : quint32 : the length in bytes of the message (excluding this field)
+ *     message : QVariant : a QVariant containing the message (a subclass of PeerMessage)
  *
  * The connected may be terminated at any time by the client or the server by sending a
  * CloseMessage.
@@ -48,11 +45,6 @@ class PeerMessage
 public:
 
     /**
-     * Returns the message's type id.
-     */
-    virtual int type () const = 0;
-
-    /**
      * Handles a message sent from server to client.
      */
     virtual void handle (Peer* peer) const;
@@ -62,28 +54,46 @@ public:
      */
     virtual void handle (PeerConnection* connection) const;
 };
+
+/** Helper macro for upstream messages. */
+#define UPSTREAM_MESSAGE public: \
+    virtual void handle (PeerConnection* connection) const; \
+    private:
+
+/** Helper macro for downstream messages. */
+#define DOWNSTREAM_MESSAGE public: \
+    virtual void handle (Peer* peer) const; \
+    private:
+
+/** Helper macro for bidirectional messages. */
+#define BIDIRECTIONAL_MESSAGE public: \
+    virtual void handle (Peer* peer) const; \
+    virtual void handle (PeerConnection* connection) const; \
+    private:
 
 /**
  * Closes the connection.
  */
 class CloseMessage : public PeerMessage
 {
+    BIDIRECTIONAL_MESSAGE
+};
+
+Q_DECLARE_METATYPE(CloseMessage)
+
+/**
+ * Executes an action on the peer.
+ */
+class ExecuteMessage : public PeerMessage
+{
+    UPSTREAM_MESSAGE
+
 public:
 
-    /**
-     * Returns the message's type id.
-     */
-    virtual int type () const;
-
-    /**
-     * Handles a message sent from server to client.
-     */
-    virtual void handle (Peer* peer) const;
-
-    /**
-     * Handles a message sent from client to server.
-     */
-    virtual void handle (PeerConnection* connection) const;
+    /** The action to perform. */
+    QVariant action;
 };
+
+Q_DECLARE_METATYPE(ExecuteMessage)
 
 #endif // PEER_PROTOCOL

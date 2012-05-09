@@ -4,8 +4,11 @@
 #ifndef ABSTRACT_PEER
 #define ABSTRACT_PEER
 
+#include <QByteArray>
 #include <QDataStream>
+#include <QIODevice>
 #include <QObject>
+#include <QVariant>
 
 class QSslSocket;
 
@@ -22,6 +25,11 @@ class AbstractPeer : public QObject
 public:
 
     /**
+     * Encodes a message for transmission.
+     */
+    template<class T> static QByteArray encodeMessage (const T& message);
+
+    /**
      * Initializes the peer.
      */
     AbstractPeer (ServerApp* app, QSslSocket* socket);
@@ -32,9 +40,14 @@ public:
     virtual ~AbstractPeer ();
 
     /**
-     * Sends a message to the connected peer.
+     * Encodes and sends a message to the connected peer.
      */
-    void sendMessage (const PeerMessage* message);
+    template<class T> void sendMessage (const T& message) { sendMessage(encodeMessage(message)); }
+
+    /**
+     * Sends a pre-encoded message to the peer.
+     */
+    void sendMessage (const QByteArray& bytes);
 
 protected slots:
 
@@ -59,5 +72,13 @@ protected:
     /** The data stream for streaming. */
     QDataStream _stream;
 };
+
+template<class T> QByteArray AbstractPeer::encodeMessage (const T& message)
+{
+    QByteArray bytes;
+    QDataStream out(&bytes, QIODevice::WriteOnly);
+    out << QVariant::fromValue(message);
+    return bytes;
+}
 
 #endif // ABSTRACT_PEER
