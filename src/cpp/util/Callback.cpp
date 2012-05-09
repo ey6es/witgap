@@ -3,7 +3,6 @@
 
 #include <limits>
 
-#include <QSemaphore>
 #include <QtDebug>
 
 #include "util/Callback.h"
@@ -20,15 +19,8 @@ Callback::Callback (QObject* object, const char* method,
     QGenericArgument val8, QGenericArgument val9) :
         _method(object->metaObject()->method(object->metaObject()->indexOfMethod(method)))
 {
-    CallableObject* cobj = qobject_cast<CallableObject*>(object);
-    if (cobj == 0) {
-        _object = object;
-    } else {
-        _object = cobj->_this;
-        _semaphore = cobj->_this._semaphore;
-    }
-    QGenericArgument args[10] = { val0, val1, val2, val3, val4, val5, val6, val7, val8, val9 };
-    copyArguments(args);
+    setObject(object);
+    setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
 }
 
 Callback::Callback (QObject* object, QMetaMethod method,
@@ -37,15 +29,8 @@ Callback::Callback (QObject* object, QMetaMethod method,
     QGenericArgument val8, QGenericArgument val9) :
         _method(method)
 {
-    CallableObject* cobj = qobject_cast<CallableObject*>(object);
-    if (cobj == 0) {
-        _object = object;
-    } else {
-        _object = cobj->_this;
-        _semaphore = cobj->_this._semaphore;
-    }
-    QGenericArgument args[10] = { val0, val1, val2, val3, val4, val5, val6, val7, val8, val9 };
-    copyArguments(args);
+    setObject(object);
+    setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
 }
 
 Callback::Callback (const CallablePointer& pointer, const char* method,
@@ -56,8 +41,7 @@ Callback::Callback (const CallablePointer& pointer, const char* method,
         _object(pointer),
         _semaphore(pointer._semaphore)
 {
-    QGenericArgument args[10] = { val0, val1, val2, val3, val4, val5, val6, val7, val8, val9 };
-    copyArguments(args);
+    setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
 }
 
 Callback::Callback (const CallablePointer& pointer, QMetaMethod method,
@@ -68,57 +52,32 @@ Callback::Callback (const CallablePointer& pointer, QMetaMethod method,
         _object(pointer),
         _semaphore(pointer._semaphore)
 {
-    QGenericArgument args[10] = { val0, val1, val2, val3, val4, val5, val6, val7, val8, val9 };
-    copyArguments(args);
-}
-
-Callback::Callback (const Callback& other) :
-    _object(other._object),
-    _semaphore(other._semaphore),
-    _method(other._method)
-{
-    copyArguments(other._args);
+    setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
 }
 
 Callback::Callback ()
 {
 }
 
-Callback::~Callback ()
+void Callback::setObject (QObject* object)
 {
-    // destroy the copies we created
-    for (int ii = 0; ii < 10 && _args[ii].first != 0; ii++) {
-        QMetaType::destroy(_args[ii].first, _args[ii].second);
+    CallableObject* cobj = qobject_cast<CallableObject*>(object);
+    if (cobj == 0) {
+        _object = object;
+    } else {
+        _object = cobj->_this;
+        _semaphore = cobj->_this._semaphore;
     }
 }
 
-Callback& Callback::operator= (const Callback& other)
+void Callback::setArgs (
+    QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
+    QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
+    QGenericArgument val8, QGenericArgument val9)
 {
-    _object = other._object;
-    _semaphore = other._semaphore;
-    _method = other._method;
-    copyArguments(other._args);
-}
-
-void Callback::copyArguments (const QGenericArgument args[10])
-{
+    QGenericArgument args[] = { val0, val1, val2, val3, val4, val5, val6, val7, val8, val9 };
     for (int ii = 0; ii < 10 && args[ii].name() != 0; ii++) {
-        int type = QMetaType::type(args[ii].name());
-        _args[ii].first = type;
-        _args[ii].second = QMetaType::construct(type, args[ii].data());
-    }
-}
-
-void Callback::copyArguments (const QPair<int, void*> args[10])
-{
-    int idx = 0;
-    for (; idx < 10 && args[idx].first != 0; idx++) {
-        int type = args[idx].first;
-        _args[idx].first = type;
-        _args[idx].second = QMetaType::construct(type, args[idx].second);
-    }
-    for (; idx < 10; idx++) {
-        _args[idx].first = 0;
+        _args[ii] = QVariant(QMetaType::type(args[ii].name()), args[ii].data());
     }
 }
 
@@ -140,9 +99,8 @@ void Callback::invoke (
 
         // combine the callback arguments with the invocation arguments
         int idx = 0;
-        for (; idx < 10 && _args[idx].first != 0; idx++) {
-            cargs[idx] = QGenericArgument(
-                QMetaType::typeName(_args[idx].first), _args[idx].second);
+        for (; idx < 10 && _args[idx].isValid(); idx++) {
+            cargs[idx] = QGenericArgument(_args[idx].typeName(), _args[idx].constData());
         }
         for (int ii = 0; idx < 10 && nargs[ii].name() != 0; ii++, idx++) {
             cargs[idx] = nargs[ii];

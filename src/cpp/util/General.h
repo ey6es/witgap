@@ -6,8 +6,8 @@
 
 #include <QByteArray>
 #include <QObject>
-#include <QPair>
 #include <QPoint>
+#include <QVariant>
 #include <QVector>
 
 class QIODevice;
@@ -33,11 +33,6 @@ public:
         QGenericArgument val6 = QGenericArgument(), QGenericArgument val7 = QGenericArgument(),
         QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument());
 
-    /**
-     * Destroys the creator.
-     */
-    virtual ~Creator ();
-
 public slots:
 
     /**
@@ -51,7 +46,7 @@ protected:
     const QMetaObject* _metaObject;
 
     /** The constructor-specified constructor arguments. */
-    QPair<int, void*> _args[10];
+    QVariant _args[10];
 };
 
 /**

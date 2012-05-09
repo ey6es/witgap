@@ -6,15 +6,15 @@
 
 #include <QMetaMethod>
 #include <QObject>
-#include <QPair>
+#include <QSemaphore>
 #include <QSharedPointer>
+#include <QVariant>
 #include <QWeakPointer>
 
 /** A guarded pointer to a generic QObject that we can register with the meta-type system. */
 typedef QWeakPointer<QObject> QWeakObjectPointer;
 
 class CallablePointer;
-class QSemaphore;
 
 /**
  * Represents a callback to an invokable member function of a QObject.  The function will be
@@ -70,24 +70,9 @@ public:
         QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument());
 
     /**
-     * Copy constructor.
-     */
-    Callback (const Callback& other);
-
-    /**
      * Creates an empty, invalid callback object.
      */
     Callback ();
-
-    /**
-     * Destroys the callback.
-     */
-    ~Callback ();
-
-    /**
-     * Assignment operator.
-     */
-    Callback& operator= (const Callback& other);
 
     /**
      * Invokes the callback.
@@ -103,14 +88,17 @@ public:
 protected:
 
     /**
-     * Copies the provided arguments.
+     * Sets the object pointer and associated state.
      */
-    void copyArguments (const QGenericArgument args[10]);
+    void setObject (QObject* object);
 
     /**
-     * Copies the provided arguments.
+     * Sets the arguments.
      */
-    void copyArguments (const QPair<int, void*> args[10]);
+    void setArgs (
+        QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
+        QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
+        QGenericArgument val8, QGenericArgument val9);
 
     /** The object to call. */
     QWeakPointer<QObject> _object;
@@ -122,7 +110,7 @@ protected:
     QMetaMethod _method;
 
     /** The constructor-specified callback arguments. */
-    QPair<int, void*> _args[10];
+    QVariant _args[10];
 };
 
 /**

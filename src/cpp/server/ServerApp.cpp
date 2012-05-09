@@ -154,7 +154,7 @@ static ArgumentDescriptorList& argumentDescriptors ()
  */
 static QString usage ()
 {
-    QString base = "Usage: witgap-server [OPTION]... [config file]\n";
+    QString base = "Usage: witgap-server [OPTION]... [config file]\n"
         "Where options include:\n";
     foreach (const ArgumentDescriptor& arg, argumentDescriptors()) {
         QString defstr;
