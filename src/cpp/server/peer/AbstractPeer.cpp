@@ -1,6 +1,7 @@
 //
 // $Id$
 
+#include <QByteArray>
 #include <QSslSocket>
 
 #include "ServerApp.h"
@@ -52,4 +53,12 @@ void AbstractPeer::readMessages ()
         _stream >> value;
         handle(static_cast<const PeerMessage*>(value.constData()));
     }
+}
+
+QByteArray AbstractPeer::encodeMessage (const QVariant& data)
+{
+    QByteArray bytes;
+    QDataStream out(&bytes, QIODevice::WriteOnly);
+    out << data;
+    return bytes;
 }

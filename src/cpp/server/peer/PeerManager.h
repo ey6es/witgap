@@ -10,9 +10,11 @@
 #include <QSslConfiguration>
 #include <QSslError>
 #include <QTcpServer>
+#include <QVariant>
 
 #include "db/PeerRepository.h"
 #include "util/Callback.h"
+#include "util/Streaming.h"
 
 class QSslSocket;
 class QVariant;
@@ -56,9 +58,23 @@ public:
     void configureSocket (QSslSocket* socket) const;
 
     /**
+     * Invokes a method on this peer and all others.  This method is thread-safe.
+     *
+     * @param object the object on which the invoke the method, which should be a named child of
+     * ServerApp.
+     * @param method the normalized method signature.
+     */
+    void invoke (QObject* object, const char* method,
+        QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
+        QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
+        QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
+        QGenericArgument val6 = QGenericArgument(), QGenericArgument val7 = QGenericArgument(),
+        QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument());
+
+    /**
      * Executes an action on this peer and all others.
      */
-    void execute (const QVariant& action);
+    template<class T> void execute (const T& action) { execute(QVariant::fromValue(action)); }
 
 protected slots:
 
@@ -89,6 +105,11 @@ protected:
      */
     Q_INVOKABLE void updatePeers (const PeerRecordList& records);
 
+    /**
+     * Executes an action on this peer and all others.
+     */
+    Q_INVOKABLE void execute (const QVariant& action);
+
     /** The server application. */
     ServerApp* _app;
 
@@ -110,5 +131,44 @@ protected:
     /** Synchronized pointer for callbacks. */
     CallablePointer _this;
 };
+
+/**
+ * Base class for peer actions.
+ */
+class PeerAction
+{
+public:
+
+    /**
+     * Executes the action.
+     */
+    virtual void execute (ServerApp* app) const = 0;
+};
+
+/**
+ * An action that invokes a method.
+ */
+class InvokeAction
+{
+    STREAMABLE
+
+public:
+
+    /** The name of the object on which to invoke the action. */
+    STREAM QString name;
+
+    /** The index of the method to invoke. */
+    STREAM quint32 methodIndex;
+
+    /** The arguments with which to invoke the method. */
+    STREAM QVariantList args;
+
+    /**
+     * Executes the action.
+     */
+    virtual void execute (ServerApp* app) const;
+};
+
+DECLARE_STREAMABLE_METATYPE(InvokeAction)
 
 #endif // PEER_MANAGER

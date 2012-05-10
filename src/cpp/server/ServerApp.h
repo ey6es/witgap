@@ -98,7 +98,7 @@ public:
     /**
      * (Re)schedules a reboot.
      */
-    Q_INVOKABLE void scheduleReboot (int minutes, const QString& message);
+    Q_INVOKABLE void scheduleReboot (quint32 minutes, const QString& message);
 
     /**
      * Cancels any scheduled reboot.

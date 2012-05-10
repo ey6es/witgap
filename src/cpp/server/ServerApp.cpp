@@ -325,7 +325,7 @@ static const int RebootCountdownMinutes[] = { 30, 15, 10, 5, 2, 0 };
 /** The number of stages in the reboot countdown. */
 static const int RebootCountdownLength = sizeof(RebootCountdownMinutes) / sizeof(int);
 
-void ServerApp::scheduleReboot (int minutes, const QString& message)
+void ServerApp::scheduleReboot (quint32 minutes, const QString& message)
 {
     for (int ii = 0; ii < RebootCountdownLength; ii++) {
         if (minutes >= RebootCountdownMinutes[ii]) {

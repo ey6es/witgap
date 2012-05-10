@@ -10,6 +10,7 @@
 #include "chat/ChatCommands.h"
 #include "chat/ChatWindow.h"
 #include "net/Session.h"
+#include "peer/PeerManager.h"
 #include "scene/Scene.h"
 
 // translate through the translator
@@ -289,8 +290,8 @@ public:
         if (!ok) {
             return usage(translator, cmd);
         }
-        QMetaObject::invokeMethod(session->app(), "scheduleReboot", Q_ARG(int, minutes),
-            Q_ARG(const QString&, message));
+        session->app()->peerManager()->invoke(session->app(), "scheduleReboot(quint32,QString)",
+            Q_ARG(quint32, minutes), Q_ARG(const QString&, message));
         return "Reboot scheduled.";
     }
 };

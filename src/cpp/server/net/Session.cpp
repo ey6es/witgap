@@ -20,6 +20,7 @@
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
+#include "peer/PeerManager.h"
 #include "scene/Scene.h"
 #include "scene/SceneManager.h"
 #include "scene/Zone.h"
@@ -369,7 +370,7 @@ void Session::setSettings (const QString& password, const QString& email, QChar 
 void Session::say (const QString& message, ChatWindow::SpeakMode mode)
 {
     if (mode == ChatWindow::BroadcastMode) {
-        QMetaObject::invokeMethod(_app->connectionManager(), "broadcast",
+        _app->peerManager()->invoke(_app->connectionManager(), "broadcast(QString,QString)",
             Q_ARG(const QString&, _record.name), Q_ARG(const QString&, message));
         return;
     }

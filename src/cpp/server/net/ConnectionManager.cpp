@@ -23,6 +23,9 @@ ConnectionManager::ConnectionManager (ServerApp* app) :
     _rsa(0),
     _this(this)
 {
+    // our name identifies us for peer invocations
+    setObjectName("connectionManager");
+
     // read the private RSA key
     FILE* keyFile = fopen(app->config().value("private_key").toByteArray().constData(), "r");
     if (keyFile == 0) {

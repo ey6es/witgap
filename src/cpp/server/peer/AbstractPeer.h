@@ -4,12 +4,12 @@
 #ifndef ABSTRACT_PEER
 #define ABSTRACT_PEER
 
-#include <QByteArray>
 #include <QDataStream>
 #include <QIODevice>
 #include <QObject>
 #include <QVariant>
 
+class QByteArray;
 class QSslSocket;
 
 class PeerMessage;
@@ -40,6 +40,11 @@ public:
     virtual ~AbstractPeer ();
 
     /**
+     * Returns the application pointer.
+     */
+    ServerApp* app () const { return _app; }
+
+    /**
      * Encodes and sends a message to the connected peer.
      */
     template<class T> void sendMessage (const T& message) { sendMessage(encodeMessage(message)); }
@@ -63,6 +68,11 @@ protected:
      */
     virtual void handle (const PeerMessage* message) = 0;
 
+    /**
+     * Encodes a message for transmission.
+     */
+    static QByteArray encodeMessage (const QVariant& message);
+
     /** The server application. */
     ServerApp* _app;
 
@@ -73,12 +83,9 @@ protected:
     QDataStream _stream;
 };
 
-template<class T> QByteArray AbstractPeer::encodeMessage (const T& message)
+template<class T> inline QByteArray AbstractPeer::encodeMessage (const T& message)
 {
-    QByteArray bytes;
-    QDataStream out(&bytes, QIODevice::WriteOnly);
-    out << QVariant::fromValue(message);
-    return bytes;
+    return encodeMessage(QVariant::fromValue(message));
 }
 
 #endif // ABSTRACT_PEER

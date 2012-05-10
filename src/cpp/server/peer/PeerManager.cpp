@@ -102,14 +102,21 @@ void PeerManager::configureSocket (QSslSocket* socket) const
     socket->ignoreSslErrors(_expectedSslErrors);
 }
 
-void PeerManager::execute (const QVariant& action)
+void PeerManager::invoke (QObject* object, const char* method,
+    QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
+    QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
+    QGenericArgument val8, QGenericArgument val9)
 {
-    ExecuteMessage msg;
-    msg.action = action;
-    QByteArray bytes = AbstractPeer::encodeMessage(msg);
-    foreach (Peer* peer, _peers) {
-        peer->sendMessage(bytes);
+    InvokeAction action;
+    action.name = object->objectName();
+    action.methodIndex = object->metaObject()->indexOfMethod(method);
+
+    QGenericArgument args[] = { val0, val1, val2, val3, val4, val5, val6, val7, val8, val9 };
+    for (int ii = 0; ii < 10 && args[ii].name() != 0; ii++) {
+        action.args.append(QVariant(QMetaType::type(args[ii].name()), args[ii].data()));
     }
+    QMetaObject::invokeMethod(this, "execute",
+        Q_ARG(const QVariant&, QVariant::fromValue(action)));
 }
 
 void PeerManager::refreshPeers ()
@@ -173,4 +180,35 @@ void PeerManager::updatePeers (const PeerRecordList& records)
             }
         }
     }
+}
+
+void PeerManager::execute (const QVariant& action)
+{
+    // run it here first
+    const PeerAction* paction = static_cast<const PeerAction*>(action.constData());
+    paction->execute(_app);
+
+    // then encode and send it off to everyone else
+    ExecuteMessage msg;
+    msg.action = action;
+    QByteArray bytes = AbstractPeer::encodeMessage(msg);
+    foreach (Peer* peer, _peers) {
+        peer->sendMessage(bytes);
+    }
+}
+
+void InvokeAction::execute (ServerApp* app) const
+{
+    QObject* object = name.isEmpty() ? app : qFindChild<QObject*>(app, name);
+    if (object == 0) {
+        qWarning() << "Missing named object for execute action." << name;
+        return;
+    }
+    QGenericArgument cargs[10];
+    for (int ii = 0, nn = args.size(); ii < nn; ii++) {
+        cargs[ii] = QGenericArgument(args[ii].typeName(), args[ii].constData());
+    }
+    object->metaObject()->method(methodIndex).invoke(object,
+        cargs[0], cargs[1], cargs[2], cargs[3], cargs[4],
+        cargs[5], cargs[6], cargs[7], cargs[8], cargs[9]);
 }

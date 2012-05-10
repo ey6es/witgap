@@ -11,8 +11,9 @@ function(mtc_wrap_cpp SOURCEFILES)
             ARGS -o ${OUTPUT} ${CMAKE_CURRENT_SOURCE_DIR}/${HEADER}
             DEPENDS ${EXECUTABLE_OUTPUT_PATH}/mtc ${HEADER})
 
-        set(${SOURCEFILES} ${${SOURCEFILES}};${OUTPUT} PARENT_SCOPE)
+        set(OUTPUTS ${OUTPUTS};${OUTPUT})
     endforeach(HEADER)
+    set(${SOURCEFILES} ${${SOURCEFILES}};${OUTPUTS} PARENT_SCOPE)
 endfunction(mtc_wrap_cpp)
 
 add_subdirectory(server)

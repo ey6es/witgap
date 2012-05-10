@@ -6,6 +6,7 @@
 
 #include "peer/Peer.h"
 #include "peer/PeerConnection.h"
+#include "peer/PeerManager.h"
 #include "peer/PeerProtocol.h"
 
 void PeerMessage::handle (Peer* peer) const
@@ -30,5 +31,6 @@ void CloseMessage::handle (PeerConnection* connection) const
 
 void ExecuteMessage::handle (PeerConnection* connection) const
 {
-
+    const PeerAction* paction = static_cast<const PeerAction*>(action.constData());
+    paction->execute(connection->app());
 }
