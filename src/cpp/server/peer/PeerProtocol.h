@@ -8,6 +8,8 @@
 #include <QVariant>
 #include <QtGlobal>
 
+#include "util/Streaming.h"
+
 /**
  * Notes: the protocol is binary, message-based, and uses network byte order and Qt streaming.
  *
@@ -76,24 +78,26 @@ public:
  */
 class CloseMessage : public PeerMessage
 {
+    STREAMABLE
     BIDIRECTIONAL_MESSAGE
 };
 
-Q_DECLARE_METATYPE(CloseMessage)
+DECLARE_STREAMABLE_METATYPE(CloseMessage)
 
 /**
  * Executes an action on the peer.
  */
 class ExecuteMessage : public PeerMessage
 {
+    STREAMABLE
     UPSTREAM_MESSAGE
 
 public:
 
     /** The action to perform. */
-    QVariant action;
+    STREAM QVariant action;
 };
 
-Q_DECLARE_METATYPE(ExecuteMessage)
+DECLARE_STREAMABLE_METATYPE(ExecuteMessage)
 
 #endif // PEER_PROTOCOL

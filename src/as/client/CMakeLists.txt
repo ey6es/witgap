@@ -1,7 +1,7 @@
 set(SOURCES ClientApp.as)
 set(OUTPUT ${CMAKE_SOURCE_DIR}/www/client.swf)
 
-find_program(MXMLC mxmlc)
+find_program(MXMLC mxmlc ${CMAKE_SOURCE_DIR}/../flex/bin)
 
 add_custom_command(
     OUTPUT ${OUTPUT}

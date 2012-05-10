@@ -5,4 +5,4 @@ set(HEADERS Callback.h General.h)
 set(SOURCES Callback.cpp General.cpp)
 
 qt4_wrap_cpp(SOURCES ${HEADERS})
-add_library(util ${SOURCES} ${HEADERS} Mailer.h Mailer.cpp)
+add_library(util ${SOURCES} ${HEADERS} Mailer.h Mailer.cpp Streaming.h)
