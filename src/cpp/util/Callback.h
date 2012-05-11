@@ -25,6 +25,9 @@ class Callback
 {
 public:
 
+    /** The registered metatype id. */
+    static const int Type;
+
     /**
      * Creates a new callback object for the named member.
      *
@@ -75,6 +78,12 @@ public:
     Callback ();
 
     /**
+     * Sets the collate flag, indicating that the arguments passed to {@link #invoke} should be
+     * combined into a single QVariantList.
+     */
+    Callback& setCollate () { _collate = true; return *this; }
+
+    /**
      * Invokes the callback.
      */
     void invoke (
@@ -111,6 +120,9 @@ protected:
 
     /** The constructor-specified callback arguments. */
     QVariant _args[10];
+
+    /** If true, combine the arguments passed to the callback into a QVariantList. */
+    bool _collate;
 };
 
 /**

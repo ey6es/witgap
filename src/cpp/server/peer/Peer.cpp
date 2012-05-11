@@ -10,7 +10,8 @@
 #include "peer/PeerProtocol.h"
 
 Peer::Peer (ServerApp* app) :
-    AbstractPeer(app, new QSslSocket())
+    AbstractPeer(app, new QSslSocket()),
+    _lastRequestId(0)
 {
     connect(_socket, SIGNAL(readyRead()), SLOT(readMessages()));
     connect(_socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(reconnectLater()));
@@ -34,6 +35,25 @@ void Peer::update (const PeerRecord& record)
     if (ohostname != nhostname || oport != _record.port) {
         connectToPeer();
     }
+}
+
+void Peer::sendRequest (const QVariant& request, const Callback& callback)
+{
+    RequestMessage msg;
+    _pendingRequests.insert(msg.id = ++_lastRequestId, callback);
+    msg.request = request;
+    sendMessage(msg);
+}
+
+void Peer::handleResponse (quint32 requestId, const QVariantList& args)
+{
+    QGenericArgument cargs[10];
+    for (int ii = 0, nn = args.size(); ii < nn; ii++) {
+        cargs[ii] = QGenericArgument(args.at(ii).typeName(), args.at(ii).constData());
+    }
+    _pendingRequests.take(requestId).invoke(
+        cargs[0], cargs[1], cargs[2], cargs[3], cargs[4],
+        cargs[5], cargs[6], cargs[7], cargs[8], cargs[9]);
 }
 
 void Peer::reconnectLater ()

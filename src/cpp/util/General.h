@@ -5,6 +5,7 @@
 #define GENERAL
 
 #include <QByteArray>
+#include <QHash>
 #include <QObject>
 #include <QPoint>
 #include <QVariant>
@@ -13,6 +14,9 @@
 class QIODevice;
 class QString;
 class QTranslator;
+
+/** A hash from string to variant list. */
+typedef QHash<QString, QVariantList> QVariantListHash;
 
 /**
  * Provides a means to create an object on receipt of a signal.

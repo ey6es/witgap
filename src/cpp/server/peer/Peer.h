@@ -4,6 +4,8 @@
 #ifndef PEER
 #define PEER
 
+#include <QHash>
+
 #include "db/PeerRepository.h"
 #include "peer/AbstractPeer.h"
 
@@ -36,6 +38,16 @@ public:
      */
     void update (const PeerRecord& record);
 
+    /**
+     * Sends a request to the peer.
+     */
+    void sendRequest (const QVariant& request, const Callback& callback);
+
+    /**
+     * Dispatches the response to a request.
+     */
+    void handleResponse (quint32 requestId, const QVariantList& args);
+
 protected slots:
 
     /**
@@ -67,6 +79,12 @@ protected:
 
     /** The latest peer record. */
     PeerRecord _record;
+
+    /** The last request id assigned. */
+    quint32 _lastRequestId;
+
+    /** Maps request ids to callbacks for pending requests. */
+    QHash<quint32, Callback> _pendingRequests;
 };
 
 #endif // PEER

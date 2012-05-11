@@ -10,14 +10,15 @@
 using namespace std;
 
 // register our types with the metatype system
-int callbackType = qRegisterMetaType<Callback>("Callback");
+const int Callback::Type = qRegisterMetaType<Callback>("Callback");
 int qWeakObjectPointerType = qRegisterMetaType<QWeakObjectPointer>("QWeakObjectPointer");
 
 Callback::Callback (QObject* object, const char* method,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9) :
-        _method(object->metaObject()->method(object->metaObject()->indexOfMethod(method)))
+        _method(object->metaObject()->method(object->metaObject()->indexOfMethod(method))),
+        _collate(false)
 {
     setObject(object);
     setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
@@ -27,7 +28,8 @@ Callback::Callback (QObject* object, QMetaMethod method,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9) :
-        _method(method)
+        _method(method),
+        _collate(false)
 {
     setObject(object);
     setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
@@ -39,7 +41,8 @@ Callback::Callback (const CallablePointer& pointer, const char* method,
     QGenericArgument val8, QGenericArgument val9) :
         _method(pointer->metaObject()->method(pointer->metaObject()->indexOfMethod(method))),
         _object(pointer),
-        _semaphore(pointer._semaphore)
+        _semaphore(pointer._semaphore),
+        _collate(false)
 {
     setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
 }
@@ -50,7 +53,8 @@ Callback::Callback (const CallablePointer& pointer, QMetaMethod method,
     QGenericArgument val8, QGenericArgument val9) :
         _method(method),
         _object(pointer),
-        _semaphore(pointer._semaphore)
+        _semaphore(pointer._semaphore),
+        _collate(false)
 {
     setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
 }
@@ -102,8 +106,17 @@ void Callback::invoke (
         for (; idx < 10 && _args[idx].isValid(); idx++) {
             cargs[idx] = QGenericArgument(_args[idx].typeName(), _args[idx].constData());
         }
-        for (int ii = 0; idx < 10 && nargs[ii].name() != 0; ii++, idx++) {
-            cargs[idx] = nargs[ii];
+        QVariantList list;
+        if (_collate) {
+            for (int ii = 0; ii < 10 && nargs[ii].name() != 0; ii++) {
+                list.append(QVariant(QMetaType::type(nargs[ii].name()), nargs[ii].data()));
+            }
+            cargs[idx] = Q_ARG(const QVariantList&, list);
+
+        } else {
+            for (int ii = 0; idx < 10 && nargs[ii].name() != 0; ii++, idx++) {
+                cargs[idx] = nargs[ii];
+            }
         }
         _method.invoke(data, cargs[0], cargs[1], cargs[2], cargs[3], cargs[4],
             cargs[5], cargs[6], cargs[7], cargs[8], cargs[9]);

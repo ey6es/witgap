@@ -27,6 +27,11 @@ public:
      */
     virtual ~PeerConnection ();
 
+    /**
+     * Sends a response to a request.
+     */
+    Q_INVOKABLE void sendResponse (quint32 requestId, const QVariantList& args);
+
 protected slots:
 
     /**

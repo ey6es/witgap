@@ -11,7 +11,7 @@
 #include "util/General.h"
 
 AbstractPeer::AbstractPeer (ServerApp* app, QSslSocket* socket) :
-    QObject(app->peerManager()),
+    CallableObject(app->peerManager()),
     _app(app),
     _socket(socket),
     _stream(socket)

@@ -36,6 +36,7 @@ static const int LivingPeerCutoff = 5 * PeerRefreshInterval;
 PeerManager::PeerManager (ServerApp* app) :
     QTcpServer(app),
     _app(app),
+    _lastRequestId(0),
     _this(this)
 {
     // initialize the peer record
@@ -102,21 +103,76 @@ void PeerManager::configureSocket (QSslSocket* socket) const
     socket->ignoreSslErrors(_expectedSslErrors);
 }
 
+/**
+ * Helper function for invocation methods: processes the arguments and returns a variant containing
+ * either an InvokeAction or an InvokeRequest.
+ */
+static QVariant prepareInvoke (QObject* object, const char* method,
+    QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
+    QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
+    QGenericArgument val8, QGenericArgument val9, Callback** callback)
+{
+    QGenericArgument args[] = { val0, val1, val2, val3, val4, val5, val6, val7, val8, val9 };
+    QVariantList vargs;
+    *callback = 0;
+    for (int ii = 0; ii < 10 && args[ii].name() != 0; ii++) {
+        int type = QMetaType::type(args[ii].name());
+        if (type == Callback::Type) {
+            *callback = static_cast<Callback*>(args[ii].data());
+        } else {
+            vargs.append(QVariant(type, args[ii].data()));
+        }
+    }
+    // the presence of a callback determines whether we issue an action or a request
+    if (*callback == 0) {
+        InvokeAction action;
+        action.name = object->objectName();
+        action.methodIndex = object->metaObject()->indexOfMethod(method);
+        action.args = vargs;
+        return QVariant::fromValue(action);
+
+    } else {
+        InvokeRequest request;
+        request.name = object->objectName();
+        request.methodIndex = object->metaObject()->indexOfMethod(method);
+        request.args = vargs;
+        return QVariant::fromValue(request);
+    }
+}
+
 void PeerManager::invoke (QObject* object, const char* method,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9)
 {
-    InvokeAction action;
-    action.name = object->objectName();
-    action.methodIndex = object->metaObject()->indexOfMethod(method);
+    Callback* callback;
+    QVariant variant = prepareInvoke(
+        object, method, val0, val1, val2, val3, val4, val5, val6, val7, val8, val9, &callback);
+    if (callback == 0) {
+        QMetaObject::invokeMethod(this, "execute", Q_ARG(const QVariant&, variant));
 
-    QGenericArgument args[] = { val0, val1, val2, val3, val4, val5, val6, val7, val8, val9 };
-    for (int ii = 0; ii < 10 && args[ii].name() != 0; ii++) {
-        action.args.append(QVariant(QMetaType::type(args[ii].name()), args[ii].data()));
+    } else {
+        QMetaObject::invokeMethod(this, "request", Q_ARG(const QVariant&, variant),
+            Q_ARG(const Callback&, *callback));
     }
-    QMetaObject::invokeMethod(this, "execute",
-        Q_ARG(const QVariant&, QVariant::fromValue(action)));
+}
+
+void PeerManager::invoke (const QString& peer, QObject* object, const char* method,
+    QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
+    QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
+    QGenericArgument val8, QGenericArgument val9)
+{
+    Callback* callback;
+    QVariant variant = prepareInvoke(
+        object, method, val0, val1, val2, val3, val4, val5, val6, val7, val8, val9, &callback);
+    if (callback == 0) {
+        QMetaObject::invokeMethod(this, "execute", Q_ARG(const QString&, peer),
+            Q_ARG(const QVariant&, variant));
+
+    } else {
+        QMetaObject::invokeMethod(this, "request", Q_ARG(const QString&, peer),
+            Q_ARG(const QVariant&, variant), Q_ARG(const Callback&, *callback));
+    }
 }
 
 void PeerManager::refreshPeers ()
@@ -184,16 +240,80 @@ void PeerManager::updatePeers (const PeerRecordList& records)
 
 void PeerManager::execute (const QVariant& action)
 {
-    // run it here first
-    const PeerAction* paction = static_cast<const PeerAction*>(action.constData());
-    paction->execute(_app);
-
-    // then encode and send it off to everyone else
+    // encode and send it off to everyone else
     ExecuteMessage msg;
     msg.action = action;
     QByteArray bytes = AbstractPeer::encodeMessage(msg);
     foreach (Peer* peer, _peers) {
         peer->sendMessage(bytes);
+    }
+
+    // then run it here
+    const PeerAction* paction = static_cast<const PeerAction*>(action.constData());
+    paction->execute(_app);
+}
+
+void PeerManager::request (const QVariant& request, const Callback& callback)
+{
+    // store it
+    quint32 requestId = ++_lastRequestId;
+    PendingRequest& req = _pendingRequests[requestId];
+    req.callback = callback;
+
+Q_INVOKABLE void handleResponse (quint32 requestId, const QString& name, QVariantList& args);
+
+    // send it off to everyone else
+    foreach (Peer* peer, _peers) {
+        req.remaining.insert(peer->record().name);
+        peer->sendRequest(request, Callback(_this, "handleResponse(quint32,QString,QVariantList)",
+            Q_ARG(quint32, requestId), Q_ARG(const QString&, peer->record().name)).setCollate());
+    }
+
+    // then it handle here
+    req.remaining.insert(_record.name);
+    const PeerRequest* prequest = static_cast<const PeerRequest*>(request.constData());
+    prequest->handle(_app, Callback(_this, "handleResponse(quint32,QString,QVariantList)",
+        Q_ARG(quint32, requestId), Q_ARG(const QString&, _record.name)).setCollate());
+}
+
+void PeerManager::execute (const QString& name, const QVariant& action)
+{
+    // see if it's for the local peer
+    if (name == _record.name) {
+        const PeerAction* paction = static_cast<const PeerAction*>(action.constData());
+        paction->execute(_app);
+        return;
+    }
+    Peer* peer = _peers.value(name);
+    if (peer != 0) {
+        ExecuteMessage msg;
+        msg.action = action;
+        peer->sendMessage(msg);
+    }
+}
+
+void PeerManager::request (const QString& name, const QVariant& request, const Callback& callback)
+{
+    // see if it's for the local peer
+    if (name == _record.name) {
+        const PeerRequest* prequest = static_cast<const PeerRequest*>(request.constData());
+        prequest->handle(_app, callback);
+        return;
+    }
+    Peer* peer = _peers.value(name);
+    if (peer != 0) {
+        peer->sendRequest(request, callback);
+    }
+}
+
+void PeerManager::handleResponse (quint32 requestId, const QString& name, const QVariantList& args)
+{
+    PendingRequest& req = _pendingRequests[requestId];
+    req.results.insert(name, args);
+    req.remaining.remove(name);
+    if (req.remaining.isEmpty()) {
+        req.callback.invoke(Q_ARG(const QVariantListHash&, req.results));
+        _pendingRequests.remove(requestId);
     }
 }
 
@@ -201,7 +321,7 @@ void InvokeAction::execute (ServerApp* app) const
 {
     QObject* object = name.isEmpty() ? app : qFindChild<QObject*>(app, name);
     if (object == 0) {
-        qWarning() << "Missing named object for execute action." << name;
+        qWarning() << "Missing named object for action." << name;
         return;
     }
     QGenericArgument cargs[10];
@@ -211,4 +331,52 @@ void InvokeAction::execute (ServerApp* app) const
     object->metaObject()->method(methodIndex).invoke(object,
         cargs[0], cargs[1], cargs[2], cargs[3], cargs[4],
         cargs[5], cargs[6], cargs[7], cargs[8], cargs[9]);
+}
+
+void InvokeRequest::handle (ServerApp* app, const Callback& callback) const
+{
+    QObject* object = name.isEmpty() ? app : qFindChild<QObject*>(app, name);
+    if (object == 0) {
+        qWarning() << "Missing named object for request." << name;
+        return;
+    }
+    QMetaMethod method = object->metaObject()->method(methodIndex);
+    QList<QByteArray> ptypes = method.parameterTypes();
+    QGenericArgument cargs[10];
+    bool passingCallback = false;
+
+    // insert the callback into the arguments if appropriate
+    for (int ii = 0, idx = 0, nn = ptypes.size(); ii < nn; ii++) {
+        if (ptypes.at(ii) == "Callback") {
+            cargs[ii] = Q_ARG(const Callback&, callback);
+            passingCallback = true;
+
+        } else {
+            cargs[ii] = QGenericArgument(args[idx].typeName(), args[idx].constData());
+            idx++;
+        }
+    }
+    if (passingCallback) {
+        method.invoke(object,
+            cargs[0], cargs[1], cargs[2], cargs[3], cargs[4],
+            cargs[5], cargs[6], cargs[7], cargs[8], cargs[9]);
+        return;
+    }
+
+    // if the method doesn't take a callback, use the return value (if any)
+    if (method.typeName()[0] == 0) {
+        method.invoke(object,
+            cargs[0], cargs[1], cargs[2], cargs[3], cargs[4],
+            cargs[5], cargs[6], cargs[7], cargs[8], cargs[9]);
+        callback.invoke();
+        return;
+    }
+    int type = QMetaType::type(method.typeName());
+    void* data = QMetaType::construct(type);
+    QGenericReturnArgument returnValue(method.typeName(), data);
+    method.invoke(object, returnValue,
+        cargs[0], cargs[1], cargs[2], cargs[3], cargs[4],
+        cargs[5], cargs[6], cargs[7], cargs[8], cargs[9]);
+    callback.invoke(returnValue);
+    QMetaType::destroy(type, data);
 }

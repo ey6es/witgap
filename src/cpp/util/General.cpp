@@ -17,6 +17,7 @@
 int qIntVectorType = qRegisterMetaType<QIntVector>("QIntVector");
 int translationKeyType = qRegisterMetaType<TranslationKey>("TranslationKey");
 int qVariantType = qRegisterMetaType<QVariant>("QVariant");
+int qVariantListHashType = qRegisterMetaType<QVariantListHash>("QVariantListHash");
 
 Creator::Creator (QObject* parent, const QMetaObject* metaObject,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,

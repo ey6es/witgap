@@ -34,6 +34,14 @@ PeerConnection::~PeerConnection ()
     }
 }
 
+void PeerConnection::sendResponse (quint32 requestId, const QVariantList& args)
+{
+    ResponseMessage msg;
+    msg.requestId = requestId;
+    msg.args = args;
+    sendMessage(msg);
+}
+
 void PeerConnection::readHeader ()
 {
     // if we don't have the full header, wait until we do

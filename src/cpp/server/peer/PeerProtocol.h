@@ -100,4 +100,42 @@ public:
 
 DECLARE_STREAMABLE_METATYPE(ExecuteMessage)
 
+/**
+ * Makes a request of the peer.
+ */
+class RequestMessage : public PeerMessage
+{
+    STREAMABLE
+    UPSTREAM_MESSAGE
+
+public:
+
+    /** The identifier to be sent along with the response. */
+    STREAM quint32 id;
+
+    /** The request to process. */
+    STREAM QVariant request;
+};
+
+DECLARE_STREAMABLE_METATYPE(RequestMessage)
+
+/**
+ * Responds to a request.
+ */
+class ResponseMessage : public PeerMessage
+{
+    STREAMABLE
+    DOWNSTREAM_MESSAGE
+
+public:
+
+    /** The identifier of the request to which we're responding. */
+    STREAM quint32 requestId;
+
+    /** The response arguments. */
+    STREAM QVariantList args;
+};
+
+DECLARE_STREAMABLE_METATYPE(ResponseMessage)
+
 #endif // PEER_PROTOCOL

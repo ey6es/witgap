@@ -9,6 +9,8 @@
 #include <QObject>
 #include <QVariant>
 
+#include "util/Callback.h"
+
 class QByteArray;
 class QSslSocket;
 
@@ -18,7 +20,7 @@ class ServerApp;
 /**
  * Base class for {@link Peer} and {@link PeerConnection}.
  */
-class AbstractPeer : public QObject
+class AbstractPeer : public CallableObject
 {
     Q_OBJECT
 

@@ -274,7 +274,7 @@ public:
     virtual QString handle (Session* session, QTranslator* translator,
             const QString& cmd, const QString& args) {
         if (args.isEmpty()) {
-            QMetaObject::invokeMethod(session->app(), "cancelReboot");
+            session->app()->peerManager()->invoke(session->app(), "cancelReboot()");
             return tr("Reboot canceled.");
         }
         int idx = args.indexOf(' ');
