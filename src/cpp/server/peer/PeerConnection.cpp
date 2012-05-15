@@ -6,7 +6,6 @@
 
 #include "ServerApp.h"
 #include "peer/PeerConnection.h"
-#include "peer/PeerManager.h"
 #include "peer/PeerProtocol.h"
 
 PeerConnection::PeerConnection (ServerApp* app, QSslSocket* socket) :
@@ -26,12 +25,28 @@ PeerConnection::PeerConnection (ServerApp* app, QSslSocket* socket) :
 
 PeerConnection::~PeerConnection ()
 {
+    // note the connection closing and unmap
+    foreach (const SessionInfoPointer& ptr, _sessions) {
+        _app->peerManager()->sessionRemoved(ptr->id);
+    }
+    _app->peerManager()->connectionClosed(this);
+
     // log the destruction
     QString error;
-    QDebug base = qDebug() << "Peer connection closed." << _address;
+    QDebug base = qDebug() << "Peer connection closed." << _name << _address;
     if (_socket->error() != QAbstractSocket::UnknownSocketError) {
         base << _socket->errorString();
     }
+}
+
+void PeerConnection::sessionAdded (const SessionInfoPointer& ptr)
+{
+    _sessions.insert(ptr->id, ptr);
+}
+
+void PeerConnection::sessionRemoved (const SessionInfoPointer& ptr)
+{
+    _sessions.remove(ptr->id);
 }
 
 void PeerConnection::sendResponse (quint32 requestId, const QVariantList& args)
@@ -45,12 +60,12 @@ void PeerConnection::sendResponse (quint32 requestId, const QVariantList& args)
 void PeerConnection::readHeader ()
 {
     // if we don't have the full header, wait until we do
-    const QByteArray& secret = _app->peerManager()->sharedSecret();
-    if (_socket->bytesAvailable() < 8 + secret.length()) {
+    qint64 available = _socket->bytesAvailable();
+    if (available < 12) {
         return;
     }
     // check the magic number and version
-    quint32 magic, version;
+    quint32 magic, version, length;
     _stream >> magic;
     if (magic != PeerProtocolMagic) {
         qWarning() << "Invalid protocol magic number:" << magic << _address;
@@ -63,12 +78,25 @@ void PeerConnection::readHeader ()
         _socket->disconnectFromHost();
         return;
     }
-    QByteArray peerSecret = _socket->read(secret.length());
-    if (peerSecret != secret) {
-        qWarning() << "Wrong peer secret:" << peerSecret << _address;
+    // if we don't have the rest, wait until we do
+    _stream >> length;
+    if (available - 12 < length) {
+        unget(_socket, length);
+        unget(_socket, version);
+        unget(_socket, magic);
+        return;
+    }
+    QString secret;
+    _stream >> secret;
+    if (secret != _app->peerManager()->sharedSecret()) {
+        qWarning() << "Wrong peer secret:" << secret << _address;
         _socket->disconnectFromHost();
         return;
     }
+    _stream >> _name;
+
+    // map
+    _app->peerManager()->connectionEstablished(this);
 
     // switch over to reading incoming messages
     _socket->disconnect(this, SLOT(readHeader()));

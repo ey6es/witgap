@@ -7,6 +7,7 @@
 #include <QHostAddress>
 
 #include "peer/AbstractPeer.h"
+#include "peer/PeerManager.h"
 
 /**
  * Handles a single incoming peer connection.
@@ -26,6 +27,21 @@ public:
      * Destroys the connection.
      */
     virtual ~PeerConnection ();
+
+    /**
+     * Returns a reference to the peer name.
+     */
+    const QString& name () const { return _name; }
+
+    /**
+     * Notes that a session has been added by this connection.
+     */
+    void sessionAdded (const SessionInfoPointer& ptr);
+
+    /**
+     * Notes that a session has been removed by this connection.
+     */
+    void sessionRemoved (const SessionInfoPointer& ptr);
 
     /**
      * Sends a response to a request.
@@ -48,6 +64,12 @@ protected:
 
     /** The stored address. */
     QHostAddress _address;
+
+    /** The peer name. */
+    QString _name;
+
+    /** The sessions registered by this connection. */
+    QHash<quint64, SessionInfoPointer> _sessions;
 };
 
 #endif // PEER_CONNECTION

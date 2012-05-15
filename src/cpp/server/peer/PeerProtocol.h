@@ -17,7 +17,9 @@
  * consists of:
  *     PeerProtocolMagic : quint32
  *     PeerProtocolVersion : quint32
- *     sharedSecret : char[sharedSecret.length()] : the secret phrase shared by peers
+ *     length : quint32 : the length of the remainder of the preamble (excluding this field)
+ *     sharedSecret : QString : the secret phrase shared by peers
+ *     name : QString : the name of the connecting peer
  *
  * If the server rejects the preamble, it will disconnect immediately.  Otherwise, both parties
  * may begin sending messages.

@@ -15,6 +15,7 @@
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
+#include "peer/PeerManager.h"
 #include "util/General.h"
 
 ConnectionManager::ConnectionManager (ServerApp* app) :
@@ -23,9 +24,6 @@ ConnectionManager::ConnectionManager (ServerApp* app) :
     _rsa(0),
     _this(this)
 {
-    // our name identifies us for peer invocations
-    setObjectName("connectionManager");
-
     // read the private RSA key
     FILE* keyFile = fopen(app->config().value("private_key").toByteArray().constData(), "r");
     if (keyFile == 0) {
@@ -37,6 +35,9 @@ ConnectionManager::ConnectionManager (ServerApp* app) :
         qCritical() << "Invalid private key file.";
         return;
     }
+
+    // register for remote invocation
+    _app->peerManager()->addInvocationTarget(this);
 
     // start listening on the configured port
     QHostAddress address(app->config().value("listen_address").toString());
@@ -105,23 +106,31 @@ void ConnectionManager::tell (
     const QString& recipient, const Callback& callback)
 {
     QString key = recipient.toLower();
-    bool success = false;
-    for (QMultiHash<QString, Session*>::const_iterator it = _names.constFind(key),
-            end = _names.constEnd(); it != end && it.key() == key; it++) {
-        QMetaObject::invokeMethod(it.value()->chatWindow(), "display",
+    Session* session = _names.value(recipient.toLower());
+    if (session != 0) {
+        QMetaObject::invokeMethod(session->chatWindow(), "display",
             Q_ARG(const QString&, speaker), Q_ARG(const QString&, message),
             Q_ARG(ChatWindow::SpeakMode, ChatWindow::TellMode));
-        success = true;
+        callback.invoke(Q_ARG(bool, true));
+
+    } else {
+        callback.invoke(Q_ARG(bool, false));
     }
-    callback.invoke(Q_ARG(bool, success));
 }
 
 void ConnectionManager::sessionNameChanged (
-    QObject* sessobj, const QString& oldName, const QString& newName)
+    QObject* object, const QString& oldName, const QString& newName)
 {
-    Session* session = static_cast<Session*>(sessobj);
-    _names.remove(oldName.toLower(), session);
+    Session* session = static_cast<Session*>(object);
+    _names.remove(oldName.toLower());
     _names.insert(newName.toLower(), session);
+}
+
+void ConnectionManager::sessionDestroyed (QObject* object, quint64 id, const QString& name)
+{
+    Session* session = static_cast<Session*>(object);
+    _sessions.remove(id);
+    _names.remove(name.toLower());
 }
 
 void ConnectionManager::acceptConnections ()
@@ -130,13 +139,6 @@ void ConnectionManager::acceptConnections ()
     while ((socket = nextPendingConnection()) != 0) {
         new Connection(_app, socket);
     }
-}
-
-void ConnectionManager::unmapSession (QObject* object)
-{
-    Session* session = static_cast<Session*>(object);
-    _sessions.remove(session->record().id);
-    _names.remove(session->record().name.toLower(), session);
 }
 
 void ConnectionManager::tokenValidated (
@@ -152,7 +154,4 @@ void ConnectionManager::tokenValidated (
     Session* session = new Session(_app, connection, record, user);
     _sessions.insert(record.id, session);
     _names.insert(record.name.toLower(), session);
-
-    // listen for destruction in order to unmap
-    connect(session, SIGNAL(destroyed(QObject*)), SLOT(unmapSession(QObject*)));
 }

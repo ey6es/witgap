@@ -5,7 +5,6 @@
 #define CONNECTION_MANAGER
 
 #include <QHash>
-#include <QMultiHash>
 #include <QTcpServer>
 
 #include <openssl/pem.h>
@@ -70,7 +69,12 @@ public:
      * Notifies the manager that a session's name has changed (because of logon/logoff).
      */
     Q_INVOKABLE void sessionNameChanged (
-        QObject* sessobj, const QString& oldName, const QString& newName);
+        QObject* object, const QString& oldName, const QString& newName);
+
+    /**
+     * Notifies the manager that a session has been destroyed.
+     */
+    Q_INVOKABLE void sessionDestroyed (QObject* object, quint64 id, const QString& name);
 
 protected slots:
 
@@ -78,11 +82,6 @@ protected slots:
      * Accepts any incoming connections.
      */
     void acceptConnections ();
-
-    /**
-     * Unmaps a destroyed session.
-     */
-    void unmapSession (QObject* object);
 
 protected:
 
@@ -102,7 +101,7 @@ protected:
     QHash<quint64, Session*> _sessions;
 
     /** Sessions mapped by name. */
-    QMultiHash<QString, Session*> _names;
+    QHash<QString, Session*> _names;
 
     /** Synchronized pointer for callbacks. */
     CallablePointer _this;

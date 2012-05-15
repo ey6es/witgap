@@ -276,9 +276,12 @@ ServerApp::ServerApp (int& argc, char** argv) :
     _databaseThread = new DatabaseThread(this);
 
     // create the managers
-    _connectionManager = new ConnectionManager(this);
     _peerManager = new PeerManager(this);
+    _connectionManager = new ConnectionManager(this);
     _sceneManager = new SceneManager(this);
+
+    // register for remote invocation
+    _peerManager->addInvocationTarget(this);
 
     // start the database and scene threads
     _databaseThread->start();

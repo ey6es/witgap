@@ -20,6 +20,9 @@ Peer::Peer (ServerApp* app) :
 
 Peer::~Peer ()
 {
+    // unmap
+    _app->peerManager()->peerDestroyed(this);
+
     // log the destruction
     qDebug() << "Disconnected from peer." << _record.name;
 }
@@ -75,7 +78,25 @@ void Peer::sendHeader ()
 {
     _stream << PeerProtocolMagic;
     _stream << PeerProtocolVersion;
-    _socket->write(_app->peerManager()->sharedSecret());
+
+    const QString& secret = _app->peerManager()->sharedSecret();
+    const QString& name = _app->peerManager()->record().name;
+    _stream << (quint32)(8 + (secret.length() + name.length())*sizeof(QChar));
+    _stream << secret;
+    _stream << name;
+
+    // send our session list
+    InvokeAction action;
+    action.targetIndex = _app->peerManager()->invocationTargetIndex(_app->peerManager());
+    action.methodIndex = PeerManager::staticMetaObject.indexOfMethod("sessionAdded(SessionInfo)");
+    action.args.append(QVariant());
+    QVariant& variant = action.args[0];
+    ExecuteMessage msg;
+    foreach (const SessionInfoPointer& ptr, _app->peerManager()->localSessions()) {
+        variant.setValue(*ptr);
+        msg.action.setValue(action);
+        sendMessage(msg);
+    }
 }
 
 void Peer::handle (const PeerMessage* message)

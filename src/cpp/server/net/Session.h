@@ -10,6 +10,7 @@
 #include "chat/ChatWindow.h"
 #include "db/SessionRepository.h"
 #include "db/UserRepository.h"
+#include "peer/PeerManager.h"
 #include "ui/TextField.h"
 #include "util/Callback.h"
 
@@ -387,6 +388,11 @@ protected:
     Q_INVOKABLE void loggedOff (const QString& name);
 
     /**
+     * Handles a name change.
+     */
+    void nameChanged (const QString& oldName);
+
+    /**
      * Determines whether the specified window is beneath another, modal window.
      */
     bool belowModal (Window* window) const;
@@ -399,6 +405,9 @@ protected:
 
     /** The session record. */
     SessionRecord _record;
+
+    /** The session info reported to peers. */
+    SessionInfo _info;
 
     /** The last window id assigned. */
     int _lastWindowId;

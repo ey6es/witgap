@@ -20,7 +20,6 @@
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
-#include "peer/PeerManager.h"
 #include "scene/Scene.h"
 #include "scene/SceneManager.h"
 #include "scene/Zone.h"
@@ -54,6 +53,12 @@ Session::Session (ServerApp* app, Connection* connection,
     _scene(0),
     _pawn(0)
 {
+    // add info on all peers
+    SessionInfo info = { _record.id, _record.name, _app->peerManager()->record().name };
+    _info = info;
+    _app->peerManager()->invoke(_app->peerManager(), "sessionAdded(SessionInfo)",
+        Q_ARG(const SessionInfo&, info));
+
     // send the session info back to the connection and activate it
     connection->setCookie("sessionId", QString::number(record.id, 16).rightJustified(16, '0'));
     connection->setCookie("sessionToken", record.token.toHex());
@@ -71,6 +76,14 @@ Session::Session (ServerApp* app, Connection* connection,
 Session::~Session ()
 {
     leaveScene();
+
+    // let the connection manager update its mappings
+    QMetaObject::invokeMethod(_app->connectionManager(), "sessionDestroyed",
+        Q_ARG(quint64, _record.id), Q_ARG(const QString&, _record.name));
+
+    // remove info on all peers
+    _app->peerManager()->invoke(_app->peerManager(), "sessionRemoved(quint64)",
+        Q_ARG(quint64, _record.id));
 }
 
 void Session::setConnection (Connection* connection)
@@ -315,9 +328,8 @@ void Session::loggedOn (const UserRecord& user)
     QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "updateSession",
         Q_ARG(const SessionRecord&, _record));
 
-    // let the connection manager update its mappings
-    QMetaObject::invokeMethod(_app->connectionManager(), "sessionNameChanged",
-        Q_ARG(QObject*, this), Q_ARG(const QString&, oname), Q_ARG(const QString&, _record.name));
+    // update mappings
+    nameChanged(oname);
 }
 
 void Session::logoff ()
@@ -384,7 +396,7 @@ void Session::say (const QString& message, ChatWindow::SpeakMode mode)
 
 void Session::tell (const QString& recipient, const QString& message)
 {
-    QMetaObject::invokeMethod(_app->connectionManager(), "tell",
+    _app->peerManager()->invokeSession(recipient, _app->connectionManager(), "tell",
         Q_ARG(const QString&, _record.name), Q_ARG(const QString&, message),
         Q_ARG(const QString&, recipient), Q_ARG(const Callback&, Callback(_this,
             "maybeTold(QString,QString,bool)", Q_ARG(const QString&, recipient),
@@ -697,9 +709,20 @@ void Session::loggedOff (const QString& name)
     QString oname = _record.name;
     _record.name = name;
 
+    // update mappings
+    nameChanged(oname);
+}
+
+void Session::nameChanged (const QString& oldName)
+{
     // let the connection manager update its mappings
     QMetaObject::invokeMethod(_app->connectionManager(), "sessionNameChanged",
-        Q_ARG(QObject*, this), Q_ARG(const QString&, oname), Q_ARG(const QString&, _record.name));
+        Q_ARG(const QString&, oldName), Q_ARG(const QString&, _record.name));
+
+    // update the info on all peers
+    _info.name = _record.name;
+    _app->peerManager()->invoke(_app->peerManager(), "sessionUpdated(SessionInfo)",
+        Q_ARG(const SessionInfo&, _info));
 }
 
 bool Session::belowModal (Window* window) const

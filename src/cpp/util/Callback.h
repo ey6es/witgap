@@ -17,6 +17,81 @@ typedef QWeakPointer<QObject> QWeakObjectPointer;
 class CallablePointer;
 
 /**
+ * Contains a weak pointer to a QObject and allows safe dynamic method invocation without concern
+ * that the object will be deleted in another thread.
+ */
+class WeakCallablePointer : public QWeakPointer<QObject>
+{
+public:
+
+    /**
+     * Creates a pointer to the specified object.
+     */
+    WeakCallablePointer (QObject* object);
+
+    /**
+     * Creates a pointer to the specified object.
+     */
+    WeakCallablePointer (const CallablePointer& pointer);
+
+    /**
+     * Creates an invalid weak pointer.
+     */
+    WeakCallablePointer ();
+
+    /**
+     * Attempts to invoke a method on the pointed object.
+     *
+     * @return true if successful, false if the method wasn't found or the object has been deleted.
+     */
+    bool invoke (const char* member,
+        QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
+        QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
+        QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
+        QGenericArgument val6 = QGenericArgument(), QGenericArgument val7 = QGenericArgument(),
+        QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument())
+            const;
+
+    /**
+     * Attempts to invoke a method on the pointed object.
+     *
+     * @return true if successful, false if the method wasn't found or the object has been deleted.
+     */
+    bool invoke (const QMetaMethod& method,
+        QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
+        QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
+        QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
+        QGenericArgument val6 = QGenericArgument(), QGenericArgument val7 = QGenericArgument(),
+        QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument())
+            const;
+
+    /**
+     * Locks the pointer, ensuring that the pointed object won't be deleted until unlocked.
+     */
+    void lock () const;
+
+    /**
+     * Unlocks the pointer, allowing the reference to be deleted.
+     */
+    void unlock () const;
+
+    /**
+     * Assigns the pointer.
+     */
+    WeakCallablePointer& operator= (QObject* object);
+
+    /**
+     * Assigns the pointer.
+     */
+    WeakCallablePointer& operator= (const CallablePointer& pointer);
+
+protected:
+
+    /** The mutex that coordinates invocation and deletion. */
+    QSharedPointer<QSemaphore> _semaphore;
+};
+
+/**
  * Represents a callback to an invokable member function of a QObject.  The function will be
  * invoked with the arguments provided to the constructor followed by the arguments
  * provided to the invoke method.  The combined number of arguments must be less than ten.
@@ -43,7 +118,7 @@ public:
     /**
      * Creates a new callback for the specified member.
      */
-    Callback (QObject* object, QMetaMethod method,
+    Callback (QObject* object, const QMetaMethod& method,
         QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
         QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
         QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
@@ -65,7 +140,7 @@ public:
     /**
      * Creates a new callback for the specified member.
      */
-    Callback (const CallablePointer& pointer, QMetaMethod method,
+    Callback (const CallablePointer& pointer, const QMetaMethod& method,
         QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
         QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
         QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
@@ -94,12 +169,12 @@ public:
         QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument())
             const;
 
-protected:
-
     /**
-     * Sets the object pointer and associated state.
+     * Invokes the callback with default-constructed arguments.
      */
-    void setObject (QObject* object);
+    void invokeWithDefaults () const;
+
+protected:
 
     /**
      * Sets the arguments.
@@ -110,16 +185,13 @@ protected:
         QGenericArgument val8, QGenericArgument val9);
 
     /** The object to call. */
-    QWeakPointer<QObject> _object;
-
-    /** The mutex that coordinates invocation and deletion. */
-    QSharedPointer<QSemaphore> _semaphore;
+    WeakCallablePointer _object;
 
     /** The method to invoke. */
     QMetaMethod _method;
 
     /** The constructor-specified callback arguments. */
-    QVariant _args[10];
+    QVariantList _args;
 
     /** If true, combine the arguments passed to the callback into a QVariantList. */
     bool _collate;
@@ -157,7 +229,7 @@ protected:
  */
 class CallablePointer : public QSharedPointer<QObject>
 {
-    friend class Callback;
+    friend class WeakCallablePointer;
 
 public:
 
@@ -184,7 +256,7 @@ class CallableObject : public QObject
 {
     Q_OBJECT
 
-    friend class Callback;
+    friend class WeakCallablePointer;
 
 public:
 

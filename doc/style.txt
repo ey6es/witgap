@@ -68,3 +68,5 @@ break overlong functions/overlarge classes into multiple functions/contained cla
 YAGNI
 
 Use local variables rather than repeating the same getter(s) (unless you know for sure it's inline)
+
+prefer typedefs over nested templates

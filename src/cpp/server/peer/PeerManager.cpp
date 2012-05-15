@@ -49,7 +49,7 @@ PeerManager::PeerManager (ServerApp* app) :
     _record.active = true;
 
     // get the shared secret
-    _sharedSecret = app->config().value("peer_secret").toByteArray();
+    _sharedSecret = app->config().value("peer_secret").toString();
 
     // prepare the shared SSL configuration
     QFile cert(app->config().value("certificate").toString());
@@ -74,6 +74,9 @@ PeerManager::PeerManager (ServerApp* app) :
     _expectedSslErrors.append(QSslError(
         QSslError::SelfSignedCertificate, _sslConfig.localCertificate()));
 
+    // register for remote invocation
+    addInvocationTarget(this);
+
     // start listening on the configured port
     QHostAddress address(app->config().value("peer_listen_address").toString());
     if (!listen(address, _record.port)) {
@@ -97,47 +100,21 @@ PeerManager::PeerManager (ServerApp* app) :
     timer->start(PeerRefreshInterval);
 }
 
+PeerManager::~PeerManager ()
+{
+    // delete all peers, connections while we're still valid
+    foreach (Peer* peer, _peers) {
+        delete peer;
+    }
+    foreach (PeerConnection* connection, _connections) {
+        delete connection;
+    }
+}
+
 void PeerManager::configureSocket (QSslSocket* socket) const
 {
     socket->setSslConfiguration(_sslConfig);
     socket->ignoreSslErrors(_expectedSslErrors);
-}
-
-/**
- * Helper function for invocation methods: processes the arguments and returns a variant containing
- * either an InvokeAction or an InvokeRequest.
- */
-static QVariant prepareInvoke (QObject* object, const char* method,
-    QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
-    QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
-    QGenericArgument val8, QGenericArgument val9, Callback** callback)
-{
-    QGenericArgument args[] = { val0, val1, val2, val3, val4, val5, val6, val7, val8, val9 };
-    QVariantList vargs;
-    *callback = 0;
-    for (int ii = 0; ii < 10 && args[ii].name() != 0; ii++) {
-        int type = QMetaType::type(args[ii].name());
-        if (type == Callback::Type) {
-            *callback = static_cast<Callback*>(args[ii].data());
-        } else {
-            vargs.append(QVariant(type, args[ii].data()));
-        }
-    }
-    // the presence of a callback determines whether we issue an action or a request
-    if (*callback == 0) {
-        InvokeAction action;
-        action.name = object->objectName();
-        action.methodIndex = object->metaObject()->indexOfMethod(method);
-        action.args = vargs;
-        return QVariant::fromValue(action);
-
-    } else {
-        InvokeRequest request;
-        request.name = object->objectName();
-        request.methodIndex = object->metaObject()->indexOfMethod(method);
-        request.args = vargs;
-        return QVariant::fromValue(request);
-    }
 }
 
 void PeerManager::invoke (QObject* object, const char* method,
@@ -175,6 +152,77 @@ void PeerManager::invoke (const QString& peer, QObject* object, const char* meth
     }
 }
 
+void PeerManager::invokeSession (const QString& name, QObject* object, const char* method,
+    QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
+    QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
+    QGenericArgument val8, QGenericArgument val9)
+{
+    Callback* callback;
+    QVariant variant = prepareInvoke(
+        object, method, val0, val1, val2, val3, val4, val5, val6, val7, val8, val9, &callback);
+    if (callback == 0) {
+        QMetaObject::invokeMethod(this, "executeSession", Q_ARG(const QString&, name),
+            Q_ARG(const QVariant&, variant));
+
+    } else {
+        QMetaObject::invokeMethod(this, "requestSession", Q_ARG(const QString&, name),
+            Q_ARG(const QVariant&, variant), Q_ARG(const Callback&, *callback));
+    }
+}
+
+void PeerManager::peerDestroyed (Peer* peer)
+{
+    _peers.remove(peer->record().name);
+}
+
+void PeerManager::connectionEstablished (PeerConnection* connection)
+{
+    _connections.insert(connection->name(), connection);
+}
+
+void PeerManager::connectionClosed (PeerConnection* connection)
+{
+    _connections.remove(connection->name());
+}
+
+void PeerManager::sessionAdded (const SessionInfo& info)
+{
+    SessionInfoPointer ptr(new SessionInfo(info));
+    _sessions.insert(info.id, ptr);
+    _sessionsByName.insert(info.name.toLower(), ptr);
+
+    if (info.peer == _record.name) {
+        _localSessions.insert(info.id, ptr);
+    } else {
+        _connections.value(info.peer)->sessionAdded(ptr);
+    }
+}
+
+void PeerManager::sessionUpdated (const SessionInfo& info)
+{
+    SessionInfoPointer ptr = _sessions.value(info.id);
+    QString oname = ptr->name.toLower();
+    QString nname = (*ptr = info).name.toLower();
+
+    // remap under new name if necessary
+    if (oname != nname) {
+        _sessionsByName.remove(oname);
+        _sessionsByName.insert(nname, ptr);
+    }
+}
+
+void PeerManager::sessionRemoved (quint64 id)
+{
+    SessionInfoPointer ptr = _sessions.take(id);
+    _sessionsByName.remove(ptr->name.toLower());
+
+    if (ptr->peer == _record.name) {
+        _localSessions.remove(id);
+    } else {
+        _connections.value(ptr->peer)->sessionRemoved(ptr);
+    }
+}
+
 void PeerManager::refreshPeers ()
 {
     // enqueue an update for our own record
@@ -184,12 +232,6 @@ void PeerManager::refreshPeers ()
     // load everyone else's
     QMetaObject::invokeMethod(_app->databaseThread()->peerRepository(), "loadPeers",
         Q_ARG(const Callback&, Callback(_this, "updatePeers(PeerRecordList)")));
-}
-
-void PeerManager::unmapPeer (QObject* object)
-{
-    Peer* peer = static_cast<Peer*>(object);
-    _peers.remove(peer->record().name);
 }
 
 void PeerManager::deactivate ()
@@ -212,6 +254,39 @@ void PeerManager::incomingConnection (int socketDescriptor)
     }
 }
 
+QVariant PeerManager::prepareInvoke (QObject* object, const char* method,
+    QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
+    QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
+    QGenericArgument val8, QGenericArgument val9, Callback** callback)
+{
+    QGenericArgument args[] = { val0, val1, val2, val3, val4, val5, val6, val7, val8, val9 };
+    QVariantList vargs;
+    *callback = 0;
+    for (int ii = 0; ii < 10 && args[ii].name() != 0; ii++) {
+        int type = QMetaType::type(args[ii].name());
+        if (type == Callback::Type) {
+            *callback = static_cast<Callback*>(args[ii].data());
+        } else {
+            vargs.append(QVariant(type, args[ii].data()));
+        }
+    }
+    // the presence of a callback determines whether we issue an action or a request
+    if (*callback == 0) {
+        InvokeAction action;
+        action.targetIndex = invocationTargetIndex(object);
+        action.methodIndex = object->metaObject()->indexOfMethod(method);
+        action.args = vargs;
+        return QVariant::fromValue(action);
+
+    } else {
+        InvokeRequest request;
+        request.targetIndex = invocationTargetIndex(object);
+        request.methodIndex = object->metaObject()->indexOfMethod(method);
+        request.args = vargs;
+        return QVariant::fromValue(request);
+    }
+}
+
 void PeerManager::updatePeers (const PeerRecordList& records)
 {
     QDateTime cutoff = QDateTime::currentDateTime().addMSecs(-LivingPeerCutoff);
@@ -223,9 +298,6 @@ void PeerManager::updatePeers (const PeerRecordList& records)
             Peer*& peer = _peers[record.name];
             if (peer == 0) {
                 peer = new Peer(_app);
-
-                // listen for destruction in order to unmap
-                connect(peer, SIGNAL(destroyed(QObject*)), SLOT(unmapPeer(QObject*)));
             }
             peer->update(record);
 
@@ -259,8 +331,6 @@ void PeerManager::request (const QVariant& request, const Callback& callback)
     quint32 requestId = ++_lastRequestId;
     PendingRequest& req = _pendingRequests[requestId];
     req.callback = callback;
-
-Q_INVOKABLE void handleResponse (quint32 requestId, const QString& name, QVariantList& args);
 
     // send it off to everyone else
     foreach (Peer* peer, _peers) {
@@ -303,6 +373,27 @@ void PeerManager::request (const QString& name, const QVariant& request, const C
     Peer* peer = _peers.value(name);
     if (peer != 0) {
         peer->sendRequest(request, callback);
+    } else {
+        callback.invokeWithDefaults();
+    }
+}
+
+void PeerManager::executeSession (const QString& name, const QVariant& action)
+{
+    SessionInfoPointer ptr = _sessionsByName.value(name.toLower());
+    if (!ptr.isNull()) {
+        execute(ptr->peer, action);
+    }
+}
+
+void PeerManager::requestSession (
+    const QString& name, const QVariant& request, const Callback& callback)
+{
+    SessionInfoPointer ptr = _sessionsByName.value(name.toLower());
+    if (!ptr.isNull()) {
+        this->request(ptr->peer, request, callback);
+    } else {
+        callback.invokeWithDefaults();
     }
 }
 
@@ -319,11 +410,7 @@ void PeerManager::handleResponse (quint32 requestId, const QString& name, const 
 
 void InvokeAction::execute (ServerApp* app) const
 {
-    QObject* object = name.isEmpty() ? app : qFindChild<QObject*>(app, name);
-    if (object == 0) {
-        qWarning() << "Missing named object for action." << name;
-        return;
-    }
+    QObject* object = app->peerManager()->invocationTarget(targetIndex);
     QGenericArgument cargs[10];
     for (int ii = 0, nn = args.size(); ii < nn; ii++) {
         cargs[ii] = QGenericArgument(args[ii].typeName(), args[ii].constData());
@@ -335,11 +422,7 @@ void InvokeAction::execute (ServerApp* app) const
 
 void InvokeRequest::handle (ServerApp* app, const Callback& callback) const
 {
-    QObject* object = name.isEmpty() ? app : qFindChild<QObject*>(app, name);
-    if (object == 0) {
-        qWarning() << "Missing named object for request." << name;
-        return;
-    }
+    QObject* object = app->peerManager()->invocationTarget(targetIndex);
     QMetaMethod method = object->metaObject()->method(methodIndex);
     QList<QByteArray> ptypes = method.parameterTypes();
     QGenericArgument cargs[10];
