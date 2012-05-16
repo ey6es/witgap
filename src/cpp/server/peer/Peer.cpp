@@ -21,7 +21,10 @@ Peer::Peer (ServerApp* app) :
 Peer::~Peer ()
 {
     // unmap
-    _app->peerManager()->peerDestroyed(this);
+    PeerManager* manager = qobject_cast<PeerManager*>(parent());
+    if (manager != 0) {
+        manager->peerDestroyed(this);
+    }
 
     // log the destruction
     qDebug() << "Disconnected from peer." << _record.name;

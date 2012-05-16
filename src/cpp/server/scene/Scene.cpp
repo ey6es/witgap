@@ -131,6 +131,7 @@ void Scene::remove ()
 Pawn* Scene::addSession (Session* session)
 {
     session->setParent(this);
+    _sessions.append(session);
     return new Pawn(this, session, QPoint(0, 0));
 }
 
@@ -140,6 +141,7 @@ void Scene::removeSession (Session* session)
     if (pawn != 0) {
         delete pawn;
     }
+    _sessions.removeOne(session);
     session->setParent(0);
 }
 
@@ -259,7 +261,7 @@ void Scene::say (
 {
     if (mode == ChatWindow::ShoutMode) {
         // at least for now, shouting reaches everyone in the scene
-        foreach (Session* session, findChildren<Session*>()) {
+        foreach (Session* session, _sessions) {
             session->chatWindow()->display(speaker, message, mode);
         }
         return;

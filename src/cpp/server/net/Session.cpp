@@ -119,7 +119,7 @@ void Session::setConnection (Connection* connection)
     _chatEntryWindow->setBounds(QRect(3, height - 2, 40, 1));
 
     // readd the windows
-    foreach (Window* window, findChildren<Window*>()) {
+    foreach (Window* window, _windows) {
         window->maybeResend();
     }
 
@@ -147,7 +147,7 @@ QString Session::locale () const
 int Session::highestWindowLayer () const
 {
     int highest = 0;
-    foreach (Window* window, findChildren<Window*>()) {
+    foreach (Window* window, _windows) {
         highest = qMax(highest, window->layer());
     }
     return highest;
@@ -159,11 +159,9 @@ void Session::setActiveWindow (Window* window)
         return;
     }
     if (_activeWindow != 0) {
-        _activeWindow->disconnect(this, SLOT(clearActiveWindow()));
         _activeWindow->setActive(false);
     }
     if ((_activeWindow = window) != 0) {
-        connect(_activeWindow, SIGNAL(destroyed()), SLOT(clearActiveWindow()));
         _activeWindow->setActive(true);
     }
 }
@@ -176,7 +174,7 @@ void Session::updateActiveWindow ()
     }
     int hlayer = numeric_limits<int>::min();
     Window* hwindow = 0;
-    foreach (Window* window, findChildren<Window*>()) {
+    foreach (Window* window, _windows) {
         if (!window->visible() || window->layer() < hlayer) {
             continue;
         }
@@ -410,6 +408,27 @@ void Session::submitBugReport (const QString& description)
         who() + ": " + description, Callback());
 }
 
+void Session::windowCreated (Window* window)
+{
+    _windows.append(window);
+
+    // if modal, we need to update the active window first thing
+    if (window->modal()) {
+        updateActiveWindow();
+    }
+}
+
+void Session::windowDestroyed (Window* window)
+{
+    _windows.removeOne(window);
+
+    // clear the active window if necessary
+    if (_activeWindow == window) {
+        _activeWindow = 0;
+        updateActiveWindow();
+    }
+}
+
 bool Session::event (QEvent* e)
 {
     if (e->type() != QEvent::KeyPress) {
@@ -471,14 +490,6 @@ void Session::clearMoused ()
     _moused = 0;
 }
 
-void Session::clearActiveWindow ()
-{
-    _activeWindow = 0;
-
-    // search for a new window to make active
-    updateActiveWindow();
-}
-
 void Session::dispatchMousePressed (int x, int y)
 {
     // note that we're pressed
@@ -494,7 +505,7 @@ void Session::dispatchMousePressed (int x, int y)
     int hlayer = numeric_limits<int>::min();
     Component* target = 0;
     QPoint absolute(x, y), relative(x, y);
-    foreach (Window* window, findChildren<Window*>()) {
+    foreach (Window* window, _windows) {
         if (!window->visible() || window->layer() < hlayer) {
             continue;
         }
@@ -729,7 +740,7 @@ bool Session::belowModal (Window* window) const
 {
     int layer = window->layer();
     bool after = false;
-    foreach (Window* owindow, findChildren<Window*>()) {
+    foreach (Window* owindow, _windows) {
         if (!owindow->visible()) {
             continue;
         }

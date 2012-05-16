@@ -53,7 +53,11 @@ void Menu::keyPressEvent (QKeyEvent* e)
         return;
     }
     QChar upper = str.at(0), lower = upper.toLower();
-    foreach (Button* button, findChildren<Button*>()) {
+    foreach (Component* child, _children) {
+        Button* button = qobject_cast<Button*>(child);
+        if (button == 0) {
+            continue;
+        }
         const QString& label = button->label();
         for (const QChar* ptr = label.constData(), *end = ptr + label.length(); ptr < end; ptr++) {
             QChar ch = *ptr;

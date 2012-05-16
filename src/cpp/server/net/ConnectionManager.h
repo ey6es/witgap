@@ -68,13 +68,12 @@ public:
     /**
      * Notifies the manager that a session's name has changed (because of logon/logoff).
      */
-    Q_INVOKABLE void sessionNameChanged (
-        QObject* object, const QString& oldName, const QString& newName);
+    Q_INVOKABLE void sessionNameChanged (const QString& oldName, const QString& newName);
 
     /**
      * Notifies the manager that a session has been destroyed.
      */
-    Q_INVOKABLE void sessionDestroyed (QObject* object, quint64 id, const QString& name);
+    Q_INVOKABLE void sessionDestroyed (quint64 id, const QString& name);
 
 protected slots:
 

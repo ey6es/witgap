@@ -51,11 +51,6 @@ public:
     PeerManager (ServerApp* app);
 
     /**
-     * Destroys the manager.
-     */
-    ~PeerManager ();
-
-    /**
      * Returns a reference to our own peer record.
      */
     const PeerRecord& record () const { return _record; }

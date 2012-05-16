@@ -100,17 +100,6 @@ PeerManager::PeerManager (ServerApp* app) :
     timer->start(PeerRefreshInterval);
 }
 
-PeerManager::~PeerManager ()
-{
-    // delete all peers, connections while we're still valid
-    foreach (Peer* peer, _peers) {
-        delete peer;
-    }
-    foreach (PeerConnection* connection, _connections) {
-        delete connection;
-    }
-}
-
 void PeerManager::configureSocket (QSslSocket* socket) const
 {
     socket->setSslConfiguration(_sslConfig);

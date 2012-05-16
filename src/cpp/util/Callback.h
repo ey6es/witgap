@@ -25,6 +25,29 @@ class WeakCallablePointer : public QWeakPointer<QObject>
 public:
 
     /**
+     * Locks the pointer passed to the constructor as long as the locker remains in scope.
+     */
+    class Locker
+    {
+    public:
+
+        /**
+         * Initializes the locker, locking the pointer.
+         */
+        Locker (const WeakCallablePointer* pointer) : _pointer(pointer) { pointer->lock(); }
+
+        /**
+         * Destroys the locker, unlocking the pointer.
+         */
+        ~Locker () { _pointer->unlock(); }
+
+    protected:
+
+        /** The pointer to the object that we're to lock. */
+        const WeakCallablePointer* _pointer;
+    };
+
+    /**
      * Creates a pointer to the specified object.
      */
     WeakCallablePointer (QObject* object);

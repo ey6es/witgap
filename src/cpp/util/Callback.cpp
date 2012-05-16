@@ -35,12 +35,10 @@ bool WeakCallablePointer::invoke (const char* method,
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9) const
 {
-    lock();
+    Locker locker(this);
     QObject* object = data();
-    bool result = (object != 0) && QMetaObject::invokeMethod(object, method, val0, val1, val2,
+    return object != 0 && QMetaObject::invokeMethod(object, method, val0, val1, val2,
         val3, val4, val5, val6, val7, val8, val9);
-    unlock();
-    return result;
 }
 
 bool WeakCallablePointer::invoke (const QMetaMethod& method,
@@ -48,12 +46,10 @@ bool WeakCallablePointer::invoke (const QMetaMethod& method,
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9) const
 {
-    lock();
+    Locker locker(this);
     QObject* object = data();
-    bool result = (object != 0) && method.invoke(object, val0, val1, val2, val3, val4,
+    return object != 0 && method.invoke(object, val0, val1, val2, val3, val4,
         val5, val6, val7, val8, val9);
-    unlock();
-    return result;
 }
 
 void WeakCallablePointer::lock () const
@@ -150,8 +146,8 @@ void Callback::invoke (
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9) const
 {
-    // acquire a resource if we were supplied a semaphore
-    _object.lock();
+    // lock our pointer to prevent it from being deleted
+    WeakCallablePointer::Locker locker(&_object);
 
     // invoke the method if the object reference is still valid
     QObject* data = _object.data();
@@ -180,9 +176,6 @@ void Callback::invoke (
         _method.invoke(data, cargs[0], cargs[1], cargs[2], cargs[3], cargs[4],
             cargs[5], cargs[6], cargs[7], cargs[8], cargs[9]);
     }
-
-    // release the resource if acquired
-    _object.unlock();
 }
 
 void Callback::invokeWithDefaults () const

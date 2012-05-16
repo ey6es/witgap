@@ -199,6 +199,9 @@ protected:
     /** Maps locations to linked lists of actors. */
     QHash<QPoint, Actor*> _actors;
 
+    /** The sessions in the scene. */
+    QList<Session*> _sessions;
+
     /** Maps block locations to lists of intersecting views. */
     QHash<QPoint, SceneViewList> _views;
 

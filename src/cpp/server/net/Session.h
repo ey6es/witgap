@@ -4,6 +4,7 @@
 #ifndef SESSION
 #define SESSION
 
+#include <QList>
 #include <QSet>
 #include <QSize>
 
@@ -246,6 +247,16 @@ public:
     Q_INVOKABLE void submitBugReport (const QString& description);
 
     /**
+     * Notifies us that a window has been created.
+     */
+    void windowCreated (Window* window);
+
+    /**
+     * Notifies us that a window has been destroyed.
+     */
+    void windowDestroyed (Window* window);
+
+    /**
      * Handles an event.
      */
     virtual bool event (QEvent* e);
@@ -295,11 +306,6 @@ protected slots:
      * Clears the moused component (because it has been destroyed).
      */
     void clearMoused ();
-
-    /**
-     * Clears the active window (because it has been destroyed).
-     */
-    void clearActiveWindow ();
 
     /**
      * Dispatches a mouse pressed event.
@@ -417,6 +423,9 @@ protected:
 
     /** The number of elements requiring encryption.  When this drops to zero, we can disable. */
     int _cryptoCount;
+
+    /** The list of registered windows. */
+    QList<Window*> _windows;
 
     /** The main client window. */
     MainWindow* _mainWindow;

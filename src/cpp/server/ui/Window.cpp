@@ -31,20 +31,21 @@ Window::Window (QObject* parent, int layer, bool modal, bool deleteOnEscape) :
     // queue up a sync message
     syncMetaMethod().invoke(this, Qt::QueuedConnection);
 
-    // if modal, we need to update the active window first thing
-    if (modal) {
-        session()->updateActiveWindow();
-    }
+    // notify the session
+    session()->windowCreated(this);
 }
 
 Window::~Window ()
 {
     // if the session still exists and is connected, send a remove window message
     Session* session = this->session();
-    if (session != 0 && _added) {
-        Connection* connection = session->connection();
-        if (connection != 0) {
-            Connection::removeWindowMetaMethod().invoke(connection, Q_ARG(int, _id));
+    if (session != 0) {
+        session->windowDestroyed(this);
+        if (_added) {
+            Connection* connection = session->connection();
+            if (connection != 0) {
+                Connection::removeWindowMetaMethod().invoke(connection, Q_ARG(int, _id));
+            }
         }
     }
 }

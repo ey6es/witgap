@@ -65,7 +65,7 @@ void ConnectionManager::connectionEstablished (Connection* connection)
     quint32 sessionId = connection->cookies().value("sessionId", "0").toULongLong(0, 16);
     QByteArray sessionToken = QByteArray::fromHex(
         connection->cookies().value("sessionToken", "00000000000000000000000000000000").toAscii());
-    Session* session = _sessions[sessionId];
+    Session* session = _sessions.value(sessionId);
     if (session != 0) {
         if (session->record().token == sessionToken && session->connection() == 0) {
             // reconnection: use existing session
@@ -105,7 +105,6 @@ void ConnectionManager::tell (
     const QString& speaker, const QString& message,
     const QString& recipient, const Callback& callback)
 {
-    QString key = recipient.toLower();
     Session* session = _names.value(recipient.toLower());
     if (session != 0) {
         QMetaObject::invokeMethod(session->chatWindow(), "display",
@@ -118,17 +117,14 @@ void ConnectionManager::tell (
     }
 }
 
-void ConnectionManager::sessionNameChanged (
-    QObject* object, const QString& oldName, const QString& newName)
+void ConnectionManager::sessionNameChanged (const QString& oldName, const QString& newName)
 {
-    Session* session = static_cast<Session*>(object);
-    _names.remove(oldName.toLower());
+    Session* session = _names.take(oldName.toLower());
     _names.insert(newName.toLower(), session);
 }
 
-void ConnectionManager::sessionDestroyed (QObject* object, quint64 id, const QString& name)
+void ConnectionManager::sessionDestroyed (quint64 id, const QString& name)
 {
-    Session* session = static_cast<Session*>(object);
     _sessions.remove(id);
     _names.remove(name.toLower());
 }

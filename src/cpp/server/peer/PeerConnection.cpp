@@ -26,10 +26,13 @@ PeerConnection::PeerConnection (ServerApp* app, QSslSocket* socket) :
 PeerConnection::~PeerConnection ()
 {
     // note the connection closing and unmap
-    foreach (const SessionInfoPointer& ptr, _sessions) {
-        _app->peerManager()->sessionRemoved(ptr->id);
+    PeerManager* manager = qobject_cast<PeerManager*>(parent());
+    if (manager != 0) {
+        foreach (const SessionInfoPointer& ptr, _sessions) {
+            manager->sessionRemoved(ptr->id);
+        }
+        manager->connectionClosed(this);
     }
-    _app->peerManager()->connectionClosed(this);
 
     // log the destruction
     QString error;
