@@ -127,7 +127,7 @@ public:
     /**
      * Activates the connection, allowing it to begin reading and writing messages.
      */
-    void activate ();
+    Q_INVOKABLE void activate ();
 
     /**
      * Deactivates the connection, forcibly closing and deleting it.

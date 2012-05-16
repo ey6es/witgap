@@ -67,13 +67,12 @@ void ConnectionManager::connectionEstablished (Connection* connection)
         connection->cookies().value("sessionToken", "00000000000000000000000000000000").toAscii());
     Session* session = _sessions.value(sessionId);
     if (session != 0) {
-        if (session->record().token == sessionToken && session->connection() == 0) {
-            // reconnection: use existing session
-            session->setConnection(connection);
-            return;
-        }
-        // invalid token or simultaneous connection: create a new session
-        sessionId = 0;
+        connection->addReferrer(session);
+        QMetaObject::invokeMethod(session, "maybeSetConnection", Q_ARG(QObject*, connection),
+            Q_ARG(const QByteArray&, sessionToken), Q_ARG(const Callback&, Callback(_this,
+                "connectionMaybeSet(QWeakObjectPointer,bool)",
+                Q_ARG(const QWeakObjectPointer&, QWeakObjectPointer(connection)))));
+        return;
     }
 
     // otherwise, go to the database to validate the token or generate a new one
@@ -135,6 +134,22 @@ void ConnectionManager::acceptConnections ()
     while ((socket = nextPendingConnection()) != 0) {
         new Connection(_app, socket);
     }
+}
+
+void ConnectionManager::connectionMaybeSet (const QWeakObjectPointer& connptr, bool success)
+{
+    // make sure we failed to install the connection and the connection is still in business
+    Connection* connection = static_cast<Connection*>(connptr.data());
+    if (success || connection == 0 || !connection->isOpen()) {
+        return;
+    }
+
+    // create a new token
+    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "validateToken",
+        Q_ARG(quint64, 0), Q_ARG(const QByteArray&, QByteArray()),
+        Q_ARG(const Callback&, Callback(_this,
+            "tokenValidated(QWeakObjectPointer,SessionRecord,UserRecord)",
+            Q_ARG(const QWeakObjectPointer&, connptr))));
 }
 
 void ConnectionManager::tokenValidated (

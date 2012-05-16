@@ -78,52 +78,17 @@ Session::~Session ()
     qDebug() << "Session closed." << _record.id << _record.name;
 }
 
-void Session::setConnection (Connection* connection)
+void Session::maybeSetConnection (
+    QObject* connobj, const QByteArray& token, const Callback& callback)
 {
-    if (_connection != 0) {
-        _connection->disconnect(this);
-        _connection->deactivate(tr("Logged in elsewhere."));
+    Connection* connection = static_cast<Connection*>(connobj);
+    if (_connection != 0 || _record.token != token) {
+        connection->removeReferrer(this);
+        callback.invoke(Q_ARG(bool, false));
+        return;
     }
-    _connection = connection;
-    _displaySize = connection->displaySize();
-    _connection->addReferrer(this, SLOT(clearConnection(Callback)));
-    connect(_connection, SIGNAL(windowClosed()), SLOT(deleteAfterConfirmation()));
-    connect(_connection, SIGNAL(mousePressed(int,int)), SLOT(dispatchMousePressed(int,int)));
-    connect(_connection, SIGNAL(mouseReleased(int,int)), SLOT(dispatchMouseReleased(int,int)));
-    connect(_connection, SIGNAL(keyPressed(int,QChar,bool)),
-        SLOT(dispatchKeyPressed(int,QChar,bool)));
-    connect(_connection, SIGNAL(keyReleased(int,QChar,bool)),
-        SLOT(dispatchKeyReleased(int,QChar,bool)));
-    _connection->activate();
-
-    // activate encryption if necessary
-    if (_cryptoCount > 0) {
-        _connection->toggleCrypto();
-    }
-
-    // clear the modifiers
-    _modifiers = Qt::KeyboardModifiers();
-
-    // position the main and chat windows
-    int width = _displaySize.width(), height = _displaySize.height();
-    _mainWindow->setBounds(QRect(0, 0, width, height));
-    _chatWindow->setBounds(QRect(3, height - 13, 40, 10));
-    _chatEntryWindow->setBounds(QRect(3, height - 2, 40, 1));
-
-    // readd the windows
-    foreach (Window* window, _windows) {
-        window->maybeResend();
-    }
-
-    // check for a password reset request
-    quint32 resetId = _connection->query().value("resetId", "0").toUInt();
-    if (resetId != 0) {
-        QByteArray token = QByteArray::fromHex(
-            _connection->query().value("resetToken", "").toAscii());
-        QMetaObject::invokeMethod(_app->databaseThread()->userRepository(),
-            "validatePasswordReset", Q_ARG(quint32, resetId), Q_ARG(const QByteArray&, token),
-            Q_ARG(const Callback&, Callback(_this, "passwordResetMaybeValidated(QVariant)")));
-    }
+    setConnection(connection);
+    callback.invoke(Q_ARG(bool, true));
 }
 
 QString Session::who () const
@@ -610,6 +575,51 @@ void Session::willBeDeleted ()
     // remove info on all peers
     _app->peerManager()->invoke(_app->peerManager(), "sessionRemoved(quint64)",
         Q_ARG(quint64, _record.id));
+}
+
+void Session::setConnection (Connection* connection)
+{
+    _connection = connection;
+    _displaySize = connection->displaySize();
+    _connection->addReferrer(this, SLOT(clearConnection(Callback)));
+    _connection->removeReferrer(this);
+    connect(_connection, SIGNAL(windowClosed()), SLOT(deleteAfterConfirmation()));
+    connect(_connection, SIGNAL(mousePressed(int,int)), SLOT(dispatchMousePressed(int,int)));
+    connect(_connection, SIGNAL(mouseReleased(int,int)), SLOT(dispatchMouseReleased(int,int)));
+    connect(_connection, SIGNAL(keyPressed(int,QChar,bool)),
+        SLOT(dispatchKeyPressed(int,QChar,bool)));
+    connect(_connection, SIGNAL(keyReleased(int,QChar,bool)),
+        SLOT(dispatchKeyReleased(int,QChar,bool)));
+    QMetaObject::invokeMethod(_connection, "activate");
+
+    // activate encryption if necessary
+    if (_cryptoCount > 0) {
+        QMetaObject::invokeMethod(_connection, "toggleCrypto");
+    }
+
+    // clear the modifiers
+    _modifiers = Qt::KeyboardModifiers();
+
+    // position the main and chat windows
+    int width = _displaySize.width(), height = _displaySize.height();
+    _mainWindow->setBounds(QRect(0, 0, width, height));
+    _chatWindow->setBounds(QRect(3, height - 13, 40, 10));
+    _chatEntryWindow->setBounds(QRect(3, height - 2, 40, 1));
+
+    // readd the windows
+    foreach (Window* window, _windows) {
+        window->maybeResend();
+    }
+
+    // check for a password reset request
+    quint32 resetId = _connection->query().value("resetId", "0").toUInt();
+    if (resetId != 0) {
+        QByteArray token = QByteArray::fromHex(
+            _connection->query().value("resetToken", "").toAscii());
+        QMetaObject::invokeMethod(_app->databaseThread()->userRepository(),
+            "validatePasswordReset", Q_ARG(quint32, resetId), Q_ARG(const QByteArray&, token),
+            Q_ARG(const Callback&, Callback(_this, "passwordResetMaybeValidated(QVariant)")));
+    }
 }
 
 void Session::passwordResetMaybeValidated (const QVariant& result)

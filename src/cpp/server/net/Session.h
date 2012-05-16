@@ -64,9 +64,11 @@ public:
     Connection* connection () const { return _connection; }
 
     /**
-     * Replaces the session connection.
+     * Attempts to set the connection.  The callback will receive a bool indicating whether the
+     * connection was set.
      */
-    void setConnection (Connection* connection);
+    Q_INVOKABLE void maybeSetConnection (
+        QObject* connobj, const QByteArray& token, const Callback& callback);
 
     /**
      * Returns a string identifying the user.
@@ -333,6 +335,11 @@ protected:
      * Cleans up before contacting referrers for confirmation.
      */
     virtual void willBeDeleted ();
+
+    /**
+     * Replaces the session connection.
+     */
+    void setConnection (Connection* connection);
 
     /**
      * Reports back with the result of a password reset validation attempt.

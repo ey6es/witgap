@@ -247,9 +247,9 @@ void DeletableObject::addReferrer (const QObject* object, const char* method) co
     object->connect(this, SIGNAL(willBeDeleted(Callback)), method);
 }
 
-void DeletableObject::removeReferrer (const QObject* object) const
+void DeletableObject::removeReferrer (const QObject* object, const char* method) const
 {
-    QObject::disconnect(this, SIGNAL(willBeDeleted(Callback)), object, 0);
+    QObject::disconnect(this, SIGNAL(willBeDeleted(Callback)), object, method);
 }
 
 void DeletableObject::deleteAfterConfirmation ()

@@ -90,6 +90,11 @@ protected slots:
 protected:
 
     /**
+     * Callback for connection installation.
+     */
+    Q_INVOKABLE void connectionMaybeSet (const QWeakObjectPointer& connptr, bool success);
+
+    /**
      * Callback for validated tokens.
      */
     Q_INVOKABLE void tokenValidated (

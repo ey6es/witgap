@@ -318,21 +318,14 @@ public:
 
     /**
      * Adds the specified object as a referrer, guaranteeing that this object won't be deleted
-     * until the referrer confirms.  The object must have a slot named invoke(Callback), as
-     * CallableObject does, that simply invokes the callback with no arguments.
-     */
-    void addReferrer (const QObject* object) const { addReferrer(object, SLOT(invoke(Callback))); }
-
-    /**
-     * Adds the specified object as a referrer, guaranteeing that this object won't be deleted
      * until the referrer confirms.
      */
-    void addReferrer (const QObject* object, const char* method) const;
+    void addReferrer (const QObject* object, const char* method = SLOT(invoke(Callback))) const;
 
     /**
      * Removes the specified object as a referrer.
      */
-    void removeReferrer (const QObject* object) const;
+    void removeReferrer (const QObject* object, const char* method = SLOT(invoke(Callback))) const;
 
 signals:
 
