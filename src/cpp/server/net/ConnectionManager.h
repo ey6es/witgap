@@ -71,9 +71,9 @@ public:
     Q_INVOKABLE void sessionNameChanged (const QString& oldName, const QString& newName);
 
     /**
-     * Notifies the manager that a session has been destroyed.
+     * Notifies the manager that a session has been removed.
      */
-    Q_INVOKABLE void sessionDestroyed (quint64 id, const QString& name);
+    Q_INVOKABLE void sessionRemoved (quint64 id, const QString& name);
 
 protected slots:
 
@@ -81,6 +81,11 @@ protected slots:
      * Accepts any incoming connections.
      */
     void acceptConnections ();
+
+    /**
+     * A slot that simply invokes the provided callback with no arguments.
+     */
+    void invoke (const Callback& callback) { callback.invoke(); }
 
 protected:
 

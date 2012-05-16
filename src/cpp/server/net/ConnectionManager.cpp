@@ -123,7 +123,7 @@ void ConnectionManager::sessionNameChanged (const QString& oldName, const QStrin
     _names.insert(newName.toLower(), session);
 }
 
-void ConnectionManager::sessionDestroyed (quint64 id, const QString& name)
+void ConnectionManager::sessionRemoved (quint64 id, const QString& name)
 {
     _sessions.remove(id);
     _names.remove(name.toLower());
@@ -148,6 +148,7 @@ void ConnectionManager::tokenValidated (
 
     // create and map the session
     Session* session = new Session(_app, connection, record, user);
+    session->addReferrer(this);
     _sessions.insert(record.id, session);
     _names.insert(record.name.toLower(), session);
 }

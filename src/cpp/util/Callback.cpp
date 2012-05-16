@@ -236,3 +236,41 @@ CallableObject::CallableObject (QObject* parent) :
     _this(this)
 {
 }
+
+DeletableObject::DeletableObject (QObject* parent) :
+    CallableObject(parent)
+{
+}
+
+void DeletableObject::addReferrer (const QObject* object, const char* method) const
+{
+    object->connect(this, SIGNAL(willBeDeleted(Callback)), method);
+}
+
+void DeletableObject::removeReferrer (const QObject* object) const
+{
+    QObject::disconnect(this, SIGNAL(willBeDeleted(Callback)), object, 0);
+}
+
+void DeletableObject::deleteAfterConfirmation ()
+{
+    willBeDeleted();
+
+    if ((_confirmationsRemaining = receivers(SIGNAL(willBeDeleted(Callback)))) == 0) {
+        deleteLater();
+    } else {
+        emit willBeDeleted(Callback(_this, "confirmDelete()"));
+    }
+}
+
+void DeletableObject::willBeDeleted ()
+{
+    // nothing by default
+}
+
+void DeletableObject::confirmDelete ()
+{
+    if (--_confirmationsRemaining == 0) {
+        deleteLater();
+    }
+}

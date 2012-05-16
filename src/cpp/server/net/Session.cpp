@@ -39,7 +39,7 @@ int sessionPointerType = qRegisterMetaType<Session*>("Session*");
 
 Session::Session (ServerApp* app, Connection* connection,
         const SessionRecord& record, const UserRecord& user) :
-    CallableObject(app->connectionManager()),
+    DeletableObject(app->connectionManager()),
     _app(app),
     _connection(0),
     _record(record),
@@ -75,15 +75,7 @@ Session::Session (ServerApp* app, Connection* connection,
 
 Session::~Session ()
 {
-    leaveScene();
-
-    // let the connection manager update its mappings
-    QMetaObject::invokeMethod(_app->connectionManager(), "sessionDestroyed",
-        Q_ARG(quint64, _record.id), Q_ARG(const QString&, _record.name));
-
-    // remove info on all peers
-    _app->peerManager()->invoke(_app->peerManager(), "sessionRemoved(quint64)",
-        Q_ARG(quint64, _record.id));
+    qDebug() << "Session closed." << _record.id << _record.name;
 }
 
 void Session::setConnection (Connection* connection)
@@ -94,8 +86,8 @@ void Session::setConnection (Connection* connection)
     }
     _connection = connection;
     _displaySize = connection->displaySize();
-    connect(_connection, SIGNAL(windowClosed()), SLOT(deleteLater()));
-    connect(_connection, SIGNAL(destroyed()), SLOT(clearConnection()));
+    _connection->addReferrer(this, SLOT(clearConnection(Callback)));
+    connect(_connection, SIGNAL(windowClosed()), SLOT(deleteAfterConfirmation()));
     connect(_connection, SIGNAL(mousePressed(int,int)), SLOT(dispatchMousePressed(int,int)));
     connect(_connection, SIGNAL(mouseReleased(int,int)), SLOT(dispatchMouseReleased(int,int)));
     connect(_connection, SIGNAL(keyPressed(int,QChar,bool)),
@@ -472,7 +464,7 @@ void Session::createZone ()
         Q_ARG(const Callback&, Callback(_this, "zoneCreated(quint32)")));
 }
 
-void Session::clearConnection ()
+void Session::clearConnection (const Callback& callback)
 {
     _connection = 0;
 
@@ -483,6 +475,8 @@ void Session::clearConnection ()
     foreach (int key, _keysPressed) {
         dispatchKeyReleased(key, 0, false);
     }
+
+    callback.invoke();
 }
 
 void Session::clearMoused ()
@@ -603,6 +597,19 @@ void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
     QCoreApplication::sendEvent(
         _activeWindow == 0 ? this : (QObject*)(_activeWindow->focus() == 0 ?
             _activeWindow : _activeWindow->focus()), &event);
+}
+
+void Session::willBeDeleted ()
+{
+    leaveScene();
+
+    // let the connection manager update its mappings
+    QMetaObject::invokeMethod(_app->connectionManager(), "sessionRemoved",
+        Q_ARG(quint64, _record.id), Q_ARG(const QString&, _record.name));
+
+    // remove info on all peers
+    _app->peerManager()->invoke(_app->peerManager(), "sessionRemoved(quint64)",
+        Q_ARG(quint64, _record.id));
 }
 
 void Session::passwordResetMaybeValidated (const QVariant& result)

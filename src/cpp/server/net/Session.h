@@ -31,7 +31,7 @@ class Window;
 /**
  * Handles a single user session.
  */
-class Session : public CallableObject
+class Session : public DeletableObject
 {
     Q_OBJECT
 
@@ -46,7 +46,7 @@ public:
     /**
      * Destroys the session.
      */
-    virtual ~Session ();
+    ~Session ();
 
     /**
      * Returns a pointer to the application object.
@@ -300,7 +300,7 @@ protected slots:
     /**
      * Clears the connection pointer (because it has been destroyed).
      */
-    void clearConnection ();
+    void clearConnection (const Callback& callback);
 
     /**
      * Clears the moused component (because it has been destroyed).
@@ -328,6 +328,11 @@ protected slots:
     void dispatchKeyReleased (int key, QChar ch, bool numpad);
 
 protected:
+
+    /**
+     * Cleans up before contacting referrers for confirmation.
+     */
+    virtual void willBeDeleted ();
 
     /**
      * Reports back with the result of a password reset validation attempt.

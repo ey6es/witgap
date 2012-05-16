@@ -87,7 +87,7 @@ const QMetaMethod& Connection::commitCompoundMetaMethod ()
 }
 
 Connection::Connection (ServerApp* app, QTcpSocket* socket) :
-    QObject(app->connectionManager()),
+    DeletableObject(app->connectionManager()),
     _app(app),
     _socket(socket),
     _stream(socket),
@@ -106,9 +106,9 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
 
     // connect initial slots
     connect(socket, SIGNAL(readyRead()), SLOT(readHeader()));
-    connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(deleteLater()));
-    connect(socket, SIGNAL(disconnected()), SLOT(deleteLater()));
-    connect(this, SIGNAL(windowClosed()), SLOT(deleteLater()));
+    connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(deleteAfterConfirmation()));
+    connect(socket, SIGNAL(disconnected()), SLOT(deleteAfterConfirmation()));
+    connect(this, SIGNAL(windowClosed()), SLOT(deleteAfterConfirmation()));
 
     // log the connection
     qDebug() << "Connection opened." << (_address = _socket->peerAddress());

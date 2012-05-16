@@ -25,7 +25,7 @@ class ServerApp;
 /**
  * Handles a single TCP connection.
  */
-class Connection : public QObject
+class Connection : public DeletableObject
 {
     Q_OBJECT
 
