@@ -7,12 +7,12 @@
 #include <QHash>
 #include <QHostAddress>
 #include <QMultiHash>
+#include <QSharedPointer>
 #include <QSize>
 #include <QTcpSocket>
 
 #include <openssl/evp.h>
 
-#include "util/Callback.h"
 #include "util/General.h"
 
 class QMetaMethod;
@@ -20,12 +20,16 @@ class QIntVector;
 class QPoint;
 class QRect;
 
+class Connection;
 class ServerApp;
+
+/** A shared connection pointer that we'll register with the metatype system. */
+typedef QSharedPointer<Connection> SharedConnectionPointer;
 
 /**
  * Handles a single TCP connection.
  */
-class Connection : public DeletableObject
+class Connection : public QObject
 {
     Q_OBJECT
 
@@ -105,9 +109,15 @@ public:
     ~Connection ();
 
     /**
+     * Returns a reference to the shared connection pointer (cleared when the connection is
+     * closed).
+     */
+    const SharedConnectionPointer& pointer () const { return _pointer; }
+
+    /**
      * Checks whether the connection is open.
      */
-    bool isOpen () const { return _socket->state() == QAbstractSocket::ConnectedState; };
+    bool isOpen () const { return _pointer; }
 
     /**
      * Returns the display size reported by the client.
@@ -201,6 +211,11 @@ signals:
      */
     void windowClosed ();
 
+    /**
+     * Fired when the connection is closed.
+     */
+    void closed ();
+
 protected slots:
 
     /**
@@ -217,6 +232,11 @@ protected slots:
      * Pings the client.
      */
     void ping ();
+
+    /**
+     * Closes the connection.
+     */
+    void close ();
 
 protected:
 
@@ -252,6 +272,9 @@ protected:
      * @return true if we processed a message, false if we're still waiting for more data.
      */
     bool maybeReadMessage (QDataStream& stream, qint64 available);
+
+    /** A shared pointer to the connection itself. */
+    SharedConnectionPointer _pointer;
 
     /** The server application. */
     ServerApp* _app;

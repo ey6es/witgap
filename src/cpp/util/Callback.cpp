@@ -88,7 +88,8 @@ Callback::Callback (QObject* object, const char* method,
     QGenericArgument val8, QGenericArgument val9) :
         _object(object),
         _method(object->metaObject()->method(object->metaObject()->indexOfMethod(method))),
-        _collate(false)
+        _collate(false),
+        _connectionType(Qt::AutoConnection)
 {
     setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
 }
@@ -99,7 +100,8 @@ Callback::Callback (QObject* object, const QMetaMethod& method,
     QGenericArgument val8, QGenericArgument val9) :
         _object(object),
         _method(method),
-        _collate(false)
+        _collate(false),
+        _connectionType(Qt::AutoConnection)
 {
     setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
 }
@@ -110,7 +112,8 @@ Callback::Callback (const CallablePointer& pointer, const char* method,
     QGenericArgument val8, QGenericArgument val9) :
         _object(pointer),
         _method(pointer->metaObject()->method(pointer->metaObject()->indexOfMethod(method))),
-        _collate(false)
+        _collate(false),
+        _connectionType(Qt::AutoConnection)
 {
     setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
 }
@@ -121,7 +124,8 @@ Callback::Callback (const CallablePointer& pointer, const QMetaMethod& method,
     QGenericArgument val8, QGenericArgument val9) :
         _object(pointer),
         _method(method),
-        _collate(false)
+        _collate(false),
+        _connectionType(Qt::AutoConnection)
 {
     setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
 }
@@ -173,7 +177,7 @@ void Callback::invoke (
                 cargs[idx] = nargs[ii];
             }
         }
-        _method.invoke(data, cargs[0], cargs[1], cargs[2], cargs[3], cargs[4],
+        _method.invoke(data, _connectionType, cargs[0], cargs[1], cargs[2], cargs[3], cargs[4],
             cargs[5], cargs[6], cargs[7], cargs[8], cargs[9]);
     }
 }
@@ -235,42 +239,4 @@ CallableObject::CallableObject (QObject* parent) :
     QObject(parent),
     _this(this)
 {
-}
-
-DeletableObject::DeletableObject (QObject* parent) :
-    CallableObject(parent)
-{
-}
-
-void DeletableObject::addReferrer (const QObject* object, const char* method) const
-{
-    object->connect(this, SIGNAL(willBeDeleted(Callback)), method);
-}
-
-void DeletableObject::removeReferrer (const QObject* object, const char* method) const
-{
-    QObject::disconnect(this, SIGNAL(willBeDeleted(Callback)), object, method);
-}
-
-void DeletableObject::deleteAfterConfirmation ()
-{
-    willBeDeleted();
-
-    if ((_confirmationsRemaining = receivers(SIGNAL(willBeDeleted(Callback)))) == 0) {
-        deleteLater();
-    } else {
-        emit willBeDeleted(Callback(_this, "confirmDelete()"));
-    }
-}
-
-void DeletableObject::willBeDeleted ()
-{
-    // nothing by default
-}
-
-void DeletableObject::confirmDelete ()
-{
-    if (--_confirmationsRemaining == 0) {
-        deleteLater();
-    }
 }

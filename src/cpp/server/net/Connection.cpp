@@ -19,6 +19,10 @@
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 
+// register our types with the metatype system
+int sharedConnectionPointerType = qRegisterMetaType<SharedConnectionPointer>(
+    "SharedConnectionPointer");
+
 Connection::Compounder::Compounder (Connection* connection) :
     _connection(connection)
 {
@@ -87,7 +91,7 @@ const QMetaMethod& Connection::commitCompoundMetaMethod ()
 }
 
 Connection::Connection (ServerApp* app, QTcpSocket* socket) :
-    DeletableObject(app->connectionManager()),
+    _pointer(this, &QObject::deleteLater),
     _app(app),
     _socket(socket),
     _stream(socket),
@@ -106,9 +110,9 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
 
     // connect initial slots
     connect(socket, SIGNAL(readyRead()), SLOT(readHeader()));
-    connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(deleteAfterConfirmation()));
-    connect(socket, SIGNAL(disconnected()), SLOT(deleteAfterConfirmation()));
-    connect(this, SIGNAL(windowClosed()), SLOT(deleteAfterConfirmation()));
+    connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(close()));
+    connect(socket, SIGNAL(disconnected()), SLOT(close()));
+    connect(this, SIGNAL(windowClosed()), SLOT(close()));
 
     // log the connection
     qDebug() << "Connection opened." << (_address = _socket->peerAddress());
@@ -116,13 +120,6 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
 
 Connection::~Connection ()
 {
-    // log the destruction
-    QString error;
-    QDebug base = qDebug() << "Connection closed." << _address;
-    if (_socket->error() != QAbstractSocket::UnknownSocketError) {
-        base << _socket->errorString();
-    }
-
     // cleanup crypto bits
     EVP_CIPHER_CTX_cleanup(&_ectx);
     EVP_CIPHER_CTX_cleanup(&_dctx);
@@ -375,6 +372,24 @@ void Connection::ping ()
     _stream << PING_MSG;
     _stream << currentTimeMillis();
     endMessage();
+}
+
+void Connection::close ()
+{
+    // log the destruction
+    QString error;
+    QDebug base = qDebug() << "Connection closed." << _address;
+    if (_socket->error() != QAbstractSocket::UnknownSocketError) {
+        base << _socket->errorString();
+    }
+
+    emit closed();
+
+    // clear the shared pointer so that we can be deleted
+    _pointer.clear();
+
+    // we need nothing else from the socket
+    _socket->disconnect(this);
 }
 
 void Connection::startMessage (quint16 length)

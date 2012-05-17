@@ -17,7 +17,6 @@
 #include "actor/Pawn.h"
 #include "db/DatabaseThread.h"
 #include "db/SceneRepository.h"
-#include "net/Connection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
 #include "scene/Scene.h"
@@ -37,11 +36,10 @@ using namespace std;
 // register our types with the metatype system
 int sessionPointerType = qRegisterMetaType<Session*>("Session*");
 
-Session::Session (ServerApp* app, Connection* connection,
+Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
         const SessionRecord& record, const UserRecord& user) :
-    DeletableObject(app->connectionManager()),
+    CallableObject(app->connectionManager()),
     _app(app),
-    _connection(0),
     _record(record),
     _lastWindowId(0),
     _cryptoCount(0),
@@ -73,17 +71,10 @@ Session::Session (ServerApp* app, Connection* connection,
     setConnection(connection);
 }
 
-Session::~Session ()
-{
-    qDebug() << "Session closed." << _record.id << _record.name;
-}
-
 void Session::maybeSetConnection (
-    QObject* connobj, const QByteArray& token, const Callback& callback)
+    const SharedConnectionPointer& connection, const QByteArray& token, const Callback& callback)
 {
-    Connection* connection = static_cast<Connection*>(connobj);
-    if (_connection != 0 || _record.token != token) {
-        connection->removeReferrer(this);
+    if (_connection || _record.token != token) {
         callback.invoke(Q_ARG(bool, false));
         return;
     }
@@ -157,15 +148,15 @@ void Session::requestFocus (Component* component)
 
 void Session::incrementCryptoCount ()
 {
-    if (_cryptoCount++ == 0 && _connection != 0) {
-        Connection::toggleCryptoMetaMethod().invoke(_connection);
+    if (_cryptoCount++ == 0 && _connection) {
+        Connection::toggleCryptoMetaMethod().invoke(_connection.data());
     }
 }
 
 void Session::decrementCryptoCount ()
 {
-    if (--_cryptoCount == 0 && _connection != 0) {
-        Connection::toggleCryptoMetaMethod().invoke(_connection);
+    if (--_cryptoCount == 0 && _connection) {
+        Connection::toggleCryptoMetaMethod().invoke(_connection.data());
     }
 }
 
@@ -269,9 +260,9 @@ void Session::loggedOn (const UserRecord& user)
 
     _user = user;
 
-    if (_connection != 0) {
+    if (_connection) {
         // set the username cookie on the client
-        _connection->setCookieMetaMethod().invoke(_connection,
+        Connection::setCookieMetaMethod().invoke(_connection.data(),
             Q_ARG(const QString&, "username"), Q_ARG(const QString&, user.name));
     }
 
@@ -405,7 +396,7 @@ bool Session::event (QEvent* e)
 
 void Session::showLogonDialog ()
 {
-    new LogonDialog(this, _connection == 0 ? "" : _connection->cookies().value("username", ""));
+    new LogonDialog(this, _connection ? _connection->cookies().value("username", "") : "");
 }
 
 void Session::showLogoffDialog ()
@@ -429,9 +420,9 @@ void Session::createZone ()
         Q_ARG(const Callback&, Callback(_this, "zoneCreated(quint32)")));
 }
 
-void Session::clearConnection (const Callback& callback)
+void Session::clearConnection ()
 {
-    _connection = 0;
+    _connection.clear();
 
     // clearing the connection implicitly releases keys and mouse button
     if (_mousePressed) {
@@ -440,8 +431,6 @@ void Session::clearConnection (const Callback& callback)
     foreach (int key, _keysPressed) {
         dispatchKeyReleased(key, 0, false);
     }
-
-    callback.invoke();
 }
 
 void Session::clearMoused ()
@@ -564,37 +553,45 @@ void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
             _activeWindow : _activeWindow->focus()), &event);
 }
 
-void Session::willBeDeleted ()
+void Session::close ()
 {
     leaveScene();
 
     // let the connection manager update its mappings
-    QMetaObject::invokeMethod(_app->connectionManager(), "sessionRemoved",
+    QMetaObject::invokeMethod(_app->connectionManager(), "sessionClosed",
         Q_ARG(quint64, _record.id), Q_ARG(const QString&, _record.name));
 
     // remove info on all peers
     _app->peerManager()->invoke(_app->peerManager(), "sessionRemoved(quint64)",
         Q_ARG(quint64, _record.id));
+
+    qDebug() << "Session closed." << _record.id << _record.name;
 }
 
-void Session::setConnection (Connection* connection)
+void Session::setConnection (const SharedConnectionPointer& connection)
 {
+    // make sure it hasn't already been closed
+    Connection* conn = connection.data();
+    connect(conn, SIGNAL(closed()), SLOT(clearConnection()));
+    if (!conn->isOpen()) {
+        return;
+    }
+
     _connection = connection;
-    _displaySize = connection->displaySize();
-    _connection->addReferrer(this, SLOT(clearConnection(Callback)));
-    _connection->removeReferrer(this);
-    connect(_connection, SIGNAL(windowClosed()), SLOT(deleteAfterConfirmation()));
-    connect(_connection, SIGNAL(mousePressed(int,int)), SLOT(dispatchMousePressed(int,int)));
-    connect(_connection, SIGNAL(mouseReleased(int,int)), SLOT(dispatchMouseReleased(int,int)));
-    connect(_connection, SIGNAL(keyPressed(int,QChar,bool)),
+
+    _displaySize = conn->displaySize();
+    connect(conn, SIGNAL(windowClosed()), SLOT(close()));
+    connect(conn, SIGNAL(mousePressed(int,int)), SLOT(dispatchMousePressed(int,int)));
+    connect(conn, SIGNAL(mouseReleased(int,int)), SLOT(dispatchMouseReleased(int,int)));
+    connect(conn, SIGNAL(keyPressed(int,QChar,bool)),
         SLOT(dispatchKeyPressed(int,QChar,bool)));
-    connect(_connection, SIGNAL(keyReleased(int,QChar,bool)),
+    connect(conn, SIGNAL(keyReleased(int,QChar,bool)),
         SLOT(dispatchKeyReleased(int,QChar,bool)));
-    QMetaObject::invokeMethod(_connection, "activate");
+    QMetaObject::invokeMethod(conn, "activate");
 
     // activate encryption if necessary
     if (_cryptoCount > 0) {
-        QMetaObject::invokeMethod(_connection, "toggleCrypto");
+        QMetaObject::invokeMethod(conn, "toggleCrypto");
     }
 
     // clear the modifiers
@@ -612,10 +609,9 @@ void Session::setConnection (Connection* connection)
     }
 
     // check for a password reset request
-    quint32 resetId = _connection->query().value("resetId", "0").toUInt();
+    quint32 resetId = conn->query().value("resetId", "0").toUInt();
     if (resetId != 0) {
-        QByteArray token = QByteArray::fromHex(
-            _connection->query().value("resetToken", "").toAscii());
+        QByteArray token = QByteArray::fromHex(conn->query().value("resetToken", "").toAscii());
         QMetaObject::invokeMethod(_app->databaseThread()->userRepository(),
             "validatePasswordReset", Q_ARG(quint32, resetId), Q_ARG(const QByteArray&, token),
             Q_ARG(const Callback&, Callback(_this, "passwordResetMaybeValidated(QVariant)")));

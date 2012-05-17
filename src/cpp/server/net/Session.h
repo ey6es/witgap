@@ -11,6 +11,7 @@
 #include "chat/ChatWindow.h"
 #include "db/SessionRepository.h"
 #include "db/UserRepository.h"
+#include "net/Connection.h"
 #include "peer/PeerManager.h"
 #include "ui/TextField.h"
 #include "util/Callback.h"
@@ -19,7 +20,6 @@ class QEvent;
 class QTranslator;
 
 class ChatEntryWindow;
-class Connection;
 class Instance;
 class MainWindow;
 class Pawn;
@@ -31,7 +31,7 @@ class Window;
 /**
  * Handles a single user session.
  */
-class Session : public DeletableObject
+class Session : public CallableObject
 {
     Q_OBJECT
 
@@ -40,13 +40,8 @@ public:
     /**
      * Initializes the session.
      */
-    Session (ServerApp* app, Connection* connection,
+    Session (ServerApp* app, const SharedConnectionPointer& connection,
         const SessionRecord& record, const UserRecord& user);
-
-    /**
-     * Destroys the session.
-     */
-    ~Session ();
 
     /**
      * Returns a pointer to the application object.
@@ -61,14 +56,15 @@ public:
     /**
      * Returns a pointer to the connection, or zero if unconnected.
      */
-    Connection* connection () const { return _connection; }
+    Connection* connection () const { return _connection.data(); }
 
     /**
      * Attempts to set the connection.  The callback will receive a bool indicating whether the
      * connection was set.
      */
     Q_INVOKABLE void maybeSetConnection (
-        QObject* connobj, const QByteArray& token, const Callback& callback);
+        const SharedConnectionPointer& connection, const QByteArray& token,
+        const Callback& callback);
 
     /**
      * Returns a string identifying the user.
@@ -300,9 +296,9 @@ public slots:
 protected slots:
 
     /**
-     * Clears the connection pointer (because it has been destroyed).
+     * Clears the connection pointer (because it's going to be destroyed).
      */
-    void clearConnection (const Callback& callback);
+    void clearConnection ();
 
     /**
      * Clears the moused component (because it has been destroyed).
@@ -329,17 +325,17 @@ protected slots:
      */
     void dispatchKeyReleased (int key, QChar ch, bool numpad);
 
-protected:
-
     /**
-     * Cleans up before contacting referrers for confirmation.
+     * Closes the session.
      */
-    virtual void willBeDeleted ();
+    void close ();
+
+protected:
 
     /**
      * Replaces the session connection.
      */
-    void setConnection (Connection* connection);
+    void setConnection (const SharedConnectionPointer& connection);
 
     /**
      * Reports back with the result of a password reset validation attempt.
@@ -419,7 +415,7 @@ protected:
     ServerApp* _app;
 
     /** The session connection. */
-    Connection* _connection;
+    SharedConnectionPointer _connection;
 
     /** The session record. */
     SessionRecord _record;

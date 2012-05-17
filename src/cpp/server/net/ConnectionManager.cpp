@@ -12,7 +12,6 @@
 #include "chat/ChatWindow.h"
 #include "db/DatabaseThread.h"
 #include "db/SessionRepository.h"
-#include "net/Connection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
 #include "peer/PeerManager.h"
@@ -67,11 +66,11 @@ void ConnectionManager::connectionEstablished (Connection* connection)
         connection->cookies().value("sessionToken", "00000000000000000000000000000000").toAscii());
     Session* session = _sessions.value(sessionId);
     if (session != 0) {
-        connection->addReferrer(session);
-        QMetaObject::invokeMethod(session, "maybeSetConnection", Q_ARG(QObject*, connection),
+        QMetaObject::invokeMethod(session, "maybeSetConnection",
+            Q_ARG(const SharedConnectionPointer&, connection->pointer()),
             Q_ARG(const QByteArray&, sessionToken), Q_ARG(const Callback&, Callback(_this,
-                "connectionMaybeSet(QWeakObjectPointer,bool)",
-                Q_ARG(const QWeakObjectPointer&, QWeakObjectPointer(connection)))));
+                "connectionMaybeSet(SharedConnectionPointer,bool)",
+                Q_ARG(const SharedConnectionPointer&, connection->pointer()))));
         return;
     }
 
@@ -79,8 +78,8 @@ void ConnectionManager::connectionEstablished (Connection* connection)
     QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "validateToken",
         Q_ARG(quint64, sessionId), Q_ARG(const QByteArray&, sessionToken),
         Q_ARG(const Callback&, Callback(_this,
-            "tokenValidated(QWeakObjectPointer,SessionRecord,UserRecord)",
-            Q_ARG(const QWeakObjectPointer&, QWeakObjectPointer(connection)))));
+            "tokenValidated(SharedConnectionPointer,SessionRecord,UserRecord)",
+            Q_ARG(const SharedConnectionPointer&, connection->pointer()))));
 }
 
 void ConnectionManager::broadcast (const QString& speaker, const QString& message)
@@ -122,10 +121,12 @@ void ConnectionManager::sessionNameChanged (const QString& oldName, const QStrin
     _names.insert(newName.toLower(), session);
 }
 
-void ConnectionManager::sessionRemoved (quint64 id, const QString& name)
+void ConnectionManager::sessionClosed (quint64 id, const QString& name)
 {
-    _sessions.remove(id);
+    Session* session = _sessions.take(id);
     _names.remove(name.toLower());
+
+    session->deleteLater();
 }
 
 void ConnectionManager::acceptConnections ()
@@ -136,11 +137,10 @@ void ConnectionManager::acceptConnections ()
     }
 }
 
-void ConnectionManager::connectionMaybeSet (const QWeakObjectPointer& connptr, bool success)
+void ConnectionManager::connectionMaybeSet (const SharedConnectionPointer& connptr, bool success)
 {
     // make sure we failed to install the connection and the connection is still in business
-    Connection* connection = static_cast<Connection*>(connptr.data());
-    if (success || connection == 0 || !connection->isOpen()) {
+    if (success || !connptr->isOpen()) {
         return;
     }
 
@@ -148,22 +148,20 @@ void ConnectionManager::connectionMaybeSet (const QWeakObjectPointer& connptr, b
     QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "validateToken",
         Q_ARG(quint64, 0), Q_ARG(const QByteArray&, QByteArray()),
         Q_ARG(const Callback&, Callback(_this,
-            "tokenValidated(QWeakObjectPointer,SessionRecord,UserRecord)",
-            Q_ARG(const QWeakObjectPointer&, connptr))));
+            "tokenValidated(SharedConnectionPointer,SessionRecord,UserRecord)",
+            Q_ARG(const SharedConnectionPointer&, connptr))));
 }
 
 void ConnectionManager::tokenValidated (
-    const QWeakObjectPointer& connptr, const SessionRecord& record, const UserRecord& user)
+    const SharedConnectionPointer& connptr, const SessionRecord& record, const UserRecord& user)
 {
     // make sure the connection is still in business
-    Connection* connection = static_cast<Connection*>(connptr.data());
-    if (connection == 0 || !connection->isOpen()) {
+    if (!connptr->isOpen()) {
         return;
     }
 
     // create and map the session
-    Session* session = new Session(_app, connection, record, user);
-    session->addReferrer(this);
+    Session* session = new Session(_app, connptr, record, user);
     _sessions.insert(record.id, session);
     _names.insert(record.name.toLower(), session);
 }

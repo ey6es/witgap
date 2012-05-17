@@ -9,9 +9,9 @@
 
 #include <openssl/pem.h>
 
+#include "net/Connection.h"
 #include "util/Callback.h"
 
-class Connection;
 class ServerApp;
 class Session;
 class SessionRecord;
@@ -71,9 +71,9 @@ public:
     Q_INVOKABLE void sessionNameChanged (const QString& oldName, const QString& newName);
 
     /**
-     * Notifies the manager that a session has been removed.
+     * Notifies the manager that a session has been closed.
      */
-    Q_INVOKABLE void sessionRemoved (quint64 id, const QString& name);
+    Q_INVOKABLE void sessionClosed (quint64 id, const QString& name);
 
 protected slots:
 
@@ -82,23 +82,19 @@ protected slots:
      */
     void acceptConnections ();
 
-    /**
-     * A slot that simply invokes the provided callback with no arguments.
-     */
-    void invoke (const Callback& callback) { callback.invoke(); }
-
 protected:
 
     /**
      * Callback for connection installation.
      */
-    Q_INVOKABLE void connectionMaybeSet (const QWeakObjectPointer& connptr, bool success);
+    Q_INVOKABLE void connectionMaybeSet (const SharedConnectionPointer& connptr, bool success);
 
     /**
      * Callback for validated tokens.
      */
     Q_INVOKABLE void tokenValidated (
-        const QWeakObjectPointer& connptr, const SessionRecord& record, const UserRecord& user);
+        const SharedConnectionPointer& connptr, const SessionRecord& record,
+        const UserRecord& user);
 
     /** The server application. */
     ServerApp* _app;

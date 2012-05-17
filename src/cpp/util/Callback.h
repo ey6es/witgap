@@ -182,6 +182,11 @@ public:
     Callback& setCollate () { _collate = true; return *this; }
 
     /**
+     * Sets the connection type to use when invoking the method.
+     */
+    Callback& setConnectionType (Qt::ConnectionType type) { _connectionType = type; return *this; }
+
+    /**
      * Invokes the callback.
      */
     void invoke (
@@ -218,6 +223,9 @@ protected:
 
     /** If true, combine the arguments passed to the callback into a QVariantList. */
     bool _collate;
+
+    /** The type of connection to use when invoking the method. */
+    Qt::ConnectionType _connectionType;
 };
 
 /**
@@ -288,76 +296,10 @@ public:
      */
     CallableObject (QObject* parent = 0);
 
-public slots:
-
-    /**
-     * A slot that simply invokes the provided callback with no arguments.
-     */
-    void invoke (const Callback& callback) const { callback.invoke(); }
-
 protected:
 
     /** The callback pointer. */
     CallablePointer _this;
-};
-
-/**
- * Base class for deletable objects that may be referred to in other threads.  Before they can be
- * deleted, they must receive confirmation from all referrers.
- */
-class DeletableObject : public CallableObject
-{
-    Q_OBJECT
-
-public:
-
-    /**
-     * Initializes the object.
-     */
-    DeletableObject (QObject* parent = 0);
-
-    /**
-     * Adds the specified object as a referrer, guaranteeing that this object won't be deleted
-     * until the referrer confirms.
-     */
-    void addReferrer (const QObject* object, const char* method = SLOT(invoke(Callback))) const;
-
-    /**
-     * Removes the specified object as a referrer.
-     */
-    void removeReferrer (const QObject* object, const char* method = SLOT(invoke(Callback))) const;
-
-signals:
-
-    /**
-     * Indicates that the object will be deleted after receiving confirmation from all referrers.
-     *
-     * @param callback a callback to invoke for confirmation.
-     */
-    void willBeDeleted (const Callback& callback);
-
-public slots:
-
-    /**
-     * Deletes the object after receiving confirmation from all referrers.
-     */
-    void deleteAfterConfirmation ();
-
-protected:
-
-    /**
-     * Override to perform object cleanup before contacting referrers for confirmation.
-     */
-    virtual void willBeDeleted ();
-
-    /**
-     * Confirms that the object will be deleted.  Once all referrers have confirmed, the object
-     * will be deleted.
-     */
-    Q_INVOKABLE void confirmDelete ();
-
-    /** The number of confirmations remaining before we can delete. */
-    int _confirmationsRemaining;
 };
 
 #endif // CALLBACK
