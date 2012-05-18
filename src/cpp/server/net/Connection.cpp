@@ -383,13 +383,14 @@ void Connection::close ()
         base << _socket->errorString();
     }
 
-    emit closed();
+    // we need nothing else from the socket
+    _socket->disconnect(this);
 
     // clear the shared pointer so that we can be deleted
     _pointer.clear();
 
-    // we need nothing else from the socket
-    _socket->disconnect(this);
+    // notify listeners that we've been closed
+    emit closed();
 }
 
 void Connection::startMessage (quint16 length)
