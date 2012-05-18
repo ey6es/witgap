@@ -90,6 +90,20 @@ const QMetaMethod& Connection::commitCompoundMetaMethod ()
     return method;
 }
 
+const QMetaMethod& Connection::reconnectMetaMethod ()
+{
+    static QMetaMethod method = staticMetaObject.method(
+        staticMetaObject.indexOfMethod("reconnect(QString,quint16)"));
+    return method;
+}
+
+const QMetaMethod& Connection::evaluateMetaMethod ()
+{
+    static QMetaMethod method = staticMetaObject.method(
+        staticMetaObject.indexOfMethod("evaluate(QString)"));
+    return method;
+}
+
 Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     _pointer(this, &QObject::deleteLater),
     _app(app),
@@ -258,6 +272,28 @@ void Connection::commitCompound ()
     }
 
     delete buffer;
+}
+
+void Connection::reconnect (const QString& host, quint16 port)
+{
+    QByteArray hbytes = host.toUtf8();
+    int hlen = hbytes.length();
+    startMessage(3 + hlen);
+    _stream << RECONNECT_MSG;
+    _stream.writeRawData(hbytes.constData(), hlen);
+    _stream << port;
+    endMessage();
+    _socket->disconnectFromHost();
+}
+
+void Connection::evaluate (const QString& expression)
+{
+    QByteArray ebytes = expression.toUtf8();
+    int elen = ebytes.length();
+    startMessage(1 + elen);
+    _stream << EVALUATE_MSG;
+    _stream.writeRawData(ebytes.constData(), elen);
+    endMessage();
 }
 
 void Connection::readHeader ()

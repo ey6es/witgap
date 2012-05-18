@@ -173,6 +173,10 @@ public class ClientApp extends Sprite {
         // create the socket
         _socket = new Socket();
         _socket.addEventListener(Event.CONNECT, function (event :Event) :void {
+            // clear out the windows
+            _windows.length = 0;
+            _dirty.setTo(0, 0, _width, _height);
+
             // create our encryption key/iv and encrypt using the public key
             var random :Random = new Random();
             var secret :ByteArray = new ByteArray(), iv :ByteArray = new ByteArray();
@@ -548,7 +552,7 @@ public class ClientApp extends Sprite {
      */
     protected function readMessages (event :ProgressEvent) :void
     {
-        var decoded :Boolean = false;
+        var modified :Boolean = false;
 
         while (_socket.connected) {
             if (_messageLength == 0) {
@@ -559,7 +563,7 @@ public class ClientApp extends Sprite {
 
             } else {
                 if (_socket.bytesAvailable < _messageLength) {
-                    return;
+                    break;
                 }
                 var bytes :ByteArray = new ByteArray();
                 _socket.readBytes(bytes, 0, _messageLength);
@@ -569,19 +573,20 @@ public class ClientApp extends Sprite {
                 _messageLength = 0;
 
                 bytes.position = 0;
-                decodeMessage(bytes);
-                decoded = true;
+                modified = decodeMessage(bytes) || modified;
             }
         }
-        if (decoded) {
+        if (modified) {
             updateDisplay();
         }
     }
 
     /**
      * Decodes the message contained in the provided byte array.
+     *
+     * @return whether or not the message modified the display.
      */
-    protected function decodeMessage (bytes :ByteArray) :void
+    protected function decodeMessage (bytes :ByteArray) :Boolean
     {
         var type :int = bytes.readUnsignedByte();
         var out :IDataOutput;
@@ -589,11 +594,11 @@ public class ClientApp extends Sprite {
             case UPDATE_WINDOW_MSG:
                 updateWindow(bytes.readInt(), bytes.readInt(),
                     readRectangle(bytes), bytes.readInt());
-                break;
+                return true;
 
             case REMOVE_WINDOW_MSG:
                 removeWindow(bytes.readInt());
-                break;
+                return true;
 
             case SET_CONTENTS_MSG:
                 var id :int = bytes.readInt();
@@ -603,21 +608,21 @@ public class ClientApp extends Sprite {
                     contents[ii] = bytes.readInt();
                 }
                 setWindowContents(id, bounds, contents);
-                break;
+                return true;
 
             case MOVE_CONTENTS_MSG:
                 moveWindowContents(bytes.readInt(), readRectangle(bytes),
                     new Point(bytes.readShort(), bytes.readShort()), bytes.readInt());
-                break;
+                return true;
 
             case SET_COOKIE_MSG:
                 setCookie(bytes.readUTF(), bytes.readUTFBytes(bytes.bytesAvailable));
-                break;
+                return false;
 
             case CLOSE_MSG:
                 fatalError(bytes.readUTFBytes(bytes.bytesAvailable));
                 _socket.close();
-                break;
+                return false;
 
             case TOGGLE_CRYPTO_MSG:
                 // respond immediately in the affirmative and toggle
@@ -625,16 +630,17 @@ public class ClientApp extends Sprite {
                 out.writeByte(CRYPTO_TOGGLED_MSG);
                 endMessage(out);
                 _crypto = !_crypto;
-                break;
+                return false;
 
             case COMPOUND_MSG:
+                var modified :Boolean = false;
                 while (bytes.bytesAvailable > 0) {
                     var mbytes :ByteArray = new ByteArray();
                     bytes.readBytes(mbytes, 0, bytes.readUnsignedShort());
                     mbytes.position = 0;
-                    decodeMessage(mbytes);
+                    modified = decodeMessage(mbytes) || modified;
                 }
-                break;
+                return modified;
 
             case PING_MSG:
                 // respond immediately with the pong
@@ -642,10 +648,21 @@ public class ClientApp extends Sprite {
                 out.writeByte(PONG_MSG);
                 out.writeBytes(bytes, bytes.position, bytes.bytesAvailable);
                 endMessage(out);
-                break;
+                return false;
+
+            case RECONNECT_MSG:
+                _socket.close();
+                _socket.connect(bytes.readUTFBytes(bytes.bytesAvailable - 2),
+                    bytes.readUnsignedShort());
+                return false;
+
+            case EVALUATE_MSG:
+                ExternalInterface.call("eval", bytes.readUTFBytes(bytes.bytesAvailable));
+                return false;
 
             default:
                 trace("Unknown message type.", type);
+                return false;
         }
     }
 
@@ -1165,6 +1182,12 @@ public class ClientApp extends Sprite {
 
     /** Incoming message: ping. */
     protected static var PING_MSG :int = 8;
+
+    /** Incoming message: reconnect. */
+    protected static var RECONNECT_MSG :int = 9;
+
+    /** Incoming message: evaluate. */
+    protected static var EVALUATE_MSG :int = 10;
 }
 }
 

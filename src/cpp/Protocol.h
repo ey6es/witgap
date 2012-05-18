@@ -37,7 +37,7 @@
  *     data : ... : the message data as described in the type documentation
  *
  * The connected may be terminated at any time by the client (by sending WINDOW_CLOSED_MSG) or the
- * server (by sending CLOSE_MSG).
+ * server (by sending CLOSE_MSG/RECONNECT_MSG).
  */
 
 /** The magic number that identifies the protocol. */
@@ -175,6 +175,19 @@ const quint8 COMPOUND_MSG = 7;
  *     clock : quint64 : the server clock value
  */
 const quint8 PING_MSG = 8;
+
+/**
+ * Server -> client: connect to a different peer.  Data:
+ *     host : char[length - 3] : the UTF-8 encoded hostname
+ *     port : quint16 : the port
+ */
+const quint8 RECONNECT_MSG = 9;
+
+/**
+ * Server -> client: evaluate an expression in the client Javascript context.  Data:
+ *     expression : char[length - 1] : the UTF-8 encoded expression to evaluate
+ */
+const quint8 EVALUATE_MSG = 10;
 
 /** A flag indicating that the character should be displayed in reverse. */
 const int REVERSE_FLAG = 0x10000;

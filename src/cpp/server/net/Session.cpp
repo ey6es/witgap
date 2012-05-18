@@ -382,7 +382,7 @@ bool Session::event (QEvent* e)
     if (e->type() != QEvent::KeyPress) {
         return QObject::event(e);
     }
-    QKeyEvent* ke = (QKeyEvent*)e;
+    QKeyEvent* ke = static_cast<QKeyEvent*>(e);
     if (ke->key() == Qt::Key_F2 && ke->modifiers() == Qt::NoModifier) {
         showInputDialog(tr("Please enter a brief bug description."),
             Callback(_this, "submitBugReport(QString)"));
@@ -591,7 +591,7 @@ void Session::setConnection (const SharedConnectionPointer& connection)
 
     // activate encryption if necessary
     if (_cryptoCount > 0) {
-        QMetaObject::invokeMethod(conn, "toggleCrypto");
+        Connection::toggleCryptoMetaMethod().invoke(conn);
     }
 
     // clear the modifiers

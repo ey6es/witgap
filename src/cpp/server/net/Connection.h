@@ -99,6 +99,16 @@ public:
     static const QMetaMethod& commitCompoundMetaMethod ();
 
     /**
+     * Returns the meta-method for {@link #reconnect}.
+     */
+    static const QMetaMethod& reconnectMetaMethod ();
+
+    /**
+     * Returns the meta-method for {@link #evaluate}.
+     */
+    static const QMetaMethod& evaluateMetaMethod ();
+
+    /**
      * Initializes the connection.
      */
     Connection (ServerApp* app, QTcpSocket* socket);
@@ -183,6 +193,16 @@ public:
      * Commits a compound message.
      */
     Q_INVOKABLE void commitCompound ();
+
+    /**
+     * Tells the client to reconnect to a different peer.
+     */
+    Q_INVOKABLE void reconnect (const QString& host, quint16 port);
+
+    /**
+     * Tells the client to evaluate an expression in its Javascript context.
+     */
+    Q_INVOKABLE void evaluate (const QString& expression);
 
 signals:
 
