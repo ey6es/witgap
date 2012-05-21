@@ -23,12 +23,14 @@ class QSslSocket;
 class QVariant;
 
 class ArgumentDescriptorList;
+class InstanceInfo;
 class Peer;
 class PeerConnection;
 class PendingRequest;
 class ServerApp;
 class SessionInfo;
 
+typedef QSharedPointer<InstanceInfo> InstanceInfoPointer;
 typedef QSharedPointer<SessionInfo> SessionInfoPointer;
 
 /**
@@ -85,6 +87,11 @@ public:
      * Returns a reference to the local session map.
      */
     const QHash<quint64, SessionInfoPointer>& localSessions () const { return _localSessions; }
+
+    /**
+     * Returns a reference to the local instance map.
+     */
+    const QHash<quint64, InstanceInfoPointer>& localInstances () const { return _localInstances; }
 
     /**
      * Invokes a method on this peer and all others.  If the invocation includes a callback, it
@@ -167,6 +174,21 @@ public:
      * Called when a session is removed on any peer.
      */
     Q_INVOKABLE void sessionRemoved (quint64 id);
+
+    /**
+     * Called when an instance is added on any peer.
+     */
+    Q_INVOKABLE void instanceAdded (const InstanceInfo& info);
+
+    /**
+     * Called when an instance is updated on any peer.
+     */
+    Q_INVOKABLE void instanceUpdated (const InstanceInfo& info);
+
+    /**
+     * Called when an instance is removed on any peer.
+     */
+    Q_INVOKABLE void instanceRemoved (quint64 id);
 
 protected slots:
 
@@ -278,6 +300,12 @@ protected:
     /** Sessions hosted by this peer. */
     QHash<quint64, SessionInfoPointer> _localSessions;
 
+    /** Instances mapped by id. */
+    QHash<quint64, InstanceInfoPointer> _instances;
+
+    /** Instances hosted by this peer. */
+    QHash<quint64, InstanceInfoPointer> _localInstances;
+
     /** Synchronized pointer for callbacks. */
     CallablePointer _this;
 };
@@ -302,6 +330,24 @@ public:
 };
 
 DECLARE_STREAMABLE_METATYPE(SessionInfo)
+
+/**
+ * Contains information about a zone instance hosted by a peer.
+ */
+class InstanceInfo
+{
+    STREAMABLE
+
+public:
+
+    /** The instance id. */
+    STREAM quint64 id;
+
+    /** The peer name. */
+    STREAM QString peer;
+};
+
+DECLARE_STREAMABLE_METATYPE(InstanceInfo)
 
 /**
  * Contains the state of a pending batch request.

@@ -212,6 +212,35 @@ void PeerManager::sessionRemoved (quint64 id)
     }
 }
 
+void PeerManager::instanceAdded (const InstanceInfo& info)
+{
+    InstanceInfoPointer ptr(new InstanceInfo(info));
+    _instances.insert(info.id, ptr);
+
+    if (info.peer == _record.name) {
+        _localInstances.insert(info.id, ptr);
+    } else {
+        _connections.value(info.peer)->instanceAdded(ptr);
+    }
+}
+
+void PeerManager::instanceUpdated (const InstanceInfo& info)
+{
+    InstanceInfoPointer ptr = _instances.value(info.id);
+    *ptr = info;
+}
+
+void PeerManager::instanceRemoved (quint64 id)
+{
+    InstanceInfoPointer ptr = _instances.take(id);
+
+    if (ptr->peer == _record.name) {
+        _localInstances.remove(id);
+    } else {
+        _connections.value(ptr->peer)->instanceRemoved(ptr);
+    }
+}
+
 void PeerManager::refreshPeers ()
 {
     // enqueue an update for our own record

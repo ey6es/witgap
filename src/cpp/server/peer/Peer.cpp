@@ -88,13 +88,22 @@ void Peer::sendHeader ()
     _stream << secret;
     _stream << name;
 
-    // send our session list
+    // send our instance list
     InvokeAction action;
     action.targetIndex = _app->peerManager()->invocationTargetIndex(_app->peerManager());
-    action.methodIndex = PeerManager::staticMetaObject.indexOfMethod("sessionAdded(SessionInfo)");
+    action.methodIndex = PeerManager::staticMetaObject.indexOfMethod(
+        "instanceAdded(InstanceInfo)");
     action.args.append(QVariant());
     QVariant& variant = action.args[0];
     ExecuteMessage msg;
+    foreach (const InstanceInfoPointer& ptr, _app->peerManager()->localInstances()) {
+        variant.setValue(*ptr);
+        msg.action.setValue(action);
+        sendMessage(msg);
+    }
+
+    // and our session list
+    action.methodIndex = PeerManager::staticMetaObject.indexOfMethod("sessionAdded(SessionInfo)");
     foreach (const SessionInfoPointer& ptr, _app->peerManager()->localSessions()) {
         variant.setValue(*ptr);
         msg.action.setValue(action);

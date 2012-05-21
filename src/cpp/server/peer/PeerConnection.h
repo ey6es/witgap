@@ -44,6 +44,16 @@ public:
     void sessionRemoved (const SessionInfoPointer& ptr);
 
     /**
+     * Notes that an instance has been added by this connection.
+     */
+    void instanceAdded (const InstanceInfoPointer& ptr);
+
+    /**
+     * Notes that an instance has been removed by this connection.
+     */
+    void instanceRemoved (const InstanceInfoPointer& ptr);
+
+    /**
      * Sends a response to a request.
      */
     Q_INVOKABLE void sendResponse (quint32 requestId, const QVariantList& args);
@@ -70,6 +80,9 @@ protected:
 
     /** The sessions registered by this connection. */
     QHash<quint64, SessionInfoPointer> _sessions;
+
+    /** The instances registered by this connection. */
+    QHash<quint64, InstanceInfoPointer> _instances;
 };
 
 #endif // PEER_CONNECTION
