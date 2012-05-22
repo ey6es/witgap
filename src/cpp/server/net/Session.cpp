@@ -57,7 +57,7 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
     _app->peerManager()->invoke(_app->peerManager(), "sessionAdded(SessionInfo)",
         Q_ARG(const SessionInfo&, info));
 
-    // send the session info back to the connection and activate it
+    // send the session info back to the connection
     connection->setCookie("sessionId", QString::number(record.id, 16).rightJustified(16, '0'));
     connection->setCookie("sessionToken", record.token.toHex());
 

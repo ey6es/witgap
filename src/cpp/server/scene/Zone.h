@@ -9,6 +9,7 @@
 #include <QObject>
 
 #include "db/SceneRepository.h"
+#include "peer/PeerManager.h"
 #include "util/Callback.h"
 
 class Instance;
@@ -90,8 +91,16 @@ protected:
      */
     Q_INVOKABLE void sceneMaybeLoaded (quint32 id, const SceneRecord& record);
 
+    /**
+     * Shuts down the instance.
+     */
+    void shutdown ();
+
     /** The zone that owns the instance. */
     Zone* _zone;
+
+    /** The instance info. */
+    InstanceInfo _info;
 
     /** Scenes in the instance mapped by id. */
     QHash<quint32, Scene*> _scenes;

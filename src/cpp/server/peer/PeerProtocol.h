@@ -103,6 +103,34 @@ public:
 DECLARE_STREAMABLE_METATYPE(ExecuteMessage)
 
 /**
+ * Executes an action on the lead peer (chasing it around, in case peers have
+ * different ideas of who the lead is).
+ */
+class ExecuteLeadMessage : STREAM public ExecuteMessage
+{
+    STREAMABLE
+    UPSTREAM_MESSAGE
+};
+
+DECLARE_STREAMABLE_METATYPE(ExecuteLeadMessage)
+
+/**
+ * Executes an action on the peer hosting the named session (chasing it around).
+ */
+class ExecuteSessionMessage : STREAM public ExecuteMessage
+{
+    STREAMABLE
+    UPSTREAM_MESSAGE
+
+public:
+
+    /** The name of the session that we're chasing. */
+    QString name;
+};
+
+DECLARE_STREAMABLE_METATYPE(ExecuteSessionMessage)
+
+/**
  * Makes a request of the peer.
  */
 class RequestMessage : public PeerMessage
@@ -120,6 +148,34 @@ public:
 };
 
 DECLARE_STREAMABLE_METATYPE(RequestMessage)
+
+/**
+ * Makes a request of the lead peer (chasing it around, in case peers have
+ * different ideas of who the lead is).
+ */
+class RequestLeadMessage : STREAM public RequestMessage
+{
+    STREAMABLE
+    UPSTREAM_MESSAGE
+};
+
+DECLARE_STREAMABLE_METATYPE(RequestLeadMessage)
+
+/**
+ * Makes a request of the peer hosting the named session (chasing it around).
+ */
+class RequestSessionMessage : STREAM public RequestMessage
+{
+    STREAMABLE
+    UPSTREAM_MESSAGE
+
+public:
+
+    /** The name of the session that we're chasing. */
+    STREAM QString name;
+};
+
+DECLARE_STREAMABLE_METATYPE(RequestSessionMessage)
 
 /**
  * Responds to a request.

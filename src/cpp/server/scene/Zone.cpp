@@ -27,6 +27,11 @@ void Zone::reserveInstancePlace (const Callback& callback)
 Instance::Instance (Zone* zone) :
     _zone(zone)
 {
+    // add info on all peers
+    InstanceInfo info = { 0, zone->app()->peerManager()->record().name };
+    _info = info;
+    zone->app()->peerManager()->invoke(zone->app()->peerManager(), "instanceAdded(InstanceInfo)",
+        Q_ARG(const InstanceInfo&, info));
 }
 
 void Instance::resolveScene (quint32 id, const Callback& callback)
@@ -64,4 +69,11 @@ void Instance::sceneMaybeLoaded (quint32 id, const SceneRecord& record)
     foreach (const Callback& callback, callbacks) {
         callback.invoke(Q_ARG(QObject*, scene));
     }
+}
+
+void Instance::shutdown ()
+{
+    // remove info on all peers
+    _zone->app()->peerManager()->invoke(_zone->app()->peerManager(), "instanceRemoved(quint64)",
+        Q_ARG(quint64, _info.id));
 }

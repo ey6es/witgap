@@ -39,9 +39,9 @@ public:
     void update (const PeerRecord& record);
 
     /**
-     * Sends a request to the peer.
+     * Sends a request message to the peer.
      */
-    void sendRequest (const QVariant& request, const Callback& callback);
+    template<class T> void sendRequestMessage (const T& msg, const Callback& callback);
 
     /**
      * Dispatches the response to a request.
@@ -86,5 +86,12 @@ protected:
     /** Maps request ids to callbacks for pending requests. */
     QHash<quint32, Callback> _pendingRequests;
 };
+
+template<class T> inline void Peer::sendRequestMessage (const T& msg, const Callback& callback)
+{
+    T message = msg;
+    _pendingRequests.insert(message.id = ++_lastRequestId, callback);
+    sendMessage(msg);
+}
 
 #endif // PEER

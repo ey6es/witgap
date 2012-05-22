@@ -40,7 +40,7 @@ PeerManager::PeerManager (ServerApp* app) :
     _this(this)
 {
     // initialize the peer record
-    _record.name = app->args().value("name").toString();
+    _record.name = _leadName = app->args().value("name").toString();
     _record.region = app->args().value("region").toString();
     _record.internalHostname = app->args().value("internal_hostname").toString();
     _record.externalHostname = app->args().value("external_hostname").toString();
@@ -119,6 +119,23 @@ void PeerManager::invoke (QObject* object, const char* method,
 
     } else {
         QMetaObject::invokeMethod(this, "request", Q_ARG(const QVariant&, variant),
+            Q_ARG(const Callback&, *callback));
+    }
+}
+
+void PeerManager::invokeLead (QObject* object, const char* method,
+    QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
+    QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
+    QGenericArgument val8, QGenericArgument val9)
+{
+    Callback* callback;
+    QVariant variant = prepareInvoke(
+        object, method, val0, val1, val2, val3, val4, val5, val6, val7, val8, val9, &callback);
+    if (callback == 0) {
+        QMetaObject::invokeMethod(this, "executeLead", Q_ARG(const QVariant&, variant));
+
+    } else {
+        QMetaObject::invokeMethod(this, "requestLead", Q_ARG(const QVariant&, variant),
             Q_ARG(const Callback&, *callback));
     }
 }
@@ -241,6 +258,88 @@ void PeerManager::instanceRemoved (quint64 id)
     }
 }
 
+void PeerManager::executeLead (const QVariant& action)
+{
+    // see if it's for the local peer
+    if (_leadName == _record.name) {
+        const PeerAction* paction = static_cast<const PeerAction*>(action.constData());
+        paction->execute(_app);
+        return;
+    }
+    Peer* peer = _peers.value(_leadName);
+    if (peer != 0) {
+        ExecuteLeadMessage msg;
+        msg.action = action;
+        peer->sendMessage(msg);
+    }
+}
+
+void PeerManager::requestLead (const QVariant& request, const Callback& callback)
+{
+    // see if it's for the local peer
+    if (_leadName == _record.name) {
+        const PeerRequest* prequest = static_cast<const PeerRequest*>(request.constData());
+        prequest->handle(_app, callback);
+        return;
+    }
+    Peer* peer = _peers.value(_leadName);
+    if (peer != 0) {
+        RequestLeadMessage msg;
+        msg.request = request;
+        peer->sendRequestMessage(msg, callback);
+
+    } else {
+        callback.invokeWithDefaults();
+    }
+}
+
+void PeerManager::executeSession (const QString& name, const QVariant& action)
+{
+    SessionInfoPointer ptr = _sessionsByName.value(name.toLower());
+    if (ptr.isNull()) {
+        return;
+    }
+    // see if he's on the local peer
+    if (ptr->peer == _record.name) {
+        const PeerAction* paction = static_cast<const PeerAction*>(action.constData());
+        paction->execute(_app);
+        return;
+    }
+    Peer* peer = _peers.value(ptr->peer);
+    if (peer != 0) {
+        ExecuteSessionMessage msg;
+        msg.action = action;
+        msg.name = name;
+        peer->sendMessage(msg);
+    }
+}
+
+void PeerManager::requestSession (
+    const QString& name, const QVariant& request, const Callback& callback)
+{
+    SessionInfoPointer ptr = _sessionsByName.value(name.toLower());
+    if (ptr.isNull()) {
+        callback.invokeWithDefaults();
+        return;
+    }
+    // see if it's for the local peer
+    if (ptr->peer == _record.name) {
+        const PeerRequest* prequest = static_cast<const PeerRequest*>(request.constData());
+        prequest->handle(_app, callback);
+        return;
+    }
+    Peer* peer = _peers.value(ptr->peer);
+    if (peer != 0) {
+        RequestSessionMessage msg;
+        msg.request = request;
+        msg.name = name;
+        peer->sendRequestMessage(msg, callback);
+
+    } else {
+        callback.invokeWithDefaults();
+    }
+}
+
 void PeerManager::refreshPeers ()
 {
     // enqueue an update for our own record
@@ -308,6 +407,7 @@ QVariant PeerManager::prepareInvoke (QObject* object, const char* method,
 void PeerManager::updatePeers (const PeerRecordList& records)
 {
     QDateTime cutoff = QDateTime::currentDateTime().addMSecs(-LivingPeerCutoff);
+    _leadName = _record.name;
     foreach (const PeerRecord& record, records) {
         if (record.name == _record.name) {
             continue; // it's our own record
@@ -318,7 +418,9 @@ void PeerManager::updatePeers (const PeerRecordList& records)
                 peer = new Peer(_app);
             }
             peer->update(record);
-
+            if (record.name < _leadName) {
+                _leadName = record.name;
+            }
         } else {
             Peer* peer = _peers.take(record.name);
             if (peer != 0) {
@@ -351,9 +453,12 @@ void PeerManager::request (const QVariant& request, const Callback& callback)
     req.callback = callback;
 
     // send it off to everyone else
+    RequestMessage msg;
+    msg.request = request;
     foreach (Peer* peer, _peers) {
         req.remaining.insert(peer->record().name);
-        peer->sendRequest(request, Callback(_this, "handleResponse(quint32,QString,QVariantList)",
+        peer->sendRequestMessage(msg, Callback(_this,
+            "handleResponse(quint32,QString,QVariantList)",
             Q_ARG(quint32, requestId), Q_ARG(const QString&, peer->record().name)).setCollate());
     }
 
@@ -390,26 +495,9 @@ void PeerManager::request (const QString& name, const QVariant& request, const C
     }
     Peer* peer = _peers.value(name);
     if (peer != 0) {
-        peer->sendRequest(request, callback);
-    } else {
-        callback.invokeWithDefaults();
-    }
-}
-
-void PeerManager::executeSession (const QString& name, const QVariant& action)
-{
-    SessionInfoPointer ptr = _sessionsByName.value(name.toLower());
-    if (!ptr.isNull()) {
-        execute(ptr->peer, action);
-    }
-}
-
-void PeerManager::requestSession (
-    const QString& name, const QVariant& request, const Callback& callback)
-{
-    SessionInfoPointer ptr = _sessionsByName.value(name.toLower());
-    if (!ptr.isNull()) {
-        this->request(ptr->peer, request, callback);
+        RequestMessage msg;
+        msg.request = request;
+        peer->sendRequestMessage(msg, callback);
     } else {
         callback.invokeWithDefaults();
     }

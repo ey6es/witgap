@@ -109,6 +109,21 @@ public:
         QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument());
 
     /**
+     * Invokes a method on the lead node (the node whose name comes first in lexicographic order).
+     * This method is thread-safe.
+     *
+     * @param object the object on which the invoke the method, which should be a named child of
+     * ServerApp.
+     * @param method the normalized method signature.
+     */
+    void invokeLead (QObject* object, const char* method,
+        QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
+        QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
+        QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
+        QGenericArgument val6 = QGenericArgument(), QGenericArgument val7 = QGenericArgument(),
+        QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument());
+
+    /**
      * Invokes a method on the named peer.  If the invocation includes a callback and the peer
      * isn't connected, it will received default-constructed arguments.  This method is
      * thread-safe.
@@ -190,6 +205,27 @@ public:
      */
     Q_INVOKABLE void instanceRemoved (quint64 id);
 
+    /**
+     * Executes an action on the lead peer.
+     */
+    Q_INVOKABLE void executeLead (const QVariant& action);
+
+    /**
+     * Makes a request of the lead peer.
+     */
+    Q_INVOKABLE void requestLead (const QVariant& request, const Callback& callback);
+
+    /**
+     * Executes an action on the peer hosting the named session.
+     */
+    Q_INVOKABLE void executeSession (const QString& name, const QVariant& action);
+
+    /**
+     * Makes a request of the peer hosting the named session.
+     */
+    Q_INVOKABLE void requestSession (
+        const QString& name, const QVariant& request, const Callback& callback);
+
 protected slots:
 
     /**
@@ -245,17 +281,6 @@ protected:
         const QString& name, const QVariant& request, const Callback& callback);
 
     /**
-     * Executes an action on the peer hosting the named session.
-     */
-    Q_INVOKABLE void executeSession (const QString& name, const QVariant& action);
-
-    /**
-     * Makes a request of the peer hosting the named session.
-     */
-    Q_INVOKABLE void requestSession (
-        const QString& name, const QVariant& request, const Callback& callback);
-
-    /**
      * Handles part of a batch response.
      */
     Q_INVOKABLE void handleResponse (
@@ -278,6 +303,9 @@ protected:
 
     /** Peers mapped by name. */
     QHash<QString, Peer*> _peers;
+
+    /** The name of the "lead" peer (the one whose name comes first in lexicographic order. */
+    QString _leadName;
 
     /** Incoming connections mapped by peer name. */
     QHash<QString, PeerConnection*> _connections;
@@ -382,7 +410,7 @@ public:
 /**
  * An action that invokes a method.
  */
-class InvokeAction
+class InvokeAction : public PeerAction
 {
     STREAMABLE
 
@@ -421,7 +449,7 @@ public:
 /**
  * A request that invokes a method.
  */
-class InvokeRequest
+class InvokeRequest : public PeerRequest
 {
     STREAMABLE
 

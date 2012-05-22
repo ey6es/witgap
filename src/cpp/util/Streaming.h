@@ -9,7 +9,7 @@
 /** Flags a class as streamable (use as you would Q_OBJECT). */
 #define STREAMABLE public: static const int Type; private:
 
-/** Flags a field as streaming. */
+/** Flags a field or base class as streaming. */
 #define STREAM
 
 /** Declares the metatype and the streaming operators.  The last line

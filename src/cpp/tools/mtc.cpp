@@ -14,14 +14,28 @@
 using namespace std;
 
 /**
+ * Contains information on a class.
+ */
+class Class
+{
+public:
+
+    /** The name of the class. */
+    QString name;
+
+    /** The base classes of the class. */
+    QStringList bases;
+};
+
+/**
  * Contains information on a streamable class.
  */
 class Streamable
 {
 public:
 
-    /** The name of the class. */
-    QString name;
+    /** The class information. */
+    Class clazz;
 
     /** The names of the fields to stream. */
     QStringList fields;
@@ -32,7 +46,7 @@ public:
  */
 void processInput (QTextStream& in, QList<Streamable>* streamables)
 {
-    QString className;
+    Class clazz;
     Streamable currentStreamable;
 
     QRegExp exp(
@@ -44,6 +58,8 @@ void processInput (QTextStream& in, QList<Streamable>* streamables)
     );
     exp.setMinimal(true);
 
+    QRegExp classExp("class (\\w+) ?:?([^:]*)\\{");
+
     // read in the entire input and look for matches with our expression
     QString all = in.readAll();
     for (int off = 0; (off = exp.indexIn(all, off)) != -1; off += exp.matchedLength()) {
@@ -52,14 +68,14 @@ void processInput (QTextStream& in, QList<Streamable>* streamables)
             continue; // comment
         }
         if (match.startsWith("STREAMABLE")) {
-            if (className.isEmpty()) {
+            if (clazz.name.isEmpty()) {
                 cerr << "Found STREAMABLE marker before class definition." << endl;
                 continue;
             }
-            if (!currentStreamable.name.isEmpty()) {
+            if (!currentStreamable.clazz.name.isEmpty()) {
                 streamables->append(currentStreamable);
             }
-            currentStreamable.name = className;
+            currentStreamable.clazz = clazz;
             currentStreamable.fields.clear();
 
         } else if (match.startsWith("STREAM")) {
@@ -68,10 +84,18 @@ void processInput (QTextStream& in, QList<Streamable>* streamables)
             currentStreamable.fields.append(match.mid(match.lastIndexOf(' ') + 1));
 
         } else { // match.startsWith("class")
-            className = match.mid(6, match.indexOf(' ', 6) - 6);
+            classExp.exactMatch(match);
+            clazz.name = classExp.cap(1);
+            clazz.bases.clear();
+            foreach (const QString& bstr, classExp.cap(2).split(',')) {
+                QString base = bstr.trimmed();
+                if (!base.isEmpty() && base.startsWith("STREAM")) {
+                    clazz.bases.append(base.mid(base.lastIndexOf(' ') + 1));
+                }
+            }
         }
     }
-    if (!currentStreamable.name.isEmpty()) {
+    if (!currentStreamable.clazz.name.isEmpty()) {
         streamables->append(currentStreamable);
     }
 }
@@ -82,24 +106,32 @@ void processInput (QTextStream& in, QList<Streamable>* streamables)
 void generateOutput (QTextStream& out, const QList<Streamable>& streamables)
 {
     foreach (const Streamable& str, streamables) {
-        out << "QDataStream& operator<< (QDataStream& out, const " << str.name << "& obj)\n";
+        const QString& name = str.clazz.name;
+
+        out << "QDataStream& operator<< (QDataStream& out, const " << name << "& obj)\n";
         out << "{\n";
+        foreach (const QString& base, str.clazz.bases) {
+            out << "    out << static_cast<const " << base << "&>(obj);\n";
+        }
         foreach (const QString& field, str.fields) {
             out << "    out << obj." << field << ";\n";
         }
         out << "    return out;\n";
         out << "}\n";
 
-        out << "QDataStream& operator>> (QDataStream& in, " << str.name << "& obj)\n";
+        out << "QDataStream& operator>> (QDataStream& in, " << name << "& obj)\n";
         out << "{\n";
+        foreach (const QString& base, str.clazz.bases) {
+            out << "    in >> static_cast<" << base << "&>(obj);\n";
+        }
         foreach (const QString& field, str.fields) {
             out << "    in >> obj." << field << ";\n";
         }
         out << "    return in;\n";
         out << "}\n";
 
-        out << "const int " << str.name << "::Type = registerStreamableType<" <<
-            str.name << ">(\"" << str.name << "\");\n";
+        out << "const int " << name << "::Type = registerStreamableType<" <<
+            name << ">(\"" << name << "\");\n\n";
     }
 }
 

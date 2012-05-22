@@ -43,14 +43,6 @@ void Peer::update (const PeerRecord& record)
     }
 }
 
-void Peer::sendRequest (const QVariant& request, const Callback& callback)
-{
-    RequestMessage msg;
-    _pendingRequests.insert(msg.id = ++_lastRequestId, callback);
-    msg.request = request;
-    sendMessage(msg);
-}
-
 void Peer::handleResponse (quint32 requestId, const QVariantList& args)
 {
     QGenericArgument cargs[10];
