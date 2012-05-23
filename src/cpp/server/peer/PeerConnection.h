@@ -54,6 +54,11 @@ public:
     void instanceRemoved (const InstanceInfoPointer& ptr);
 
     /**
+     * Notes that an instance id has been reserved by this connection.
+     */
+    void instanceIdReserved (quint64 id);
+
+    /**
      * Sends a response to a request.
      */
     Q_INVOKABLE void sendResponse (quint32 requestId, const QVariantList& args);
@@ -83,6 +88,9 @@ protected:
 
     /** The instances registered by this connection. */
     QHash<quint64, InstanceInfoPointer> _instances;
+
+    /** The instance ids reserved by this connection. */
+    QSet<quint64> _reservedInstanceIds;
 };
 
 #endif // PEER_CONNECTION

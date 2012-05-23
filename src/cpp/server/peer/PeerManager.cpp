@@ -176,6 +176,21 @@ void PeerManager::invokeSession (const QString& name, QObject* object, const cha
     }
 }
 
+void PeerManager::reserveInstanceId (
+    const QString& peer, quint64 minimumId, const Callback& callback)
+{
+    for (quint64 id = minimumId;; id++) {
+        if (!(_instances.contains(id) || _reservedInstanceIds.contains(id))) {
+            _reservedInstanceIds.insert(id);
+            if (peer != _record.name) {
+                _connections.value(peer)->instanceIdReserved(id);
+            }
+            callback.invoke(Q_ARG(quint64, id));
+            return;
+        }
+    }
+}
+
 void PeerManager::peerDestroyed (Peer* peer)
 {
     _peers.remove(peer->record().name);
@@ -233,6 +248,7 @@ void PeerManager::instanceAdded (const InstanceInfo& info)
 {
     InstanceInfoPointer ptr(new InstanceInfo(info));
     _instances.insert(info.id, ptr);
+    _reservedInstanceIds.remove(info.id);
 
     if (info.peer == _record.name) {
         _localInstances.insert(info.id, ptr);

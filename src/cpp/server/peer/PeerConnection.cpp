@@ -34,6 +34,7 @@ PeerConnection::~PeerConnection ()
         foreach (const InstanceInfoPointer& ptr, _instances) {
             manager->instanceRemoved(ptr->id);
         }
+        manager->freeInstanceIds(_reservedInstanceIds);
         manager->connectionClosed(this);
     }
 
@@ -57,12 +58,18 @@ void PeerConnection::sessionRemoved (const SessionInfoPointer& ptr)
 
 void PeerConnection::instanceAdded (const InstanceInfoPointer& ptr)
 {
+    _reservedInstanceIds.remove(ptr->id);
     _instances.insert(ptr->id, ptr);
 }
 
 void PeerConnection::instanceRemoved (const InstanceInfoPointer& ptr)
 {
     _instances.remove(ptr->id);
+}
+
+void PeerConnection::instanceIdReserved (quint64 id)
+{
+    _reservedInstanceIds.insert(id);
 }
 
 void PeerConnection::sendResponse (quint32 requestId, const QVariantList& args)

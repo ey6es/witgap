@@ -7,6 +7,7 @@
 #include <QByteArray>
 #include <QHash>
 #include <QList>
+#include <QSet>
 #include <QSharedPointer>
 #include <QSslConfiguration>
 #include <QSslError>
@@ -154,6 +155,21 @@ public:
         QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
         QGenericArgument val6 = QGenericArgument(), QGenericArgument val7 = QGenericArgument(),
         QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument());
+
+    /**
+     * Finds an instance id that's not yet in use and supplies it to the given callback.  This is
+     * meant to be executed on the lead node.
+     *
+     * @param peer the name of the peer requesting the id.
+     * @param minimumId the minimum id to consider.
+     */
+    Q_INVOKABLE void reserveInstanceId (
+        const QString& peer, quint64 minimumId, const Callback& callback);
+
+    /**
+     * Frees up a set of reserved instance ids.
+     */
+    void freeInstanceIds (const QSet<quint64>& ids) { _reservedInstanceIds.subtract(ids); }
 
     /**
      * Executes an action on this peer and all others.
@@ -333,6 +349,9 @@ protected:
 
     /** Instances hosted by this peer. */
     QHash<quint64, InstanceInfoPointer> _localInstances;
+
+    /** Reserved instance ids. */
+    QSet<quint64> _reservedInstanceIds;
 
     /** Synchronized pointer for callbacks. */
     CallablePointer _this;
