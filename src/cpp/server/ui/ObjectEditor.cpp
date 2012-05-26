@@ -9,31 +9,25 @@
 #include "ui/ObjectEditor.h"
 #include "ui/TextField.h"
 
-ObjectEditor::ObjectEditor (QObject* object, QObject* parent) :
-    Container(new TableLayout(2), parent)
+ObjectEditor::ObjectEditor (QObject* object, int propertyOffset, QObject* parent) :
+    Container(new TableLayout(2), parent),
+    _object(0)
 {
-    setObject(object);
+    setObject(object, propertyOffset);
 }
 
-void ObjectEditor::setObject (QObject* object)
+void ObjectEditor::setObject (QObject* object, int propertyOffset)
 {
     if (_object == object) {
         return;
     }
-    const QMetaObject* ometa = (_object == 0) ? 0 : _object->metaObject();
-    const QMetaObject* nmeta = (object == 0) ? 0 : object->metaObject();
-    _object = object;
-    if (ometa == nmeta) {
-        // if the old and new have the same meta object, we can just update the editors
-        for (int ii = 1, nn = _children.size(); ii < nn; ii += 2) {
-            static_cast<PropertyEditor*>(_children.at(ii))->setObject(object);
-        }
+    removeAllChildren();
+    if ((_object = object) == 0) {
         return;
     }
-    removeAllChildren();
-
-    for (int ii = 0, nn = nmeta->propertyCount(); ii < nn; ii++) {
-        QMetaProperty property = nmeta->property(ii);
+    const QMetaObject* meta = _object->metaObject();
+    for (int ii = propertyOffset, nn = meta->propertyCount(); ii < nn; ii++) {
+        QMetaProperty property = meta->property(ii);
         PropertyEditor* editor = PropertyEditor::create(object, property);
         if (editor == 0) {
             continue;
@@ -83,7 +77,9 @@ void PropertyEditor::setObject (QObject* object)
         if (_object != 0) {
             _object->disconnect(this);
         }
-        connect(object, _property.notifySignal().signature(), SLOT(update()));
+        // the '2' identified the method as a signal (see definition for SIGNAL macro)
+        connect(object, QByteArray(_property.notifySignal().signature()).prepend('2'),
+            SLOT(update()));
     }
     _object = object;
     update();

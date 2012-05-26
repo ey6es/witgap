@@ -5,6 +5,7 @@
 
 #include "admin/AdminMenu.h"
 #include "admin/EditUserDialog.h"
+#include "admin/RuntimeConfigDialog.h"
 #include "net/Session.h"
 
 // translate through the session
@@ -14,6 +15,8 @@ AdminMenu::AdminMenu (Session* parent, int deleteOnReleaseKey) :
     Menu(parent, deleteOnReleaseKey)
 {
     addButton(tr("Edit &User..."), &EditUserDialog::staticMetaObject, Q_ARG(Session*, parent));
+    addButton(tr("Runtime &Config..."), &RuntimeConfigDialog::staticMetaObject,
+        Q_ARG(Session*, parent));
 
     pack();
     center();

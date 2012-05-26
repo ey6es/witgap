@@ -23,13 +23,17 @@ public:
 
     /**
      * Initializes the editor.
+     *
+     * @param propertyOffset the index of the first property to allow editing.
      */
-    ObjectEditor (QObject* object = 0, QObject* parent = 0);
+    ObjectEditor (QObject* object = 0, int propertyOffset = 0, QObject* parent = 0);
 
     /**
      * Sets the object to edit.
+     *
+     * @param propertyOffset the index of the first property to allow editing.
      */
-    void setObject (QObject* object);
+    void setObject (QObject* object, int propertyOffset = 0);
 
     /**
      * Returns a pointer to the object being edited.
