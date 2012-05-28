@@ -45,6 +45,11 @@ public:
      */
     void update ();
 
+    /**
+     * Applies all property editors.
+     */
+    void apply ();
+
 protected:
 
     /** The object we're editing. */
@@ -83,6 +88,11 @@ public slots:
      */
     virtual void update () = 0;
 
+    /**
+     * Applies a change to the object.
+     */
+    virtual void apply () { }
+
 protected:
 
     /** The object that we're editing. */
@@ -105,8 +115,6 @@ public:
      * Initializes the editor.
      */
     ReadOnlyPropertyEditor (QObject* object, const QMetaProperty& property, QObject* parent = 0);
-
-public slots:
 
     /**
      * Updates the edited value in response to an external change.
@@ -133,19 +141,15 @@ public:
      */
     BoolPropertyEditor (QObject* object, const QMetaProperty& property, QObject* parent = 0);
 
-public slots:
-
     /**
      * Updates the edited value in response to an external change.
      */
     virtual void update ();
 
-protected slots:
-
     /**
      * Applies a change to the object.
      */
-    void apply ();
+    virtual void apply ();
 
 protected:
 
@@ -168,19 +172,10 @@ public:
     AbstractStringPropertyEditor (
         const QMetaProperty& property, TextField* field, QObject* parent = 0);
 
-public slots:
-
     /**
      * Updates the edited value in response to an external change.
      */
     virtual void update ();
-
-protected slots:
-
-    /**
-     * Applies a change to the object.
-     */
-    virtual void apply () = 0;
 
 protected:
 
@@ -201,8 +196,6 @@ public:
      * Initializes the editor.
      */
     StringPropertyEditor (QObject* object, const QMetaProperty& property, QObject* parent = 0);
-
-protected slots:
 
     /**
      * Applies a change to the object.

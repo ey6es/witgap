@@ -10,6 +10,7 @@
 #include <openssl/pem.h>
 
 #include "net/Connection.h"
+#include "peer/PeerManager.h"
 #include "util/Callback.h"
 
 class ServerApp;
@@ -21,7 +22,7 @@ class UserRecord;
 /**
  * Listens for TCP connections.
  */
-class ConnectionManager : public QTcpServer
+class ConnectionManager : public QTcpServer, public SharedObject
 {
     Q_OBJECT
 

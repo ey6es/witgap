@@ -35,9 +35,33 @@ typedef QSharedPointer<InstanceInfo> InstanceInfoPointer;
 typedef QSharedPointer<SessionInfo> SessionInfoPointer;
 
 /**
+ * Base class for objects accessible between peers.  This would extend QObject, but there are
+ * classes where we prefer to extend from Qt base classes (like QTcpServer).
+ */
+class SharedObject
+{
+public:
+
+    /**
+     * Sets the shared object identifier.
+     */
+    void setSharedObjectId (quint32 id) { _sharedObjectId = id; }
+
+    /**
+     * Returns the shared object identifier.
+     */
+    quint32 sharedObjectId () const { return _sharedObjectId; }
+
+protected:
+
+    /** The shared object identifier. */
+    quint32 _sharedObjectId;
+};
+
+/**
  * Manages peer bits.
  */
-class PeerManager : public QTcpServer
+class PeerManager : public QTcpServer, public SharedObject
 {
     Q_OBJECT
 
@@ -69,20 +93,14 @@ public:
     void configureSocket (QSslSocket* socket) const;
 
     /**
-     * Adds an invocation target.  Targets should be added during server initialization in such a
-     * way that they are guaranteed to have the same order in all peers.
+     * Registers a shared object (which must be both a QObject and a SharedObject).
      */
-    void addInvocationTarget (QObject* object) { _invocationTargets.append(object); }
+    template<class T> void registerSharedObject (T* object);
 
     /**
-     * Returns the invocation target at the specified index.
+     * Retrieves a pointer to the shared object with the specified id, or 0 if not found.
      */
-    QObject* invocationTarget (int idx) const { return _invocationTargets.at(idx); }
-
-    /**
-     * Returns the index of the specified invocation target.
-     */
-    int invocationTargetIndex (QObject* obj) const { return _invocationTargets.indexOf(obj); }
+    QObject* sharedObject (int sharedObjectId) const;
 
     /**
      * Returns a reference to the local session map.
@@ -98,11 +116,10 @@ public:
      * Invokes a method on this peer and all others.  If the invocation includes a callback, it
      * will receive a QVariantListHash mapping peer names to results.  This method is thread-safe.
      *
-     * @param object the object on which the invoke the method, which should be a named child of
-     * ServerApp.
+     * @param object the object on which the invoke the method.
      * @param method the normalized method signature.
      */
-    void invoke (QObject* object, const char* method,
+    void invoke (SharedObject* object, const char* method,
         QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
         QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
         QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
@@ -113,11 +130,10 @@ public:
      * Invokes a method on the lead node (the node whose name comes first in lexicographic order).
      * This method is thread-safe.
      *
-     * @param object the object on which the invoke the method, which should be a named child of
-     * ServerApp.
+     * @param object the object on which the invoke the method.
      * @param method the normalized method signature.
      */
-    void invokeLead (QObject* object, const char* method,
+    void invokeLead (SharedObject* object, const char* method,
         QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
         QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
         QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
@@ -129,11 +145,10 @@ public:
      * isn't connected, it will received default-constructed arguments.  This method is
      * thread-safe.
      *
-     * @param object the object on which the invoke the method, which should be a named child of
-     * ServerApp.
+     * @param object the object on which the invoke the method.
      * @param method the normalized method signature.
      */
-    void invoke (const QString& peer, QObject* object, const char* method,
+    void invoke (const QString& peer, SharedObject* object, const char* method,
         QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
         QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
         QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
@@ -149,7 +164,7 @@ public:
      * ServerApp.
      * @param method the normalized method signature.
      */
-    void invokeSession (const QString& name, QObject* object, const char* method,
+    void invokeSession (const QString& name, SharedObject* object, const char* method,
         QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
         QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
         QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
@@ -262,10 +277,15 @@ protected:
     virtual void incomingConnection (int socketDescriptor);
 
     /**
+     * Maps the specified shared object and prepares it for synchronization.
+     */
+    void mapSharedObject (QObject* object);
+
+    /**
      * Helper function for invocation methods: processes the arguments and returns a variant
      * containing either an InvokeAction or an InvokeRequest.
      */
-    QVariant prepareInvoke (QObject* object, const char* method,
+    QVariant prepareInvoke (SharedObject* object, const char* method,
         QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
         QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
         QGenericArgument val8, QGenericArgument val9, Callback** callback);
@@ -329,8 +349,11 @@ protected:
     /** Pending requests mapped by id. */
     QHash<quint32, PendingRequest> _pendingRequests;
 
-    /** The list of registered targets for remote invocation. */
-    QVector<QObject*> _invocationTargets;
+    /** Shared objects mapped by id. */
+    QHash<quint32, QObject*> _sharedObjects;
+
+    /** The last shared object id assigned. */
+    quint32 _lastSharedObjectId;
 
     /** The last request id assigned. */
     quint32 _lastRequestId;
@@ -355,6 +378,46 @@ protected:
 
     /** Synchronized pointer for callbacks. */
     CallablePointer _this;
+};
+
+template<class T> inline void PeerManager::registerSharedObject (T* object)
+{
+    object->setSharedObjectId(++_lastSharedObjectId);
+    mapSharedObject(object);
+}
+
+/**
+ * Listens for property changes in order to transmit them to all peers.
+ */
+class PropertyTransmitter : public QObject
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the transmitter.
+     */
+    PropertyTransmitter (
+        ServerApp* app, QObject* object, quint32 sharedObjectId, const QMetaProperty& property);
+
+public slots:
+
+    /**
+     * Called when the tracked property has changed.
+     */
+    void propertyChanged ();
+
+protected:
+
+    /** The application object. */
+    ServerApp* _app;
+
+    /** The shared object id. */
+    quint32 _sharedObjectId;
+
+    /** The property that we watch. */
+    QMetaProperty _property;
 };
 
 /**
@@ -435,8 +498,8 @@ class InvokeAction : public PeerAction
 
 public:
 
-    /** The index of the object on which to invoke the action. */
-    STREAM quint32 targetIndex;
+    /** The id of the shared object on which to invoke the action. */
+    STREAM quint32 sharedObjectId;
 
     /** The index of the method to invoke. */
     STREAM quint32 methodIndex;
@@ -451,6 +514,32 @@ public:
 };
 
 DECLARE_STREAMABLE_METATYPE(InvokeAction)
+
+/**
+ * An action that sets a property.
+ */
+class SetPropertyAction : public PeerAction
+{
+    STREAMABLE
+
+public:
+
+    /** The id of the shared object on which to set the property. */
+    STREAM quint32 sharedObjectId;
+
+    /** The index of the property to set. */
+    STREAM quint32 propertyIndex;
+
+    /** The new value. */
+    STREAM QVariant value;
+
+    /**
+     * Executes the action.
+     */
+    virtual void execute (ServerApp* app) const;
+};
+
+DECLARE_STREAMABLE_METATYPE(SetPropertyAction)
 
 /**
  * Base class for peer requests.
@@ -474,8 +563,8 @@ class InvokeRequest : public PeerRequest
 
 public:
 
-    /** The name of the object on which to invoke the request. */
-    STREAM quint32 targetIndex;
+    /** The id of the shared object on which to invoke the request. */
+    STREAM quint32 sharedObjectId;
 
     /** The index of the method to invoke. */
     STREAM quint32 methodIndex;

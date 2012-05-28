@@ -36,6 +36,7 @@ static const int LivingPeerCutoff = 5 * PeerRefreshInterval;
 PeerManager::PeerManager (ServerApp* app) :
     QTcpServer(app),
     _app(app),
+    _lastSharedObjectId(0),
     _lastRequestId(0),
     _this(this)
 {
@@ -75,7 +76,7 @@ PeerManager::PeerManager (ServerApp* app) :
         QSslError::SelfSignedCertificate, _sslConfig.localCertificate()));
 
     // register for remote invocation
-    addInvocationTarget(this);
+    registerSharedObject(this);
 
     // start listening on the configured port
     QHostAddress address(app->config().value("peer_listen_address").toString());
@@ -106,7 +107,12 @@ void PeerManager::configureSocket (QSslSocket* socket) const
     socket->ignoreSslErrors(_expectedSslErrors);
 }
 
-void PeerManager::invoke (QObject* object, const char* method,
+QObject* PeerManager::sharedObject (int sharedObjectId) const
+{
+    return _sharedObjects.value(sharedObjectId);
+}
+
+void PeerManager::invoke (SharedObject* object, const char* method,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9)
@@ -123,7 +129,7 @@ void PeerManager::invoke (QObject* object, const char* method,
     }
 }
 
-void PeerManager::invokeLead (QObject* object, const char* method,
+void PeerManager::invokeLead (SharedObject* object, const char* method,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9)
@@ -140,7 +146,7 @@ void PeerManager::invokeLead (QObject* object, const char* method,
     }
 }
 
-void PeerManager::invoke (const QString& peer, QObject* object, const char* method,
+void PeerManager::invoke (const QString& peer, SharedObject* object, const char* method,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9)
@@ -158,7 +164,7 @@ void PeerManager::invoke (const QString& peer, QObject* object, const char* meth
     }
 }
 
-void PeerManager::invokeSession (const QString& name, QObject* object, const char* method,
+void PeerManager::invokeSession (const QString& name, SharedObject* object, const char* method,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9)
@@ -387,7 +393,18 @@ void PeerManager::incomingConnection (int socketDescriptor)
     }
 }
 
-QVariant PeerManager::prepareInvoke (QObject* object, const char* method,
+void PeerManager::mapSharedObject (QObject* object)
+{
+    _sharedObjects.insert(_lastSharedObjectId, object);
+
+    // install synchronizers for any properties
+    const QMetaObject* meta = object->metaObject();
+    for (int ii = 0, nn = meta->propertyCount(); ii < nn; ii++) {
+
+    }
+}
+
+QVariant PeerManager::prepareInvoke (SharedObject* object, const char* method,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9, Callback** callback)
@@ -404,17 +421,19 @@ QVariant PeerManager::prepareInvoke (QObject* object, const char* method,
         }
     }
     // the presence of a callback determines whether we issue an action or a request
+    quint32 objectId = object->sharedObjectId();
+    quint32 methodIndex = _sharedObjects.value(objectId)->metaObject()->indexOfMethod(method);
     if (*callback == 0) {
         InvokeAction action;
-        action.targetIndex = invocationTargetIndex(object);
-        action.methodIndex = object->metaObject()->indexOfMethod(method);
+        action.sharedObjectId = objectId;
+        action.methodIndex = methodIndex;
         action.args = vargs;
         return QVariant::fromValue(action);
 
     } else {
         InvokeRequest request;
-        request.targetIndex = invocationTargetIndex(object);
-        request.methodIndex = object->metaObject()->indexOfMethod(method);
+        request.sharedObjectId = objectId;
+        request.methodIndex = methodIndex;
         request.args = vargs;
         return QVariant::fromValue(request);
     }
@@ -530,9 +549,30 @@ void PeerManager::handleResponse (quint32 requestId, const QString& name, const 
     }
 }
 
+PropertyTransmitter::PropertyTransmitter (
+        ServerApp* app, QObject* object, quint32 sharedObjectId, const QMetaProperty& property) :
+    QObject(object),
+    _app(app),
+    _sharedObjectId(sharedObjectId),
+    _property(property)
+{
+}
+
+void PropertyTransmitter::propertyChanged ()
+{
+    SetPropertyAction action;
+    action.sharedObjectId = _sharedObjectId;
+    action.propertyIndex = _property.propertyIndex();
+    action.value = _property.read(parent());
+
+}
+
 void InvokeAction::execute (ServerApp* app) const
 {
-    QObject* object = app->peerManager()->invocationTarget(targetIndex);
+    QObject* object = app->peerManager()->sharedObject(sharedObjectId);
+    if (object == 0) {
+        return;
+    }
     QGenericArgument cargs[10];
     for (int ii = 0, nn = args.size(); ii < nn; ii++) {
         cargs[ii] = QGenericArgument(args[ii].typeName(), args[ii].constData());
@@ -542,9 +582,22 @@ void InvokeAction::execute (ServerApp* app) const
         cargs[5], cargs[6], cargs[7], cargs[8], cargs[9]);
 }
 
+void SetPropertyAction::execute (ServerApp* app) const
+{
+    QObject* object = app->peerManager()->sharedObject(sharedObjectId);
+    if (object == 0) {
+        return;
+    }
+    object->metaObject()->property(propertyIndex).write(object, value);
+}
+
 void InvokeRequest::handle (ServerApp* app, const Callback& callback) const
 {
-    QObject* object = app->peerManager()->invocationTarget(targetIndex);
+    QObject* object = app->peerManager()->sharedObject(sharedObjectId);
+    if (object == 0) {
+        callback.invokeWithDefaults();
+        return;
+    }
     QMetaMethod method = object->metaObject()->method(methodIndex);
     QList<QByteArray> ptypes = method.parameterTypes();
     QGenericArgument cargs[10];

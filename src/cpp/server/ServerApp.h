@@ -11,6 +11,8 @@
 #include <QVariant>
 #include <QVector>
 
+#include "peer/PeerManager.h"
+
 class QByteArray;
 class QTimer;
 class QTranslator;
@@ -25,7 +27,7 @@ class SceneManager;
 /**
  * The Witgap server application.
  */
-class ServerApp : public QCoreApplication
+class ServerApp : public QCoreApplication, public SharedObject
 {
     Q_OBJECT
 
@@ -33,8 +35,6 @@ public:
 
     /**
      * Initializes the application.
-     *
-     * @param configFile the path to the application configuration file.
      */
     ServerApp (int& argc, char** argv);
 

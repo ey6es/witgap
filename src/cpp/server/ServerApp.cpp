@@ -17,7 +17,6 @@
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
 #include "net/ConnectionManager.h"
-#include "peer/PeerManager.h"
 #include "scene/SceneManager.h"
 #include "util/General.h"
 #include "util/Mailer.h"
@@ -281,7 +280,7 @@ ServerApp::ServerApp (int& argc, char** argv) :
     _sceneManager = new SceneManager(this);
 
     // register for remote invocation
-    _peerManager->addInvocationTarget(this);
+    _peerManager->registerSharedObject(this);
 
     // start the database and scene threads
     _databaseThread->start();

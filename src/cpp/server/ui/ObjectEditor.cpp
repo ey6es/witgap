@@ -44,6 +44,13 @@ void ObjectEditor::update ()
     }
 }
 
+void ObjectEditor::apply ()
+{
+    for (int ii = 1, nn = _children.size(); ii < nn; ii += 2) {
+        static_cast<PropertyEditor*>(_children.at(ii))->apply();
+    }
+}
+
 PropertyEditor* PropertyEditor::create (
     QObject* object, const QMetaProperty& property, QObject* parent)
 {

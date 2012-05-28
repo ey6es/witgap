@@ -82,7 +82,7 @@ void Peer::sendHeader ()
 
     // send our instance list
     InvokeAction action;
-    action.targetIndex = _app->peerManager()->invocationTargetIndex(_app->peerManager());
+    action.sharedObjectId = _app->peerManager()->sharedObjectId();
     action.methodIndex = PeerManager::staticMetaObject.indexOfMethod(
         "instanceAdded(InstanceInfo)");
     action.args.append(QVariant());

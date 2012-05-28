@@ -14,7 +14,6 @@
 #include "db/SessionRepository.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
-#include "peer/PeerManager.h"
 #include "util/General.h"
 
 ConnectionManager::ConnectionManager (ServerApp* app) :
@@ -36,7 +35,7 @@ ConnectionManager::ConnectionManager (ServerApp* app) :
     }
 
     // register for remote invocation
-    _app->peerManager()->addInvocationTarget(this);
+    _app->peerManager()->registerSharedObject(this);
 
     // start listening on the configured port
     QHostAddress address(app->config().value("listen_address").toString());
