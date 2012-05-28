@@ -84,9 +84,7 @@ void PropertyEditor::setObject (QObject* object)
         if (_object != 0) {
             _object->disconnect(this);
         }
-        // the '2' identified the method as a signal (see definition for SIGNAL macro)
-        connect(object, QByteArray(_property.notifySignal().signature()).prepend('2'),
-            SLOT(update()));
+        connect(object, signal(_property.notifySignal().signature()), SLOT(update()));
     }
     _object = object;
     update();

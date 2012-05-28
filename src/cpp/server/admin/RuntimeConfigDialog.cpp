@@ -20,7 +20,7 @@ RuntimeConfigDialog::RuntimeConfigDialog (Session* parent) :
     setBorder(new FrameBorder());
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
 
-    addChild(_editor = new ObjectEditor(new RuntimeConfig(),
+    addChild(_editor = new ObjectEditor(new RuntimeConfig(this),
         RuntimeConfig::staticMetaObject.propertyOffset()));
 
     Button* ok = new Button(tr("OK"));

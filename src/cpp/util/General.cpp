@@ -286,3 +286,8 @@ void unget (QIODevice* device, quint32 value)
     device->ungetChar((value >> 16) & 0xFF);
     device->ungetChar(value >> 24);
 }
+
+QByteArray signal (const char* signature)
+{
+    return QByteArray(SIGNAL()).append(signature);
+}

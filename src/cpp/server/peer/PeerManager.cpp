@@ -129,6 +129,23 @@ void PeerManager::invoke (SharedObject* object, const char* method,
     }
 }
 
+void PeerManager::invokeOthers (SharedObject* object, const char* method,
+    QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
+    QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
+    QGenericArgument val8, QGenericArgument val9)
+{
+    Callback* callback;
+    QVariant variant = prepareInvoke(
+        object, method, val0, val1, val2, val3, val4, val5, val6, val7, val8, val9, &callback);
+    if (callback == 0) {
+        QMetaObject::invokeMethod(this, "executeOthers", Q_ARG(const QVariant&, variant));
+
+    } else {
+        QMetaObject::invokeMethod(this, "requestOthers", Q_ARG(const QVariant&, variant),
+            Q_ARG(const Callback&, *callback));
+    }
+}
+
 void PeerManager::invokeLead (SharedObject* object, const char* method,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
@@ -280,6 +297,34 @@ void PeerManager::instanceRemoved (quint64 id)
     }
 }
 
+void PeerManager::executeOthers (const QVariant& action)
+{
+    ExecuteMessage msg;
+    msg.action = action;
+    QByteArray bytes = AbstractPeer::encodeMessage(msg);
+    foreach (Peer* peer, _peers) {
+        peer->sendMessage(bytes);
+    }
+}
+
+void PeerManager::requestOthers (const QVariant& request, const Callback& callback)
+{
+    // store it
+    quint32 requestId = ++_lastRequestId;
+    PendingRequest& req = _pendingRequests[requestId];
+    req.callback = callback;
+
+    // send it off to everyone else
+    RequestMessage msg;
+    msg.request = request;
+    foreach (Peer* peer, _peers) {
+        req.remaining.insert(peer->record().name);
+        peer->sendRequestMessage(msg, Callback(_this,
+            "handleResponse(quint32,QString,QVariantList)",
+            Q_ARG(quint32, requestId), Q_ARG(const QString&, peer->record().name)).setCollate());
+    }
+}
+
 void PeerManager::executeLead (const QVariant& action)
 {
     // see if it's for the local peer
@@ -397,10 +442,13 @@ void PeerManager::mapSharedObject (QObject* object)
 {
     _sharedObjects.insert(_lastSharedObjectId, object);
 
-    // install synchronizers for any properties
+    // create transmitters for properties
     const QMetaObject* meta = object->metaObject();
     for (int ii = 0, nn = meta->propertyCount(); ii < nn; ii++) {
-
+        const QMetaProperty& property = meta->property(ii);
+        if (property.hasNotifySignal()) {
+            new PropertyTransmitter(_app, object, _lastSharedObjectId, property);
+        }
     }
 }
 
@@ -468,12 +516,7 @@ void PeerManager::updatePeers (const PeerRecordList& records)
 void PeerManager::execute (const QVariant& action)
 {
     // encode and send it off to everyone else
-    ExecuteMessage msg;
-    msg.action = action;
-    QByteArray bytes = AbstractPeer::encodeMessage(msg);
-    foreach (Peer* peer, _peers) {
-        peer->sendMessage(bytes);
-    }
+    executeOthers(action);
 
     // then run it here
     const PeerAction* paction = static_cast<const PeerAction*>(action.constData());
@@ -556,6 +599,7 @@ PropertyTransmitter::PropertyTransmitter (
     _sharedObjectId(sharedObjectId),
     _property(property)
 {
+    connect(object, signal(_property.notifySignal().signature()), SLOT(propertyChanged()));
 }
 
 void PropertyTransmitter::propertyChanged ()
@@ -564,7 +608,7 @@ void PropertyTransmitter::propertyChanged ()
     action.sharedObjectId = _sharedObjectId;
     action.propertyIndex = _property.propertyIndex();
     action.value = _property.read(parent());
-
+    _app->peerManager()->executeOthers(QVariant::fromValue(action));
 }
 
 void InvokeAction::execute (ServerApp* app) const

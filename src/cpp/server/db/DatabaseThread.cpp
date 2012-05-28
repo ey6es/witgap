@@ -10,6 +10,7 @@
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
 #include "db/PeerRepository.h"
+#include "db/PropertyRepository.h"
 #include "db/SceneRepository.h"
 #include "db/SessionRepository.h"
 #include "db/UserRepository.h"
@@ -26,12 +27,14 @@ DatabaseThread::DatabaseThread (ServerApp* app) :
     _password(app->config().value("database_password").toString()),
     _connectOptions(app->config().value("database_connect_options").toString()),
     _peerRepository(new PeerRepository()),
+    _propertyRepository(new PropertyRepository(app)),
     _sceneRepository(new SceneRepository()),
     _sessionRepository(new SessionRepository(app)),
     _userRepository(new UserRepository(app))
 {
     // move the repositories to this thread
     _peerRepository->moveToThread(this);
+    _propertyRepository->moveToThread(this);
     _sceneRepository->moveToThread(this);
     _sessionRepository->moveToThread(this);
     _userRepository->moveToThread(this);
@@ -56,6 +59,7 @@ void DatabaseThread::run ()
         if (db.open()) {
             // initialize repositories
             _peerRepository->init();
+            _propertyRepository->init();
             _sceneRepository->init();
             _sessionRepository->init();
             _userRepository->init();

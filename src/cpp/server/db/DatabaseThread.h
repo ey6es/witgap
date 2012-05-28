@@ -7,6 +7,7 @@
 #include <QThread>
 
 class PeerRepository;
+class PropertyRepository;
 class SceneRepository;
 class ServerApp;
 class SessionRepository;
@@ -30,6 +31,11 @@ public:
      * Returns a pointer to the peer repository.
      */
     PeerRepository* peerRepository () const { return _peerRepository; }
+
+    /**
+     * Returns a pointer to the property repository.
+     */
+    PropertyRepository* propertyRepository () const { return _propertyRepository; }
 
     /**
      * Returns a pointer to the scene repository.
@@ -79,6 +85,9 @@ protected:
 
     /** The peer repository. */
     PeerRepository* _peerRepository;
+
+    /** The property repository. */
+    PropertyRepository* _propertyRepository;
 
     /** The scene repository. */
     SceneRepository* _sceneRepository;

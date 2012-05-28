@@ -127,6 +127,21 @@ public:
         QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument());
 
     /**
+     * Invokes a method on all peers other than this one.  If the invocation includes a callback,
+     * it will receive a QVariantListHash mapping peer names to results.  This method is
+     * thread-safe.
+     *
+     * @param object the object on which the invoke the method.
+     * @param method the normalized method signature.
+     */
+    void invokeOthers (SharedObject* object, const char* method,
+        QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
+        QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
+        QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
+        QGenericArgument val6 = QGenericArgument(), QGenericArgument val7 = QGenericArgument(),
+        QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument());
+
+    /**
      * Invokes a method on the lead node (the node whose name comes first in lexicographic order).
      * This method is thread-safe.
      *
@@ -235,6 +250,16 @@ public:
      * Called when an instance is removed on any peer.
      */
     Q_INVOKABLE void instanceRemoved (quint64 id);
+
+    /**
+     * Executes an action on all peers other than this one.
+     */
+    Q_INVOKABLE void executeOthers (const QVariant& action);
+
+    /**
+     * Makes a request of all peers other than this one.
+     */
+    Q_INVOKABLE void requestOthers (const QVariant& request, const Callback& callback);
 
     /**
      * Executes an action on the lead peer.

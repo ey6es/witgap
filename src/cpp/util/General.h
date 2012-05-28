@@ -248,4 +248,9 @@ int randomIndex (const double* probs);
  */
 void unget (QIODevice* device, quint32 value);
 
+/**
+ * Equivalent to the SIGNAL() macro; returns the signal equivalent of the supplied signature.
+ */
+QByteArray signal (const char* signature);
+
 #endif // GENERAL

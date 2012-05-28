@@ -22,6 +22,7 @@ class Callback;
 class ConnectionManager;
 class DatabaseThread;
 class PeerManager;
+class RuntimeConfig;
 class SceneManager;
 
 /**
@@ -67,6 +68,11 @@ public:
      * Returns a reference to the map from supported locales to translators.
      */
     const QHash<QString, QTranslator*>& translators () const { return _translators; }
+
+    /**
+     * Returns a pointer to the runtime configuration.
+     */
+    RuntimeConfig* runtimeConfig () const { return _runtimeConfig; }
 
     /**
      * Returns a pointer to the connection manager.
@@ -152,6 +158,9 @@ protected:
 
     /** Translators for supported locales. */
     QHash<QString, QTranslator*> _translators;
+
+    /** The runtime configuration. */
+    RuntimeConfig* _runtimeConfig;
 
     /** The connection manager. */
     ConnectionManager* _connectionManager;
