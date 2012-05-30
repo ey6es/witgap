@@ -12,6 +12,7 @@
 
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
+#include "db/PropertyRepository.h"
 #include "peer/Peer.h"
 #include "peer/PeerConnection.h"
 #include "peer/PeerManager.h"
@@ -592,6 +593,16 @@ void PeerManager::handleResponse (quint32 requestId, const QString& name, const 
     }
 }
 
+PropertyTransmitter* PropertyTransmitter::instance (QObject* object, const QMetaProperty& property)
+{
+    return static_cast<PropertyTransmitter*>(object->property(name(property)).value<QObject*>());
+}
+
+QByteArray PropertyTransmitter::name (const QMetaProperty& property)
+{
+    return QByteArray(property.name()) += "Transmitter";
+}
+
 PropertyTransmitter::PropertyTransmitter (
         ServerApp* app, QObject* object, quint32 sharedObjectId, const QMetaProperty& property) :
     QObject(object),
@@ -599,11 +610,15 @@ PropertyTransmitter::PropertyTransmitter (
     _sharedObjectId(sharedObjectId),
     _property(property)
 {
+    object->setProperty(name(property), QVariant::fromValue<QObject*>(this));
     connect(object, signal(_property.notifySignal().signature()), SLOT(propertyChanged()));
 }
 
 void PropertyTransmitter::propertyChanged ()
 {
+    if (_ignoreChange) {
+        return;
+    }
     SetPropertyAction action;
     action.sharedObjectId = _sharedObjectId;
     action.propertyIndex = _property.propertyIndex();
@@ -632,7 +647,23 @@ void SetPropertyAction::execute (ServerApp* app) const
     if (object == 0) {
         return;
     }
-    object->metaObject()->property(propertyIndex).write(object, value);
+    // ignore changes in transmitter and persister, if any
+    QMetaProperty property = object->metaObject()->property(propertyIndex);
+    PropertyTransmitter* transmitter = PropertyTransmitter::instance(object, property);
+    PropertyPersister* persister = PropertyPersister::instance(object, property);
+    if (transmitter != 0) {
+        transmitter->setIgnoreChange(true);
+    }
+    if (persister != 0) {
+        persister->setIgnoreChange(true);
+    }
+    property.write(object, value);
+    if (transmitter != 0) {
+        transmitter->setIgnoreChange(false);
+    }
+    if (persister != 0) {
+        persister->setIgnoreChange(false);
+    }
 }
 
 void InvokeRequest::handle (ServerApp* app, const Callback& callback) const

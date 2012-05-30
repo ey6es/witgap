@@ -421,10 +421,25 @@ class PropertyTransmitter : public QObject
 public:
 
     /**
+     * Returns the transmitter for the specified object property, or 0 for none.
+     */
+    static PropertyTransmitter* instance (QObject* object, const QMetaProperty& property);
+
+    /**
+     * Returns the name of the transmitter for the specified property.
+     */
+    static QByteArray name (const QMetaProperty& property);
+
+    /**
      * Initializes the transmitter.
      */
     PropertyTransmitter (
         ServerApp* app, QObject* object, quint32 sharedObjectId, const QMetaProperty& property);
+
+    /**
+     * Sets whether or not to ignore property changes.
+     */
+    void setIgnoreChange (bool ignore) { _ignoreChange = ignore; }
 
 public slots:
 
@@ -443,6 +458,9 @@ protected:
 
     /** The property that we watch. */
     QMetaProperty _property;
+
+    /** When set, indicates that we should ignore property changes. */
+    bool _ignoreChange;
 };
 
 /**

@@ -10,6 +10,7 @@
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
 #include "db/PropertyRepository.h"
+#include "peer/PeerManager.h"
 #include "util/General.h"
 
 PropertyRepository::PropertyRepository (ServerApp* app) :
@@ -96,12 +97,23 @@ void PropertyRepository::storeProperty (
     query.exec();
 }
 
+PropertyPersister* PropertyPersister::instance (QObject* object, const QMetaProperty& property)
+{
+    return static_cast<PropertyPersister*>(object->property(name(property)).value<QObject*>());
+}
+
+QByteArray PropertyPersister::name (const QMetaProperty& property)
+{
+    return QByteArray(property.name()) += "Persister";
+}
+
 PropertyPersister::PropertyPersister (
         ServerApp* app, QObject* object, const QMetaProperty& property) :
     CallableObject(object),
     _app(app),
     _property(property)
 {
+    object->setProperty(name(property), QVariant::fromValue<QObject*>(this));
     connect(object, signal(_property.notifySignal().signature()), SLOT(propertyChanged()));
 
     // load the initial value
@@ -112,6 +124,9 @@ PropertyPersister::PropertyPersister (
 
 void PropertyPersister::propertyChanged ()
 {
+    if (_ignoreChange) {
+        return;
+    }
     QObject* parent = this->parent();
     QMetaObject::invokeMethod(_app->databaseThread()->propertyRepository(), "storeProperty",
         Q_ARG(const QString&, parent->objectName()), Q_ARG(const QString&, _property.name()),
@@ -121,6 +136,17 @@ void PropertyPersister::propertyChanged ()
 void PropertyPersister::setProperty (const QVariant& value)
 {
     if (value.isValid()) {
-        _property.write(parent(), value);
+        // ignore changes here and in the transmitter, if any
+        setIgnoreChange(true);
+        QObject* parent = this->parent();
+        PropertyTransmitter* transmitter = PropertyTransmitter::instance(parent, _property);
+        if (transmitter != 0) {
+            transmitter->setIgnoreChange(true);
+        }
+        _property.write(parent, value);
+        if (transmitter != 0) {
+            transmitter->setIgnoreChange(false);
+        }
+        setIgnoreChange(false);
     }
 }
