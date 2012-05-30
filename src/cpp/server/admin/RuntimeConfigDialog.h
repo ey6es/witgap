@@ -7,6 +7,7 @@
 #include "ui/Window.h"
 
 class ObjectEditor;
+class ObjectSynchronizer;
 class Session;
 
 /**
@@ -34,6 +35,9 @@ protected:
 
     /** The object editor. */
     ObjectEditor* _editor;
+
+    /** Synchronizes our copy of the runtime config with the original. */
+    ObjectSynchronizer* _synchronizer;
 };
 
 #endif // RUNTIME_CONFIG_DIALOG

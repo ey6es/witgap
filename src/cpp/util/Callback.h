@@ -281,27 +281,53 @@ protected:
 };
 
 /**
- * Listens for property changes in order to invoke a method with the new value.
+ * Provides a means of synchronizing property values between objects of the same class living in
+ * different threads.
  */
-class PropertyInvoker : public QObject
+class ObjectSynchronizer : public QObject
 {
     Q_OBJECT
 
 public:
 
     /**
-     * Initializes the invoker.
+     * Initializes the synchronizer.
+     *
+     * @param autoApply if true, automatically apply changes made to the copy to the original.
      */
-    PropertyInvoker (
-        QObject* object, const QMetaProperty& property,
-        const WeakCallablePointer& target, const char* method);
+    ObjectSynchronizer (QObject* original, QObject* copy, bool autoApply = false);
 
     /**
-     * Initializes the invoker.
+     * Applies the changes made in the copy to the original.
      */
-    PropertyInvoker (
-        QObject* object, const QMetaProperty& property,
-        const WeakCallablePointer& target, const QMetaMethod& method);
+    void apply () { emit applied(); }
+
+signals:
+
+    /**
+     * Fired when the apply method is called.
+     */
+    void applied ();
+};
+
+/**
+ * Handles the synchronization of a single property.
+ */
+class PropertySynchronizer : public CallableObject
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the synchronizer.
+     */
+    PropertySynchronizer (QObject* object, const QMetaProperty& property);
+
+    /**
+     * Sets our counterpart pointer.
+     */
+    void setCounterpart (const WeakCallablePointer& counterpart);
 
     /**
      * Sets the property.
@@ -320,38 +346,8 @@ protected:
     /** The property that we watch. */
     QMetaProperty _property;
 
-    /** The object to call. */
-    WeakCallablePointer _target;
-
-    /** The method that we invoke with new values. */
-    QMetaMethod _method;
-};
-
-class PropertySynchronizer : public CallableObject
-{
-    Q_OBJECT
-
-public:
-
-    /**
-     * Initializes the synchronizer.
-     */
-    PropertySynchronizer (QObject* local, QObject* remote);
-
-    /**
-     * Applies the property values in the local object to the remote one.
-     */
-    void apply ();
-
-    /**
-     * Sets the specified property.
-     */
-    Q_INVOKABLE void setProperty (const QMetaProperty& property, const QVariant& value);
-
-protected:
-
-    /** The object to synchronize with. */
-    QObject* _remote;
+    /** Our counterpart on the other object. */
+    WeakCallablePointer _counterpart;
 };
 
 #endif // CALLBACK

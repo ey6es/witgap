@@ -223,63 +223,53 @@ CallableObject::CallableObject (QObject* parent) :
 {
 }
 
-PropertyInvoker::PropertyInvoker (
-        QObject* object, const QMetaProperty& property,
-        const WeakCallablePointer& target, const char* method) :
-    QObject(object),
-    _property(property),
-    _target(target),
-    _method(metaMethod(target.data()->metaObject(), method))
+ObjectSynchronizer::ObjectSynchronizer (QObject* original, QObject* copy, bool autoApply) :
+    QObject(copy)
 {
-    connect(object, signal(property.notifySignal().signature()), SLOT(propertyChanged()));
-    connect(_target.data(), SIGNAL(destroyed()), SLOT(deleteLater()));
-    QMetaObject::invokeMethod(this, "propertyChanged");
-}
-
-PropertyInvoker::PropertyInvoker (
-        QObject* object, const QMetaProperty& property,
-        const WeakCallablePointer& target, const QMetaMethod& method) :
-    QObject(object),
-    _property(property),
-    _target(target),
-    _method(method)
-{
-    connect(object, signal(property.notifySignal().signature()), SLOT(propertyChanged()));
-    connect(_target.data(), SIGNAL(destroyed()), SLOT(deleteLater()));
-    QMetaObject::invokeMethod(this, "propertyChanged");
-}
-
-void PropertyInvoker::setProperty (const QVariant& value)
-{
-    _property.write(parent(), value);
-}
-
-void PropertyInvoker::propertyChanged ()
-{
-    _target.invoke(_method, Q_ARG(const QMetaProperty&, _property),
-        Q_ARG(const QVariant&, _property.read(parent())));
-}
-
-PropertySynchronizer::PropertySynchronizer (QObject* local, QObject* remote) :
-    CallableObject(local),
-    _remote(remote)
-{
-    const QMetaObject* metaObject = local->metaObject();
-    QMetaMethod method = metaMethod(metaObject, "setProperty(QMetaProperty,QVariant)");
+    const QMetaObject* metaObject = copy->metaObject();
     for (int ii = 0, nn = metaObject->propertyCount(); ii < nn; ii++) {
         QMetaProperty property = metaObject->property(ii);
         if (property.hasNotifySignal()) {
-            new PropertyInvoker(remote, property, _this, method);
+            PropertySynchronizer* osync = new PropertySynchronizer(original, property);
+            PropertySynchronizer* csync = new PropertySynchronizer(copy, property);
+            osync->setCounterpart(csync);
+            csync->setCounterpart(osync);
+
+            // transfer to copy when the original changes
+            QByteArray notifySignal = signal(property.notifySignal().signature());
+            osync->connect(original, notifySignal, SLOT(propertyChanged()));
+
+            // transfer to original when the copy changes/is applied
+            if (autoApply) {
+                csync->connect(copy, notifySignal, SLOT(propertyChanged()));
+            } else {
+                csync->connect(this, SIGNAL(applied()), SLOT(propertyChanged()));
+            }
+
+            // transfer the initial value from original to copy
+            QMetaObject::invokeMethod(osync, "propertyChanged");
         }
     }
 }
 
-void PropertySynchronizer::apply ()
+PropertySynchronizer::PropertySynchronizer (QObject* object, const QMetaProperty& property) :
+    CallableObject(object),
+    _property(property)
 {
-    QObject* local = parent();
 }
 
-void PropertySynchronizer::setProperty (const QMetaProperty& property, const QVariant& value)
+void PropertySynchronizer::setCounterpart (const WeakCallablePointer& counterpart)
 {
-    property.write(parent(), value);
+    _counterpart = counterpart;
+    connect(counterpart.data(), SIGNAL(destroyed()), SLOT(deleteLater()));
+}
+
+void PropertySynchronizer::setProperty (const QVariant& value)
+{
+    _property.write(parent(), value);
+}
+
+void PropertySynchronizer::propertyChanged ()
+{
+    _counterpart.invoke("setProperty", Q_ARG(const QVariant&, _property.read(parent())));
 }

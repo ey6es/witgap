@@ -18,7 +18,8 @@ RuntimeConfig::RuntimeConfig (ServerApp* app) :
 }
 
 RuntimeConfig::RuntimeConfig (QObject* parent) :
-    QObject(parent)
+    QObject(parent),
+    _open(false)
 {
 }
 

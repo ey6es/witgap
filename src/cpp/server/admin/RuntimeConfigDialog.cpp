@@ -4,6 +4,7 @@
 #include <QTranslator>
 
 #include "RuntimeConfig.h"
+#include "ServerApp.h"
 #include "admin/RuntimeConfigDialog.h"
 #include "net/Session.h"
 #include "ui/Border.h"
@@ -20,8 +21,10 @@ RuntimeConfigDialog::RuntimeConfigDialog (Session* parent) :
     setBorder(new FrameBorder());
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
 
-    addChild(_editor = new ObjectEditor(new RuntimeConfig(this),
-        RuntimeConfig::staticMetaObject.propertyOffset()));
+    RuntimeConfig* copy = new RuntimeConfig(this);
+    _synchronizer = new ObjectSynchronizer(parent->app()->runtimeConfig(), copy);
+
+    addChild(_editor = new ObjectEditor(copy, RuntimeConfig::staticMetaObject.propertyOffset()));
 
     Button* cancel = new Button(tr("Cancel"));
     connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
@@ -39,5 +42,5 @@ RuntimeConfigDialog::RuntimeConfigDialog (Session* parent) :
 void RuntimeConfigDialog::apply ()
 {
     _editor->apply();
-
+    emit _synchronizer->apply();
 }
