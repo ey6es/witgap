@@ -23,10 +23,21 @@ RuntimeConfigDialog::RuntimeConfigDialog (Session* parent) :
     addChild(_editor = new ObjectEditor(new RuntimeConfig(this),
         RuntimeConfig::staticMetaObject.propertyOffset()));
 
+    Button* cancel = new Button(tr("Cancel"));
+    connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
+    Button* apply = new Button(tr("Apply"));
+    connect(apply, SIGNAL(pressed()), SLOT(apply()));
     Button* ok = new Button(tr("OK"));
+    connect(ok, SIGNAL(pressed()), SLOT(apply()));
     connect(ok, SIGNAL(pressed()), SLOT(deleteLater()));
-    addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, ok));
+    addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, cancel, apply, ok));
 
     pack();
     center();
+}
+
+void RuntimeConfigDialog::apply ()
+{
+    _editor->apply();
+
 }

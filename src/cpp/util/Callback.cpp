@@ -8,6 +8,7 @@
 #include <QtDebug>
 
 #include "util/Callback.h"
+#include "util/General.h"
 
 using namespace std;
 
@@ -22,7 +23,7 @@ WeakCallablePointer::WeakCallablePointer (QObject* object)
 
 WeakCallablePointer::WeakCallablePointer (const CallablePointer& pointer) :
     QWeakPointer<QObject>(pointer),
-    _semaphore(pointer._semaphore)
+    _lock(pointer._lock)
 {
 }
 
@@ -54,15 +55,15 @@ bool WeakCallablePointer::invoke (const QMetaMethod& method,
 
 void WeakCallablePointer::lock () const
 {
-    if (_semaphore) {
-        _semaphore->acquire();
+    if (_lock) {
+        _lock->lockForRead();
     }
 }
 
 void WeakCallablePointer::unlock () const
 {
-    if (_semaphore) {
-        _semaphore->release();
+    if (_lock) {
+        _lock->unlock();
     }
 }
 
@@ -79,50 +80,35 @@ WeakCallablePointer& WeakCallablePointer::operator= (QObject* object)
 WeakCallablePointer& WeakCallablePointer::operator= (const CallablePointer& pointer)
 {
     *((QWeakPointer<QObject>*)this) = pointer;
-    _semaphore = pointer._semaphore;
+    _lock = pointer._lock;
 }
 
-Callback::Callback (QObject* object, const char* method,
+/**
+ * Helper function for method resolution: returns the meta-method with the supplied
+ * signature.
+ */
+static QMetaMethod metaMethod (const QMetaObject* metaObject, const char* signature)
+{
+    return metaObject->method(metaObject->indexOfMethod(signature));
+}
+
+Callback::Callback (const WeakCallablePointer& object, const char* method,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9) :
         _object(object),
-        _method(object->metaObject()->method(object->metaObject()->indexOfMethod(method))),
+        _method(metaMethod(object.data()->metaObject(), method)),
         _collate(false),
         _connectionType(Qt::AutoConnection)
 {
     setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
 }
 
-Callback::Callback (QObject* object, const QMetaMethod& method,
+Callback::Callback (const WeakCallablePointer& object, const QMetaMethod& method,
     QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
     QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
     QGenericArgument val8, QGenericArgument val9) :
         _object(object),
-        _method(method),
-        _collate(false),
-        _connectionType(Qt::AutoConnection)
-{
-    setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
-}
-
-Callback::Callback (const CallablePointer& pointer, const char* method,
-    QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
-    QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
-    QGenericArgument val8, QGenericArgument val9) :
-        _object(pointer),
-        _method(pointer->metaObject()->method(pointer->metaObject()->indexOfMethod(method))),
-        _collate(false),
-        _connectionType(Qt::AutoConnection)
-{
-    setArgs(val0, val1, val2, val3, val4, val5, val6, val7, val8, val9);
-}
-
-Callback::Callback (const CallablePointer& pointer, const QMetaMethod& method,
-    QGenericArgument val0, QGenericArgument val1, QGenericArgument val2, QGenericArgument val3,
-    QGenericArgument val4, QGenericArgument val5, QGenericArgument val6, QGenericArgument val7,
-    QGenericArgument val8, QGenericArgument val9) :
-        _object(pointer),
         _method(method),
         _collate(false),
         _connectionType(Qt::AutoConnection)
@@ -219,24 +205,81 @@ static void noopDeleter (QObject* obj)
 
 CallablePointer::CallablePointer (QObject* object) :
     QSharedPointer<QObject>(object, noopDeleter),
-    _semaphore(new QSemaphore(numeric_limits<int>::max()))
+    _lock(new QReadWriteLock())
 {
 }
 
 CallablePointer::~CallablePointer ()
 {
-    // acquire all the resources
-    _semaphore->acquire(numeric_limits<int>::max());
-
     // note that the object is no longer available
+    _lock->lockForWrite();
     clear();
-
-    // release all the resources
-    _semaphore->release(numeric_limits<int>::max());
+    _lock->unlock();
 }
 
 CallableObject::CallableObject (QObject* parent) :
     QObject(parent),
     _this(this)
 {
+}
+
+PropertyInvoker::PropertyInvoker (
+        QObject* object, const QMetaProperty& property,
+        const WeakCallablePointer& target, const char* method) :
+    QObject(object),
+    _property(property),
+    _target(target),
+    _method(metaMethod(target.data()->metaObject(), method))
+{
+    connect(object, signal(property.notifySignal().signature()), SLOT(propertyChanged()));
+    connect(_target.data(), SIGNAL(destroyed()), SLOT(deleteLater()));
+    QMetaObject::invokeMethod(this, "propertyChanged");
+}
+
+PropertyInvoker::PropertyInvoker (
+        QObject* object, const QMetaProperty& property,
+        const WeakCallablePointer& target, const QMetaMethod& method) :
+    QObject(object),
+    _property(property),
+    _target(target),
+    _method(method)
+{
+    connect(object, signal(property.notifySignal().signature()), SLOT(propertyChanged()));
+    connect(_target.data(), SIGNAL(destroyed()), SLOT(deleteLater()));
+    QMetaObject::invokeMethod(this, "propertyChanged");
+}
+
+void PropertyInvoker::setProperty (const QVariant& value)
+{
+    _property.write(parent(), value);
+}
+
+void PropertyInvoker::propertyChanged ()
+{
+    _target.invoke(_method, Q_ARG(const QMetaProperty&, _property),
+        Q_ARG(const QVariant&, _property.read(parent())));
+}
+
+PropertySynchronizer::PropertySynchronizer (QObject* local, QObject* remote) :
+    CallableObject(local),
+    _remote(remote)
+{
+    const QMetaObject* metaObject = local->metaObject();
+    QMetaMethod method = metaMethod(metaObject, "setProperty(QMetaProperty,QVariant)");
+    for (int ii = 0, nn = metaObject->propertyCount(); ii < nn; ii++) {
+        QMetaProperty property = metaObject->property(ii);
+        if (property.hasNotifySignal()) {
+            new PropertyInvoker(remote, property, _this, method);
+        }
+    }
+}
+
+void PropertySynchronizer::apply ()
+{
+    QObject* local = parent();
+}
+
+void PropertySynchronizer::setProperty (const QMetaProperty& property, const QVariant& value)
+{
+    property.write(parent(), value);
 }

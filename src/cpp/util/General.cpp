@@ -289,5 +289,6 @@ void unget (QIODevice* device, quint32 value)
 
 QByteArray signal (const char* signature)
 {
+    // the SIGNAL() macro prepends a qualifier to its parameter
     return QByteArray(SIGNAL()).append(signature);
 }

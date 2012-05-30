@@ -23,6 +23,13 @@ public:
      */
     Q_INVOKABLE RuntimeConfigDialog (Session* parent);
 
+protected slots:
+
+    /**
+     * Applies the current state.
+     */
+    void apply ();
+
 protected:
 
     /** The object editor. */

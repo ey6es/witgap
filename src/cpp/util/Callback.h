@@ -6,7 +6,7 @@
 
 #include <QMetaMethod>
 #include <QObject>
-#include <QSemaphore>
+#include <QReadWriteLock>
 #include <QSharedPointer>
 #include <QVariant>
 #include <QWeakPointer>
@@ -110,8 +110,8 @@ public:
 
 protected:
 
-    /** The mutex that coordinates invocation and deletion. */
-    QSharedPointer<QSemaphore> _semaphore;
+    /** The lock that coordinates invocation and deletion. */
+    QSharedPointer<QReadWriteLock> _lock;
 };
 
 /**
@@ -131,7 +131,7 @@ public:
      *
      * @param member the signature of the member to call.
      */
-    Callback (QObject* object, const char* member,
+    Callback (const WeakCallablePointer& object, const char* member,
         QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
         QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
         QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
@@ -141,29 +141,7 @@ public:
     /**
      * Creates a new callback for the specified member.
      */
-    Callback (QObject* object, const QMetaMethod& method,
-        QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
-        QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
-        QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
-        QGenericArgument val6 = QGenericArgument(), QGenericArgument val7 = QGenericArgument(),
-        QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument());
-
-    /**
-     * Creates a new callback object for the named member.
-     *
-     * @param member the signature of the member to call.
-     */
-    Callback (const CallablePointer& pointer, const char* member,
-        QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
-        QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
-        QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
-        QGenericArgument val6 = QGenericArgument(), QGenericArgument val7 = QGenericArgument(),
-        QGenericArgument val8 = QGenericArgument(), QGenericArgument val9 = QGenericArgument());
-
-    /**
-     * Creates a new callback for the specified member.
-     */
-    Callback (const CallablePointer& pointer, const QMetaMethod& method,
+    Callback (const WeakCallablePointer& object, const QMetaMethod& method,
         QGenericArgument val0 = QGenericArgument(), QGenericArgument val1 = QGenericArgument(),
         QGenericArgument val2 = QGenericArgument(), QGenericArgument val3 = QGenericArgument(),
         QGenericArgument val4 = QGenericArgument(), QGenericArgument val5 = QGenericArgument(),
@@ -256,7 +234,7 @@ protected:
 };
 
 /**
- * Contains a pointer to a QObject and a semaphore used to coordinate invocation and deletion.
+ * Contains a pointer to a QObject and a lock used to coordinate invocation and deletion.
  */
 class CallablePointer : public QSharedPointer<QObject>
 {
@@ -276,8 +254,8 @@ public:
 
 protected:
 
-    /** The semaphore that prevents simultaneous invocation and deletion. */
-    QSharedPointer<QSemaphore> _semaphore;
+    /** The lock that prevents simultaneous invocation and deletion. */
+    QSharedPointer<QReadWriteLock> _lock;
 };
 
 /**
@@ -300,6 +278,80 @@ protected:
 
     /** The callback pointer. */
     CallablePointer _this;
+};
+
+/**
+ * Listens for property changes in order to invoke a method with the new value.
+ */
+class PropertyInvoker : public QObject
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the invoker.
+     */
+    PropertyInvoker (
+        QObject* object, const QMetaProperty& property,
+        const WeakCallablePointer& target, const char* method);
+
+    /**
+     * Initializes the invoker.
+     */
+    PropertyInvoker (
+        QObject* object, const QMetaProperty& property,
+        const WeakCallablePointer& target, const QMetaMethod& method);
+
+    /**
+     * Sets the property.
+     */
+    Q_INVOKABLE void setProperty (const QVariant& value);
+
+public slots:
+
+    /**
+     * Called when the tracked property has changed.
+     */
+    void propertyChanged ();
+
+protected:
+
+    /** The property that we watch. */
+    QMetaProperty _property;
+
+    /** The object to call. */
+    WeakCallablePointer _target;
+
+    /** The method that we invoke with new values. */
+    QMetaMethod _method;
+};
+
+class PropertySynchronizer : public CallableObject
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the synchronizer.
+     */
+    PropertySynchronizer (QObject* local, QObject* remote);
+
+    /**
+     * Applies the property values in the local object to the remote one.
+     */
+    void apply ();
+
+    /**
+     * Sets the specified property.
+     */
+    Q_INVOKABLE void setProperty (const QMetaProperty& property, const QVariant& value);
+
+protected:
+
+    /** The object to synchronize with. */
+    QObject* _remote;
 };
 
 #endif // CALLBACK

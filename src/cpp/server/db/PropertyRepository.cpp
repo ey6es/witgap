@@ -120,5 +120,7 @@ void PropertyPersister::propertyChanged ()
 
 void PropertyPersister::setProperty (const QVariant& value)
 {
-    _property.write(parent(), value);
+    if (value.isValid()) {
+        _property.write(parent(), value);
+    }
 }
