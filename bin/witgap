@@ -4,6 +4,7 @@
 
 PIDFILE=$1
 SERVER_PIDFILE=/var/run/witgap-server.pid
+SERVER_OPTS=
 
 termHandler () {
     if [ -f $SERVER_PIDFILE ]; then
@@ -27,7 +28,8 @@ mkdir -p log
 chown andrzej:andrzej log
 
 while true; do
-    sudo -n -u andrzej ./bin/witgap-server etc/server.ini >> log/witgap-server.log &
+    . etc/server.conf
+    sudo -n -u andrzej ./bin/witgap-server etc/server.ini $SERVER_OPTS >> log/witgap-server.log &
     echo $! > $SERVER_PIDFILE
     wait
     rm $SERVER_PIDFILE

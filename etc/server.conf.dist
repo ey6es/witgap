@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# read in the EC2 metadata
+. /var/spool/cloud/meta-data.sh
+
+HOSTNAME=`hostname -s`
+REGION=${EC2_PLACEMENT_AVAILABILITY_ZONE%-*}
+SERVER_OPTS="--name $HOSTNAME --region $REGION --internal_hostname $EC2_LOCAL_IPV4 \
+    --external_hostname $EC2_PUBLIC_IPV4"
