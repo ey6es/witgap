@@ -437,6 +437,11 @@ public:
         ServerApp* app, QObject* object, quint32 sharedObjectId, const QMetaProperty& property);
 
     /**
+     * Destroys the transmitter.
+     */
+    ~PropertyTransmitter ();
+
+    /**
      * Sets whether or not to ignore property changes.
      */
     void setIgnoreChange (bool ignore) { _ignoreChange = ignore; }

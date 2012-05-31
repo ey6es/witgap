@@ -82,6 +82,11 @@ public:
     PropertyPersister (ServerApp* app, QObject* object, const QMetaProperty& property);
 
     /**
+     * Destroys the persister.
+     */
+    ~PropertyPersister ();
+
+    /**
      * Sets whether or not to ignore property changes.
      */
     void setIgnoreChange (bool ignore) { _ignoreChange = ignore; }

@@ -122,6 +122,11 @@ PropertyPersister::PropertyPersister (
         Q_ARG(const Callback&, Callback(_this, "setProperty(QVariant)")));
 }
 
+PropertyPersister::~PropertyPersister ()
+{
+    parent()->setProperty(name(_property), QVariant());
+}
+
 void PropertyPersister::propertyChanged ()
 {
     if (_ignoreChange) {

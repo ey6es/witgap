@@ -614,6 +614,11 @@ PropertyTransmitter::PropertyTransmitter (
     connect(object, signal(_property.notifySignal().signature()), SLOT(propertyChanged()));
 }
 
+PropertyTransmitter::~PropertyTransmitter ()
+{
+    parent()->setProperty(name(_property), QVariant());
+}
+
 void PropertyTransmitter::propertyChanged ()
 {
     if (_ignoreChange) {
