@@ -276,7 +276,7 @@ public slots:
     /**
      * Shows the logon dialog.
      */
-    void showLogonDialog ();
+    void showLogonDialog (bool force = false, bool allowCreate = true);
 
     /**
      * Shows the logoff confirmation dialog.

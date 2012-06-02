@@ -6,6 +6,8 @@
 
 #include "Protocol.h"
 #include "ui/Button.h"
+#include "ui/Layout.h"
+#include "ui/Menu.h"
 
 Button::Button (const QString& label, Qt::Alignment alignment, QObject* parent) :
     Label(QIntVector(), alignment, parent),
@@ -144,4 +146,73 @@ void CheckBox::focusOutEvent (QFocusEvent* e)
 void CheckBox::updateText ()
 {
     setText(QIntVector::createHighlighted(_label));
+}
+
+ComboBox::ComboBox (const QStringList& items, Qt::Alignment alignment, QObject* parent) :
+    Button(QString(), alignment, parent),
+    _selectedIndex(0)
+{
+    connect(this, SIGNAL(pressed()), SLOT(createMenu()));
+    setItems(items);
+}
+
+void ComboBox::setItems (const QStringList& items)
+{
+    if (_items != items) {
+        _items = items;
+        _selectedIndex = qBound(-1, _selectedIndex, _items.size() - 1);
+        setLabel(selectedItem());
+    }
+}
+
+void ComboBox::setSelectedIndex (int index)
+{
+    if (_selectedIndex != index) {
+        _selectedIndex = index;
+        setLabel(selectedItem());
+    }
+}
+
+QString ComboBox::selectedItem () const
+{
+    return _selectedIndex >= 0 && _selectedIndex < _items.size() ?
+        _items.at(_selectedIndex) : QString();
+}
+
+void ComboBox::createMenu ()
+{
+    if (_items.isEmpty()) {
+        return;
+    }
+    _menu = new Menu(session());
+    _menu->setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 0));
+    _menu->connect(this, SIGNAL(destroyed()), SLOT(deleteLater()));
+    foreach (const QString& item, _items) {
+        _menu->addButton(item, this, SLOT(selectItem()));
+    }
+    _menu->pack();
+    _menu->setBounds(QRect(absolutePos() - QPoint(1, 1),
+        _menu->preferredSize(_bounds.width() + 2, -1)));
+    if (_selectedIndex >= 0 && _selectedIndex <= _items.size()) {
+        _menu->children().at(_selectedIndex)->requestFocus();
+    }
+}
+
+void ComboBox::selectItem ()
+{
+    Component* button = static_cast<Component*>(sender());
+    int index = _menu->children().indexOf(button);
+    if (_selectedIndex != index) {
+        setSelectedIndex(index);
+        emit selectionChanged();
+    }
+}
+
+QSize ComboBox::computePreferredSize (int whint, int hhint) const
+{
+    int width = qMax(whint, 0);
+    foreach (const QString& item, _items) {
+        width = qMax(item.length(), width);
+    }
+    return QSize(width, 1);
 }

@@ -29,3 +29,10 @@ void RuntimeConfig::setOpen (bool open)
         emit openChanged(_open = open);
     }
 }
+
+void RuntimeConfig::setFlags (Flags flags)
+{
+    if (_flags != flags) {
+        emit flagsChanged(_flags = flags);
+    }
+}

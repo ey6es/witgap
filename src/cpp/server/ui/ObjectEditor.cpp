@@ -32,7 +32,7 @@ void ObjectEditor::setObject (QObject* object, int propertyOffset)
         if (editor == 0) {
             continue;
         }
-        addChild(new Label(property.name()));
+        addChild(new Label(QString(property.name()) + ":"));
         addChild(editor);
     }
 }
@@ -56,6 +56,12 @@ PropertyEditor* PropertyEditor::create (
 {
     if (!property.isWritable()) {
         return new ReadOnlyPropertyEditor(object, property, parent);
+    }
+    if (property.isFlagType()) {
+        return new FlagPropertyEditor(object, property, parent);
+    }
+    if (property.isEnumType()) {
+        return new EnumPropertyEditor(object, property, parent);
     }
     switch (property.type()) {
         case QVariant::Bool:
@@ -123,6 +129,75 @@ void BoolPropertyEditor::update ()
 void BoolPropertyEditor::apply ()
 {
     _property.write(_object, _box->selected());
+}
+
+EnumPropertyEditor::EnumPropertyEditor (
+        QObject* object, const QMetaProperty& property, QObject* parent) :
+    PropertyEditor(property, parent)
+{
+    QStringList items;
+    QMetaEnum enumerator = property.enumerator();
+    for (int ii = 0, nn = enumerator.keyCount(); ii < nn; ii++) {
+        items.append(enumerator.key(ii));
+    }
+    addChild(_box = new ComboBox(items));
+    connect(_box, SIGNAL(selectionChanged()), SLOT(apply()));
+
+    setObject(object);
+}
+
+void EnumPropertyEditor::update ()
+{
+    int value = _property.read(_object).toInt();
+    QMetaEnum enumerator = _property.enumerator();
+    for (int ii = 0, nn = enumerator.keyCount(); ii < nn; ii++) {
+        if (enumerator.value(ii) == value) {
+            _box->setSelectedIndex(ii);
+            return;
+        }
+    }
+}
+
+void EnumPropertyEditor::apply ()
+{
+    _property.write(_object, _property.enumerator().value(_box->selectedIndex()));
+}
+
+FlagPropertyEditor::FlagPropertyEditor (
+        QObject* object, const QMetaProperty& property, QObject* parent) :
+    PropertyEditor(property, parent)
+{
+    setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 0));
+
+    QMetaEnum enumerator = property.enumerator();
+    for (int ii = 0, nn = enumerator.keyCount(); ii < nn; ii++) {
+        CheckBox* box = new CheckBox(enumerator.key(ii));
+        connect(box, SIGNAL(pressed()), SLOT(apply()));
+        addChild(box);
+    }
+
+    setObject(object);
+}
+
+void FlagPropertyEditor::update ()
+{
+    QMetaEnum enumerator = _property.enumerator();
+    int value = _property.read(_object).toInt();
+    for (int ii = 0, nn = enumerator.keyCount(); ii < nn; ii++) {
+        static_cast<CheckBox*>(_children.at(ii))->setSelected((value & enumerator.value(ii)) != 0);
+    }
+}
+
+void FlagPropertyEditor::apply ()
+{
+    QMetaEnum enumerator = _property.enumerator();
+    int value = 0;
+    for (int ii = 0, nn = enumerator.keyCount(); ii < nn; ii++) {
+        if (static_cast<CheckBox*>(_children.at(ii))->selected()) {
+            value |= enumerator.value(ii);
+        }
+    }
+    _property.write(_object, value);
 }
 
 AbstractStringPropertyEditor::AbstractStringPropertyEditor (

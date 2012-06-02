@@ -12,6 +12,7 @@
 
 #include "LogonDialog.h"
 #include "MainWindow.h"
+#include "RuntimeConfig.h"
 #include "ServerApp.h"
 #include "SettingsDialog.h"
 #include "actor/Pawn.h"
@@ -69,6 +70,11 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
     _chatEntryWindow = new ChatEntryWindow(this);
 
     setConnection(connection);
+
+    // force logon if the server isn't open
+    if (user.id == 0 && !_app->runtimeConfig()->open()) {
+        showLogonDialog(true);
+    }
 }
 
 void Session::maybeSetConnection (
@@ -394,9 +400,10 @@ bool Session::event (QEvent* e)
     }
 }
 
-void Session::showLogonDialog ()
+void Session::showLogonDialog (bool force, bool allowCreate)
 {
-    new LogonDialog(this, _connection ? _connection->cookies().value("username", "") : "");
+    new LogonDialog(this, _connection ? _connection->cookies().value("username", "") : "",
+        force, allowCreate);
 }
 
 void Session::showLogoffDialog ()
@@ -622,10 +629,7 @@ void Session::passwordResetMaybeValidated (const QVariant& result)
 {
     UserRepository::LogonError error = (UserRepository::LogonError)result.toInt();
     if (error != UserRepository::NoError) {
-        if (error == UserRepository::NoSuchUser) {
-            qWarning() << "Received invalid password reset request.";
-        }
-        return;
+        return; // no need to issue a warning; they might just have reloaded the page
     }
     UserRecord urec = qVariantValue<UserRecord>(result);
     qDebug() << "Activated password reset request." << urec.name << urec.email;

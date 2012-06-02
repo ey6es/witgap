@@ -4,7 +4,11 @@
 #ifndef BUTTON
 #define BUTTON
 
+#include <QStringList>
+
 #include "ui/Label.h"
+
+class Menu;
 
 /**
  * A button.
@@ -152,6 +156,82 @@ protected:
 
     /** Whether or not the box is selected. */
     bool _selected;
+};
+
+/**
+ * A button that brings up a menu of choices.
+ */
+class ComboBox : public Button
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the box.
+     */
+    ComboBox (const QStringList& items = QStringList(), Qt::Alignment alignment = Qt::AlignLeft,
+        QObject* parent = 0);
+
+    /**
+     * Sets the list of items available for selection.
+     */
+    void setItems (const QStringList& items);
+
+    /**
+     * Returns a reference to the list of items available for selection.
+     */
+    const QStringList& items () const { return _items; }
+
+    /**
+     * Sets the selected index.
+     */
+    void setSelectedIndex (int index);
+
+    /**
+     * Returns the index of the currently selected item.
+     */
+    int selectedIndex () const { return _selectedIndex; }
+
+    /**
+     * Returns the selected item, or an invalid string for none.
+     */
+    QString selectedItem () const;
+
+signals:
+
+    /**
+     * Fired when the selection changes.
+     */
+    void selectionChanged ();
+
+protected slots:
+
+    /**
+     * Creates the popup menu for the box.
+     */
+    void createMenu ();
+
+    /**
+     * Called when a menu item is selected.
+     */
+    void selectItem ();
+
+protected:
+
+    /**
+     * Computes and returns the preferred size.
+     */
+    virtual QSize computePreferredSize (int whint = -1, int hhint = -1) const;
+
+    /** The items available for selection. */
+    QStringList _items;
+
+    /** The index of the currently selected item. */
+    int _selectedIndex;
+
+    /** The selection menu, if showing. */
+    Menu* _menu;
 };
 
 #endif // BUTTON

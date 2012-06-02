@@ -29,8 +29,11 @@ public:
      * Initializes the dialog.
      *
      * @param username the username cookie, if any.
+     * @param force if true, force logon (because the server is closed to guests).
+     * @param allowCreate whether or not to allow account creation.
      */
-    LogonDialog (Session* parent, const QString& username);
+    LogonDialog (
+        Session* parent, const QString& username, bool force = false, bool allowCreate = true);
 
 protected slots:
 

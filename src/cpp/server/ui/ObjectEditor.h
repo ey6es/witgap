@@ -9,6 +9,7 @@
 #include "ui/Component.h"
 
 class CheckBox;
+class ComboBox;
 class Label;
 class TextField;
 
@@ -155,6 +156,61 @@ protected:
 
     /** The checkbox. */
     CheckBox* _box;
+};
+
+/**
+ * Uses a combo box to edit an enum property.
+ */
+class EnumPropertyEditor : public PropertyEditor
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the editor.
+     */
+    EnumPropertyEditor (QObject* object, const QMetaProperty& property, QObject* parent = 0);
+
+    /**
+     * Updates the edited value in response to an external change.
+     */
+    virtual void update ();
+
+    /**
+     * Applies a change to the object.
+     */
+    virtual void apply ();
+
+protected:
+
+    /** The combo box. */
+    ComboBox* _box;
+};
+
+/**
+ * Uses a set of checkboxes to edit a set of flags.
+ */
+class FlagPropertyEditor : public PropertyEditor
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the editor.
+     */
+    FlagPropertyEditor (QObject* object, const QMetaProperty& property, QObject* parent = 0);
+
+    /**
+     * Updates the edited value in response to an external change.
+     */
+    virtual void update ();
+
+    /**
+     * Applies a change to the object.
+     */
+    virtual void apply ();
 };
 
 /**

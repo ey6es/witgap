@@ -608,7 +608,8 @@ PropertyTransmitter::PropertyTransmitter (
     QObject(object),
     _app(app),
     _sharedObjectId(sharedObjectId),
-    _property(property)
+    _property(property),
+    _ignoreChange(false)
 {
     object->setProperty(name(property), QVariant::fromValue<QObject*>(this));
     connect(object, signal(_property.notifySignal().signature()), SLOT(propertyChanged()));

@@ -21,7 +21,7 @@
 // translate through the session
 #define tr(...) this->session()->translator()->translate("LogonDialog", __VA_ARGS__)
 
-LogonDialog::LogonDialog (Session* parent, const QString& username) :
+LogonDialog::LogonDialog (Session* parent, const QString& username, bool force, bool allowCreate) :
     EncryptedWindow(parent, parent->highestWindowLayer(), true, true),
     _logonBlocked(false)
 {
@@ -94,7 +94,14 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
         BoxLayout::createHBox(Qt::AlignCenter, 2, _cancel, _toggleCreateMode, _logon),
         BoxLayout::createHBox(Qt::AlignCenter, 2, _forgotUsername, _forgotPassword)));
 
-    setCreateMode(username.isEmpty());
+    if (force) {
+        setDeleteOnEscape(false);
+        _cancel->setVisible(false);
+    }
+    if (!allowCreate) {
+        _toggleCreateMode->setVisible(false);
+    }
+    setCreateMode(allowCreate && username.isEmpty());
 }
 
 void LogonDialog::updateLogon ()
