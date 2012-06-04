@@ -7,7 +7,6 @@
 #include "db/PropertyRepository.h"
 
 RuntimeConfig::RuntimeConfig (ServerApp* app) :
-    QObject(app),
     _logonPolicy(AdminsOnly)
 {
     // register as a shared object to allow properties to be transmitted between peers

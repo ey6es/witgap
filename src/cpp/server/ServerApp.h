@@ -11,6 +11,7 @@
 #include <QVariant>
 #include <QVector>
 
+#include "RuntimeConfig.h"
 #include "peer/PeerManager.h"
 
 class QByteArray;
@@ -22,7 +23,6 @@ class Callback;
 class ConnectionManager;
 class DatabaseThread;
 class PeerManager;
-class RuntimeConfig;
 class SceneManager;
 
 /**
@@ -72,7 +72,7 @@ public:
     /**
      * Returns a pointer to the runtime configuration.
      */
-    RuntimeConfig* runtimeConfig () const { return _runtimeConfig; }
+    RuntimeConfig* runtimeConfig (bool original = false) { return _runtimeConfig->get(original); }
 
     /**
      * Returns a pointer to the connection manager.
@@ -160,7 +160,7 @@ protected:
     QHash<QString, QTranslator*> _translators;
 
     /** The runtime configuration. */
-    RuntimeConfig* _runtimeConfig;
+    SynchronizedStorage<RuntimeConfig>* _runtimeConfig;
 
     /** The connection manager. */
     ConnectionManager* _connectionManager;

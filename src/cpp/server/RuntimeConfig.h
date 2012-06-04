@@ -31,7 +31,7 @@ public:
     /**
      * Initializes a copy of the configuration.
      */
-    RuntimeConfig (QObject* object);
+    RuntimeConfig (QObject* object = 0);
 
     /**
      * Sets the logon policy.

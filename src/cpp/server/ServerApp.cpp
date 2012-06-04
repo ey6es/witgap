@@ -14,7 +14,6 @@
 #include <QTranslator>
 #include <QtDebug>
 
-#include "RuntimeConfig.h"
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
 #include "net/ConnectionManager.h"
@@ -277,7 +276,7 @@ ServerApp::ServerApp (int& argc, char** argv) :
 
     // create the managers (peer manager first, as the others must register with it)
     _peerManager = new PeerManager(this);
-    _runtimeConfig = new RuntimeConfig(this);
+    _runtimeConfig = new SynchronizedStorage<RuntimeConfig>(new RuntimeConfig(this));
     _connectionManager = new ConnectionManager(this);
     _sceneManager = new SceneManager(this);
 

@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QReadWriteLock>
 #include <QSharedPointer>
+#include <QThreadStorage>
 #include <QVariant>
 #include <QWeakPointer>
 
@@ -330,6 +331,11 @@ public:
     void setCounterpart (const WeakCallablePointer& counterpart);
 
     /**
+     * Initializes the synchronizer with its parent.
+     */
+    Q_INVOKABLE void init (QObject* parent);
+
+    /**
      * Sets the property.
      */
     Q_INVOKABLE void setProperty (const QVariant& value);
@@ -349,5 +355,50 @@ protected:
     /** Our counterpart on the other object. */
     WeakCallablePointer _counterpart;
 };
+
+/**
+ * Stores a pointer to an original object, creating synchronized copies as necessary for threads
+ * other than the object's.
+ */
+template<class T> class SynchronizedStorage : protected QThreadStorage<T*>
+{
+public:
+
+    /**
+     * Creates synchronized storage for the provided original.
+     */
+    SynchronizedStorage (T* original) : _original(original) { setLocalData(original); }
+
+    /**
+     * Returns the original or a local copy, depending on the parameter.
+     */
+    T* get (bool original) { return original ? _original : local(); }
+
+    /**
+     * Returns a pointer to the original.
+     */
+    T* original () const { return _original; }
+
+    /**
+     * Returns a pointer to the original or a synchronized copy thereof, as appropriate for the
+     * calling thread.
+     */
+    T* local ();
+
+protected:
+
+    /** A pointer to the original object. */
+    T* _original;
+};
+
+template<class T> inline T* SynchronizedStorage<T>::local ()
+{
+    T* data = QThreadStorage<T*>::localData();
+    if (data == 0) {
+        setLocalData(data = new T());
+        new ObjectSynchronizer(_original, data, true);
+    }
+    return data;
+}
 
 #endif // CALLBACK

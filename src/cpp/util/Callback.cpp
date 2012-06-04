@@ -230,24 +230,22 @@ ObjectSynchronizer::ObjectSynchronizer (QObject* original, QObject* copy, bool a
     for (int ii = 0, nn = metaObject->propertyCount(); ii < nn; ii++) {
         QMetaProperty property = metaObject->property(ii);
         if (property.hasNotifySignal()) {
-            PropertySynchronizer* osync = new PropertySynchronizer(original, property);
+            PropertySynchronizer* osync = new PropertySynchronizer(0, property);
             PropertySynchronizer* csync = new PropertySynchronizer(copy, property);
             osync->setCounterpart(csync);
             csync->setCounterpart(osync);
 
-            // transfer to copy when the original changes
-            QByteArray notifySignal = signal(property.notifySignal().signature());
-            osync->connect(original, notifySignal, SLOT(propertyChanged()));
+            // move to appropriate thread and initialize there
+            osync->moveToThread(original->thread());
+            QMetaObject::invokeMethod(osync, "init", Q_ARG(QObject*, original));
 
             // transfer to original when the copy changes/is applied
             if (autoApply) {
-                csync->connect(copy, notifySignal, SLOT(propertyChanged()));
+                csync->connect(copy, signal(property.notifySignal().signature()),
+                    SLOT(propertyChanged()));
             } else {
                 csync->connect(this, SIGNAL(applied()), SLOT(propertyChanged()));
             }
-
-            // transfer the initial value from original to copy
-            QMetaObject::invokeMethod(osync, "propertyChanged");
         }
     }
 }
@@ -262,6 +260,13 @@ void PropertySynchronizer::setCounterpart (const WeakCallablePointer& counterpar
 {
     _counterpart = counterpart;
     connect(counterpart.data(), SIGNAL(destroyed()), SLOT(deleteLater()));
+}
+
+void PropertySynchronizer::init (QObject* parent)
+{
+    setParent(parent);
+    connect(parent, signal(_property.notifySignal().signature()), SLOT(propertyChanged()));
+    propertyChanged();
 }
 
 void PropertySynchronizer::setProperty (const QVariant& value)

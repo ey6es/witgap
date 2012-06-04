@@ -3,7 +3,6 @@
 
 #include <QTranslator>
 
-#include "RuntimeConfig.h"
 #include "ServerApp.h"
 #include "admin/RuntimeConfigDialog.h"
 #include "net/Session.h"
@@ -22,7 +21,7 @@ RuntimeConfigDialog::RuntimeConfigDialog (Session* parent) :
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
 
     RuntimeConfig* copy = new RuntimeConfig(this);
-    _synchronizer = new ObjectSynchronizer(parent->app()->runtimeConfig(), copy);
+    _synchronizer = new ObjectSynchronizer(parent->app()->runtimeConfig(true), copy);
 
     addChild(_editor = new ObjectEditor(copy, RuntimeConfig::staticMetaObject.propertyOffset()));
 
