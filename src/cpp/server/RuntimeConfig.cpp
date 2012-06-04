@@ -8,7 +8,7 @@
 
 RuntimeConfig::RuntimeConfig (ServerApp* app) :
     QObject(app),
-    _open(false)
+    _logonPolicy(AdminsOnly)
 {
     // register as a shared object to allow properties to be transmitted between peers
     app->peerManager()->registerSharedObject(this);
@@ -19,20 +19,13 @@ RuntimeConfig::RuntimeConfig (ServerApp* app) :
 
 RuntimeConfig::RuntimeConfig (QObject* parent) :
     QObject(parent),
-    _open(false)
+    _logonPolicy(AdminsOnly)
 {
 }
 
-void RuntimeConfig::setOpen (bool open)
+void RuntimeConfig::setLogonPolicy (LogonPolicy policy)
 {
-    if (_open != open) {
-        emit openChanged(_open = open);
-    }
-}
-
-void RuntimeConfig::setFlags (Flags flags)
-{
-    if (_flags != flags) {
-        emit flagsChanged(_flags = flags);
+    if (_logonPolicy != policy) {
+        emit logonPolicyChanged(_logonPolicy = policy);
     }
 }

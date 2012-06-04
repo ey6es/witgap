@@ -14,18 +14,14 @@
 class RuntimeConfig : public QObject, public SharedObject
 {
     Q_OBJECT
-    Q_PROPERTY(bool open READ open WRITE setOpen NOTIFY openChanged)
-    Q_PROPERTY(Flags flags READ flags WRITE setFlags NOTIFY flagsChanged)
-    Q_FLAGS(Flag Flags)
+    Q_PROPERTY(LogonPolicy logonPolicy READ logonPolicy WRITE setLogonPolicy
+        NOTIFY logonPolicyChanged)
+    Q_ENUMS(LogonPolicy)
 
 public:
 
-    /** The configuration flags. */
-    enum Flag {
-        AllowLogon = 0x01,
-        AllowCreate = 0x02
-    };
-    Q_DECLARE_FLAGS(Flags, Flag)
+    /** The available logon policies. */
+    enum LogonPolicy { AdminsOnly, InsidersOnly, Everyone };
 
     /**
      * Initializes the runtime configuration.
@@ -38,44 +34,26 @@ public:
     RuntimeConfig (QObject* object);
 
     /**
-     * Sets whether or not we're open to the public.
+     * Sets the logon policy.
      */
-    void setOpen (bool open);
+    void setLogonPolicy (LogonPolicy policy);
 
     /**
-     * Returns whether or not we're open to the public.
+     * Returns the current logon policy.
      */
-    bool open () const { return _open; }
-
-    /**
-     * Sets the set of flags.
-     */
-    void setFlags (Flags flags);
-
-    /**
-     * Returns the set of flags.
-     */
-    Flags flags () const { return _flags; }
+    LogonPolicy logonPolicy () const { return _logonPolicy; }
 
 signals:
 
     /**
-     * Fired when the open state changes.
+     * Fired when the logon policy changes.
      */
-    void openChanged (bool open);
-
-    /**
-     * Fired when the flags change.
-     */
-    void flagsChanged (Flags flags);
+    void logonPolicyChanged (LogonPolicy policy);
 
 protected:
 
-    /** Whether or not we're open to the public. */
-    bool _open;
-
-    /** The set of flags. */
-    Flags _flags;
+    /** The current logon policy. */
+    LogonPolicy _logonPolicy;
 };
 
 #endif // RUNTIME_CONFIG

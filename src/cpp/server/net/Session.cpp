@@ -72,7 +72,7 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
     setConnection(connection);
 
     // force logon if the server isn't open
-    if (user.id == 0 && !_app->runtimeConfig()->open()) {
+    if (user.id == 0 && !_app->runtimeConfig()->logonPolicy() != RuntimeConfig::Everyone) {
         showLogonDialog(true);
     }
 }

@@ -189,14 +189,15 @@ void Window::clearFocus ()
 
 void Window::validate ()
 {
-    Container::validate();
-
     // make sure the focus is still valid
     if (_focus == 0) {
         transferFocus(0, Forward);
     } else if (!(_focus->acceptsFocus() || _focus->transferFocus(_focus, Forward))) {
         setFocus(0);
     }
+
+    // validate afterwards, as changing the focus can invalidate
+    Container::validate();
 }
 
 void Window::draw (DrawContext* ctx)
