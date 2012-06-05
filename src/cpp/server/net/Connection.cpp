@@ -305,6 +305,16 @@ void Connection::readHeader ()
     // check the magic number and version
     quint32 magic, version, length;
     _stream >> magic;
+    if (magic == 0x3C706F6C) { // "<pol"
+        // surprise!  it's a flash policy file request; return a fixed policy
+        qDebug() << "Got Flash policy request." << _socket->peerAddress();
+        _socket->write(
+            "<cross-domain-policy>\n"
+            "  <allow-access-from domain=\"*\" to-ports=\"*\"/>\n"
+            "</cross-domain-policy>\n");
+        _socket->disconnectFromHost();
+        return;
+    }
     if (magic != PROTOCOL_MAGIC) {
         qWarning() << "Invalid protocol magic number:" << magic << _socket->peerAddress();
         deactivate("Invalid magic number.");
