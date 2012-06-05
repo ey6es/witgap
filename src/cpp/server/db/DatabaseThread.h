@@ -8,6 +8,7 @@
 
 class PeerRepository;
 class PropertyRepository;
+class RuntimeConfig;
 class SceneRepository;
 class ServerApp;
 class SessionRepository;
@@ -26,6 +27,11 @@ public:
      * Initializes the thread.
      */
     DatabaseThread (ServerApp* app);
+
+    /**
+     * Returns a pointer to the database thread's synchronized copy of the runtime config.
+     */
+    RuntimeConfig* runtimeConfig () const { return _runtimeConfig; }
 
     /**
      * Returns a pointer to the peer repository.
@@ -82,6 +88,9 @@ protected:
 
     /** The options to use when connecting. */
     QString _connectOptions;
+
+    /** Our synchronized copy of the runtime config. */
+    RuntimeConfig* _runtimeConfig;
 
     /** The peer repository. */
     PeerRepository* _peerRepository;

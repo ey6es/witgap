@@ -103,6 +103,16 @@ void SessionRepository::validateToken (
                 query.value(2).toUInt(), now };
             UserRecord urec = (srec.userId == 0) ? NoUser :
                 _app->databaseThread()->userRepository()->loadUser(srec.userId);
+            if (urec.id != 0) {
+                // if the logon isn't valid (banned, etc.), we must log them off
+                QVariant result = _app->databaseThread()->userRepository()->validateLogon(urec);
+                if (result.toInt() != UserRepository::NoError) {
+                    srec.userId = 0;
+                    srec.name = uniqueRandomName();
+                    updateSession(srec);
+                    urec = NoUser;
+                }
+            }
             qDebug() << "Session resumed." << id << srec.name;
             callback.invoke(Q_ARG(const SessionRecord&, srec), Q_ARG(const UserRecord&, urec));
             return;

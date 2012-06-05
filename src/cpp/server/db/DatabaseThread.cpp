@@ -45,6 +45,9 @@ void DatabaseThread::run ()
     // seed the random number generator for this thread
     qsrand(currentTimeMillis());
 
+    // get our pointer to the runtime config
+    _runtimeConfig = _app->runtimeConfig();
+
     // connect to the configured database
     QString connectionName;
     {

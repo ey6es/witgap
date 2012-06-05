@@ -6,6 +6,7 @@
 
 #include <QRegExp>
 
+#include "RuntimeConfig.h"
 #include "ui/Window.h"
 
 class Button;
@@ -29,13 +30,15 @@ public:
      * Initializes the dialog.
      *
      * @param username the username cookie, if any.
-     * @param force if true, force logon (because the server is closed to guests).
-     * @param allowCreate whether or not to allow account creation.
      */
-    LogonDialog (
-        Session* parent, const QString& username, bool force = false, bool allowCreate = true);
+    LogonDialog (Session* parent, const QString& username);
 
 protected slots:
+
+    /**
+     * Updates the force-logon state based on the logon policy.
+     */
+    void updateForce (RuntimeConfig::LogonPolicy policy);
 
     /**
      * Updates the state of the logon/create button based on the input.

@@ -48,7 +48,7 @@ signals:
     /**
      * Fired when the logon policy changes.
      */
-    void logonPolicyChanged (LogonPolicy policy);
+    void logonPolicyChanged (RuntimeConfig::LogonPolicy policy);
 
 protected:
 

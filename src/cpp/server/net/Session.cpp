@@ -72,8 +72,8 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
     setConnection(connection);
 
     // force logon if the server isn't open
-    if (user.id == 0 && !_app->runtimeConfig()->logonPolicy() != RuntimeConfig::Everyone) {
-        showLogonDialog(true);
+    if (user.id == 0 && _app->runtimeConfig()->logonPolicy() != RuntimeConfig::Everyone) {
+        showLogonDialog();
     }
 }
 
@@ -400,10 +400,9 @@ bool Session::event (QEvent* e)
     }
 }
 
-void Session::showLogonDialog (bool force, bool allowCreate)
+void Session::showLogonDialog ()
 {
-    new LogonDialog(this, _connection ? _connection->cookies().value("username", "") : "",
-        force, allowCreate);
+    new LogonDialog(this, _connection ? _connection->cookies().value("username", "") : "");
 }
 
 void Session::showLogoffDialog ()
@@ -633,9 +632,6 @@ void Session::passwordResetMaybeValidated (const QVariant& result)
     }
     UserRecord urec = qVariantValue<UserRecord>(result);
     qDebug() << "Activated password reset request." << urec.name << urec.email;
-    if (_user.id != 0) {
-        logoff();
-    }
     loggedOn(urec);
 
     // open the settings dialog in order to change the password
@@ -739,6 +735,11 @@ void Session::loggedOff (const QString& name)
 
     // update mappings
     nameChanged(oname);
+
+    // force logon if the server isn't open
+    if (_app->runtimeConfig()->logonPolicy() != RuntimeConfig::Everyone) {
+        showLogonDialog();
+    }
 }
 
 void Session::nameChanged (const QString& oldName)
@@ -751,6 +752,9 @@ void Session::nameChanged (const QString& oldName)
     _info.name = _record.name;
     _app->peerManager()->invoke(_app->peerManager(), "sessionUpdated(SessionInfo)",
         Q_ARG(const SessionInfo&, _info));
+
+    // update the window title
+    _mainWindow->updateTitle();
 }
 
 bool Session::belowModal (Window* window) const

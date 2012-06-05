@@ -20,10 +20,20 @@
 MainWindow::MainWindow (Session* parent) :
     Window(parent, 0, true)
 {
-    setBorder(new TitledBorder(tr("witgap")));
+    updateTitle();
     setLayout(new BorderLayout());
 
     addChild(_sceneView = new SceneView(parent), BorderLayout::Center);
+}
+
+void MainWindow::updateTitle ()
+{
+    Session* session = this->session();
+    QString name = session->record().name;
+    if (session->user().id == 0) {
+        name = tr("%1 (guest)").arg(name);
+    }
+    setBorder(new TitledBorder(tr("{ witgap: %1 }").arg(name)));
 }
 
 void MainWindow::keyPressEvent (QKeyEvent* e)

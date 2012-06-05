@@ -21,7 +21,7 @@
 // translate through the session
 #define tr(...) this->session()->translator()->translate("LogonDialog", __VA_ARGS__)
 
-LogonDialog::LogonDialog (Session* parent, const QString& username, bool force, bool allowCreate) :
+LogonDialog::LogonDialog (Session* parent, const QString& username) :
     EncryptedWindow(parent, parent->highestWindowLayer(), true, true),
     _logonBlocked(false)
 {
@@ -94,14 +94,25 @@ LogonDialog::LogonDialog (Session* parent, const QString& username, bool force, 
         BoxLayout::createHBox(Qt::AlignCenter, 2, _cancel, _toggleCreateMode, _logon),
         BoxLayout::createHBox(Qt::AlignCenter, 2, _forgotUsername, _forgotPassword)));
 
-    if (force) {
-        setDeleteOnEscape(false);
-        _cancel->setVisible(false);
+    // force logon if appropriate for the current policy
+    RuntimeConfig* config = parent->app()->runtimeConfig();
+    setCreateMode(config->logonPolicy() == RuntimeConfig::Everyone && username.isEmpty());
+    connect(config, SIGNAL(logonPolicyChanged(RuntimeConfig::LogonPolicy)),
+        SLOT(updateForce(RuntimeConfig::LogonPolicy)));
+    updateForce(config->logonPolicy());
+}
+
+void LogonDialog::updateForce (RuntimeConfig::LogonPolicy policy)
+{
+    bool everyone = (policy == RuntimeConfig::Everyone);
+    setDeleteOnEscape(everyone);
+    _cancel->setVisible(everyone);
+    _toggleCreateMode->setVisible(everyone);
+    if (_createMode && !everyone) {
+        setCreateMode(false);
     }
-    if (!allowCreate) {
-        _toggleCreateMode->setVisible(false);
-    }
-    setCreateMode(allowCreate && username.isEmpty());
+    pack();
+    center();
 }
 
 void LogonDialog::updateLogon ()
@@ -204,6 +215,9 @@ void LogonDialog::logonMaybeValidated (const QVariant& result)
             break;
         case UserRepository::Banned:
             flashStatus(tr("Your account has been banned from the game."));
+            return;
+        case UserRepository::ServerClosed:
+            flashStatus(tr("The server is currently closed.  Please try again later."));
             return;
         default:
             session()->loggedOn(qVariantValue<UserRecord>(result));

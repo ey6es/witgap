@@ -10,6 +10,7 @@
 #include <QtDebug>
 
 #include "ServerApp.h"
+#include "db/DatabaseThread.h"
 #include "db/UserRepository.h"
 #include "util/Callback.h"
 #include "util/General.h"
@@ -17,7 +18,8 @@
 // register our types with the metatype system
 int userRecordType = qRegisterMetaType<UserRecord>();
 
-UserRepository::UserRepository (ServerApp* app)
+UserRepository::UserRepository (ServerApp* app) :
+    _app(app)
 {
     // load the blocked named list
     QFile pfile(app->config().value("blocked_names").toString());
@@ -166,28 +168,6 @@ static UserRecord loadUserRecord (const QString& field, const QVariant& value)
     return urec;
 }
 
-/**
- * Helper function for logon validation methods.
- */
-static void validateLogon (const UserRecord& urec, const Callback& callback)
-{
-    // check the flags; make sure they're not banned
-    if (urec.flags.testFlag(UserRecord::Banned)) {
-        callback.invoke(Q_ARG(const QVariant&, QVariant(UserRepository::Banned)));
-        return;
-    }
-
-    // update the last online timestamp
-    QSqlQuery query;
-    query.prepare("update USERS set LAST_ONLINE = ? where ID = ?");
-    query.addBindValue(QDateTime::currentDateTime());
-    query.addBindValue(urec.id);
-    query.exec();
-
-    // report success
-    callback.invoke(Q_ARG(const QVariant&, QVariant(userRecordType, &urec)));
-}
-
 void UserRepository::validateLogon (
     const QString& name, const QString& password, const Callback& callback)
 {
@@ -204,7 +184,8 @@ void UserRepository::validateLogon (
         return;
     }
 
-    ::validateLogon(urec, callback);
+    // pass to shared validation function
+    callback.invoke(Q_ARG(const QVariant&, validateLogon(urec)));
 }
 
 void UserRepository::loadUser (const QString& name, const Callback& callback)
@@ -282,7 +263,12 @@ void UserRepository::validatePasswordReset (
     }
     quint32 userId = query.value(0).toUInt();
 
-    // delete it, making sure that no one beat us to the punch
+    // if successful, delete it, making sure that no one beat us to the punch
+    QVariant result = validateLogon(loadUser(userId));
+    if (result.toInt() != NoError) {
+        callback.invoke(Q_ARG(const QVariant&, result));
+        return;
+    }
     query.prepare("delete from PASSWORD_RESETS where ID = ?");
     query.addBindValue(id);
     query.exec();
@@ -290,7 +276,32 @@ void UserRepository::validatePasswordReset (
         callback.invoke(Q_ARG(const QVariant&, QVariant(NoSuchUser)));
         return;
     }
-    ::validateLogon(loadUser(userId), callback);
+    callback.invoke(Q_ARG(const QVariant&, result));
+}
+
+QVariant UserRepository::validateLogon (const UserRecord& urec)
+{
+    // check the flags; make sure they're not banned
+    if (urec.flags.testFlag(UserRecord::Banned)) {
+        return QVariant(Banned);
+    }
+
+    // make sure they're allowed on at present
+    RuntimeConfig::LogonPolicy policy = _app->databaseThread()->runtimeConfig()->logonPolicy();
+    if (policy == RuntimeConfig::AdminsOnly && !urec.flags.testFlag(UserRecord::Admin) ||
+           policy == RuntimeConfig::InsidersOnly && !urec.insiderPlus()) {
+        return QVariant(ServerClosed);
+    }
+
+    // update the last online timestamp
+    QSqlQuery query;
+    query.prepare("update USERS set LAST_ONLINE = ? where ID = ?");
+    query.addBindValue(QDateTime::currentDateTime());
+    query.addBindValue(urec.id);
+    query.exec();
+
+    // report success
+    return QVariant(userRecordType, &urec);
 }
 
 void UserRecord::setPassword (const QString& password)

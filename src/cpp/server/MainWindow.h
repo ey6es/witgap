@@ -22,6 +22,11 @@ public:
      */
     MainWindow (Session* parent);
 
+    /**
+     * Updates the window title (which contains the session name).
+     */
+    void updateTitle ();
+
 protected:
 
     /**

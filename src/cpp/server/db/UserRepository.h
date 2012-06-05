@@ -26,7 +26,7 @@ class UserRepository : public QObject
 public:
 
     /** The possible errors in logon validation. */
-    enum LogonError { NoError, NoSuchUser, WrongPassword, Banned };
+    enum LogonError { NoError, NoSuchUser, WrongPassword, Banned, ServerClosed };
 
     /**
      * Creates the user repository.
@@ -103,7 +103,16 @@ public:
     Q_INVOKABLE void validatePasswordReset (
         quint32 id, const QByteArray& token, const Callback& callback);
 
+    /**
+     * Helper function for logon methods; validates the logon for the specified user and returns
+     * the result to provide to the callbac.
+     */
+    QVariant validateLogon (const UserRecord& urec);
+
 protected:
+
+    /** The server application. */
+    ServerApp* _app;
 
     /** The expression that matches blocked names. */
     QRegExp _blockedNameExp;
@@ -117,7 +126,7 @@ class UserRecord
 public:
 
     /** User flags.  Do not change. */
-    enum Flag { NoFlag = 0x0, Banned = 0x1, Admin = 0x2 };
+    enum Flag { NoFlag = 0x0, Banned = 0x1, Admin = 0x2, Insider = 0x4 };
 
     Q_DECLARE_FLAGS(Flags, Flag)
 
@@ -155,6 +164,11 @@ public:
      * Sets the password hash.
      */
     void setPassword (const QString& password);
+
+    /**
+     * Checks whether the user is at least an insider.
+     */
+    bool insiderPlus () const { return flags.testFlag(Insider) || flags.testFlag(Admin); }
 };
 
 Q_DECLARE_METATYPE(UserRecord)
