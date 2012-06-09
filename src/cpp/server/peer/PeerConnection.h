@@ -34,6 +34,11 @@ public:
     const QString& name () const { return _name; }
 
     /**
+     * Returns the peer's load estimate.
+     */
+    int load () const;
+
+    /**
      * Notes that a session has been added by this connection.
      */
     void sessionAdded (const SessionInfoPointer& ptr);

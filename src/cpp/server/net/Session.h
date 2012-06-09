@@ -9,6 +9,7 @@
 #include <QSize>
 
 #include "chat/ChatWindow.h"
+#include "db/SceneRepository.h"
 #include "db/SessionRepository.h"
 #include "db/UserRepository.h"
 #include "net/Connection.h"
@@ -215,14 +216,34 @@ public:
     Q_INVOKABLE void logoff ();
 
     /**
+     * Moves the user to the named scene.
+     */
+    void moveToScene (const QString& prefix);
+
+    /**
      * Moves the user to the identified scene.
      */
     void moveToScene (quint32 id);
 
     /**
+     * Moves the user to the named zone.
+     */
+    void moveToZone (const QString& prefix);
+
+    /**
      * Moves the user to the identified zone.
      */
     void moveToZone (quint32 id);
+
+    /**
+     * Moves to the named player.
+     */
+    void moveToPlayer (const QString& name);
+
+    /**
+     * Summons the named player.
+     */
+    void summonPlayer (const QString& name);
 
     /**
      * Sets the user's settings.
@@ -353,14 +374,24 @@ protected:
     Q_INVOKABLE void zoneCreated (quint32 id);
 
     /**
+     * Continues the process of moving to a scene.
+     */
+    Q_INVOKABLE void continueMovingToScene (const SceneDescriptorList& scenes);
+
+    /**
      * Reports back with the resolved scene object, if successful.
      */
     Q_INVOKABLE void sceneMaybeResolved (QObject* scene);
 
     /**
-     * Reports back with the resolved zone object, if successful.
+     * Continues the process of moving to a zone.
      */
-    Q_INVOKABLE void zoneMaybeResolved (QObject* zone);
+    Q_INVOKABLE void continueMovingToZone (const ZoneRecordList& zones);
+
+    /**
+     * Continues the process of moving to a zone.
+     */
+    Q_INVOKABLE void continueMovingToZone (const QString& peer, quint64 instanceId);
 
     /**
      * Leaves the current scene, if any.
@@ -372,11 +403,6 @@ protected:
      * to the scene thread.
      */
     Q_INVOKABLE void continueMovingToScene (QObject* scene);
-
-    /**
-     * Reports back with the instance in which a place has been reserved.
-     */
-    Q_INVOKABLE void instancePlaceReserved (QObject* instance);
 
     /**
      * Leaves the current zone, if any.

@@ -9,6 +9,7 @@
 #include <QObject>
 #include <QVector>
 
+#include "peer/PeerManager.h"
 #include "util/Callback.h"
 
 class QThread;
@@ -22,7 +23,7 @@ class ZoneRecord;
 /**
  * Manages the set of loaded scenes.
  */
-class SceneManager : public CallableObject
+class SceneManager : public CallableObject, public SharedObject
 {
     Q_OBJECT
 
@@ -49,6 +50,24 @@ public:
     QThread* nextThread ();
 
     /**
+     * Creates a new instance of the identified zone for the identified session.  The callback will
+     * receive the instance id.
+     */
+    Q_INVOKABLE void createInstance (quint64 sessionId, quint32 zoneId, const Callback& callback);
+
+    /**
+     * Attempts to reserve a place in the identified instance for the identified session.  The
+     * callback will receive a bool indicating success or failure.
+     */
+    Q_INVOKABLE void reserveInstancePlace (
+        quint64 sessionId, quint64 instanceId, const Callback& callback);
+
+    /**
+     * Cancels an instance place reservation that we've decided we no longer need.
+     */
+    Q_INVOKABLE void cancelInstancePlaceReservation (quint64 sessionId, quint64 instanceId);
+
+    /**
      * Attempts to resolve a scene.  The callback will receive a QObject*, either the resolved
      * scene or 0 if not found.
      */
@@ -71,6 +90,12 @@ protected:
      * Called when a request to load a zone returns.
      */
     Q_INVOKABLE void zoneMaybeLoaded (quint32 id, const ZoneRecord& record);
+
+    /**
+     * Continues the process of creating an instance, having resolved the zone.
+     */
+    Q_INVOKABLE void continueCreatingInstance (
+        quint64 sessionId, const Callback& callback, QObject* zobj);
 
     /** The application object. */
     ServerApp* _app;

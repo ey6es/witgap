@@ -20,7 +20,7 @@ class ServerApp;
 /**
  * The in-memory representation of a zone.
  */
-class Zone : public QObject
+class Zone : public CallableObject
 {
     Q_OBJECT
 
@@ -42,12 +42,23 @@ public:
     const ZoneRecord& record () const { return _record; }
 
     /**
-     * Reserves a place in an instance of this zone.  The callback will receive a QObject* to the
-     * instance.
+     * Returns a reference to the instance map.
      */
-    Q_INVOKABLE void reserveInstancePlace (const Callback& callback);
+    const QHash<quint32, Instance*>& instances () const { return _instances; }
+
+    /**
+     * Creates a new instance of this zone for the identified session.  The callback will
+     * receive the instance id.
+     */
+    void createInstance (quint64 sessionId, const Callback& callback);
 
 protected:
+
+    /**
+     * Continues the process of creating a new instance.
+     */
+    Q_INVOKABLE void continueCreatingInstance (
+        quint64 sessionId, const Callback& callback, quint64 instanceId);
 
     /** The application object. */
     ServerApp* _app;
@@ -55,8 +66,8 @@ protected:
     /** The zone record. */
     ZoneRecord _record;
 
-    /** The list of instances with open slots. */
-    QList<Instance*> _openInstances;
+    /** The active instances, mapped by offset. */
+    QHash<quint32, Instance*> _instances;
 };
 
 /**
@@ -71,7 +82,7 @@ public:
     /**
      * Creates a new instance.
      */
-    Instance (Zone* zone);
+    Instance (Zone* zone, quint64 id);
 
     /**
      * Returns a pointer to the zone of which this is an instance.
@@ -108,5 +119,29 @@ protected:
     /** Callbacks awaiting scene resolution. */
     QHash<quint32, QList<Callback> > _scenePenders;
 };
+
+/**
+ * Creates an instance id from the supplied zone id and offset.
+ */
+inline quint64 createInstanceId (quint32 zoneId, quint32 instanceOffset)
+{
+    return (quint64)zoneId << 32 | instanceOffset;
+}
+
+/**
+ * Extracts the zone id from the given instance id.
+ */
+inline quint32 getZoneId (quint64 instanceId)
+{
+    return instanceId >> 32;
+}
+
+/**
+ * Extracts the instance offset from the given instance id.
+ */
+inline quint32 getInstanceOffset (quint64 instanceId)
+{
+    return instanceId;
+}
 
 #endif // ZONE

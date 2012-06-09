@@ -16,6 +16,9 @@ SceneManager::SceneManager (ServerApp* app) :
     _app(app),
     _lastThreadIdx(0)
 {
+    // register for remote invocation
+    _app->peerManager()->registerSharedObject(this);
+
     // create the configured number of scene threads
     int nthreads = app->config().value("scene_threads").toInt();
     if (nthreads == -1) {
@@ -48,6 +51,34 @@ QThread* SceneManager::nextThread ()
 {
     _lastThreadIdx = (_lastThreadIdx + 1) % _threads.size();
     return _threads.at(_lastThreadIdx);
+}
+
+void SceneManager::createInstance (quint64 sessionId, quint32 zoneId, const Callback& callback)
+{
+    resolveZone(zoneId, Callback(_this, "continueCreatingInstance(quint64,Callback,QObject*)",
+        Q_ARG(quint64, sessionId), Q_ARG(const Callback&, callback)));
+}
+
+void SceneManager::reserveInstancePlace (
+    quint64 sessionId, quint64 instanceId, const Callback& callback)
+{
+    Zone* zone = _zones.value(getZoneId(instanceId));
+    if (zone != 0) {
+        Instance* instance = zone->instances().value(getInstanceOffset(instanceId));
+        if (instance != 0) {
+
+            return;
+        }
+    }
+    callback.invoke(Q_ARG(bool, false));
+}
+
+void SceneManager::cancelInstancePlaceReservation (quint64 sessionId, quint64 instanceId)
+{
+    Zone* zone = _zones.value(getZoneId(instanceId));
+    if (zone != 0) {
+//        zone->cancelInstancePlaceReservation(sessionId, );
+    }
 }
 
 void SceneManager::resolveScene (quint32 id, const Callback& callback)
@@ -126,4 +157,14 @@ void SceneManager::zoneMaybeLoaded (quint32 id, const ZoneRecord& record)
     foreach (const Callback& callback, callbacks) {
         callback.invoke(Q_ARG(QObject*, zone));
     }
+}
+
+void SceneManager::continueCreatingInstance (
+    quint64 sessionId, const Callback& callback, QObject* zobj)
+{
+    if (zobj == 0) {
+        callback.invoke(Q_ARG(quint64, 0));
+        return;
+    }
+    static_cast<Zone*>(zobj)->createInstance(sessionId, callback);
 }

@@ -11,24 +11,37 @@
 #include "scene/Zone.h"
 
 Zone::Zone (ServerApp* app, const ZoneRecord& record) :
-    QObject(app->sceneManager()),
+    CallableObject(app->sceneManager()),
     _app(app),
     _record(record)
 {
 }
 
-void Zone::reserveInstancePlace (const Callback& callback)
+void Zone::createInstance (quint64 sessionId, const Callback& callback)
 {
-    Instance* instance = new Instance(this);
-    instance->moveToThread(_app->sceneManager()->nextThread());
-    callback.invoke(Q_ARG(QObject*, instance));
+    // get a unique instance id from the lead node
+    _app->peerManager()->invokeLead(_app->peerManager(),
+        "reserveInstanceId(QString,quint64,Callback)",
+        Q_ARG(const QString&, _app->peerManager()->record().name),
+        Q_ARG(quint64, createInstanceId(_record.id, 1)), Q_ARG(const Callback&, Callback(_this,
+            "continueCreatingInstance(quint64,Callback,quint64)", Q_ARG(quint64, sessionId),
+            Q_ARG(const Callback&, callback))));
 }
 
-Instance::Instance (Zone* zone) :
+void Zone::continueCreatingInstance (
+    quint64 sessionId, const Callback& callback, quint64 instanceId)
+{
+    Instance* instance = new Instance(this, instanceId);
+    _instances.insert(getInstanceOffset(instanceId), instance);
+    instance->moveToThread(_app->sceneManager()->nextThread());
+    callback.invoke(Q_ARG(quint64, instanceId));
+}
+
+Instance::Instance (Zone* zone, quint64 id) :
     _zone(zone)
 {
     // add info on all peers
-    InstanceInfo info = { 0, zone->app()->peerManager()->record().name };
+    InstanceInfo info = { id, zone->app()->peerManager()->record().name };
     _info = info;
     zone->app()->peerManager()->invoke(zone->app()->peerManager(), "instanceAdded(InstanceInfo)",
         Q_ARG(const InstanceInfo&, info));

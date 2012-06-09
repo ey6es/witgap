@@ -17,6 +17,8 @@
 #include "peer/PeerConnection.h"
 #include "peer/PeerManager.h"
 #include "peer/PeerProtocol.h"
+#include "scene/SceneManager.h"
+#include "scene/Zone.h"
 
 void PeerManager::appendArguments (ArgumentDescriptorList* args)
 {
@@ -111,6 +113,11 @@ void PeerManager::configureSocket (QSslSocket* socket) const
 QObject* PeerManager::sharedObject (int sharedObjectId) const
 {
     return _sharedObjects.value(sharedObjectId);
+}
+
+int PeerManager::localLoad () const
+{
+    return _localSessions.size();
 }
 
 void PeerManager::invoke (SharedObject* object, const char* method,
@@ -215,6 +222,52 @@ void PeerManager::reserveInstanceId (
     }
 }
 
+void PeerManager::reserveInstancePlace (
+    quint64 sessionId, quint32 zoneId, const Callback& callback)
+{
+    // first look for an existing instance with an open space
+    InstanceInfoPointerMap map = _zoneInstances.value(zoneId);
+    if (!map.isEmpty()) {
+        InstanceInfoPointerMap::const_iterator last = map.constEnd() - 1;
+        quint32 open = last.key()->open;
+        if (open > 0) {
+            // find the first instance with the same number of open slots
+            InstanceInfoPointerMap::const_iterator first = last;
+            int count = 1;
+            while (first != map.constBegin() && (first - 1).key()->open == open) {
+                first--;
+                count++;
+            }
+            // pick an instance randomly from the range
+            const InstanceInfoPointer& ptr = (first + qrand() % count).key();
+            invoke(ptr->peer, _app->sceneManager(),
+                "reserveInstancePlace(quint64,quint64,Callback)",
+                Q_ARG(quint64, sessionId), Q_ARG(quint64, ptr->id), Q_ARG(const Callback&,
+                    Callback(_this,
+                        "instancePlaceMaybeReserved(quint64,QString,quint64,Callback,bool)",
+                        Q_ARG(quint64, sessionId), Q_ARG(const QString&, ptr->peer),
+                        Q_ARG(quint64, ptr->id), Q_ARG(const Callback&, callback))));
+            return;
+        }
+    }
+
+    // if there isn't one, find the peer with the lowest load and create one there
+    int lowestLoad = localLoad();
+    QString lowestName = _record.name;
+    foreach (PeerConnection* connection, _connections) {
+        int load = connection->load();
+        if (load < lowestLoad) {
+            lowestLoad = load;
+            lowestName = connection->name();
+        }
+    }
+    invoke(lowestName, _app->sceneManager(), "createInstance(quint64,quint32,Callback)",
+        Q_ARG(quint64, sessionId), Q_ARG(quint32, zoneId), Q_ARG(const Callback&,
+            Callback(_this, "instanceMaybeCreated(quint64,quint32,QString,Callback,quint64)",
+                Q_ARG(quint64, sessionId), Q_ARG(quint32, zoneId),
+                Q_ARG(const QString&, lowestName), Q_ARG(const Callback&, callback))));
+}
+
 void PeerManager::peerDestroyed (Peer* peer)
 {
     _peers.remove(peer->record().name);
@@ -270,10 +323,15 @@ void PeerManager::sessionRemoved (quint64 id)
 
 void PeerManager::instanceAdded (const InstanceInfo& info)
 {
+    // add to master hash
     InstanceInfoPointer ptr(new InstanceInfo(info));
     _instances.insert(info.id, ptr);
     _reservedInstanceIds.remove(info.id);
 
+    // to zone map
+    _zoneInstances[getZoneId(info.id)].insert(ptr, 0);
+
+    // and to local/peer hash
     if (info.peer == _record.name) {
         _localInstances.insert(info.id, ptr);
     } else {
@@ -283,14 +341,31 @@ void PeerManager::instanceAdded (const InstanceInfo& info)
 
 void PeerManager::instanceUpdated (const InstanceInfo& info)
 {
+    // move within zone list if the number of open spaces changed
     InstanceInfoPointer ptr = _instances.value(info.id);
-    *ptr = info;
+    if (ptr->open == info.open) {
+        *ptr = info;
+    } else {
+        InstanceInfoPointerMap& map = _zoneInstances[getZoneId(info.id)];
+        map.remove(ptr);
+        *ptr = info;
+        map.insert(ptr, 0);
+    }
 }
 
 void PeerManager::instanceRemoved (quint64 id)
 {
+    // remove from master hash
     InstanceInfoPointer ptr = _instances.take(id);
 
+    // from zone list
+    QHash<quint32, InstanceInfoPointerMap>::iterator it = _zoneInstances.find(getZoneId(id));
+    it->remove(ptr);
+    if (it->isEmpty()) {
+        _zoneInstances.erase(it);
+    }
+
+    // and from local/peer hash
     if (ptr->peer == _record.name) {
         _localInstances.remove(id);
     } else {
@@ -511,6 +586,38 @@ void PeerManager::updatePeers (const PeerRecordList& records)
                 delete peer;
             }
         }
+    }
+}
+
+void PeerManager::instanceMaybeCreated (
+    quint64 sessionId, quint32 zoneId, const QString& peer,
+    const Callback& callback, quint64 instanceId)
+{
+    bool success = (instanceId != 0);
+    instancePlaceMaybeReserved(sessionId, peer,
+        success ? instanceId : createInstanceId(zoneId, 0), callback, success);
+}
+
+void PeerManager::instancePlaceMaybeReserved (
+    quint64 sessionId, const QString& peer, quint64 instanceId,
+    const Callback& callback, bool success)
+{
+    // make sure the session still exists on this server
+    if (!_localSessions.contains(sessionId)) {
+        if (success) {
+            invoke(peer, _app->sceneManager(), "cancelInstancePlaceReservation(quint64,quint64)",
+                Q_ARG(quint64, sessionId), Q_ARG(quint64, instanceId));
+        }
+        return;
+    }
+
+    // if it succeeded, provide the callback with the peer and instance id;
+    // otherwise, reissue the request
+    if (success) {
+        callback.invoke(Q_ARG(const QString&, peer), Q_ARG(quint64, instanceId));
+
+    } else {
+        reserveInstancePlace(sessionId, getZoneId(instanceId), callback);
     }
 }
 

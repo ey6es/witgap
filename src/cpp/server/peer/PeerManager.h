@@ -7,6 +7,7 @@
 #include <QByteArray>
 #include <QHash>
 #include <QList>
+#include <QMap>
 #include <QSet>
 #include <QSharedPointer>
 #include <QSslConfiguration>
@@ -33,6 +34,13 @@ class SessionInfo;
 
 typedef QSharedPointer<InstanceInfo> InstanceInfoPointer;
 typedef QSharedPointer<SessionInfo> SessionInfoPointer;
+
+typedef QMap<InstanceInfoPointer, int> InstanceInfoPointerMap;
+
+/**
+ * Sorts instance info pointers first by open spaces, then by id.
+ */
+bool operator< (const InstanceInfoPointer& p1, const InstanceInfoPointer& p2);
 
 /**
  * Base class for objects accessible between peers.  This would extend QObject, but there are
@@ -111,6 +119,11 @@ public:
      * Returns a reference to the local instance map.
      */
     const QHash<quint64, InstanceInfoPointer>& localInstances () const { return _localInstances; }
+
+    /**
+     * Returns the load estimate for the local peer.
+     */
+    int localLoad () const;
 
     /**
      * Invokes a method on this peer and all others.  If the invocation includes a callback, it
@@ -200,6 +213,13 @@ public:
      * Frees up a set of reserved instance ids.
      */
     void freeInstanceIds (const QSet<quint64>& ids) { _reservedInstanceIds.subtract(ids); }
+
+    /**
+     * Reserves a place in an instance of the identified zone for the identified session, creating
+     * a new instance if necessary.  The callback will receive the peer name and instance id.
+     */
+    Q_INVOKABLE void reserveInstancePlace (
+        quint64 sessionId, quint32 zoneId, const Callback& callback);
 
     /**
      * Executes an action on this peer and all others.
@@ -321,6 +341,20 @@ protected:
     Q_INVOKABLE void updatePeers (const PeerRecordList& records);
 
     /**
+     * Notifies us of the result of an instance creation request.
+     */
+    Q_INVOKABLE void instanceMaybeCreated (
+        quint64 sessionId, quint32 zoneId, const QString& peer,
+        const Callback& callback, quint64 instanceId);
+
+    /**
+     * Notifies us of the result of an instance place request.
+     */
+    Q_INVOKABLE void instancePlaceMaybeReserved (
+        quint64 sessionId, const QString& peer, quint64 instanceId,
+        const Callback& callback, bool success);
+
+    /**
      * Executes an action on this peer and all others.
      */
     Q_INVOKABLE void execute (const QVariant& action);
@@ -397,6 +431,9 @@ protected:
 
     /** Instances hosted by this peer. */
     QHash<quint64, InstanceInfoPointer> _localInstances;
+
+    /** Instances mapped by zone id. */
+    QHash<quint32, InstanceInfoPointerMap> _zoneInstances;
 
     /** Reserved instance ids. */
     QSet<quint64> _reservedInstanceIds;
@@ -503,9 +540,17 @@ public:
 
     /** The peer name. */
     STREAM QString peer;
+
+    /** The number of spaces currently open in the instance. */
+    STREAM quint32 open;
 };
 
 DECLARE_STREAMABLE_METATYPE(InstanceInfo)
+
+inline bool operator< (const InstanceInfoPointer& p1, const InstanceInfoPointer& p2)
+{
+    return (p1->open < p2->open) || (p1->open == p2->open && p1->id < p2->id);
+}
 
 /**
  * Contains the state of a pending batch request.

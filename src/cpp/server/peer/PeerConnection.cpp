@@ -46,6 +46,11 @@ PeerConnection::~PeerConnection ()
     }
 }
 
+int PeerConnection::load () const
+{
+    return _sessions.size();
+}
+
 void PeerConnection::sessionAdded (const SessionInfoPointer& ptr)
 {
     _sessions.insert(ptr->id, ptr);

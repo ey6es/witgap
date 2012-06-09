@@ -317,7 +317,7 @@ public:
         if (args.isEmpty()) {
             return usage(translator, cmd);
         }
-
+        session->moveToScene(args);
         return "";
     }
 };
@@ -343,7 +343,7 @@ public:
         if (args.isEmpty()) {
             return usage(translator, cmd);
         }
-
+        session->moveToZone(args);
         return "";
     }
 };
@@ -369,7 +369,7 @@ public:
         if (args.isEmpty()) {
             return usage(translator, cmd);
         }
-
+        session->moveToPlayer(args);
         return "";
     }
 };
@@ -395,7 +395,7 @@ public:
         if (args.isEmpty()) {
             return usage(translator, cmd);
         }
-
+        session->summonPlayer(args);
         return "";
     }
 };

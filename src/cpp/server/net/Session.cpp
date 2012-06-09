@@ -17,7 +17,6 @@
 #include "SettingsDialog.h"
 #include "actor/Pawn.h"
 #include "db/DatabaseThread.h"
-#include "db/SceneRepository.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
 #include "scene/Scene.h"
@@ -296,6 +295,14 @@ void Session::logoff ()
         Q_ARG(quint64, _record.id), Q_ARG(const Callback&, Callback(_this, "loggedOff(QString)")));
 }
 
+void Session::moveToScene (const QString& prefix)
+{
+    // look up the prefix in the database
+    QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "findScenes",
+        Q_ARG(const QString&, prefix), Q_ARG(quint32, 0), Q_ARG(const Callback&,
+            Callback(_this, "continueMovingToScene(SceneDescriptorList)")));
+}
+
 void Session::moveToScene (quint32 id)
 {
     // resolve the scene via the manager
@@ -304,12 +311,28 @@ void Session::moveToScene (quint32 id)
         Q_ARG(const Callback&, Callback(_this, "sceneMaybeResolved(QObject*)")));
 }
 
+void Session::moveToZone (const QString& prefix)
+{
+    // look up the prefix in the database
+    QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "findZones",
+        Q_ARG(const QString&, prefix), Q_ARG(quint32, 0), Q_ARG(const Callback&,
+            Callback(_this, "continueMovingToZone(ZoneRecordList)")));
+}
+
 void Session::moveToZone (quint32 id)
 {
-    // resolve the zone via the manager
-    QMetaObject::invokeMethod(_app->sceneManager(), "resolveZone",
-        Q_ARG(quint32, id),
-        Q_ARG(const Callback&, Callback(_this, "zoneMaybeResolved(QObject*)")));
+    // reserve a place in an instance
+    QMetaObject::invokeMethod(_app->peerManager(), "reserveInstancePlace",
+        Q_ARG(quint64, _record.id), Q_ARG(quint32, id), Q_ARG(const Callback&,
+            Callback(_this, "continueMovingToZone(QString,quint64)")));
+}
+
+void Session::moveToPlayer (const QString& name)
+{
+}
+
+void Session::summonPlayer (const QString& name)
+{
 }
 
 void Session::setSettings (const QString& password, const QString& email, QChar avatar)
@@ -652,6 +675,15 @@ void Session::zoneCreated (quint32 id)
     moveToZone(id);
 }
 
+void Session::continueMovingToScene (const SceneDescriptorList& scenes)
+{
+    if (scenes.isEmpty()) {
+        _chatWindow->display(tr("No such scene."));
+        return;
+    }
+
+}
+
 void Session::sceneMaybeResolved (QObject* scene)
 {
     if (scene == 0) {
@@ -686,27 +718,27 @@ void Session::continueMovingToScene (QObject* scene)
     emit didEnterScene(_scene);
 }
 
-void Session::zoneMaybeResolved (QObject* zone)
+void Session::continueMovingToZone (const ZoneRecordList& zones)
 {
-    if (zone == 0) {
-        showInfoDialog(tr("Failed to resolve zone."));
+    if (zones.isEmpty()) {
+        _chatWindow->display(tr("No such zone."));
         return;
     }
-
-    // reserve a place in an instance
-    QMetaObject::invokeMethod(zone, "reserveInstancePlace",
-        Q_ARG(const Callback&, Callback(_this, "instancePlaceReserved(QObject*)")));
+    // pick one at random
+    moveToZone(zones.at(qrand() % zones.size()).id);
 }
 
-void Session::instancePlaceReserved (QObject* instance)
+void Session::continueMovingToZone (const QString& peer, quint64 instanceId)
 {
-    // move the session to the instance thread
-    leaveZone();
-    setParent(0);
-    moveToThread(instance->thread());
+    if (peer == _app->peerManager()->record().name) {
+        // move the session to the instance thread
+        leaveZone();
+        setParent(0);
+//        moveToThread(instance->thread());
 
-    // continue the process in the instance thread
-    QMetaObject::invokeMethod(this, "continueMovingToZone", Q_ARG(QObject*, instance));
+        // continue the process in the instance thread
+//        QMetaObject::invokeMethod(this, "continueMovingToZone", Q_ARG(QObject*, instance));
+    }
 }
 
 void Session::leaveZone ()
