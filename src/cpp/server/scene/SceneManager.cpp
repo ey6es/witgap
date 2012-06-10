@@ -29,6 +29,12 @@ SceneManager::SceneManager (ServerApp* app) :
     }
 }
 
+Instance* SceneManager::instance (quint64 id) const
+{
+    Zone* zone = _zones.value(getZoneId(id));
+    return (zone == 0) ? 0 : zone->instances().value(getInstanceOffset(id));
+}
+
 void SceneManager::startThreads ()
 {
     foreach (QThread* thread, _threads) {
@@ -62,22 +68,20 @@ void SceneManager::createInstance (quint64 sessionId, quint32 zoneId, const Call
 void SceneManager::reserveInstancePlace (
     quint64 sessionId, quint64 instanceId, const Callback& callback)
 {
-    Zone* zone = _zones.value(getZoneId(instanceId));
-    if (zone != 0) {
-        Instance* instance = zone->instances().value(getInstanceOffset(instanceId));
-        if (instance != 0) {
-
-            return;
-        }
+    Instance* instance = this->instance(instanceId);
+    if (instance != 0) {
+        QMetaObject::invokeMethod(instance, "reservePlace", Q_ARG(quint64, sessionId),
+            Q_ARG(const Callback&, callback));
+    } else {
+        callback.invoke(Q_ARG(bool, false));
     }
-    callback.invoke(Q_ARG(bool, false));
 }
 
 void SceneManager::cancelInstancePlaceReservation (quint64 sessionId, quint64 instanceId)
 {
-    Zone* zone = _zones.value(getZoneId(instanceId));
-    if (zone != 0) {
-//        zone->cancelInstancePlaceReservation(sessionId, );
+    Instance* instance = this->instance(instanceId);
+    if (instance != 0) {
+        QMetaObject::invokeMethod(instance, "cancelPlaceReservation", Q_ARG(quint64, sessionId));
     }
 }
 

@@ -36,7 +36,7 @@ public:
     /**
      * Destroys the manager.
      */
-    ~ConnectionManager ();
+    virtual ~ConnectionManager ();
 
     /**
      * Returns a pointer to the private RSA key.

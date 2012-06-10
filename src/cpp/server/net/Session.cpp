@@ -734,16 +734,19 @@ void Session::continueMovingToZone (const QString& peer, quint64 instanceId)
         // move the session to the instance thread
         leaveZone();
         setParent(0);
-//        moveToThread(instance->thread());
+        Instance* instance = _app->sceneManager()->instance(instanceId);
+        moveToThread(instance->thread());
 
         // continue the process in the instance thread
-//        QMetaObject::invokeMethod(this, "continueMovingToZone", Q_ARG(QObject*, instance));
+        QMetaObject::invokeMethod(this, "continueMovingToZone", Q_ARG(QObject*, instance));
+        return;
     }
 }
 
 void Session::leaveZone ()
 {
     if (_instance != 0) {
+        _instance->removeSession(this);
         _instance = 0;
     }
 }
@@ -751,6 +754,7 @@ void Session::leaveZone ()
 void Session::continueMovingToZone (QObject* instance)
 {
     _instance = static_cast<Instance*>(instance);
+    _instance->addSession(this);
 }
 
 void Session::maybeTold (const QString& recipient, const QString& message, bool success)

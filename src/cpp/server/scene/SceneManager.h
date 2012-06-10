@@ -14,6 +14,7 @@
 
 class QThread;
 
+class Instance;
 class Scene;
 class SceneRecord;
 class ServerApp;
@@ -33,6 +34,11 @@ public:
      * Initializes the scene manager.
      */
     SceneManager (ServerApp* app);
+
+    /**
+     * Returns the instance with the provided id, or 0 if not found.
+     */
+    Instance* instance (quint64 id) const;
 
     /**
      * Starts the scene threads.

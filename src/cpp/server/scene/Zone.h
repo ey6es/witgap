@@ -12,10 +12,13 @@
 #include "peer/PeerManager.h"
 #include "util/Callback.h"
 
+class QTimer;
+
 class Instance;
 class Scene;
 class SceneRecord;
 class ServerApp;
+class Session;
 
 /**
  * The in-memory representation of a zone.
@@ -90,10 +93,38 @@ public:
     Zone* zone () const { return _zone; }
 
     /**
+     * Attempts to reserve a place in this instance for the identified session.  The callback will
+     * receive a bool indicating success or failure.
+     */
+    Q_INVOKABLE void reservePlace (quint64 sessionId, const Callback& callback);
+
+    /**
+     * Cancels a place reservation.
+     */
+    Q_INVOKABLE void cancelPlaceReservation (quint64 sessionId);
+
+    /**
+     * Adds a session to the instance.
+     */
+    void addSession (Session* session);
+
+    /**
+     * Removes a session from the instance.
+     */
+    void removeSession (Session* session);
+
+    /**
      * Attempts to resolve a scene.  The callback will receive a QObject*, either the resolved
      * scene or 0 if not found.
      */
     void resolveScene (quint32 id, const Callback& callback);
+
+protected slots:
+
+    /**
+     * Called when a reservation has expired.
+     */
+    void clearPlaceReservation ();
 
 protected:
 
@@ -112,6 +143,9 @@ protected:
 
     /** The instance info. */
     InstanceInfo _info;
+
+    /** Maps ids of sessions that have reserved places to their reservation timeouts. */
+    QHash<quint64, QTimer*> _placeReservationTimers;
 
     /** Scenes in the instance mapped by id. */
     QHash<quint32, Scene*> _scenes;

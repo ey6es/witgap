@@ -2,10 +2,12 @@
 // $Id$
 
 #include <QMetaObject>
+#include <QTimer>
 
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
 #include "db/SceneRepository.h"
+#include "net/Session.h"
 #include "scene/Scene.h"
 #include "scene/SceneManager.h"
 #include "scene/Zone.h"
@@ -33,7 +35,6 @@ void Zone::continueCreatingInstance (
 {
     Instance* instance = new Instance(this, instanceId);
     _instances.insert(getInstanceOffset(instanceId), instance);
-    instance->moveToThread(_app->sceneManager()->nextThread());
     callback.invoke(Q_ARG(quint64, instanceId));
 }
 
@@ -41,10 +42,62 @@ Instance::Instance (Zone* zone, quint64 id) :
     _zone(zone)
 {
     // add info on all peers
-    InstanceInfo info = { id, zone->app()->peerManager()->record().name };
+    InstanceInfo info = { id, zone->app()->peerManager()->record().name,
+        zone->record().maxPopulation };
     _info = info;
     zone->app()->peerManager()->invoke(zone->app()->peerManager(), "instanceAdded(InstanceInfo)",
         Q_ARG(const InstanceInfo&, info));
+
+    moveToThread(zone->app()->sceneManager()->nextThread());
+}
+
+/** The time for which we hold a reserved place. */
+static const int PlaceReservationTimeout = 5000;
+
+void Instance::reservePlace (quint64 sessionId, const Callback& callback)
+{
+    if (_info.open <= 0) {
+        callback.invoke(Q_ARG(bool, false));
+        return;
+    }
+    QTimer* timer = new QTimer(this);
+    timer->setProperty("sessionId", sessionId);
+    timer->start(PlaceReservationTimeout);
+    connect(timer, SIGNAL(timeout()), SLOT(clearPlaceReservation()));
+    _placeReservationTimers.insert(sessionId, timer);
+    _info.open--;
+    _zone->app()->peerManager()->invoke(_zone->app()->peerManager(),
+        "instanceUpdated(InstanceInfo)", Q_ARG(const InstanceInfo&, _info));
+    callback.invoke(Q_ARG(bool, true));
+}
+
+void Instance::cancelPlaceReservation (quint64 sessionId)
+{
+    QTimer* timer = _placeReservationTimers.take(sessionId);
+    if (timer == 0) {
+        return; // already cancelled
+    }
+    timer->deleteLater();
+    _info.open++;
+    _zone->app()->peerManager()->invoke(_zone->app()->peerManager(),
+        "instanceUpdated(InstanceInfo)", Q_ARG(const InstanceInfo&, _info));
+}
+
+void Instance::addSession (Session* session)
+{
+    QTimer* timer = _placeReservationTimers.take(session->record().id);
+    if (timer != 0) {
+        delete timer;
+    }
+    session->setParent(this);
+}
+
+void Instance::removeSession (Session* session)
+{
+    session->setParent(0);
+    _info.open++;
+    _zone->app()->peerManager()->invoke(_zone->app()->peerManager(),
+        "instanceUpdated(InstanceInfo)", Q_ARG(const InstanceInfo&, _info));
 }
 
 void Instance::resolveScene (quint32 id, const Callback& callback)
@@ -67,6 +120,11 @@ void Instance::resolveScene (quint32 id, const Callback& callback)
     QMetaObject::invokeMethod(_zone->app()->databaseThread()->sceneRepository(), "loadScene",
         Q_ARG(quint32, id), Q_ARG(const Callback&,
             Callback(_this, "sceneMaybeLoaded(quint32,SceneRecord)", Q_ARG(quint32, id))));
+}
+
+void Instance::clearPlaceReservation ()
+{
+    cancelPlaceReservation(sender()->property("sessionId").toULongLong());
 }
 
 void Instance::sceneMaybeLoaded (quint32 id, const SceneRecord& record)
