@@ -91,7 +91,7 @@ template<class T> inline void Peer::sendRequestMessage (const T& msg, const Call
 {
     T message = msg;
     _pendingRequests.insert(message.id = ++_lastRequestId, callback);
-    sendMessage(msg);
+    sendMessage(message);
 }
 
 #endif // PEER

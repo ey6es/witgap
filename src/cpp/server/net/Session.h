@@ -16,6 +16,7 @@
 #include "peer/PeerManager.h"
 #include "ui/TextField.h"
 #include "util/Callback.h"
+#include "util/Streaming.h"
 
 class QEvent;
 class QTranslator;
@@ -27,6 +28,7 @@ class Pawn;
 class Scene;
 class SceneRecord;
 class ServerApp;
+class SessionTransfer;
 class Window;
 
 /**
@@ -42,7 +44,7 @@ public:
      * Initializes the session.
      */
     Session (ServerApp* app, const SharedConnectionPointer& connection,
-        const SessionRecord& record, const UserRecord& user);
+        const SessionRecord& record, const UserRecord& user, const SessionTransfer& transfer);
 
     /**
      * Returns a pointer to the application object.
@@ -416,6 +418,11 @@ protected:
     Q_INVOKABLE void continueMovingToZone (QObject* instance);
 
     /**
+     * Reports back from a session transfer request.
+     */
+    Q_INVOKABLE void sessionMaybeTransferred (const QString& host, quint16 port);
+
+    /**
      * Reports back from a tell request.
      */
     Q_INVOKABLE void maybeTold (const QString& recipient, const QString& message, bool success);
@@ -500,5 +507,23 @@ protected:
     /** The currently controlled pawn. */
     Pawn* _pawn;
 };
+
+/**
+ * Contains the session state sent between peers when a session is transferred.
+ */
+class SessionTransfer
+{
+    STREAMABLE
+
+public:
+
+    /** The session id. */
+    STREAM quint64 id;
+
+    /** The instance to enter after transfer. */
+    STREAM quint64 instanceId;
+};
+
+DECLARE_STREAMABLE_METATYPE(SessionTransfer)
 
 #endif // SESSION

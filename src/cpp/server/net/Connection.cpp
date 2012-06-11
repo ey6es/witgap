@@ -312,6 +312,7 @@ void Connection::readHeader ()
             "<cross-domain-policy>\n"
             "  <allow-access-from domain=\"*\" to-ports=\"*\"/>\n"
             "</cross-domain-policy>\n");
+        _socket->disconnect(this, SLOT(readHeader()));
         _socket->disconnectFromHost();
         return;
     }

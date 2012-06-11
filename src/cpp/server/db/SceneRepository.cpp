@@ -211,7 +211,7 @@ void SceneRepository::insertZone (const QString& name, quint32 creatorId, const 
 {
     QSqlQuery query;
     query.prepare("insert into ZONES (NAME, NAME_LOWER, CREATOR_ID, CREATED, MAX_POPULATION) "
-        "values (?, ?, ?, ?, ?, ?)");
+        "values (?, ?, ?, ?, ?)");
     query.addBindValue(name);
     query.addBindValue(name.toLower());
     query.addBindValue(creatorId);

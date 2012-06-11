@@ -37,7 +37,7 @@ using namespace std;
 int sessionPointerType = qRegisterMetaType<Session*>("Session*");
 
 Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
-        const SessionRecord& record, const UserRecord& user) :
+        const SessionRecord& record, const UserRecord& user, const SessionTransfer& transfer) :
     CallableObject(app->connectionManager()),
     _app(app),
     _record(record),
@@ -730,17 +730,24 @@ void Session::continueMovingToZone (const ZoneRecordList& zones)
 
 void Session::continueMovingToZone (const QString& peer, quint64 instanceId)
 {
-    if (peer == _app->peerManager()->record().name) {
-        // move the session to the instance thread
-        leaveZone();
-        setParent(0);
-        Instance* instance = _app->sceneManager()->instance(instanceId);
-        moveToThread(instance->thread());
-
-        // continue the process in the instance thread
-        QMetaObject::invokeMethod(this, "continueMovingToZone", Q_ARG(QObject*, instance));
+    // if it's not the local peer, we need to initiate a session transfer
+    if (peer != _app->peerManager()->record().name) {
+        SessionTransfer transfer;
+        transfer.id = _record.id;
+        transfer.instanceId = instanceId;
+        _app->peerManager()->invoke(peer, _app->connectionManager(),
+            "transferSession(SessionTransfer,Callback)", Q_ARG(const SessionTransfer&, transfer),
+            Q_ARG(const Callback&, Callback(_this, "sessionMaybeTransferred(QString,quint16)")));
         return;
     }
+    // move the session to the instance thread
+    leaveZone();
+    setParent(0);
+    Instance* instance = _app->sceneManager()->instance(instanceId);
+    moveToThread(instance->thread());
+
+    // continue the process in the instance thread
+    QMetaObject::invokeMethod(this, "continueMovingToZone", Q_ARG(QObject*, instance));
 }
 
 void Session::leaveZone ()
@@ -755,6 +762,17 @@ void Session::continueMovingToZone (QObject* instance)
 {
     _instance = static_cast<Instance*>(instance);
     _instance->addSession(this);
+}
+
+void Session::sessionMaybeTransferred (const QString& host, quint16 port)
+{
+    if (host.isEmpty()) {
+        return;
+    }
+    if (_connection) {
+        Connection::reconnectMetaMethod().invoke(_connection.data(),
+            Q_ARG(const QString&, host), Q_ARG(quint16, port));
+    }
 }
 
 void Session::maybeTold (const QString& recipient, const QString& message, bool success)

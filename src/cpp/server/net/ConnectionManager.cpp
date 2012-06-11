@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include <QTcpSocket>
+#include <QTimer>
 #include <QtDebug>
 
 #include <openssl/rsa.h>
@@ -20,6 +21,7 @@ ConnectionManager::ConnectionManager (ServerApp* app) :
     QTcpServer(app),
     _app(app),
     _rsa(0),
+    _geoIp(GeoIP_new(GEOIP_STANDARD)),
     _this(this)
 {
     // read the private RSA key
@@ -52,6 +54,7 @@ ConnectionManager::ConnectionManager (ServerApp* app) :
 
 ConnectionManager::~ConnectionManager ()
 {
+    GeoIP_delete(_geoIp);
     if (_rsa != 0) {
         RSA_free(_rsa);
     }
@@ -79,6 +82,20 @@ void ConnectionManager::connectionEstablished (Connection* connection)
         Q_ARG(const Callback&, Callback(_this,
             "tokenValidated(SharedConnectionPointer,SessionRecord,UserRecord)",
             Q_ARG(const SharedConnectionPointer&, connection->pointer()))));
+}
+
+/** The duration of our wait for a session transfer. */
+static const int SessionTransferTimeout = 5000;
+
+void ConnectionManager::transferSession (const SessionTransfer& transfer, const Callback& callback)
+{
+    QTimer* timer = new QTimer(this);
+    timer->setProperty("sessionId", transfer.id);
+    timer->start(SessionTransferTimeout);
+    connect(timer, SIGNAL(timeout()), SLOT(clearPendingTransfer()));
+    _pendingTransfers.insert(transfer.id, PendingTransfer(transfer, timer));
+    const PeerRecord& prec = _app->peerManager()->record();
+    callback.invoke(Q_ARG(const QString&, prec.externalHostname), Q_ARG(quint16, serverPort()));
 }
 
 void ConnectionManager::broadcast (const QString& speaker, const QString& message)
@@ -136,6 +153,13 @@ void ConnectionManager::acceptConnections ()
     }
 }
 
+void ConnectionManager::clearPendingTransfer ()
+{
+    PendingTransfer transfer = _pendingTransfers.take(
+        sender()->property("sessionId").toULongLong());
+        transfer.second->deleteLater();
+}
+
 void ConnectionManager::connectionMaybeSet (const SharedConnectionPointer& connptr, bool success)
 {
     // make sure we failed to install the connection and the connection is still in business
@@ -159,8 +183,14 @@ void ConnectionManager::tokenValidated (
         return;
     }
 
+    // see if we have transfer data
+    PendingTransfer transfer = _pendingTransfers.take(record.id);
+    if (transfer.second != 0) {
+        delete transfer.second;
+    }
+
     // create and map the session
-    Session* session = new Session(_app, connptr, record, user);
+    Session* session = new Session(_app, connptr, record, user, transfer.first);
     _sessions.insert(record.id, session);
     _names.insert(record.name.toLower(), session);
 }

@@ -3,6 +3,7 @@
 
 #include <QMetaObject>
 #include <QThread>
+#include <QtDebug>
 
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
