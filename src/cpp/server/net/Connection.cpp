@@ -108,6 +108,7 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     _pointer(this, &QObject::deleteLater),
     _app(app),
     _socket(socket),
+    _address(socket->peerAddress()),
     _stream(socket),
     _crypto(false),
     _clientCrypto(false),
@@ -117,6 +118,14 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     // init crypto bits
     EVP_CIPHER_CTX_init(&_ectx);
     EVP_CIPHER_CTX_init(&_dctx);
+
+    // and geoip bits
+    _geoIpRecord = GeoIP_record_by_ipnum(_app->connectionManager()->geoIp(),
+        _address.toIPv4Address());
+
+    if (_geoIpRecord != 0) {
+        qDebug() << _geoIpRecord->latitude << _geoIpRecord->longitude;
+    }
 
     // take over ownership of the socket and set its low delay option
     _socket->setParent(this);
@@ -129,7 +138,7 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     connect(this, SIGNAL(windowClosed()), SLOT(close()));
 
     // log the connection
-    qDebug() << "Connection opened." << (_address = _socket->peerAddress());
+    qDebug() << "Connection opened." << _address;
 }
 
 Connection::~Connection ()
@@ -137,6 +146,11 @@ Connection::~Connection ()
     // cleanup crypto bits
     EVP_CIPHER_CTX_cleanup(&_ectx);
     EVP_CIPHER_CTX_cleanup(&_dctx);
+
+    // and geoip bits
+    if (_geoIpRecord != 0) {
+        GeoIPRecord_delete(_geoIpRecord);
+    }
 }
 
 void Connection::activate ()

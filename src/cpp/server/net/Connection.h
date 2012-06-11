@@ -13,6 +13,8 @@
 
 #include <openssl/evp.h>
 
+#include <GeoIPCity.h>
+
 #include "util/General.h"
 
 class QMetaMethod;
@@ -310,6 +312,9 @@ protected:
 
     /** The encryption and decryption contexts. */
     EVP_CIPHER_CTX _ectx, _dctx;
+
+    /** The client's GeoIP info. */
+    GeoIPRecord* _geoIpRecord;
 
     /** The display size reported by the client. */
     QSize _displaySize;

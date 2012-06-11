@@ -50,3 +50,6 @@ name_chain = /export/witgap/etc/name_chain.dat
 
 ; The file containing the list of patterns that cannot be used in names
 blocked_names = /export/witgap/etc/blocked_names.txt
+
+; The file containing the GeoIP database
+geoip_db = /export/witgap/etc/GeoLiteCity.dat

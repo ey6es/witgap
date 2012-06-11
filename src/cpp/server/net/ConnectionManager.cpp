@@ -21,7 +21,7 @@ ConnectionManager::ConnectionManager (ServerApp* app) :
     QTcpServer(app),
     _app(app),
     _rsa(0),
-    _geoIp(GeoIP_new(GEOIP_STANDARD)),
+    _geoIp(GeoIP_open(app->config().value("geoip_db").toByteArray().constData(), GEOIP_STANDARD)),
     _this(this)
 {
     // read the private RSA key
