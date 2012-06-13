@@ -132,6 +132,11 @@ public:
     bool isOpen () const { return _pointer; }
 
     /**
+     * Returns the closest region to the client.
+     */
+    const QString& region () const { return _region; }
+
+    /**
      * Returns the display size reported by the client.
      */
     const QSize& displaySize () const { return _displaySize; }
@@ -315,6 +320,9 @@ protected:
 
     /** The client's GeoIP info. */
     GeoIPRecord* _geoIpRecord;
+
+    /** The closest region to the client. */
+    QString _region;
 
     /** The display size reported by the client. */
     QSize _displaySize;

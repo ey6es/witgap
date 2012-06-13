@@ -34,6 +34,16 @@ public:
     const QString& name () const { return _name; }
 
     /**
+     * Returns a reference to the public hostname.
+     */
+    const QString& host () const { return _host; }
+
+    /**
+     * Returns the client port.
+     */
+    quint16 port () const { return _port; }
+
+    /**
      * Returns the peer's load estimate.
      */
     int load () const;
@@ -87,6 +97,12 @@ protected:
 
     /** The peer name. */
     QString _name;
+
+    /** The public hostname. */
+    QString _host;
+
+    /** The client port. */
+    quint16 _port;
 
     /** The sessions registered by this connection. */
     QHash<quint64, SessionInfoPointer> _sessions;

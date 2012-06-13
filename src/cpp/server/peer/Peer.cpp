@@ -5,6 +5,7 @@
 #include <QTimer>
 
 #include "ServerApp.h"
+#include "net/ConnectionManager.h"
 #include "peer/Peer.h"
 #include "peer/PeerManager.h"
 #include "peer/PeerProtocol.h"
@@ -76,9 +77,12 @@ void Peer::sendHeader ()
 
     const QString& secret = _app->peerManager()->sharedSecret();
     const QString& name = _app->peerManager()->record().name;
-    _stream << (quint32)(8 + (secret.length() + name.length())*sizeof(QChar));
+    const QString& host = _app->peerManager()->record().externalHostname;
+    _stream << (quint32)(14 + (secret.length() + name.length() + host.length())*sizeof(QChar));
     _stream << secret;
     _stream << name;
+    _stream << host;
+    _stream << _app->connectionManager()->serverPort();
 
     // send our instance list
     InvokeAction action;

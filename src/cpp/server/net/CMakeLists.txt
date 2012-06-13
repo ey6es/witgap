@@ -4,4 +4,4 @@ set(MTC_HEADERS Session.h)
 
 qt4_wrap_cpp(SOURCES ${HEADERS})
 mtc_wrap_cpp(SOURCES ${MTC_HEADERS})
-add_library(server-net ${SOURCES} ${HEADERS} ${MTC_HEADERS} ../../Protocol.h)
+add_library(server-net ${SOURCES} ${HEADERS} ../../Protocol.h)

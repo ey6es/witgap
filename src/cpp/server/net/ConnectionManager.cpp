@@ -4,7 +4,6 @@
 #include <stdio.h>
 
 #include <QTcpSocket>
-#include <QTimer>
 #include <QtDebug>
 
 #include <openssl/rsa.h>
@@ -84,18 +83,15 @@ void ConnectionManager::connectionEstablished (Connection* connection)
             Q_ARG(const SharedConnectionPointer&, connection->pointer()))));
 }
 
-/** The duration of our wait for a session transfer. */
-static const int SessionTransferTimeout = 5000;
-
-void ConnectionManager::transferSession (const SessionTransfer& transfer, const Callback& callback)
+void ConnectionManager::transferSession (const SessionTransfer& transfer)
 {
-    QTimer* timer = new QTimer(this);
-    timer->setProperty("sessionId", transfer.id);
-    timer->start(SessionTransferTimeout);
-    connect(timer, SIGNAL(timeout()), SLOT(clearPendingTransfer()));
-    _pendingTransfers.insert(transfer.id, PendingTransfer(transfer, timer));
-    const PeerRecord& prec = _app->peerManager()->record();
-    callback.invoke(Q_ARG(const QString&, prec.externalHostname), Q_ARG(quint16, serverPort()));
+    qDebug() << "Session transferred." << transfer.record.name;
+
+    // create and map the session
+    Session* session = new Session(
+        _app, SharedConnectionPointer(), transfer.record, transfer.user, transfer);
+    _sessions.insert(transfer.record.id, session);
+    _names.insert(transfer.record.name.toLower(), session);
 }
 
 void ConnectionManager::broadcast (const QString& speaker, const QString& message)
@@ -153,13 +149,6 @@ void ConnectionManager::acceptConnections ()
     }
 }
 
-void ConnectionManager::clearPendingTransfer ()
-{
-    PendingTransfer transfer = _pendingTransfers.take(
-        sender()->property("sessionId").toULongLong());
-        transfer.second->deleteLater();
-}
-
 void ConnectionManager::connectionMaybeSet (const SharedConnectionPointer& connptr, bool success)
 {
     // make sure we failed to install the connection and the connection is still in business
@@ -183,14 +172,8 @@ void ConnectionManager::tokenValidated (
         return;
     }
 
-    // see if we have transfer data
-    PendingTransfer transfer = _pendingTransfers.take(record.id);
-    if (transfer.second != 0) {
-        delete transfer.second;
-    }
-
     // create and map the session
-    Session* session = new Session(_app, connptr, record, user, transfer.first);
+    Session* session = new Session(_app, connptr, record, user, SessionTransfer());
     _sessions.insert(record.id, session);
     _names.insert(record.name.toLower(), session);
 }

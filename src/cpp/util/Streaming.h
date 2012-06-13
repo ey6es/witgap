@@ -19,6 +19,12 @@
     QDataStream& operator>> (QDataStream& in, X& obj); \
     static const int* _TypePtr##X = &X::Type;
 
+/** Declares the usual and streaming operators for a flag type. */
+#define DECLARE_STREAMING_OPERATORS_FOR_FLAGS(X) Q_DECLARE_OPERATORS_FOR_FLAGS(X) \
+    inline QDataStream& operator<< (QDataStream& out, const X& flags) { out << (quint32)flags; } \
+    inline QDataStream& operator>> (QDataStream& in, X& flags) \
+    { quint32 v; in >> v; flags = (QFlag)v; }
+
 /**
  * Registers a streamable type and its streaming operators.
  */

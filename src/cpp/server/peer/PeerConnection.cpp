@@ -29,7 +29,7 @@ PeerConnection::~PeerConnection ()
     PeerManager* manager = qobject_cast<PeerManager*>(parent());
     if (manager != 0) {
         foreach (const SessionInfoPointer& ptr, _sessions) {
-            manager->sessionRemoved(ptr->id);
+            manager->sessionRemoved(ptr->id, _name);
         }
         foreach (const InstanceInfoPointer& ptr, _instances) {
             manager->instanceRemoved(ptr->id);
@@ -122,6 +122,8 @@ void PeerConnection::readHeader ()
         return;
     }
     _stream >> _name;
+    _stream >> _host;
+    _stream >> _port;
 
     // map
     _app->peerManager()->connectionEstablished(this);

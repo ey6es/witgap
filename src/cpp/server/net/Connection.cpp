@@ -3,6 +3,8 @@
 
 #include <iostream>
 
+#include <math.h>
+
 #include <QBuffer>
 #include <QDateTime>
 #include <QMetaMethod>
@@ -104,6 +106,49 @@ const QMetaMethod& Connection::evaluateMetaMethod ()
     return method;
 }
 
+/**
+ * Converts degrees to radians.
+ */
+static inline double toRadians (double value)
+{
+    return value * 3.14159265358979323846 / 180;
+}
+
+/**
+ * Contains the name and location of a region.
+ */
+class Region {
+public:
+
+    /** The region's name. */
+    QString name;
+
+    /** The region's latitude in degrees north. */
+    double latitude;
+
+    /** The region's longitude in degrees east. */
+    double longitude;
+
+    /**
+     * Returns the angular distance (assuming a unit sphere) to this region from the specified
+     * location.
+     */
+    double distance (double olatitude, double olongitude) const
+    {
+        double tlat = toRadians(latitude);
+        double tlon = toRadians(longitude);
+        double olat = toRadians(olatitude);
+        double olon = toRadians(olongitude);
+        return acos(
+            cos(tlat)*cos(tlon) * cos(olat)*cos(olon) + // x
+            cos(tlat)*sin(tlon) * cos(olat)*sin(olon) + // y
+            sin(tlat) * sin(olat)); // z
+    }
+};
+
+/** The available regions and their locations. */
+static const Region Regions[] = { {"us-east", 39.0437, -77.4875} };
+
 Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     _pointer(this, &QObject::deleteLater),
     _app(app),
@@ -119,12 +164,20 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     EVP_CIPHER_CTX_init(&_ectx);
     EVP_CIPHER_CTX_init(&_dctx);
 
-    // and geoip bits
+    // and geoip/region bits
     _geoIpRecord = GeoIP_record_by_ipnum(_app->connectionManager()->geoIp(),
         _address.toIPv4Address());
-
+    _region = Regions[0].name;
     if (_geoIpRecord != 0) {
-        qDebug() << _geoIpRecord->latitude << _geoIpRecord->longitude;
+        // find the closest region
+        double leastDist = Regions[0].distance(_geoIpRecord->latitude, _geoIpRecord->longitude);
+        for (int ii = 1, nn = sizeof(Regions) / sizeof(Region); ii < nn; ii++) {
+            double dist = Regions[ii].distance(_geoIpRecord->latitude, _geoIpRecord->longitude);
+            if (dist < leastDist) {
+                _region = Regions[ii].name;
+                leastDist = dist;
+            }
+        }
     }
 
     // take over ownership of the socket and set its low delay option

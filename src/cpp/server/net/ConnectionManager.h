@@ -5,7 +5,6 @@
 #define CONNECTION_MANAGER
 
 #include <QHash>
-#include <QPair>
 #include <QTcpServer>
 
 #include <openssl/pem.h>
@@ -15,8 +14,6 @@
 #include "net/Connection.h"
 #include "peer/PeerManager.h"
 #include "util/Callback.h"
-
-class QTimer;
 
 class ServerApp;
 class Session;
@@ -55,15 +52,19 @@ public:
     GeoIP* geoIp () const { return _geoIp; }
 
     /**
+     * Returns a reference to the session map.
+     */
+    const QHash<quint64, Session*> sessions () const { return _sessions; }
+
+    /**
      * Called by a connection when it has received the protocol header.
      */
     void connectionEstablished (Connection* connection);
 
     /**
-     * Transfers a session from another peer.  The callback will receive the (QString) host name
-     * and (quint16) port number.
+     * Transfers a session from another peer.
      */
-    Q_INVOKABLE void transferSession (const SessionTransfer& transfer, const Callback& callback);
+    Q_INVOKABLE void transferSession (const SessionTransfer& transfer);
 
     /**
      * Broadcasts a message to all online users.
@@ -100,15 +101,7 @@ protected slots:
      */
     void acceptConnections ();
 
-    /**
-     * Called when a pending transfer has expired.
-     */
-    void clearPendingTransfer ();
-
 protected:
-
-    /** A transfer awaiting connection. */
-    typedef QPair<SessionTransfer, QTimer*> PendingTransfer;
 
     /**
      * Callback for connection installation.
@@ -136,9 +129,6 @@ protected:
 
     /** Sessions mapped by name. */
     QHash<QString, Session*> _names;
-
-    /** Pending session transfers. */
-    QHash<quint64, PendingTransfer> _pendingTransfers;
 
     /** Synchronized pointer for callbacks. */
     CallablePointer _this;

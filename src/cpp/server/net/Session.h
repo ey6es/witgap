@@ -248,6 +248,11 @@ public:
     void summonPlayer (const QString& name);
 
     /**
+     * Closes the session, instructing it to reconnect to the specified host and port.
+     */
+    Q_INVOKABLE void reconnect (const QString& host, quint16 port);
+
+    /**
      * Sets the user's settings.
      */
     void setSettings (const QString& password, const QString& email, QChar avatar);
@@ -418,11 +423,6 @@ protected:
     Q_INVOKABLE void continueMovingToZone (QObject* instance);
 
     /**
-     * Reports back from a session transfer request.
-     */
-    Q_INVOKABLE void sessionMaybeTransferred (const QString& host, quint16 port);
-
-    /**
      * Reports back from a tell request.
      */
     Q_INVOKABLE void maybeTold (const QString& recipient, const QString& message, bool success);
@@ -517,8 +517,11 @@ class SessionTransfer
 
 public:
 
-    /** The session id. */
-    STREAM quint64 id;
+    /** The session record. */
+    STREAM SessionRecord record;
+
+    /** The user record. */
+    STREAM UserRecord user;
 
     /** The instance to enter after transfer. */
     STREAM quint64 instanceId;

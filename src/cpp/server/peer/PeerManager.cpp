@@ -13,6 +13,8 @@
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
 #include "db/PropertyRepository.h"
+#include "net/ConnectionManager.h"
+#include "net/Session.h"
 #include "peer/Peer.h"
 #include "peer/PeerConnection.h"
 #include "peer/PeerManager.h"
@@ -285,20 +287,37 @@ void PeerManager::connectionClosed (PeerConnection* connection)
 
 void PeerManager::sessionAdded (const SessionInfo& info)
 {
-    SessionInfoPointer ptr(new SessionInfo(info));
+    // make sure it doesn't already exist (it might be a transfer session)
+    SessionInfoPointer ptr = _sessions.value(info.id);
+    if (ptr) {
+        sessionRemoved(ptr->id, ptr->peer);
+    }
+    ptr = SessionInfoPointer(new SessionInfo(info));
     _sessions.insert(info.id, ptr);
     _sessionsByName.insert(info.name.toLower(), ptr);
 
     if (info.peer == _record.name) {
         _localSessions.insert(info.id, ptr);
     } else {
-        _connections.value(info.peer)->sessionAdded(ptr);
+        PeerConnection* connection = _connections.value(info.peer);
+        connection->sessionAdded(ptr);
+
+        // if we have a session mapped locally, tell it to reconnect
+        Session* session = _app->connectionManager()->sessions().value(info.id);
+        if (session != 0) {
+            QMetaObject::invokeMethod(session, "reconnect",
+                Q_ARG(const QString&, connection->host()), Q_ARG(quint16, connection->port()));
+        }
     }
 }
 
 void PeerManager::sessionUpdated (const SessionInfo& info)
 {
+    // make sure it exists and is on the right peer (it might be a transferred session)
     SessionInfoPointer ptr = _sessions.value(info.id);
+    if (!ptr || ptr->peer != info.peer) {
+        return;
+    }
     QString oname = ptr->name.toLower();
     QString nname = (*ptr = info).name.toLower();
 
@@ -309,15 +328,20 @@ void PeerManager::sessionUpdated (const SessionInfo& info)
     }
 }
 
-void PeerManager::sessionRemoved (quint64 id)
+void PeerManager::sessionRemoved (quint64 id, const QString& peer)
 {
-    SessionInfoPointer ptr = _sessions.take(id);
+    // make sure it exists and is on the right peer
+    SessionInfoPointer ptr = _sessions.value(id);
+    if (!ptr || ptr->peer != peer) {
+        return;
+    }
+    _sessions.remove(id);
     _sessionsByName.remove(ptr->name.toLower());
 
-    if (ptr->peer == _record.name) {
+    if (peer == _record.name) {
         _localSessions.remove(id);
     } else {
-        _connections.value(ptr->peer)->sessionRemoved(ptr);
+        _connections.value(peer)->sessionRemoved(ptr);
     }
 }
 

@@ -57,10 +57,6 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
     _app->peerManager()->invoke(_app->peerManager(), "sessionAdded(SessionInfo)",
         Q_ARG(const SessionInfo&, info));
 
-    // send the session info back to the connection
-    connection->setCookie("sessionId", QString::number(record.id, 16).rightJustified(16, '0'));
-    connection->setCookie("sessionToken", record.token.toHex());
-
     // create the main window
     _mainWindow = new MainWindow(this);
 
@@ -68,7 +64,12 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
     _chatWindow = new ChatWindow(this);
     _chatEntryWindow = new ChatEntryWindow(this);
 
-    setConnection(connection);
+    // install the connection, if available
+    if (connection) {
+        connection->setCookie("sessionId", QString::number(record.id, 16).rightJustified(16, '0'));
+        connection->setCookie("sessionToken", record.token.toHex());
+        setConnection(connection);
+    }
 
     // force logon if the server isn't open
     if (user.id == 0 && _app->runtimeConfig()->logonPolicy() != RuntimeConfig::Everyone) {
@@ -335,6 +336,15 @@ void Session::summonPlayer (const QString& name)
 {
 }
 
+void Session::reconnect (const QString& host, quint16 port)
+{
+    if (_connection) {
+        Connection::reconnectMetaMethod().invoke(_connection.data(),
+            Q_ARG(const QString&, host), Q_ARG(quint16, port));
+    }
+    close();
+}
+
 void Session::setSettings (const QString& password, const QString& email, QChar avatar)
 {
     // set and persist avatar in session record
@@ -591,8 +601,8 @@ void Session::close ()
         Q_ARG(quint64, _record.id), Q_ARG(const QString&, _record.name));
 
     // remove info on all peers
-    _app->peerManager()->invoke(_app->peerManager(), "sessionRemoved(quint64)",
-        Q_ARG(quint64, _record.id));
+    _app->peerManager()->invoke(_app->peerManager(), "sessionRemoved(quint64,QString)",
+        Q_ARG(quint64, _record.id), Q_ARG(const QString&, _info.peer));
 
     qDebug() << "Session closed." << _record.id << _record.name;
 }
@@ -732,12 +742,13 @@ void Session::continueMovingToZone (const QString& peer, quint64 instanceId)
 {
     // if it's not the local peer, we need to initiate a session transfer
     if (peer != _app->peerManager()->record().name) {
+        qDebug() << "Transferring session." << who() << peer;
         SessionTransfer transfer;
-        transfer.id = _record.id;
+        transfer.record = _record;
+        transfer.user = _user;
         transfer.instanceId = instanceId;
         _app->peerManager()->invoke(peer, _app->connectionManager(),
-            "transferSession(SessionTransfer,Callback)", Q_ARG(const SessionTransfer&, transfer),
-            Q_ARG(const Callback&, Callback(_this, "sessionMaybeTransferred(QString,quint16)")));
+            "transferSession(SessionTransfer)", Q_ARG(const SessionTransfer&, transfer));
         return;
     }
     // move the session to the instance thread
@@ -762,17 +773,6 @@ void Session::continueMovingToZone (QObject* instance)
 {
     _instance = static_cast<Instance*>(instance);
     _instance->addSession(this);
-}
-
-void Session::sessionMaybeTransferred (const QString& host, quint16 port)
-{
-    if (host.isEmpty()) {
-        return;
-    }
-    if (_connection) {
-        Connection::reconnectMetaMethod().invoke(_connection.data(),
-            Q_ARG(const QString&, host), Q_ARG(quint16, port));
-    }
 }
 
 void Session::maybeTold (const QString& recipient, const QString& message, bool success)

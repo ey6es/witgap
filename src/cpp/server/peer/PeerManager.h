@@ -254,7 +254,7 @@ public:
     /**
      * Called when a session is removed on any peer.
      */
-    Q_INVOKABLE void sessionRemoved (quint64 id);
+    Q_INVOKABLE void sessionRemoved (quint64 id, const QString& peer);
 
     /**
      * Called when an instance is added on any peer.

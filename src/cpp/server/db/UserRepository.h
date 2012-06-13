@@ -12,6 +12,8 @@
 #include <QRegExp>
 #include <QString>
 
+#include "util/Streaming.h"
+
 class Callback;
 class ServerApp;
 class UserRecord;
@@ -123,6 +125,8 @@ protected:
  */
 class UserRecord
 {
+    STREAMABLE
+
 public:
 
     /** User flags.  Do not change. */
@@ -131,34 +135,34 @@ public:
     Q_DECLARE_FLAGS(Flags, Flag)
 
     /** The user id. */
-    quint32 id;
+    STREAM quint32 id;
 
     /** The cased username. */
-    QString name;
+    STREAM QString name;
 
     /** The password hash. */
-    QByteArray passwordHash;
+    STREAM QByteArray passwordHash;
 
     /** The password salt. */
-    QByteArray passwordSalt;
+    STREAM QByteArray passwordSalt;
 
     /** The user's date of birth. */
-    QDate dateOfBirth;
+    STREAM QDate dateOfBirth;
 
     /** The user's email. */
-    QString email;
+    STREAM QString email;
 
     /** The user's flags. */
-    Flags flags;
+    STREAM Flags flags;
 
     /** The user's avatar. */
-    QChar avatar;
+    STREAM QChar avatar;
 
     /** The time at which the user was created. */
-    QDateTime created;
+    STREAM QDateTime created;
 
     /** The time at which the user was last online. */
-    QDateTime lastOnline;
+    STREAM QDateTime lastOnline;
 
     /**
      * Sets the password hash.
@@ -171,8 +175,8 @@ public:
     bool insiderPlus () const { return flags.testFlag(Insider) || flags.testFlag(Admin); }
 };
 
-Q_DECLARE_METATYPE(UserRecord)
-Q_DECLARE_OPERATORS_FOR_FLAGS(UserRecord::Flags)
+DECLARE_STREAMABLE_METATYPE(UserRecord)
+DECLARE_STREAMING_OPERATORS_FOR_FLAGS(UserRecord::Flags)
 
 /** A record for the lack of a user. */
 const UserRecord NoUser = { 0 };

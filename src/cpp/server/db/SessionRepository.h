@@ -8,6 +8,8 @@
 #include <QMetaType>
 #include <QObject>
 
+#include "util/Streaming.h"
+
 class Callback;
 class ServerApp;
 class SessionRecord;
@@ -83,27 +85,29 @@ protected:
  */
 class SessionRecord
 {
+    STREAMABLE
+
 public:
 
     /** The session id. */
-    quint64 id;
+    STREAM quint64 id;
 
     /** The session token. */
-    QByteArray token;
+    STREAM QByteArray token;
 
     /** The session name. */
-    QString name;
+    STREAM QString name;
 
     /** The session avatar. */
-    QChar avatar;
+    STREAM QChar avatar;
 
     /** The id of the associated user, or zero for none. */
-    quint32 userId;
+    STREAM quint32 userId;
 
     /** The last online time. */
-    QDateTime lastOnline;
+    STREAM QDateTime lastOnline;
 };
 
-Q_DECLARE_METATYPE(SessionRecord)
+DECLARE_STREAMABLE_METATYPE(SessionRecord)
 
 #endif // SESSION_REPOSITORY
