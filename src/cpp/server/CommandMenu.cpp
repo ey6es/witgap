@@ -29,6 +29,7 @@ CommandMenu::CommandMenu (Session* parent, int deleteOnReleaseKey) :
         addButton(tr("&Go to Scene..."), &GoToSceneDialog::staticMetaObject,
             Q_ARG(Session*, parent));
         addButton(tr("&New >"), this, SLOT(createNewMenu()));
+        addButton(tr("&Edit >"), this, SLOT(createEditMenu()));
 
         Scene* scene = parent->scene();
         if (scene != 0 && scene->canEdit(parent)) {
@@ -37,7 +38,7 @@ CommandMenu::CommandMenu (Session* parent, int deleteOnReleaseKey) :
 
             Pawn* pawn = parent->pawn();
             if (pawn != 0) {
-                addButton(tr("Toggle &Edit Mode"), pawn, SLOT(toggleCursor()));
+                addButton(tr("Toggle &Cursor Mode"), pawn, SLOT(toggleCursor()));
             }
         }
     }
@@ -77,7 +78,7 @@ void CommandMenu::createEditMenu ()
     }
 
     Instance* instance = session->instance();
-    if (instance != 0) {
+    if (instance != 0 && instance->canEdit(session)) {
         menu->addButton(tr("&Zone Properties..."), &ZonePropertiesDialog::staticMetaObject,
             Q_ARG(Session*, session));
     }

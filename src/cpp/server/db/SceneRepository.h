@@ -13,6 +13,7 @@
 #include <QSet>
 
 #include "util/General.h"
+#include "util/Streaming.h"
 
 class Callback;
 class SceneRecord;
@@ -89,7 +90,7 @@ public:
     /**
      * Updates a zone record.
      */
-    Q_INVOKABLE void updateZone (const ZoneRecord& zrec);
+    Q_INVOKABLE void updateZone (const ZoneRecord& zrec, const Callback& callback);
 
     /**
      * Deletes the identified zone.
@@ -235,31 +236,33 @@ typedef QList<SceneDescriptor> SceneDescriptorList;
  */
 class ZoneRecord
 {
+    STREAMABLE
+
 public:
 
     /** The zone identifier. */
-    quint32 id;
+    STREAM quint32 id;
 
     /** The zone name. */
-    QString name;
+    STREAM QString name;
 
     /** The user id of the zone creator. */
-    quint32 creatorId;
+    STREAM quint32 creatorId;
 
     /** The name of the zone creator. */
-    QString creatorName;
+    STREAM QString creatorName;
 
     /** The time at which the zone was created. */
-    QDateTime created;
+    STREAM QDateTime created;
 
     /** The maximum number of people to place in each instance. */
-    quint16 maxPopulation;
+    STREAM quint16 maxPopulation;
 
     /** The id of the default scene for the zone. */
-    quint32 defaultSceneId;
+    STREAM quint32 defaultSceneId;
 };
 
-Q_DECLARE_METATYPE(ZoneRecord)
+DECLARE_STREAMABLE_METATYPE(ZoneRecord)
 
 /** A record for the lack of a zone. */
 const ZoneRecord NoZone = { 0 };

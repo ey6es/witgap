@@ -27,6 +27,11 @@ public:
 protected slots:
 
     /**
+     * Updates the fields in response to an external change.
+     */
+    void update ();
+
+    /**
      * Updates the state of the apply/OK buttons.
      */
     void updateApply ();

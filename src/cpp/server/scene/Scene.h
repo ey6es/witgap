@@ -108,7 +108,7 @@ public:
      *
      * @return a pointer to the pawn created for the session, or 0 for none.
      */
-    Pawn* addSession (Session* session);
+    Pawn* addSession (Session* session, const QVariant& portal);
 
     /**
      * Removes a session from the scene.

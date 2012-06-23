@@ -14,6 +14,7 @@
 #include "db/SessionRepository.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
+#include "peer/PeerConnection.h"
 #include "util/General.h"
 
 ConnectionManager::ConnectionManager (ServerApp* app) :
@@ -65,13 +66,21 @@ void ConnectionManager::connectionEstablished (Connection* connection)
     quint32 sessionId = connection->cookies().value("sessionId", "0").toULongLong(0, 16);
     QByteArray sessionToken = QByteArray::fromHex(
         connection->cookies().value("sessionToken", "00000000000000000000000000000000").toAscii());
-    Session* session = _sessions.value(sessionId);
-    if (session != 0) {
-        QMetaObject::invokeMethod(session, "maybeSetConnection",
-            Q_ARG(const SharedConnectionPointer&, connection->pointer()),
-            Q_ARG(const QByteArray&, sessionToken), Q_ARG(const Callback&, Callback(_this,
-                "connectionMaybeSet(SharedConnectionPointer,bool)",
-                Q_ARG(const SharedConnectionPointer&, connection->pointer()))));
+    SessionInfoPointer ptr = _app->peerManager()->sessions().value(sessionId);
+    if (ptr) {
+        if (ptr->peer == _app->peerManager()->record().name) {
+            // it's on this peer; try to set the connection directly
+            QMetaObject::invokeMethod(_sessions.value(sessionId), "maybeSetConnection",
+                Q_ARG(const SharedConnectionPointer&, connection->pointer()),
+                Q_ARG(const QByteArray&, sessionToken), Q_ARG(const Callback&, Callback(_this,
+                    "connectionMaybeSet(SharedConnectionPointer,bool)",
+                    Q_ARG(const SharedConnectionPointer&, connection->pointer()))));
+
+        } else {
+            // it's on a remote peer; tell the connection to reconnect
+            PeerConnection* pconn = _app->peerManager()->connections().value(ptr->peer);
+            connection->reconnect(pconn->host(), pconn->port());
+        }
         return;
     }
 
@@ -171,6 +180,10 @@ void ConnectionManager::tokenValidated (
     if (!connptr->isOpen()) {
         return;
     }
+
+    // set the session id and token cookies
+    connptr->setCookie("sessionId", QString::number(record.id, 16).rightJustified(16, '0'));
+    connptr->setCookie("sessionToken", record.token.toHex());
 
     // create and map the session
     Session* session = new Session(_app, connptr, record, user, SessionTransfer());

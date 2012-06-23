@@ -7,6 +7,7 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPoint>
+#include <QTimer>
 #include <QTranslator>
 #include <QtDebug>
 
@@ -36,10 +37,14 @@ using namespace std;
 // register our types with the metatype system
 int sessionPointerType = qRegisterMetaType<Session*>("Session*");
 
+/** The time to allow a disconnected session to linger before closing it. */
+static const int DisconnectTimeout = 5 * 60 * 1000;
+
 Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
         const SessionRecord& record, const UserRecord& user, const SessionTransfer& transfer) :
     CallableObject(app->connectionManager()),
     _app(app),
+    _closeTimer(new QTimer(this)),
     _record(record),
     _lastWindowId(0),
     _cryptoCount(0),
@@ -48,11 +53,13 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
     _activeWindow(0),
     _translator(app->translators().value(locale())),
     _user(user),
+    _instance(0),
     _scene(0),
     _pawn(0)
 {
     // add info on all peers
-    SessionInfo info = { _record.id, _record.name, _app->peerManager()->record().name };
+    const QString& peer = _app->peerManager()->record().name;
+    SessionInfo info = { _record.id, _record.name, peer };
     _info = info;
     _app->peerManager()->invoke(_app->peerManager(), "sessionAdded(SessionInfo)",
         Q_ARG(const SessionInfo&, info));
@@ -64,16 +71,23 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
     _chatWindow = new ChatWindow(this);
     _chatEntryWindow = new ChatEntryWindow(this);
 
+    // start the disconnect timer
+    connect(_closeTimer, SIGNAL(timeout()), SLOT(close()));
+    _closeTimer->start(DisconnectTimeout);
+
     // install the connection, if available
     if (connection) {
-        connection->setCookie("sessionId", QString::number(record.id, 16).rightJustified(16, '0'));
-        connection->setCookie("sessionToken", record.token.toHex());
         setConnection(connection);
     }
 
     // force logon if the server isn't open
     if (user.id == 0 && _app->runtimeConfig()->logonPolicy() != RuntimeConfig::Everyone) {
         showLogonDialog();
+    }
+
+    // continue into an instance if appropriate
+    if (transfer.instanceId != 0) {
+        continueMovingToZone(transfer.sceneId, transfer.portal, peer, transfer.instanceId);
     }
 }
 
@@ -304,12 +318,15 @@ void Session::moveToScene (const QString& prefix)
             Callback(_this, "continueMovingToScene(SceneDescriptorList)")));
 }
 
-void Session::moveToScene (quint32 id)
+void Session::moveToScene (quint32 id, const QVariant& portal)
 {
-    // resolve the scene via the manager
-    QMetaObject::invokeMethod(_app->sceneManager(), "resolveScene",
-        Q_ARG(quint32, id),
-        Q_ARG(const Callback&, Callback(_this, "sceneMaybeResolved(QObject*)")));
+    // resolve the scene via the instance
+    if (_instance == 0) {
+        showInfoDialog(tr("Not in an instance."));
+        return;
+    }
+    _instance->resolveScene(id, Callback(_this, "sceneMaybeResolved(QVariant,QObject*)",
+        Q_ARG(const QVariant&, portal)));
 }
 
 void Session::moveToZone (const QString& prefix)
@@ -320,12 +337,20 @@ void Session::moveToZone (const QString& prefix)
             Callback(_this, "continueMovingToZone(ZoneRecordList)")));
 }
 
-void Session::moveToZone (quint32 id)
+void Session::moveToZone (quint32 id, quint32 sceneId, const QVariant& portal)
 {
+    // if we're already in the zone, move to the scene
+    if (_instance != 0 && _instance->record().id == id) {
+        moveToScene(sceneId, portal);
+        return;
+    }
+
     // reserve a place in an instance
     QMetaObject::invokeMethod(_app->peerManager(), "reserveInstancePlace",
-        Q_ARG(quint64, _record.id), Q_ARG(quint32, id), Q_ARG(const Callback&,
-            Callback(_this, "continueMovingToZone(QString,quint64)")));
+        Q_ARG(quint64, _record.id), Q_ARG(const QString&, _region), Q_ARG(quint32, id),
+        Q_ARG(const Callback&, Callback(_this,
+            "continueMovingToZone(quint32,QVariant,QString,quint64)",
+            Q_ARG(quint32, sceneId), Q_ARG(const QVariant&, portal))));
 }
 
 void Session::moveToPlayer (const QString& name)
@@ -462,6 +487,9 @@ void Session::createZone ()
 void Session::clearConnection ()
 {
     _connection.clear();
+
+    // start the close timer
+    _closeTimer->start(DisconnectTimeout);
 
     // clearing the connection implicitly releases keys and mouse button
     if (_mousePressed) {
@@ -615,10 +643,11 @@ void Session::setConnection (const SharedConnectionPointer& connection)
     if (!conn->isOpen()) {
         return;
     }
-
+    _closeTimer->stop();
     _connection = connection;
 
     _displaySize = conn->displaySize();
+    _region = conn->region();
     connect(conn, SIGNAL(windowClosed()), SLOT(close()));
     connect(conn, SIGNAL(mousePressed(int,int)), SLOT(dispatchMousePressed(int,int)));
     connect(conn, SIGNAL(mouseReleased(int,int)), SLOT(dispatchMouseReleased(int,int)));
@@ -691,22 +720,22 @@ void Session::continueMovingToScene (const SceneDescriptorList& scenes)
         _chatWindow->display(tr("No such scene."));
         return;
     }
-
+    // pick one at random
+    moveToScene(scenes.at(qrand() % scenes.size()).id);
 }
 
-void Session::sceneMaybeResolved (QObject* scene)
+void Session::sceneMaybeResolved (const QVariant& portal, QObject* scene)
 {
     if (scene == 0) {
         showInfoDialog(tr("Failed to resolve scene."));
         return;
     }
-    // move the session to the scene thread
-    leaveScene();
-    setParent(0);
-    moveToThread(scene->thread());
+    // enter the scene
+    _scene = static_cast<Scene*>(scene);
+//    _mainWindow->connect(_scene, SIGNAL(recordChanged(SceneRecord)), SLOT(updateTitle()));
+    _pawn = _scene->addSession(this, portal);
 
-    // continue the process in the scene thread
-    QMetaObject::invokeMethod(this, "continueMovingToScene", Q_ARG(QObject*, scene));
+    emit didEnterScene(_scene);
 }
 
 void Session::leaveScene ()
@@ -715,17 +744,10 @@ void Session::leaveScene ()
         emit willLeaveScene(_scene);
 
         _scene->removeSession(this);
+        _scene->disconnect(_mainWindow);
         _scene = 0;
         _pawn = 0;
     }
-}
-
-void Session::continueMovingToScene (QObject* scene)
-{
-    _scene = static_cast<Scene*>(scene);
-    _pawn = _scene->addSession(this);
-
-    emit didEnterScene(_scene);
 }
 
 void Session::continueMovingToZone (const ZoneRecordList& zones)
@@ -738,7 +760,8 @@ void Session::continueMovingToZone (const ZoneRecordList& zones)
     moveToZone(zones.at(qrand() % zones.size()).id);
 }
 
-void Session::continueMovingToZone (const QString& peer, quint64 instanceId)
+void Session::continueMovingToZone (
+    quint32 sceneId, const QVariant& portal, const QString& peer, quint64 instanceId)
 {
     // if it's not the local peer, we need to initiate a session transfer
     if (peer != _app->peerManager()->record().name) {
@@ -747,6 +770,8 @@ void Session::continueMovingToZone (const QString& peer, quint64 instanceId)
         transfer.record = _record;
         transfer.user = _user;
         transfer.instanceId = instanceId;
+        transfer.sceneId = sceneId;
+        transfer.portal = portal;
         _app->peerManager()->invoke(peer, _app->connectionManager(),
             "transferSession(SessionTransfer)", Q_ARG(const SessionTransfer&, transfer));
         return;
@@ -758,21 +783,33 @@ void Session::continueMovingToZone (const QString& peer, quint64 instanceId)
     moveToThread(instance->thread());
 
     // continue the process in the instance thread
-    QMetaObject::invokeMethod(this, "continueMovingToZone", Q_ARG(QObject*, instance));
+    QMetaObject::invokeMethod(this, "continueMovingToZone", Q_ARG(QObject*, instance),
+        Q_ARG(quint32, sceneId), Q_ARG(const QVariant&, portal));
 }
 
 void Session::leaveZone ()
 {
     if (_instance != 0) {
         _instance->removeSession(this);
+        _instance->disconnect(_mainWindow);
         _instance = 0;
     }
 }
 
-void Session::continueMovingToZone (QObject* instance)
+void Session::continueMovingToZone (QObject* instance, quint32 sceneId, const QVariant& portal)
 {
     _instance = static_cast<Instance*>(instance);
+    _mainWindow->connect(_instance, SIGNAL(recordChanged(ZoneRecord)), SLOT(updateTitle()));
     _instance->addSession(this);
+    _mainWindow->updateTitle();
+
+    // now move to the requested (or default) scene
+    if (sceneId == 0) {
+        sceneId = _instance->record().defaultSceneId;
+    }
+    if (sceneId != 0) {
+        moveToScene(sceneId, portal);
+    }
 }
 
 void Session::maybeTold (const QString& recipient, const QString& message, bool success)

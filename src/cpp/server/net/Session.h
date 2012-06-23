@@ -19,6 +19,7 @@
 #include "util/Streaming.h"
 
 class QEvent;
+class QTimer;
 class QTranslator;
 
 class ChatEntryWindow;
@@ -225,7 +226,7 @@ public:
     /**
      * Moves the user to the identified scene.
      */
-    void moveToScene (quint32 id);
+    void moveToScene (quint32 id, const QVariant& portal = QVariant());
 
     /**
      * Moves the user to the named zone.
@@ -235,7 +236,7 @@ public:
     /**
      * Moves the user to the identified zone.
      */
-    void moveToZone (quint32 id);
+    void moveToZone (quint32 id, quint32 sceneId = 0, const QVariant& portal = QVariant());
 
     /**
      * Moves to the named player.
@@ -388,7 +389,7 @@ protected:
     /**
      * Reports back with the resolved scene object, if successful.
      */
-    Q_INVOKABLE void sceneMaybeResolved (QObject* scene);
+    Q_INVOKABLE void sceneMaybeResolved (const QVariant& portal, QObject* scene);
 
     /**
      * Continues the process of moving to a zone.
@@ -398,18 +399,13 @@ protected:
     /**
      * Continues the process of moving to a zone.
      */
-    Q_INVOKABLE void continueMovingToZone (const QString& peer, quint64 instanceId);
+    Q_INVOKABLE void continueMovingToZone (
+        quint32 sceneId, const QVariant& portal, const QString& peer, quint64 instanceId);
 
     /**
      * Leaves the current scene, if any.
      */
     void leaveScene ();
-
-    /**
-     * Enters the now-resolved scene.  This is called after the session has been transferred
-     * to the scene thread.
-     */
-    Q_INVOKABLE void continueMovingToScene (QObject* scene);
 
     /**
      * Leaves the current zone, if any.
@@ -420,7 +416,8 @@ protected:
      * Enters the instance in which a place has been reserved for us.  This is called after the
      * session has been transferred to the instance thread.
      */
-    Q_INVOKABLE void continueMovingToZone (QObject* instance);
+    Q_INVOKABLE void continueMovingToZone (
+        QObject* instance, quint32 sceneId, const QVariant& portal);
 
     /**
      * Reports back from a tell request.
@@ -450,6 +447,9 @@ protected:
     /** The session connection. */
     SharedConnectionPointer _connection;
 
+    /** The timer that closes the session after extended disconnect. */
+    QTimer* _closeTimer;
+
     /** The session record. */
     SessionRecord _record;
 
@@ -461,6 +461,9 @@ protected:
 
     /** The size of the user's display. */
     QSize _displaySize;
+
+    /** The user's closest region. */
+    QString _region;
 
     /** The number of elements requiring encryption.  When this drops to zero, we can disable. */
     int _cryptoCount;
@@ -523,8 +526,14 @@ public:
     /** The user record. */
     STREAM UserRecord user;
 
-    /** The instance to enter after transfer. */
+    /** The instance to enter after transfer, if any. */
     STREAM quint64 instanceId;
+
+    /** The scene to enter after transfer, if any. */
+    STREAM quint32 sceneId;
+
+    /** The portal at which to enter the scene. */
+    STREAM QVariant portal;
 };
 
 DECLARE_STREAMABLE_METATYPE(SessionTransfer)

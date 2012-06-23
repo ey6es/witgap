@@ -94,6 +94,8 @@ void ScrollingList::draw (DrawContext* ctx)
 
 void ScrollingList::focusInEvent (QFocusEvent* e)
 {
+    Component::focusInEvent(e);
+
     if (_selectedIdx == -1) {
         if (!_values.isEmpty()) {
             setSelectedIndex(_listPos);

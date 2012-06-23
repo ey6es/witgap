@@ -22,6 +22,8 @@ public:
      */
     MainWindow (Session* parent);
 
+public slots:
+
     /**
      * Updates the window title (which contains the session name).
      */

@@ -171,6 +171,8 @@ int TextField::cursorChar () const
 
 void TextField::focusInEvent (QFocusEvent* e)
 {
+    Component::focusInEvent(e);
+
     // if we're going to hide the label, we need to dirty the entire component
     int dlength = _document->text().length();
     if ((!_label.isEmpty() && dlength == 0) || (_rightAlign && dlength < textAreaWidth())) {

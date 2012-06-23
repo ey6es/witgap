@@ -15,7 +15,6 @@
 // register our types with the metatype system
 int sceneRecordType = qRegisterMetaType<SceneRecord>();
 int sceneDescriptorListType = qRegisterMetaType<SceneDescriptorList>("SceneDescriptorList");
-int zoneRecordType = qRegisterMetaType<ZoneRecord>();
 int zoneRecordListType = qRegisterMetaType<ZoneRecordList>("ZoneRecordList");
 
 void SceneRepository::init ()
@@ -270,7 +269,7 @@ void SceneRepository::findZones (
     callback.invoke(Q_ARG(const ZoneRecordList&, zones));
 }
 
-void SceneRepository::updateZone (const ZoneRecord& zrec)
+void SceneRepository::updateZone (const ZoneRecord& zrec, const Callback& callback)
 {
     QSqlQuery query;
     query.prepare("update ZONES set NAME = ?, NAME_LOWER = ?, MAX_POPULATION = ?, "
@@ -281,6 +280,7 @@ void SceneRepository::updateZone (const ZoneRecord& zrec)
     query.addBindValue(zrec.defaultSceneId);
     query.addBindValue(zrec.id);
     query.exec();
+    callback.invoke();
 }
 
 void SceneRepository::deleteZone (quint32 id)

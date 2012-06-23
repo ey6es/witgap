@@ -33,7 +33,9 @@ ZonePropertiesDialog::ZonePropertiesDialog (Session* parent) :
     icont->setBorder(new CharBorder(QMargins(1, 0, 1, 0), 0));
     addChild(icont);
 
-    const ZoneRecord& record = parent->instance()->zone()->record();
+    Instance* instance = parent->instance();
+    connect(instance, SIGNAL(recordChanged(ZoneRecord)), SLOT(update()));
+    const ZoneRecord& record = instance->record();
 
     icont->addChild(new Label(tr("ID:")));
     icont->addChild(new Label(QString::number(record.id)));
@@ -69,6 +71,14 @@ ZonePropertiesDialog::ZonePropertiesDialog (Session* parent) :
     center();
 }
 
+void ZonePropertiesDialog::update ()
+{
+    const ZoneRecord& record = session()->instance()->record();
+    _name->setText(record.name);
+    _maxPopulation->setText(QString::number(record.maxPopulation));
+    updateApply();
+}
+
 void ZonePropertiesDialog::updateApply ()
 {
     int maxPopulation = _maxPopulation->text().toInt();
@@ -86,13 +96,13 @@ void ZonePropertiesDialog::confirmDelete ()
 
 void ZonePropertiesDialog::apply ()
 {
-    // handle update through the zone
-//    session()->scene()->setProperties(_name->text().simplified(),
-//        _scrollWidth->text().toInt(), _scrollHeight->text().toInt());
+    // handle update through the instance
+    session()->instance()->setProperties(_name->text().simplified(),
+        _maxPopulation->text().toInt());
 }
 
 void ZonePropertiesDialog::reallyDelete ()
 {
-    // handle deletion through the zone
-//    session()->scene()->remove();
+    // handle deletion through the instance
+    session()->instance()->remove();
 }

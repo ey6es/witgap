@@ -8,7 +8,6 @@
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
 #include "db/SceneRepository.h"
-#include "scene/Scene.h"
 #include "scene/SceneManager.h"
 #include "scene/Zone.h"
 
@@ -45,9 +44,9 @@ void SceneManager::startThreads ()
 
 void SceneManager::stopThreads ()
 {
-    foreach (Scene* scene, _scenes) {
-        QMetaObject::invokeMethod(scene, "flush");
-    }
+//    foreach (Scene* scene, _scenes) {
+//        QMetaObject::invokeMethod(scene, "flush");
+//    }
     foreach (QThread* thread, _threads) {
         thread->exit();
         thread->wait();
@@ -86,28 +85,6 @@ void SceneManager::cancelInstancePlaceReservation (quint64 sessionId, quint64 in
     }
 }
 
-void SceneManager::resolveScene (quint32 id, const Callback& callback)
-{
-    // see if it's loaded already
-    Scene* scene = _scenes.value(id);
-    if (scene != 0) {
-        callback.invoke(Q_ARG(QObject*, scene));
-        return;
-    }
-
-    // add the callback to the penders list
-    QList<Callback>& callbacks = _scenePenders[id];
-    callbacks.append(callback);
-    if (callbacks.size() > 1) {
-        return; // database request already pending
-    }
-
-    // fetch the scene from the database
-    QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "loadScene",
-        Q_ARG(quint32, id), Q_ARG(const Callback&,
-            Callback(_this, "sceneMaybeLoaded(quint32,SceneRecord)", Q_ARG(quint32, id))));
-}
-
 void SceneManager::resolveZone (quint32 id, const Callback& callback)
 {
     // see if it's loaded already
@@ -130,22 +107,17 @@ void SceneManager::resolveZone (quint32 id, const Callback& callback)
             Callback(_this, "zoneMaybeLoaded(quint32,ZoneRecord)", Q_ARG(quint32, id))));
 }
 
-void SceneManager::sceneMaybeLoaded (quint32 id, const SceneRecord& record)
+void SceneManager::broadcastZoneRecordUpdated (const ZoneRecord& record)
 {
-    // create the scene if it resolved
-    Scene* scene = 0;
-    if (record.id != 0) {
-        _scenes.insert(id, scene = new Scene(_app, record));
+    _app->peerManager()->invoke(this, "zoneRecordUpdated(ZoneRecord)",
+        Q_ARG(const ZoneRecord&, record));
+}
 
-        // assign to a thread in round-robin fashion
-        scene->moveToThread(nextThread());
-        QMetaObject::invokeMethod(scene, "init");
-    }
-
-    // remove and notify the penders
-    QList<Callback> callbacks = _scenePenders.take(id);
-    foreach (const Callback& callback, callbacks) {
-        callback.invoke(Q_ARG(QObject*, scene));
+void SceneManager::zoneRecordUpdated (const ZoneRecord& record)
+{
+    Zone* zone = _zones.value(record.id);
+    if (zone != 0) {
+        zone->recordUpdated(record);
     }
 }
 

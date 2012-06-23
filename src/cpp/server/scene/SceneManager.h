@@ -74,23 +74,22 @@ public:
     Q_INVOKABLE void cancelInstancePlaceReservation (quint64 sessionId, quint64 instanceId);
 
     /**
-     * Attempts to resolve a scene.  The callback will receive a QObject*, either the resolved
-     * scene or 0 if not found.
-     */
-    Q_INVOKABLE void resolveScene (quint32 id, const Callback& callback);
-
-    /**
      * Attempts to resolve a zone.  The callback will receive a QObject*, either the resolved zone
      * or 0 if not found.
      */
     Q_INVOKABLE void resolveZone (quint32 id, const Callback& callback);
 
-protected:
+    /**
+     * Broadcasts a change of zone record to instances on all peers.
+     */
+    Q_INVOKABLE void broadcastZoneRecordUpdated (const ZoneRecord& record);
 
     /**
-     * Called when a request to load a scene returns.
+     * Notifies the manager that a zone record has been modified in the database.
      */
-    Q_INVOKABLE void sceneMaybeLoaded (quint32 id, const SceneRecord& record);
+    Q_INVOKABLE void zoneRecordUpdated (const ZoneRecord& record);
+
+protected:
 
     /**
      * Called when a request to load a zone returns.
@@ -105,12 +104,6 @@ protected:
 
     /** The application object. */
     ServerApp* _app;
-
-    /** Loaded scenes mapped by id. */
-    QHash<quint32, Scene*> _scenes;
-
-    /** Callbacks awaiting scene resolution. */
-    QHash<quint32, QList<Callback> > _scenePenders;
 
     /** Loaded zones mapped by id. */
     QHash<quint32, Zone*> _zones;

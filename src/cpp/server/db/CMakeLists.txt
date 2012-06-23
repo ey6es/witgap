@@ -2,7 +2,7 @@ set(HEADERS DatabaseThread.h PeerRepository.h PropertyRepository.h
     SceneRepository.h SessionRepository.h UserRepository.h)
 set(SOURCES DatabaseThread.cpp PeerRepository.cpp PropertyRepository.cpp
     SceneRepository.cpp SessionRepository.cpp UserRepository.cpp)
-set(MTC_HEADERS SessionRepository.h UserRepository.h)
+set(MTC_HEADERS SceneRepository.h SessionRepository.h UserRepository.h)
 
 qt4_wrap_cpp(SOURCES ${HEADERS})
 mtc_wrap_cpp(SOURCES ${MTC_HEADERS})

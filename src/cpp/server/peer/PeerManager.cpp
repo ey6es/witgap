@@ -225,7 +225,7 @@ void PeerManager::reserveInstanceId (
 }
 
 void PeerManager::reserveInstancePlace (
-    quint64 sessionId, quint32 zoneId, const Callback& callback)
+    quint64 sessionId, const QString& region, quint32 zoneId, const Callback& callback)
 {
     // first look for an existing instance with an open space
     InstanceInfoPointerMap map = _zoneInstances.value(zoneId);
@@ -246,9 +246,11 @@ void PeerManager::reserveInstancePlace (
                 "reserveInstancePlace(quint64,quint64,Callback)",
                 Q_ARG(quint64, sessionId), Q_ARG(quint64, ptr->id), Q_ARG(const Callback&,
                     Callback(_this,
-                        "instancePlaceMaybeReserved(quint64,QString,quint64,Callback,bool)",
-                        Q_ARG(quint64, sessionId), Q_ARG(const QString&, ptr->peer),
-                        Q_ARG(quint64, ptr->id), Q_ARG(const Callback&, callback))));
+                        "instancePlaceMaybeReserved("
+                            "quint64,QString,QString,quint64,Callback,bool)",
+                        Q_ARG(quint64, sessionId), Q_ARG(const QString&, region),
+                        Q_ARG(const QString&, ptr->peer), Q_ARG(quint64, ptr->id),
+                        Q_ARG(const Callback&, callback))));
             return;
         }
     }
@@ -265,8 +267,9 @@ void PeerManager::reserveInstancePlace (
     }
     invoke(lowestName, _app->sceneManager(), "createInstance(quint64,quint32,Callback)",
         Q_ARG(quint64, sessionId), Q_ARG(quint32, zoneId), Q_ARG(const Callback&,
-            Callback(_this, "instanceMaybeCreated(quint64,quint32,QString,Callback,quint64)",
-                Q_ARG(quint64, sessionId), Q_ARG(quint32, zoneId),
+            Callback(_this,
+                "instanceMaybeCreated(quint64,QString,quint32,QString,Callback,quint64)",
+                Q_ARG(quint64, sessionId), Q_ARG(const QString&, region), Q_ARG(quint32, zoneId),
                 Q_ARG(const QString&, lowestName), Q_ARG(const Callback&, callback))));
 }
 
@@ -614,17 +617,17 @@ void PeerManager::updatePeers (const PeerRecordList& records)
 }
 
 void PeerManager::instanceMaybeCreated (
-    quint64 sessionId, quint32 zoneId, const QString& peer,
-    const Callback& callback, quint64 instanceId)
+    quint64 sessionId, const QString& region, quint32 zoneId,
+    const QString& peer, const Callback& callback, quint64 instanceId)
 {
     bool success = (instanceId != 0);
-    instancePlaceMaybeReserved(sessionId, peer,
+    instancePlaceMaybeReserved(sessionId, region, peer,
         success ? instanceId : createInstanceId(zoneId, 0), callback, success);
 }
 
 void PeerManager::instancePlaceMaybeReserved (
-    quint64 sessionId, const QString& peer, quint64 instanceId,
-    const Callback& callback, bool success)
+    quint64 sessionId, const QString& region, const QString& peer,
+    quint64 instanceId, const Callback& callback, bool success)
 {
     // make sure the session still exists on this server
     if (!_localSessions.contains(sessionId)) {
@@ -641,7 +644,7 @@ void PeerManager::instancePlaceMaybeReserved (
         callback.invoke(Q_ARG(const QString&, peer), Q_ARG(quint64, instanceId));
 
     } else {
-        reserveInstancePlace(sessionId, getZoneId(instanceId), callback);
+        reserveInstancePlace(sessionId, region, getZoneId(instanceId), callback);
     }
 }
 

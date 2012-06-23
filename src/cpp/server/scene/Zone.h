@@ -55,6 +55,11 @@ public:
      */
     void createInstance (quint64 sessionId, const Callback& callback);
 
+    /**
+     * Notes that the zone record has been updated in the database.
+     */
+    void recordUpdated (const ZoneRecord& record);
+
 protected:
 
     /**
@@ -93,6 +98,26 @@ public:
     Zone* zone () const { return _zone; }
 
     /**
+     * Returns a reference to our copy of the zone record.
+     */
+    const ZoneRecord& record () const { return _record; }
+
+    /**
+     * Checks whether the specified session can edit the zone.
+     */
+    bool canEdit (Session* session) const;
+
+    /**
+     * Sets the zone properties.
+     */
+    void setProperties (const QString& name, quint16 maxPopulation);
+
+    /**
+     * Deletes the zone.
+     */
+    void remove ();
+
+    /**
      * Attempts to reserve a place in this instance for the identified session.  The callback will
      * receive a bool indicating success or failure.
      */
@@ -119,6 +144,18 @@ public:
      */
     void resolveScene (quint32 id, const Callback& callback);
 
+    /**
+     * Notes that the zone record has been updated in the database.
+     */
+    Q_INVOKABLE void recordUpdated (const ZoneRecord& record);
+
+signals:
+
+    /**
+     * Fired when the zone record has changed.
+     */
+    void recordChanged (const ZoneRecord& record);
+
 protected slots:
 
     /**
@@ -140,6 +177,9 @@ protected:
 
     /** The zone that owns the instance. */
     Zone* _zone;
+
+    /** Our copy of the zone record. */
+    ZoneRecord _record;
 
     /** The instance info. */
     InstanceInfo _info;

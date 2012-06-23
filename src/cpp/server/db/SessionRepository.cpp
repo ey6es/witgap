@@ -17,9 +17,6 @@
 #include "util/Callback.h"
 #include "util/General.h"
 
-// register our types with the metatype system
-int sessionRecordType = qRegisterMetaType<SessionRecord>();
-
 SessionRepository::SessionRepository (ServerApp* app) :
     _app(app)
 {

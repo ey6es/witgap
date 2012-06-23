@@ -57,6 +57,8 @@ void Button::draw (DrawContext* ctx)
 
 void Button::focusInEvent (QFocusEvent* e)
 {
+    Component::focusInEvent(e);
+
     updateText();
 }
 
@@ -135,6 +137,8 @@ void CheckBox::draw (DrawContext* ctx)
 
 void CheckBox::focusInEvent (QFocusEvent* e)
 {
+    Component::focusInEvent(e);
+
     dirty(QRect(_margins.left() - 3, _margins.top(), 1, 1));
 }
 

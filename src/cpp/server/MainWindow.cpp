@@ -11,6 +11,8 @@
 #include "chat/ChatWindow.h"
 #include "net/Session.h"
 #include "scene/SceneView.h"
+#include "scene/Scene.h"
+#include "scene/Zone.h"
 #include "ui/Border.h"
 #include "ui/Layout.h"
 
@@ -33,7 +35,15 @@ void MainWindow::updateTitle ()
     if (session->user().id == 0) {
         name = tr("%1 (guest)").arg(name);
     }
-    setBorder(new TitledBorder(tr("{ witgap: %1 }").arg(name)));
+    QString location;
+    if (session->instance() != 0) {
+        QString scene;
+        if (session->scene() != 0) {
+            scene = tr(", %1").arg(session->scene()->record().name);
+        }
+        location = tr(" in %1%2").arg(session->instance()->record().name, scene);
+    }
+    setBorder(new TitledBorder(tr("{ %1%2 }").arg(name, location)));
 }
 
 void MainWindow::keyPressEvent (QKeyEvent* e)

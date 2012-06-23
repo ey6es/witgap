@@ -15,9 +15,6 @@
 #include "util/Callback.h"
 #include "util/General.h"
 
-// register our types with the metatype system
-int userRecordType = qRegisterMetaType<UserRecord>();
-
 UserRepository::UserRepository (ServerApp* app) :
     _app(app)
 {
@@ -301,7 +298,7 @@ QVariant UserRepository::validateLogon (const UserRecord& urec)
     query.exec();
 
     // report success
-    return QVariant(userRecordType, &urec);
+    return QVariant::fromValue(urec);
 }
 
 void UserRecord::setPassword (const QString& password)

@@ -82,8 +82,8 @@ QRect Component::innerRect () const
 
 QPoint Component::absolutePos () const
 {
-    Container* container = qobject_cast<Container*>(parent());
-    return (container == 0) ? _bounds.topLeft() : container->absolutePos() + _bounds.topLeft();
+    Component* container = qobject_cast<Component*>(parent());
+    return (container == 0) ? _bounds.topLeft() : container->basePos() + _bounds.topLeft();
 }
 
 void Component::setBorder (Border* border)
@@ -193,6 +193,14 @@ void Component::maybeDraw (DrawContext* ctx)
     }
 }
 
+void Component::ensureShowing (const QRect& rect)
+{
+    Component* container = qobject_cast<Component*>(parent());
+    if (container != 0) {
+        container->ensureShowing(rect.translated(_bounds.topLeft()));
+    }
+}
+
 Component* Component::componentAt (QPoint pos, QPoint* relative)
 {
     *relative = pos;
@@ -202,7 +210,7 @@ Component* Component::componentAt (QPoint pos, QPoint* relative)
 bool Component::transferFocus (Component* from, Direction dir)
 {
     if (from == this) {
-        Container* container = qobject_cast<Container*>(parent());
+        Component* container = qobject_cast<Component*>(parent());
         return (container != 0) ? container->transferFocus(this, dir) : transferFocus(0, dir);
     }
     if (acceptsFocus()) {
@@ -330,6 +338,7 @@ void Component::draw (DrawContext* ctx)
 
 void Component::focusInEvent (QFocusEvent* e)
 {
+    ensureShowing(localBounds());
 }
 
 void Component::focusOutEvent (QFocusEvent* e)

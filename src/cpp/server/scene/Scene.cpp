@@ -128,11 +128,17 @@ void Scene::remove ()
         Q_ARG(quint64, _record.id));
 }
 
-Pawn* Scene::addSession (Session* session)
+Pawn* Scene::addSession (Session* session, const QVariant& portal)
 {
-    session->setParent(this);
     _sessions.append(session);
-    return new Pawn(this, session, QPoint(0, 0));
+
+    QPoint location;
+    switch (portal.type()) {
+        case QVariant::Point:
+            location = portal.toPoint();
+            break;
+    }
+    return new Pawn(this, session, location);
 }
 
 void Scene::removeSession (Session* session)
@@ -142,7 +148,6 @@ void Scene::removeSession (Session* session)
         delete pawn;
     }
     _sessions.removeOne(session);
-    session->setParent(0);
 }
 
 void Scene::addSpatial (Actor* actor)

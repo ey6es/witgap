@@ -92,6 +92,11 @@ public:
     QRect innerRect () const;
 
     /**
+     * Returns the base position to use when calculating the absolute position of children.
+     */
+    virtual QPoint basePos () const { return absolutePos(); }
+
+    /**
      * Returns the component's absolute position.
      */
     QPoint absolutePos () const;
@@ -171,6 +176,11 @@ public:
      * Checks whether the component accepts input focus.
      */
     virtual bool acceptsFocus () const { return false; }
+
+    /**
+     * Ensures that the specified rectangle is showing (i.e., is scrolled into view).
+     */
+    virtual void ensureShowing (const QRect& rect);
 
     /**
      * Finds the component at the specified coordinates and populates the supplied

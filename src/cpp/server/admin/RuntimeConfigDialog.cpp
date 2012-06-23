@@ -10,6 +10,7 @@
 #include "ui/Button.h"
 #include "ui/Layout.h"
 #include "ui/ObjectEditor.h"
+#include "ui/ScrollPane.h"
 
 // translate through the session
 #define tr(...) this->session()->translator()->translate("RuntimeConfigDialog", __VA_ARGS__)
@@ -23,7 +24,10 @@ RuntimeConfigDialog::RuntimeConfigDialog (Session* parent) :
     RuntimeConfig* copy = new RuntimeConfig(this);
     _synchronizer = new ObjectSynchronizer(parent->app()->runtimeConfig(true), copy);
 
-    addChild(_editor = new ObjectEditor(copy, RuntimeConfig::staticMetaObject.propertyOffset()));
+    ScrollPane* pane = new ScrollPane(_editor = new ObjectEditor(
+        copy, RuntimeConfig::staticMetaObject.propertyOffset()));
+    pane->setPreferredSize(QSize(-1, 5));
+    addChild(pane);
 
     Button* cancel = new Button(tr("Cancel"));
     connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));

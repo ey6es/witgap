@@ -30,6 +30,14 @@ void Zone::createInstance (quint64 sessionId, const Callback& callback)
             Q_ARG(const Callback&, callback))));
 }
 
+void Zone::recordUpdated (const ZoneRecord& record)
+{
+    _record = record;
+    foreach (Instance* instance, _instances) {
+        QMetaObject::invokeMethod(instance, "recordUpdated", Q_ARG(const ZoneRecord&, record));
+    }
+}
+
 void Zone::continueCreatingInstance (
     quint64 sessionId, const Callback& callback, quint64 instanceId)
 {
@@ -39,7 +47,8 @@ void Zone::continueCreatingInstance (
 }
 
 Instance::Instance (Zone* zone, quint64 id) :
-    _zone(zone)
+    _zone(zone),
+    _record(zone->record())
 {
     // add info on all peers
     InstanceInfo info = { id, zone->app()->peerManager()->record().name,
@@ -49,6 +58,29 @@ Instance::Instance (Zone* zone, quint64 id) :
         Q_ARG(const InstanceInfo&, info));
 
     moveToThread(zone->app()->sceneManager()->nextThread());
+}
+
+bool Instance::canEdit (Session* session) const
+{
+    return session->admin();
+}
+
+void Instance::setProperties (const QString& name, quint16 maxPopulation)
+{
+    // update the record
+    ZoneRecord record = _record;
+    record.name = name;
+    record.maxPopulation = maxPopulation;
+
+    // update in database
+    QMetaObject::invokeMethod(_zone->app()->databaseThread()->sceneRepository(), "updateZone",
+        Q_ARG(const ZoneRecord&, record), Q_ARG(const Callback&, Callback(
+            _zone->app()->sceneManager(), "broadcastZoneRecordUpdated(ZoneRecord)",
+            Q_ARG(const ZoneRecord&, record))));
+}
+
+void Instance::remove ()
+{
 }
 
 /** The time for which we hold a reserved place. */
@@ -120,6 +152,11 @@ void Instance::resolveScene (quint32 id, const Callback& callback)
     QMetaObject::invokeMethod(_zone->app()->databaseThread()->sceneRepository(), "loadScene",
         Q_ARG(quint32, id), Q_ARG(const Callback&,
             Callback(_this, "sceneMaybeLoaded(quint32,SceneRecord)", Q_ARG(quint32, id))));
+}
+
+void Instance::recordUpdated (const ZoneRecord& record)
+{
+    emit recordChanged(_record = record);
 }
 
 void Instance::clearPlaceReservation ()

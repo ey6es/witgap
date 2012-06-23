@@ -101,6 +101,11 @@ public:
     void configureSocket (QSslSocket* socket) const;
 
     /**
+     * Returns a reference to the peer connection map.
+     */
+    const QHash<QString, PeerConnection*> connections () const { return _connections; }
+
+    /**
      * Registers a shared object (which must be both a QObject and a SharedObject).
      */
     template<class T> void registerSharedObject (T* object);
@@ -109,6 +114,11 @@ public:
      * Retrieves a pointer to the shared object with the specified id, or 0 if not found.
      */
     QObject* sharedObject (int sharedObjectId) const;
+
+    /**
+     * Returns a reference to the session map.
+     */
+    const QHash<quint64, SessionInfoPointer>& sessions () const { return _sessions; }
 
     /**
      * Returns a reference to the local session map.
@@ -215,11 +225,12 @@ public:
     void freeInstanceIds (const QSet<quint64>& ids) { _reservedInstanceIds.subtract(ids); }
 
     /**
-     * Reserves a place in an instance of the identified zone for the identified session, creating
-     * a new instance if necessary.  The callback will receive the peer name and instance id.
+     * Reserves a place in an instance of the identified zone for the identified session in the
+     * named region, creating a new instance if necessary.  The callback will receive the peer name
+     * and instance id.
      */
     Q_INVOKABLE void reserveInstancePlace (
-        quint64 sessionId, quint32 zoneId, const Callback& callback);
+        quint64 sessionId, const QString& region, quint32 zoneId, const Callback& callback);
 
     /**
      * Executes an action on this peer and all others.
@@ -344,15 +355,15 @@ protected:
      * Notifies us of the result of an instance creation request.
      */
     Q_INVOKABLE void instanceMaybeCreated (
-        quint64 sessionId, quint32 zoneId, const QString& peer,
-        const Callback& callback, quint64 instanceId);
+        quint64 sessionId, const QString& region, quint32 zoneId,
+        const QString& peer, const Callback& callback, quint64 instanceId);
 
     /**
      * Notifies us of the result of an instance place request.
      */
     Q_INVOKABLE void instancePlaceMaybeReserved (
-        quint64 sessionId, const QString& peer, quint64 instanceId,
-        const Callback& callback, bool success);
+        quint64 sessionId, const QString& region, const QString& peer,
+        quint64 instanceId, const Callback& callback, bool success);
 
     /**
      * Executes an action on this peer and all others.
