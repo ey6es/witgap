@@ -1,6 +1,7 @@
 //
 // $Id$
 
+#include <QKeyEvent>
 #include <QtDebug>
 
 #include "ui/ScrollPane.h"
@@ -27,6 +28,7 @@ void ScrollPane::setComponent (Component* component, bool destroyPrevious)
     }
     invalidate();
     Component::dirty(innerRect());
+    _scrollAmount = QPoint(0, 0);
 }
 
 void ScrollPane::setPolicy (Policy policy)
@@ -40,15 +42,25 @@ void ScrollPane::setPolicy (Policy policy)
 void ScrollPane::setPosition (const QPoint& position)
 {
     QPoint clamped;
+    QRect inner = innerRect();
     if (_component != 0) {
-        QRect inner = innerRect();
         clamped = QPoint(
             qBound(0, position.x(), _component->bounds().width() - inner.width()),
             qBound(0, position.y(), _component->bounds().height() - inner.height()));
     }
     if (_position != clamped) {
+        // detect scrolling
+        QSize size = inner.size();
+        if (QRect(_position, size).intersects(QRect(clamped, size))) {
+            QPoint delta = _position - clamped;
+            _scrollAmount += delta;
+            scrollDirty(delta);
+
+        } else {
+            _scrollAmount = QPoint(0, 0);
+            Component::dirty(inner);
+        }
         _position = clamped;
-        Component::dirty(innerRect());
     }
 }
 
@@ -150,7 +162,16 @@ void ScrollPane::draw (DrawContext* ctx)
     if (_component == 0) {
         return;
     }
+
+    // apply scroll, if any
     QRect inner = innerRect();
+    if (_scrollAmount != QPoint(0, 0)) {
+        QRect overlap = inner.intersected(inner.translated(_scrollAmount));
+        ctx->moveContents(overlap.x() - _scrollAmount.x(), overlap.y() - _scrollAmount.y(),
+            overlap.width(), overlap.height(), overlap.x(), overlap.y());
+        _scrollAmount = QPoint(0, 0);
+    }
+
     QPoint cpos = ctx->pos();
     inner.translate(cpos);
     _dirty = ctx->dirty().intersected(inner);
@@ -169,6 +190,38 @@ void ScrollPane::draw (DrawContext* ctx)
             _buffers.at(ii).constData(), false);
     }
     ctx->translate(cpos);
+}
+
+void ScrollPane::keyPressEvent (QKeyEvent* e)
+{
+    Qt::KeyboardModifiers modifiers = e->modifiers();
+    if (modifiers != Qt::ShiftModifier && modifiers != Qt::NoModifier || _component == 0) {
+        Component::keyPressEvent(e);
+        return;
+    }
+    QRect inner = innerRect();
+    switch (e->key()) {
+        case Qt::Key_PageUp:
+            setPosition(QPoint(_position.x(), _position.y() - inner.height()));
+            break;
+
+        case Qt::Key_PageDown:
+            setPosition(QPoint(_position.x(), _position.y() + inner.height()));
+            break;
+
+        case Qt::Key_Home:
+            setPosition(QPoint(0, 0));
+            break;
+
+        case Qt::Key_End:
+            setPosition(QPoint(_component->bounds().width() - inner.width(),
+                _component->bounds().height() - inner.height()));
+            break;
+
+        default:
+            Component::keyPressEvent(e);
+            break;
+    }
 }
 
 void ScrollPane::moveContents (const QRect& source, const QPoint& dest)

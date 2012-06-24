@@ -108,6 +108,11 @@ protected:
     virtual void draw (DrawContext* ctx);
 
     /**
+     * Handles a key press event.
+     */
+    virtual void keyPressEvent (QKeyEvent* e);
+
+    /**
      * Moves part of the contents.
      */
     virtual void moveContents (const QRect& source, const QPoint& dest);
@@ -120,6 +125,9 @@ protected:
 
     /** The position in the component. */
     QPoint _position;
+
+    /** The amount scrolled since the last render. */
+    QPoint _scrollAmount;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(ScrollPane::Policy)
