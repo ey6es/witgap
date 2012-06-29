@@ -63,6 +63,11 @@ public:
      */
     virtual bool acceptsFocus () const { return _enabled && _visible; }
 
+    /**
+     * Dirties the entire component.
+     */
+    virtual void dirty () { Component::dirty(); _scrollAmount = 0; }
+
 signals:
 
     /**
@@ -110,9 +115,9 @@ protected:
     /**
      * Updates the list position to match the selected index.
      *
-     * @return whether or not the component was dirtied as a result of the update.
+     * @param oidx the previously selected index.
      */
-    bool updateListPos ();
+    void updateListPos (int oidx);
 
     /**
      * Dirties the region starting at the supplied list index and including everything after.
@@ -140,6 +145,9 @@ protected:
 
     /** The index of the selected item, or -1 for none. */
     int _selectedIdx;
+
+    /** The amount scrolled since the last render. */
+    int _scrollAmount;
 };
 
 #endif // SCROLLING_LIST

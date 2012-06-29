@@ -86,6 +86,11 @@ public:
     virtual bool transferFocus (Component* from, Direction dir);
 
     /**
+     * Dirties the entire component.
+     */
+    virtual void dirty ();
+
+    /**
      * Marks the specified region as dirty.
      */
     virtual void dirty (const QRect& region);

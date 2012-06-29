@@ -311,7 +311,7 @@ void Scene::dirty (const QPoint& pos)
         foreach (SceneView* view, *it) {
             const QRect& vbounds = view->worldBounds();
             if (vbounds.contains(pos)) {
-                view->dirty(QRect(pos - vbounds.topLeft(), QSize(1, 1)));
+                static_cast<Component*>(view)->dirty(QRect(pos - vbounds.topLeft(), QSize(1, 1)));
             }
         }
     }

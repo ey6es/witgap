@@ -25,7 +25,7 @@ RuntimeConfigDialog::RuntimeConfigDialog (Session* parent) :
     _synchronizer = new ObjectSynchronizer(parent->app()->runtimeConfig(true), copy);
 
     ScrollPane* pane = new ScrollPane(_editor = new ObjectEditor(
-        copy, RuntimeConfig::staticMetaObject.propertyOffset()));
+        copy, RuntimeConfig::staticMetaObject.propertyOffset(), this));
     pane->setPreferredSize(QSize(-1, 5));
     addChild(pane);
 

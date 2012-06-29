@@ -119,10 +119,7 @@ void SceneView::draw (DrawContext* ctx)
 
     // apply scroll, if any
     if (_scrollAmount != QPoint(0, 0)) {
-        QRect base(0, 0, _bounds.width(), _bounds.height());
-        QRect overlap = base.intersected(base.translated(_scrollAmount));
-        ctx->moveContents(overlap.x() - _scrollAmount.x(), overlap.y() - _scrollAmount.y(),
-            overlap.width(), overlap.height(), overlap.x(), overlap.y());
+        ctx->scrollContents(localBounds(), _scrollAmount);
         _scrollAmount = QPoint(0, 0);
     }
 

@@ -118,6 +118,13 @@ bool ScrollPane::transferFocus (Component* from, Direction dir)
     return (from == 0) ? _component->transferFocus(0, dir) : Component::transferFocus(this, dir);
 }
 
+void ScrollPane::dirty ()
+{
+    // when we dirty the entire component, we do not want it relative to the position
+    Component::dirty(QRect(0, 0, _bounds.width(), _bounds.height()));
+    _scrollAmount = QPoint(0, 0);
+}
+
 void ScrollPane::dirty (const QRect& region)
 {
     // get region relative to position and clip
@@ -166,9 +173,7 @@ void ScrollPane::draw (DrawContext* ctx)
     // apply scroll, if any
     QRect inner = innerRect();
     if (_scrollAmount != QPoint(0, 0)) {
-        QRect overlap = inner.intersected(inner.translated(_scrollAmount));
-        ctx->moveContents(overlap.x() - _scrollAmount.x(), overlap.y() - _scrollAmount.y(),
-            overlap.width(), overlap.height(), overlap.x(), overlap.y());
+        ctx->scrollContents(inner, _scrollAmount);
         _scrollAmount = QPoint(0, 0);
     }
 

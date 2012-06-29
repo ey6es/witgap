@@ -113,6 +113,16 @@ void SceneRepository::loadScene (quint32 id, const Callback& callback)
     callback.invoke(Q_ARG(const SceneRecord&, scene));
 }
 
+void SceneRepository::loadSceneName (quint32 id, const Callback& callback)
+{
+    QSqlQuery query;
+    query.prepare("select NAME from SCENES where ID = ?");
+    query.addBindValue(id);
+    query.exec();
+
+    callback.invoke(Q_ARG(const QString&, query.next() ? query.value(0).toString() : ""));
+}
+
 /**
  * Helper function for find methods: turns a prefix into a "like" pattern with appropriate
  * escaping.
@@ -239,6 +249,16 @@ void SceneRepository::loadZone (quint32 id, const Callback& callback)
         id, query.value(0).toString(), query.value(1).toUInt(), query.value(2).toString(),
         query.value(3).toDateTime(), query.value(4).toUInt(), query.value(5).toUInt() };
     callback.invoke(Q_ARG(const ZoneRecord&, zone));
+}
+
+void SceneRepository::loadZoneName (quint32 id, const Callback& callback)
+{
+    QSqlQuery query;
+    query.prepare("select NAME from ZONES where ID = ?");
+    query.addBindValue(id);
+    query.exec();
+
+    callback.invoke(Q_ARG(const QString&, query.next() ? query.value(0).toString() : ""));
 }
 
 void SceneRepository::findZones (

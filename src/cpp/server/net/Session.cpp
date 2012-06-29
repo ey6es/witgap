@@ -199,7 +199,7 @@ void Session::showInfoDialog (const QString& message, const QString& title, cons
     Window* window = createDialog(this, message, title);
 
     Button* button = new Button(dismiss.isEmpty() ? tr("OK") : dismiss);
-    window->addChild(button);
+    window->addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, button));
     window->connect(button, SIGNAL(pressed()), SLOT(deleteLater()));
     window->pack();
     window->center();

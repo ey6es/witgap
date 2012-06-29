@@ -8,6 +8,7 @@
 
 #include "ui/Component.h"
 
+class Button;
 class CheckBox;
 class ComboBox;
 class Label;
@@ -257,6 +258,105 @@ public:
      * Applies a change to the object.
      */
     virtual void apply ();
+};
+
+/**
+ * Base class for ZoneIdPropertyEditor and SceneIdPropertyEditor.
+ */
+class AbstractIdPropertyEditor : public PropertyEditor
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the editor.
+     */
+    AbstractIdPropertyEditor (const QMetaProperty& property, QObject* parent = 0);
+
+    /**
+     * Updates the edited value in response to an external change.
+     */
+    virtual void update ();
+
+protected slots:
+
+    /**
+     * Opens the dialog to change the id.
+     */
+    virtual void openDialog () = 0;
+
+protected:
+
+    /**
+     * Loads from the database the name corresponding to the provided id, calling back to
+     * setButtonLabel.
+     */
+    virtual void loadName (Session* session, quint32 id) = 0;
+
+    /**
+     * Sets the button label with the specified id and name.
+     */
+    Q_INVOKABLE void setButtonLabel (quint32 id, const QString& name);
+
+    /** The button that brings up the dialog. */
+    Button* _button;
+};
+
+/**
+ * Edits a zone id property.
+ */
+class ZoneIdPropertyEditor : public AbstractIdPropertyEditor
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the editor.
+     */
+    ZoneIdPropertyEditor (QObject* object, const QMetaProperty& property, QObject* parent = 0);
+
+protected:
+
+    /**
+     * Opens the dialog to change the id.
+     */
+    virtual void openDialog ();
+
+    /**
+     * Loads from the database the name corresponding to the provided id, calling back to
+     * setButtonLabel.
+     */
+    virtual void loadName (Session* session, quint32 id);
+};
+
+/**
+ * Edits a scene id property.
+ */
+class SceneIdPropertyEditor : public AbstractIdPropertyEditor
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the editor.
+     */
+    SceneIdPropertyEditor (QObject* object, const QMetaProperty& property, QObject* parent = 0);
+
+protected:
+
+    /**
+     * Opens the dialog to change the id.
+     */
+    virtual void openDialog ();
+
+    /**
+     * Loads from the database the name corresponding to the provided id, calling back to
+     * setButtonLabel.
+     */
+    virtual void loadName (Session* session, quint32 id);
 };
 
 #endif // OBJECT_EDITOR

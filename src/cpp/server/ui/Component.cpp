@@ -719,6 +719,13 @@ void DrawContext::drawString (int x, int y, const QChar* string, int length, int
     }
 }
 
+void DrawContext::scrollContents (const QRect& rect, const QPoint& amount)
+{
+    QRect overlap = rect.intersected(rect.translated(amount));
+    moveContents(overlap.x() - amount.x(), overlap.y() - amount.y(),
+        overlap.width(), overlap.height(), overlap.x(), overlap.y());
+}
+
 void DrawContext::moveContents (int x, int y, int width, int height, int dx, int dy)
 {
     moveContents(QRect(x + _pos.x(), y + _pos.y(), width, height),

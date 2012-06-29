@@ -45,6 +45,11 @@ public:
     Q_INVOKABLE void loadScene (quint32 id, const Callback& callback);
 
     /**
+     * Loads the name of a scene.
+     */
+    Q_INVOKABLE void loadSceneName (quint32 id, const Callback& callback);
+
+    /**
      * Finds scenes whose names start with the specified prefix.  The callback will receive a
      * SceneDescriptorList containing the scene descriptors.
      *
@@ -77,6 +82,11 @@ public:
      * Loads a zone.  The callback will receive the {@link ZoneRecord}.
      */
     Q_INVOKABLE void loadZone (quint32 id, const Callback& callback);
+
+    /**
+     * Loads the name of a zone.
+     */
+    Q_INVOKABLE void loadZoneName (quint32 id, const Callback& callback);
 
     /**
      * Finds zones whose names start with the specified prefix.  The callback will receive a

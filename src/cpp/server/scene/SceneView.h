@@ -39,6 +39,11 @@ public:
      */
     const QRect& worldBounds () const { return _worldBounds; };
 
+    /**
+     * Dirties the entire component.
+     */
+    virtual void dirty () { Component::dirty(); _scrollAmount = QPoint(0, 0); }
+
 public slots:
 
     /**

@@ -1,13 +1,23 @@
 //
 // $Id$
 
+#include <QMetaObject>
+#include <QTranslator>
 #include <QtDebug>
 
+#include "ServerApp.h"
+#include "db/DatabaseThread.h"
+#include "db/SceneRepository.h"
+#include "net/Session.h"
 #include "ui/Button.h"
+#include "ui/ChooserDialog.h"
 #include "ui/Label.h"
 #include "ui/Layout.h"
 #include "ui/ObjectEditor.h"
 #include "ui/TextField.h"
+
+// translate through the session
+#define tr(...) this->session()->translator()->translate("ObjectEditor", __VA_ARGS__)
 
 ObjectEditor::ObjectEditor (QObject* object, int propertyOffset, QObject* parent) :
     Container(new TableLayout(2), parent),
@@ -28,7 +38,7 @@ void ObjectEditor::setObject (QObject* object, int propertyOffset)
     const QMetaObject* meta = _object->metaObject();
     for (int ii = propertyOffset, nn = meta->propertyCount(); ii < nn; ii++) {
         QMetaProperty property = meta->property(ii);
-        PropertyEditor* editor = PropertyEditor::create(object, property);
+        PropertyEditor* editor = PropertyEditor::create(object, property, this);
         if (editor == 0) {
             continue;
         }
@@ -63,12 +73,22 @@ PropertyEditor* PropertyEditor::create (
     if (property.isEnumType()) {
         return new EnumPropertyEditor(object, property, parent);
     }
+    QByteArray name(property.name());
     switch (property.type()) {
         case QVariant::Bool:
             return new BoolPropertyEditor(object, property, parent);
 
         case QVariant::String:
             return new StringPropertyEditor(object, property, parent);
+
+        case QVariant::UInt:
+            if (name.endsWith("Zone")) {
+                return new ZoneIdPropertyEditor(object, property, parent);
+
+            } else if (name.endsWith("Scene")) {
+                return new SceneIdPropertyEditor(object, property, parent);
+            }
+            break;
     }
     qWarning() << "Don't know how to edit property." << object << property.name();
     return 0;
@@ -224,4 +244,72 @@ StringPropertyEditor::StringPropertyEditor (
 void StringPropertyEditor::apply ()
 {
     _property.write(_object, _field->text());
+}
+
+AbstractIdPropertyEditor::AbstractIdPropertyEditor (
+        const QMetaProperty& property, QObject* parent) :
+    PropertyEditor(property, parent),
+    _button(new Button())
+{
+    addChild(_button);
+    connect(_button, SIGNAL(pressed()), SLOT(openDialog()));
+}
+
+void AbstractIdPropertyEditor::update ()
+{
+    quint32 id = _property.read(_object).toUInt();
+    if (id == 0) {
+        _button->setLabel("---");
+        return;
+    }
+    _button->setLabel(QString::number(id));
+
+    // if we have the session, load the name from the database
+    Session* session = this->session();
+    if (session != 0) {
+        loadName(session, id);
+    }
+}
+
+void AbstractIdPropertyEditor::setButtonLabel (quint32 id, const QString& name)
+{
+    _button->setLabel(id + (": " + name));
+}
+
+ZoneIdPropertyEditor::ZoneIdPropertyEditor (
+        QObject* object, const QMetaProperty& property, QObject* parent) :
+    AbstractIdPropertyEditor(property, parent)
+{
+    setObject(object);
+}
+
+void ZoneIdPropertyEditor::openDialog ()
+{
+    new ZoneChooserDialog(session());
+}
+
+void ZoneIdPropertyEditor::loadName (Session* session, quint32 id)
+{
+    QMetaObject::invokeMethod(session->app()->databaseThread()->sceneRepository(), "loadZoneName",
+        Q_ARG(quint32, id), Q_ARG(const Callback&, Callback(
+            _this, "setButtonLabel(quint32,QString)", Q_ARG(quint32, id))));
+}
+
+SceneIdPropertyEditor::SceneIdPropertyEditor (
+        QObject* object, const QMetaProperty& property, QObject* parent) :
+    AbstractIdPropertyEditor(property, parent)
+{
+    setObject(object);
+}
+
+void SceneIdPropertyEditor::openDialog ()
+{
+    new SceneChooserDialog(session());
+}
+
+void SceneIdPropertyEditor::loadName (Session* session, quint32 id)
+{
+    QMetaObject::invokeMethod(session->app()->databaseThread()->sceneRepository(), "loadSceneName",
+        Q_ARG(quint32, id), Q_ARG(const Callback&, Callback(
+            _this, "setButtonLabel(quint32,QString)", Q_ARG(quint32, id))));
 }

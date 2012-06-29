@@ -230,7 +230,7 @@ public slots:
     /**
      * Dirties the entire component.
      */
-    void dirty () { dirty(QRect(0, 0, _bounds.width(), _bounds.height())); }
+    virtual void dirty () { dirty(QRect(0, 0, _bounds.width(), _bounds.height())); }
 
     /**
      * Marks the specified region as dirty.
@@ -522,6 +522,11 @@ public:
      * Draws a string.
      */
     void drawString (int x, int y, const QChar* string, int length, int style = 0);
+
+    /**
+     * Scrolls part of the contents.
+     */
+    void scrollContents (const QRect& rect, const QPoint& amount);
 
     /**
      * Moves part of the contents.

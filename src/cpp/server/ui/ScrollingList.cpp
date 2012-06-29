@@ -13,7 +13,8 @@ ScrollingList::ScrollingList (int minHeight, const QStringList& values, QObject*
     _minHeight(minHeight),
     _values(values),
     _listPos(0),
-    _selectedIdx(-1)
+    _selectedIdx(-1),
+    _scrollAmount(0)
 {
 }
 
@@ -23,7 +24,7 @@ void ScrollingList::setValues (const QStringList& values)
     _listPos = 0;
     _selectedIdx = -1;
     invalidate();
-    Component::dirty();
+    dirty();
 }
 
 void ScrollingList::addValue (const QString& value, int idx)
@@ -43,14 +44,7 @@ void ScrollingList::setSelectedIndex (int index)
     if (_selectedIdx != index) {
         int oidx = _selectedIdx;
         _selectedIdx = index;
-        if (!updateListPos()) {
-            if (_selectedIdx != -1) {
-                dirty(_selectedIdx, 1);
-            }
-            if (oidx != -1) {
-                dirty(oidx, 1);
-            }
-        }
+        updateListPos(oidx);
         emit selectionChanged();
     }
 }
@@ -68,7 +62,12 @@ void ScrollingList::draw (DrawContext* ctx)
 {
     Component::draw(ctx);
 
+    // apply scroll, if any
     QRect inner = innerRect();
+    if (_scrollAmount != 0) {
+        ctx->scrollContents(inner, QPoint(0, _scrollAmount));
+        _scrollAmount = 0;
+    }
     int x = inner.x() + 1, y = inner.y(), width = inner.width() - 2, height = inner.height();
 
     for (int ii = _listPos, nn = _values.length(), yymax = y + height;
@@ -137,9 +136,7 @@ void ScrollingList::keyPressEvent (QKeyEvent* e)
         case Qt::Key_Up:
             if (_selectedIdx > 0) {
                 _selectedIdx--;
-                if (!updateListPos()) {
-                    dirty(_selectedIdx, 2);
-                }
+                updateListPos(_selectedIdx + 1);
                 emit selectionChanged();
 
             } else {
@@ -150,9 +147,7 @@ void ScrollingList::keyPressEvent (QKeyEvent* e)
         case Qt::Key_Down:
             if (_selectedIdx < _values.length() - 1) {
                 _selectedIdx++;
-                if (!updateListPos()) {
-                    dirty(_selectedIdx - 1, 2);
-                }
+                updateListPos(_selectedIdx - 1);
                 emit selectionChanged();
 
             } else {
@@ -187,20 +182,47 @@ void ScrollingList::keyPressEvent (QKeyEvent* e)
     }
 }
 
-bool ScrollingList::updateListPos ()
+void ScrollingList::updateListPos (int oidx)
 {
     if (_selectedIdx == -1) {
-        return false;
+        if (oidx != -1) {
+            dirty(oidx, 1);
+        }
+        return;
     }
     int height = listAreaHeight();
     int opos = _listPos;
     _listPos = qBound(qMax(_selectedIdx - height + 1, 0), _listPos,
         qMin(_selectedIdx, _values.length() - height));
-    if (opos != _listPos) {
-        Component::dirty();
-        return true;
+    if (opos == _listPos) {
+        if (oidx == -1) {
+            dirty(_selectedIdx, 1);
+
+        } else {
+            if (oidx == _selectedIdx - 1) {
+                dirty(oidx, 2);
+
+            } else if (oidx == _selectedIdx + 1) {
+                dirty(_selectedIdx, 2);
+
+            } else {
+                dirty(oidx, 1);
+                dirty(_selectedIdx, 1);
+            }
+        }
+        return;
     }
-    return false;
+    // detect scrolling
+    if (opos + height > _listPos && _listPos + height > opos) {
+        int delta = opos - _listPos;
+        _scrollAmount += delta;
+        scrollDirty(QPoint(0, delta));
+        if (oidx != -1) {
+            dirty(oidx, 1);
+        }
+    } else {
+        dirty();
+    }
 }
 
 void ScrollingList::dirty (int idx)
