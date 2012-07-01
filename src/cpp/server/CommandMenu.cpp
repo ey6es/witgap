@@ -8,7 +8,6 @@
 #include "actor/Pawn.h"
 #include "admin/AdminMenu.h"
 #include "net/Session.h"
-#include "scene/GoToSceneDialog.h"
 #include "scene/Scene.h"
 #include "scene/Zone.h"
 #include "scene/ScenePropertiesDialog.h"
@@ -26,16 +25,11 @@ CommandMenu::CommandMenu (Session* parent, int deleteOnReleaseKey) :
     }
     bool loggedOn = parent->loggedOn();
     if (loggedOn) {
-        addButton(tr("&Go to Scene..."), &GoToSceneDialog::staticMetaObject,
-            Q_ARG(Session*, parent));
         addButton(tr("&New >"), this, SLOT(createNewMenu()));
         addButton(tr("&Edit >"), this, SLOT(createEditMenu()));
 
         Scene* scene = parent->scene();
         if (scene != 0 && scene->canEdit(parent)) {
-            addButton(tr("Scene &Properties..."), &ScenePropertiesDialog::staticMetaObject,
-                Q_ARG(Session*, parent));
-
             Pawn* pawn = parent->pawn();
             if (pawn != 0) {
                 addButton(tr("Toggle &Cursor Mode"), pawn, SLOT(toggleCursor()));

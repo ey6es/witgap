@@ -9,13 +9,13 @@
 #include <QSize>
 
 #include "chat/ChatWindow.h"
-#include "db/SceneRepository.h"
 #include "db/SessionRepository.h"
 #include "db/UserRepository.h"
 #include "net/Connection.h"
 #include "peer/PeerManager.h"
 #include "ui/TextField.h"
 #include "util/Callback.h"
+#include "util/General.h"
 #include "util/Streaming.h"
 
 class QEvent;
@@ -27,7 +27,6 @@ class Instance;
 class MainWindow;
 class Pawn;
 class Scene;
-class SceneRecord;
 class ServerApp;
 class SessionTransfer;
 class Window;
@@ -384,7 +383,7 @@ protected:
     /**
      * Continues the process of moving to a scene.
      */
-    Q_INVOKABLE void continueMovingToScene (const SceneDescriptorList& scenes);
+    Q_INVOKABLE void continueMovingToScene (const DescriptorList& scenes);
 
     /**
      * Reports back with the resolved scene object, if successful.
@@ -394,7 +393,7 @@ protected:
     /**
      * Continues the process of moving to a zone.
      */
-    Q_INVOKABLE void continueMovingToZone (const ZoneRecordList& zones);
+    Q_INVOKABLE void continueMovingToZone (const DescriptorList& zones);
 
     /**
      * Continues the process of moving to a zone.

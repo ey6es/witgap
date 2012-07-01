@@ -14,8 +14,6 @@
 
 // register our types with the metatype system
 int sceneRecordType = qRegisterMetaType<SceneRecord>();
-int sceneDescriptorListType = qRegisterMetaType<SceneDescriptorList>("SceneDescriptorList");
-int zoneRecordListType = qRegisterMetaType<ZoneRecordList>("ZoneRecordList");
 
 void SceneRepository::init ()
 {
@@ -149,13 +147,13 @@ void SceneRepository::findScenes (
     }
     query.exec();
 
-    SceneDescriptorList descs;
+    DescriptorList descs;
     while (query.next()) {
-        SceneDescriptor desc = { query.value(0).toUInt(), query.value(1).toString(),
+        Descriptor desc = { query.value(0).toUInt(), query.value(1).toString(),
             query.value(2).toUInt(), query.value(3).toString(), query.value(4).toDateTime() };
         descs.append(desc);
     }
-    callback.invoke(Q_ARG(const SceneDescriptorList&, descs));
+    callback.invoke(Q_ARG(const DescriptorList&, descs));
 }
 
 void SceneRepository::updateScene (const SceneRecord& srec)
@@ -266,9 +264,8 @@ void SceneRepository::findZones (
 {
     QSqlQuery query;
     QString pattern = likePattern(prefix);
-    QString base = "select ZONES.ID, ZONES.NAME, CREATOR_ID, USERS.NAME, ZONES.CREATED, "
-        "MAX_POPULATION, DEFAULT_SCENE_ID from ZONES, USERS where ZONES.CREATOR_ID = USERS.ID "
-        "and ZONES.NAME_LOWER like ?";
+    QString base = "select ZONES.ID, ZONES.NAME, CREATOR_ID, USERS.NAME, ZONES.CREATED from "
+        "ZONES, USERS where ZONES.CREATOR_ID = USERS.ID and ZONES.NAME_LOWER like ?";
     if (creatorId == 0) {
         query.prepare(base);
         query.addBindValue(pattern);
@@ -279,14 +276,13 @@ void SceneRepository::findZones (
     }
     query.exec();
 
-    ZoneRecordList zones;
+    DescriptorList zones;
     while (query.next()) {
-        ZoneRecord zone = { query.value(0).toUInt(), query.value(1).toString(),
-            query.value(2).toUInt(), query.value(3).toString(), query.value(4).toDateTime(),
-            query.value(5).toUInt(), query.value(6).toUInt() };
+        Descriptor zone = { query.value(0).toUInt(), query.value(1).toString(),
+            query.value(2).toUInt(), query.value(3).toString(), query.value(4).toDateTime() };
         zones.append(zone);
     }
-    callback.invoke(Q_ARG(const ZoneRecordList&, zones));
+    callback.invoke(Q_ARG(const DescriptorList&, zones));
 }
 
 void SceneRepository::updateZone (const ZoneRecord& zrec, const Callback& callback)

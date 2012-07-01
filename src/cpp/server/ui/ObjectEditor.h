@@ -263,7 +263,7 @@ public:
 /**
  * Base class for ZoneIdPropertyEditor and SceneIdPropertyEditor.
  */
-class AbstractIdPropertyEditor : public PropertyEditor
+class IdPropertyEditor : public PropertyEditor
 {
     Q_OBJECT
 
@@ -272,7 +272,7 @@ public:
     /**
      * Initializes the editor.
      */
-    AbstractIdPropertyEditor (const QMetaProperty& property, QObject* parent = 0);
+    IdPropertyEditor (const QMetaProperty& property, QObject* parent = 0);
 
     /**
      * Updates the edited value in response to an external change.
@@ -285,6 +285,11 @@ protected slots:
      * Opens the dialog to change the id.
      */
     virtual void openDialog () = 0;
+
+    /**
+     * Applies a change selected in the dialog.
+     */
+    void setValue (quint32 id, const QString& name);
 
 protected:
 
@@ -306,7 +311,7 @@ protected:
 /**
  * Edits a zone id property.
  */
-class ZoneIdPropertyEditor : public AbstractIdPropertyEditor
+class ZoneIdPropertyEditor : public IdPropertyEditor
 {
     Q_OBJECT
 
@@ -334,7 +339,7 @@ protected:
 /**
  * Edits a scene id property.
  */
-class SceneIdPropertyEditor : public AbstractIdPropertyEditor
+class SceneIdPropertyEditor : public IdPropertyEditor
 {
     Q_OBJECT
 

@@ -18,6 +18,7 @@
 #include "SettingsDialog.h"
 #include "actor/Pawn.h"
 #include "db/DatabaseThread.h"
+#include "db/SceneRepository.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
 #include "scene/Scene.h"
@@ -315,7 +316,7 @@ void Session::moveToScene (const QString& prefix)
     // look up the prefix in the database
     QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "findScenes",
         Q_ARG(const QString&, prefix), Q_ARG(quint32, 0), Q_ARG(const Callback&,
-            Callback(_this, "continueMovingToScene(SceneDescriptorList)")));
+            Callback(_this, "continueMovingToScene(DescriptorList)")));
 }
 
 void Session::moveToScene (quint32 id, const QVariant& portal)
@@ -334,7 +335,7 @@ void Session::moveToZone (const QString& prefix)
     // look up the prefix in the database
     QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "findZones",
         Q_ARG(const QString&, prefix), Q_ARG(quint32, 0), Q_ARG(const Callback&,
-            Callback(_this, "continueMovingToZone(ZoneRecordList)")));
+            Callback(_this, "continueMovingToZone(DescriptorList)")));
 }
 
 void Session::moveToZone (quint32 id, quint32 sceneId, const QVariant& portal)
@@ -714,7 +715,7 @@ void Session::zoneCreated (quint32 id)
     moveToZone(id);
 }
 
-void Session::continueMovingToScene (const SceneDescriptorList& scenes)
+void Session::continueMovingToScene (const DescriptorList& scenes)
 {
     if (scenes.isEmpty()) {
         _chatWindow->display(tr("No such scene."));
@@ -750,7 +751,7 @@ void Session::leaveScene ()
     }
 }
 
-void Session::continueMovingToZone (const ZoneRecordList& zones)
+void Session::continueMovingToZone (const DescriptorList& zones)
 {
     if (zones.isEmpty()) {
         _chatWindow->display(tr("No such zone."));

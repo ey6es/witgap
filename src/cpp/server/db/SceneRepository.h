@@ -51,7 +51,7 @@ public:
 
     /**
      * Finds scenes whose names start with the specified prefix.  The callback will receive a
-     * SceneDescriptorList containing the scene descriptors.
+     * DescriptorList containing the scene descriptors.
      *
      * @param creatorId the id of the creator whose scenes are desired, or 0 for all creators.
      */
@@ -90,7 +90,7 @@ public:
 
     /**
      * Finds zones whose names start with the specified prefix.  The callback will receive a
-     * ZoneRecordList containing the zone records.
+     * DescriptorList containing the zone descriptors.
      *
      * @param creatorId the id of the creator whose zones are desired, or 0 for all creators.
      */
@@ -216,32 +216,6 @@ Q_DECLARE_METATYPE(SceneRecord)
 const SceneRecord NoScene = { 0 };
 
 /**
- * Describes a scene for search purposes.
- */
-class SceneDescriptor
-{
-public:
-
-    /** The scene id. */
-    quint32 id;
-
-    /** The scene name. */
-    QString name;
-
-    /** The user id of the scene creator. */
-    quint32 creatorId;
-
-    /** The name of the scene creator. */
-    QString creatorName;
-
-    /** The time at which the scene was created. */
-    QDateTime created;
-};
-
-/** A list of scene descriptors that we'll register with the metatype system. */
-typedef QList<SceneDescriptor> SceneDescriptorList;
-
-/**
  * Holds the metadata associated with a zone.
  */
 class ZoneRecord
@@ -276,8 +250,5 @@ DECLARE_STREAMABLE_METATYPE(ZoneRecord)
 
 /** A record for the lack of a zone. */
 const ZoneRecord NoZone = { 0 };
-
-/** A list of zone records that we'll register with the metatype system. */
-typedef QList<ZoneRecord> ZoneRecordList;
 
 #endif // SCENE_REPOSITORY

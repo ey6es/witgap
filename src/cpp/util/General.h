@@ -5,6 +5,7 @@
 #define GENERAL
 
 #include <QByteArray>
+#include <QDateTime>
 #include <QHash>
 #include <QObject>
 #include <QPoint>
@@ -222,6 +223,32 @@ protected:
     /** The current index in the bucket vector. */
     int _bucketIdx;
 };
+
+/**
+ * Generic descriptor for various resources (zones, scenes, etc.)
+ */
+class Descriptor
+{
+public:
+
+    /** The resource id. */
+    quint32 id;
+
+    /** The resource name. */
+    QString name;
+
+    /** The user id of the resource creator. */
+    quint32 creatorId;
+
+    /** The name of the resource creator. */
+    QString creatorName;
+
+    /** The time at which the resource was created. */
+    QDateTime created;
+};
+
+/** A list of descriptors. */
+typedef QList<Descriptor> DescriptorList;
 
 /**
  * Hash function for points.
