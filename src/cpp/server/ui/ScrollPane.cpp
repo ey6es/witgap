@@ -156,7 +156,9 @@ void ScrollPane::validate ()
     QSize psize = _component->preferredSize(
         _policy.testFlag(HScroll) ? -1 : inner.width(),
         _policy.testFlag(VScroll) ? -1 : inner.height());
-    _component->setBounds(QRect(inner.topLeft(), psize));
+    _component->setBounds(QRect(inner.topLeft(), QSize(
+        _policy.testFlag(HScroll) ? psize.width() : qMin(psize.width(), inner.width()),
+        _policy.testFlag(VScroll) ? psize.height() : qMin(psize.height(), inner.height()))));
     _component->maybeValidate();
 
     setPosition(_position); // reclamp the position

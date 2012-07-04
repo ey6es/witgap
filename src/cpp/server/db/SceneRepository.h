@@ -51,7 +51,7 @@ public:
 
     /**
      * Finds scenes whose names start with the specified prefix.  The callback will receive a
-     * DescriptorList containing the scene descriptors.
+     * ResourceDescriptorList containing the scene descriptors.
      *
      * @param creatorId the id of the creator whose scenes are desired, or 0 for all creators.
      */
@@ -90,7 +90,7 @@ public:
 
     /**
      * Finds zones whose names start with the specified prefix.  The callback will receive a
-     * DescriptorList containing the zone descriptors.
+     * ResourceDescriptorList containing the zone descriptors.
      *
      * @param creatorId the id of the creator whose zones are desired, or 0 for all creators.
      */

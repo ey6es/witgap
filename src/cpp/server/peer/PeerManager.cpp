@@ -358,18 +358,22 @@ void PeerManager::instanceAdded (const InstanceInfo& info)
     // to zone map
     _zoneInstances[getZoneId(info.id)].insert(ptr, 0);
 
-    // and to local/peer hash
+    // set region and add to local/peer hash
     if (info.peer == _record.name) {
+        ptr->region = _record.region;
         _localInstances.insert(info.id, ptr);
     } else {
-        _connections.value(info.peer)->instanceAdded(ptr);
+        PeerConnection* connection = _connections.value(info.peer);
+        ptr->region = connection->region();
+        connection->instanceAdded(ptr);
     }
 }
 
 void PeerManager::instanceUpdated (const InstanceInfo& info)
 {
-    // move within zone list if the number of open spaces changed
+    // preserve region; move within zone list if the number of open spaces changed
     InstanceInfoPointer ptr = _instances.value(info.id);
+    QString region = ptr->region;
     if (ptr->open == info.open) {
         *ptr = info;
     } else {
@@ -378,6 +382,7 @@ void PeerManager::instanceUpdated (const InstanceInfo& info)
         *ptr = info;
         map.insert(ptr, 0);
     }
+    ptr->region = region;
 }
 
 void PeerManager::instanceRemoved (quint64 id)

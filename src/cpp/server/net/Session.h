@@ -383,7 +383,7 @@ protected:
     /**
      * Continues the process of moving to a scene.
      */
-    Q_INVOKABLE void continueMovingToScene (const DescriptorList& scenes);
+    Q_INVOKABLE void continueMovingToScene (const ResourceDescriptorList& scenes);
 
     /**
      * Reports back with the resolved scene object, if successful.
@@ -393,7 +393,7 @@ protected:
     /**
      * Continues the process of moving to a zone.
      */
-    Q_INVOKABLE void continueMovingToZone (const DescriptorList& zones);
+    Q_INVOKABLE void continueMovingToZone (const ResourceDescriptorList& zones);
 
     /**
      * Continues the process of moving to a zone.

@@ -10,10 +10,10 @@
 #include "db/SceneRepository.h"
 #include "net/Session.h"
 #include "ui/Button.h"
-#include "ui/IdChooserDialog.h"
 #include "ui/Label.h"
 #include "ui/Layout.h"
 #include "ui/ObjectEditor.h"
+#include "ui/ResourceChooserDialog.h"
 #include "ui/TextField.h"
 
 // translate through the session
@@ -23,6 +23,9 @@ ObjectEditor::ObjectEditor (QObject* object, int propertyOffset, QObject* parent
     Container(new TableLayout(2), parent),
     _object(0)
 {
+    // allow the value column to stretch
+    static_cast<TableLayout*>(_layout)->stretchColumns().insert(1);
+
     setObject(object, propertyOffset);
 }
 
@@ -246,7 +249,8 @@ void StringPropertyEditor::apply ()
     _property.write(_object, _field->text());
 }
 
-IdPropertyEditor::IdPropertyEditor (const QMetaProperty& property, QObject* parent) :
+ResourceIdPropertyEditor::ResourceIdPropertyEditor (
+        const QMetaProperty& property, QObject* parent) :
     PropertyEditor(property, parent),
     _button(new Button())
 {
@@ -254,7 +258,7 @@ IdPropertyEditor::IdPropertyEditor (const QMetaProperty& property, QObject* pare
     connect(_button, SIGNAL(pressed()), SLOT(openDialog()));
 }
 
-void IdPropertyEditor::update ()
+void ResourceIdPropertyEditor::update ()
 {
     quint32 id = _property.read(_object).toUInt();
     if (id == 0) {
@@ -270,29 +274,29 @@ void IdPropertyEditor::update ()
     }
 }
 
-void IdPropertyEditor::setValue (quint32 id, const QString& name)
+void ResourceIdPropertyEditor::setValue (const ResourceDescriptor& value)
 {
-    _property.write(_object, id);
-    setButtonLabel(id, name);
+    _property.write(_object, value.id);
+    setButtonLabel(value.id, value.name);
 }
 
-void IdPropertyEditor::setButtonLabel (quint32 id, const QString& name)
+void ResourceIdPropertyEditor::setButtonLabel (quint32 id, const QString& name)
 {
-    _button->setLabel(id == 0 ? "---" : id + (": " + name));
+    _button->setLabel(id == 0 ? "---" : QString::number(id) + (": " + name));
 }
 
 ZoneIdPropertyEditor::ZoneIdPropertyEditor (
         QObject* object, const QMetaProperty& property, QObject* parent) :
-    IdPropertyEditor(property, parent)
+    ResourceIdPropertyEditor(property, parent)
 {
     setObject(object);
 }
 
 void ZoneIdPropertyEditor::openDialog ()
 {
-    ZoneIdChooserDialog* dialog = new ZoneIdChooserDialog(
-        session(), _property.read(_object).toUInt());
-    connect(dialog, SIGNAL(idSelected(quint32,QString)), SLOT(setValue(quint32,QString)));
+    ZoneChooserDialog* dialog = new ZoneChooserDialog(session(), _property.read(_object).toUInt());
+    connect(dialog, SIGNAL(resourceChosen(ResourceDescriptor)),
+        SLOT(setValue(ResourceDescriptor)));
 }
 
 void ZoneIdPropertyEditor::loadName (Session* session, quint32 id)
@@ -304,16 +308,17 @@ void ZoneIdPropertyEditor::loadName (Session* session, quint32 id)
 
 SceneIdPropertyEditor::SceneIdPropertyEditor (
         QObject* object, const QMetaProperty& property, QObject* parent) :
-    IdPropertyEditor(property, parent)
+    ResourceIdPropertyEditor(property, parent)
 {
     setObject(object);
 }
 
 void SceneIdPropertyEditor::openDialog ()
 {
-    SceneIdChooserDialog* dialog = new SceneIdChooserDialog(
+    SceneChooserDialog* dialog = new SceneChooserDialog(
         session(), _property.read(_object).toUInt());
-    connect(dialog, SIGNAL(idSelected(quint32,QString)), SLOT(setValue(quint32,QString)));
+    connect(dialog, SIGNAL(resourceChosen(ResourceDescriptor)),
+        SLOT(setValue(ResourceDescriptor)));
 }
 
 void SceneIdPropertyEditor::loadName (Session* session, quint32 id)

@@ -122,6 +122,7 @@ void PeerConnection::readHeader ()
         return;
     }
     _stream >> _name;
+    _stream >> _region;
     _stream >> _host;
     _stream >> _port;
 

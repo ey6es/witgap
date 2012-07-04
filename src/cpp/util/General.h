@@ -227,7 +227,7 @@ protected:
 /**
  * Generic descriptor for various resources (zones, scenes, etc.)
  */
-class Descriptor
+class ResourceDescriptor
 {
 public:
 
@@ -247,8 +247,11 @@ public:
     QDateTime created;
 };
 
-/** A list of descriptors. */
-typedef QList<Descriptor> DescriptorList;
+/** A descriptor for the lack of a resource. */
+const ResourceDescriptor NoResource = { 0 };
+
+/** A list of resource descriptors. */
+typedef QList<ResourceDescriptor> ResourceDescriptorList;
 
 /**
  * Hash function for points.

@@ -147,13 +147,13 @@ void SceneRepository::findScenes (
     }
     query.exec();
 
-    DescriptorList descs;
+    ResourceDescriptorList descs;
     while (query.next()) {
-        Descriptor desc = { query.value(0).toUInt(), query.value(1).toString(),
+        ResourceDescriptor desc = { query.value(0).toUInt(), query.value(1).toString(),
             query.value(2).toUInt(), query.value(3).toString(), query.value(4).toDateTime() };
         descs.append(desc);
     }
-    callback.invoke(Q_ARG(const DescriptorList&, descs));
+    callback.invoke(Q_ARG(const ResourceDescriptorList&, descs));
 }
 
 void SceneRepository::updateScene (const SceneRecord& srec)
@@ -276,13 +276,13 @@ void SceneRepository::findZones (
     }
     query.exec();
 
-    DescriptorList zones;
+    ResourceDescriptorList zones;
     while (query.next()) {
-        Descriptor zone = { query.value(0).toUInt(), query.value(1).toString(),
+        ResourceDescriptor zone = { query.value(0).toUInt(), query.value(1).toString(),
             query.value(2).toUInt(), query.value(3).toString(), query.value(4).toDateTime() };
         zones.append(zone);
     }
-    callback.invoke(Q_ARG(const DescriptorList&, zones));
+    callback.invoke(Q_ARG(const ResourceDescriptorList&, zones));
 }
 
 void SceneRepository::updateZone (const ZoneRecord& zrec, const Callback& callback)

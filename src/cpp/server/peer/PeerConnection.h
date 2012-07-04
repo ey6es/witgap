@@ -34,6 +34,11 @@ public:
     const QString& name () const { return _name; }
 
     /**
+     * Returns a reference to the peer region.
+     */
+    const QString& region () const { return _region; }
+
+    /**
      * Returns a reference to the public hostname.
      */
     const QString& host () const { return _host; }
@@ -97,6 +102,9 @@ protected:
 
     /** The peer name. */
     QString _name;
+
+    /** The peer region. */
+    QString _region;
 
     /** The public hostname. */
     QString _host;

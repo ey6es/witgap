@@ -21,11 +21,15 @@ class Label : public Component
 
 public:
 
+    /** The available wrap modes. */
+    enum Wrap { NoWrap, CharWrap, WordWrap };
+
     /**
      * Initializes the label.
      */
     Label (const QIntVector& text = QIntVector(),
-        Qt::Alignment alignment = Qt::AlignLeft | Qt::AlignTop, QObject* parent = 0);
+        Qt::Alignment alignment = Qt::AlignLeft | Qt::AlignTop,
+        Wrap wrap = WordWrap, QObject* parent = 0);
 
     /**
      * Sets the label text.
@@ -46,6 +50,16 @@ public:
      * Returns the text alignment.
      */
     Qt::Alignment alignment () const { return _alignment; }
+
+    /**
+     * Sets the wrap mode.
+     */
+    void setWrap (Wrap wrap);
+
+    /**
+     * Returns the wrap mode.
+     */
+    Wrap wrap () const { return _wrap; }
 
     /**
      * Sets or clears a set of flags for all characters in the text.
@@ -76,9 +90,6 @@ public slots:
 
 protected:
 
-    /** The start position and length of a line. */
-    typedef QPair<const int*, int> Line;
-
     /**
      * Computes and returns the preferred size.
      */
@@ -94,14 +105,22 @@ protected:
      */
     virtual void draw (DrawContext* ctx);
 
+    /**
+     * Appends a line of text to our list.
+     */
+    void appendLine (const int* start, int length);
+
     /** The label text. */
     QIntVector _text;
 
     /** The text alignment. */
     Qt::Alignment _alignment;
 
-    /** The location and length of each line. */
-    QVector<Line> _lines;
+    /** The wrap mode. */
+    Wrap _wrap;
+
+    /** The lines of text. */
+    QVector<QIntVector> _lines;
 };
 
 /**

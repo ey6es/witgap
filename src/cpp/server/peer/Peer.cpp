@@ -77,10 +77,13 @@ void Peer::sendHeader ()
 
     const QString& secret = _app->peerManager()->sharedSecret();
     const QString& name = _app->peerManager()->record().name;
+    const QString& region = _app->peerManager()->record().region;
     const QString& host = _app->peerManager()->record().externalHostname;
-    _stream << (quint32)(14 + (secret.length() + name.length() + host.length())*sizeof(QChar));
+    _stream << (quint32)(18 + (secret.length() + name.length() +
+        region.length() + host.length())*sizeof(QChar));
     _stream << secret;
     _stream << name;
+    _stream << region;
     _stream << host;
     _stream << _app->connectionManager()->serverPort();
 

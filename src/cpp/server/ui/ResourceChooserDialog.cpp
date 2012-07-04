@@ -10,14 +10,14 @@
 #include "net/Session.h"
 #include "ui/Border.h"
 #include "ui/Button.h"
-#include "ui/IdChooserDialog.h"
 #include "ui/Layout.h"
+#include "ui/ResourceChooserDialog.h"
 #include "ui/ScrollingList.h"
 
 // translate through the session
-#define tr(...) this->session()->translator()->translate("IdChooserDialog", __VA_ARGS__)
+#define tr(...) this->session()->translator()->translate("ResourceChooserDialog", __VA_ARGS__)
 
-IdChooserDialog::IdChooserDialog (Session* parent, quint32 id, bool allowZero) :
+ResourceChooserDialog::ResourceChooserDialog (Session* parent, quint32 id, bool allowZero) :
     Window(parent, parent->highestWindowLayer(), true, true),
     _initialId(id),
     _allowZero(allowZero)
@@ -42,7 +42,7 @@ IdChooserDialog::IdChooserDialog (Session* parent, quint32 id, bool allowZero) :
     _ok->setEnabled(false);
     _ok->connect(_name, SIGNAL(enterPressed()), SLOT(doPress()));
     _ok->connect(_list, SIGNAL(enterPressed()), SLOT(doPress()));
-    connect(_ok, SIGNAL(pressed()), SLOT(emitIdSelected()));
+    connect(_ok, SIGNAL(pressed()), SLOT(emitResourceChosen()));
     connect(_ok, SIGNAL(pressed()), SLOT(deleteLater()));
     addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, cancel, _ok));
 
@@ -50,7 +50,7 @@ IdChooserDialog::IdChooserDialog (Session* parent, quint32 id, bool allowZero) :
     center();
 }
 
-void IdChooserDialog::updateSelection ()
+void ResourceChooserDialog::updateSelection ()
 {
     QString prefix = _name->text().simplified();
     for (int ii = 0, nn = _list->values().length(); ii < nn; ii++) {
@@ -62,32 +62,50 @@ void IdChooserDialog::updateSelection ()
     _list->setSelectedIndex(-1);
 }
 
-void IdChooserDialog::updateOk ()
+void ResourceChooserDialog::updateOk ()
 {
-    _ok->setEnabled(_list->selectedIndex() != -1);
+    _ok->setEnabled(_allowZero || _list->selectedIndex() != -1);
 }
 
-void IdChooserDialog::emitIdSelected ()
+void ResourceChooserDialog::emitResourceChosen ()
 {
-    emit idSelected(0, "");
+    int idx = _list->selectedIndex();
+    emit resourceChosen(idx == -1 ? NoResource : _resources.at(idx));
 }
 
-void IdChooserDialog::populateList (const DescriptorList& values)
+void ResourceChooserDialog::populateList (const ResourceDescriptorList& resources)
 {
+    _resources = resources;
+
+    QStringList names;
+    int idx = -1;
+    for (int ii = 0, nn = resources.size(); ii < nn; ii++) {
+        const ResourceDescriptor& resource = resources.at(ii);
+        names.append(resource.name);
+        if (resource.id == _initialId) {
+            idx = ii;
+        }
+    }
+    _list->setValues(names);
+
+    if (idx != -1) {
+        _list->setSelectedIndex(idx);
+    }
+    updateOk();
 }
 
-ZoneIdChooserDialog::ZoneIdChooserDialog (Session* parent, quint32 id, bool allowZero) :
-    IdChooserDialog(parent, id, allowZero)
+ZoneChooserDialog::ZoneChooserDialog (Session* parent, quint32 id, bool allowZero) :
+    ResourceChooserDialog(parent, id, allowZero)
 {
     QMetaObject::invokeMethod(parent->app()->databaseThread()->sceneRepository(), "findZones",
         Q_ARG(const QString&, ""), Q_ARG(quint32, 0), Q_ARG(const Callback&, Callback(_this,
-            "populateList(DescriptorList)")));
+            "populateList(ResourceDescriptorList)")));
 }
 
-SceneIdChooserDialog::SceneIdChooserDialog (Session* parent, quint32 id, bool allowZero) :
-    IdChooserDialog(parent, id, allowZero)
+SceneChooserDialog::SceneChooserDialog (Session* parent, quint32 id, bool allowZero) :
+    ResourceChooserDialog(parent, id, allowZero)
 {
     QMetaObject::invokeMethod(parent->app()->databaseThread()->sceneRepository(), "findScenes",
         Q_ARG(const QString&, ""), Q_ARG(quint32, 0), Q_ARG(const Callback&, Callback(_this,
-            "populateList(DescriptorList)")));
+            "populateList(ResourceDescriptorList)")));
 }

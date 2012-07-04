@@ -200,4 +200,9 @@ const int DIM_FLAG = 0x20000;
  */
 inline int getChar (int ch) { return ch & 0xFFFF; }
 
+/**
+ * Strips the value from the specified character.
+ */
+inline int getFlags (int ch) { return ch & 0xFFFF0000; }
+
 #endif // PROTOCOL

@@ -161,28 +161,34 @@ void BoxLayout::apply (Container* container) const
         totalWidth += tgap;
 
         // adjust for horizontal stretching/alignment
-        if (hstretch && nnfixed != 0) {
-            // distribute the extra space amongst the non-fixed components
-            int extra = (width - totalWidth) / nnfixed;
-            int remainder = (width - totalWidth) % nnfixed;
-            for (int ii = 0, idx = 0; ii < ncomps; ii++) {
-                Component* comp = children.at(ii);
-                if (!comp->visible()) {
-                    continue;
-                }
-                QSize& psize = psizes[idx++];
-                if (comp->constraint().toInt() != Fixed) {
-                    psize.rwidth() += extra;
-                    if (remainder-- > 0) {
-                        psize.rwidth()++;
+        int extraWidth = width - totalWidth;
+        if (extraWidth != 0) {
+            if (hstretch && nnfixed != 0) {
+                // distribute the extra space amongst the non-fixed components
+                int per = extraWidth / nnfixed;
+                int remainder = extraWidth % nnfixed;
+                for (int ii = 0, idx = 0; ii < ncomps; ii++) {
+                    Component* comp = children.at(ii);
+                    if (!comp->visible()) {
+                        continue;
+                    }
+                    QSize& psize = psizes[idx++];
+                    if (comp->constraint().toInt() != Fixed) {
+                        if (extraWidth > 0) {
+                            psize.rwidth() += per + (remainder-- > 0 ? 1 : 0);
+
+                        } else {
+                            int& wref = psize.rwidth();
+                            wref = qMax(wref + per - (remainder++ < 0 ? 1 : 0), 0);
+                        }
                     }
                 }
-            }
-        } else {
-            if (halign == Qt::AlignHCenter) {
-                x += (width - totalWidth) / 2;
-            } else if (halign == Qt::AlignRight) {
-                x += width - totalWidth;
+            } else {
+                if (halign == Qt::AlignHCenter) {
+                    x += extraWidth / 2;
+                } else if (halign == Qt::AlignRight) {
+                    x += extraWidth;
+                }
             }
         }
 
@@ -226,28 +232,34 @@ void BoxLayout::apply (Container* container) const
         totalHeight += tgap;
 
         // adjust for vertical stretching/alignment
-        if (vstretch && nnfixed != 0) {
-            // distribute the extra space amongst the non-fixed components
-            int extra = (height - totalHeight) / nnfixed;
-            int remainder = (height - totalHeight) % nnfixed;
-            for (int ii = 0, idx = 0; ii < ncomps; ii++) {
-                Component* comp = children.at(ii);
-                if (!comp->visible()) {
-                    continue;
-                }
-                QSize& psize = psizes[idx++];
-                if (comp->constraint().toInt() != Fixed) {
-                    psize.rheight() += extra;
-                    if (remainder-- > 0) {
-                        psize.rheight()++;
+        int extraHeight = height - totalHeight;
+        if (extraHeight != 0) {
+            if (vstretch && nnfixed != 0) {
+                // distribute the extra space amongst the non-fixed components
+                int per = extraHeight / nnfixed;
+                int remainder = extraHeight % nnfixed;
+                for (int ii = 0, idx = 0; ii < ncomps; ii++) {
+                    Component* comp = children.at(ii);
+                    if (!comp->visible()) {
+                        continue;
+                    }
+                    QSize& psize = psizes[idx++];
+                    if (comp->constraint().toInt() != Fixed) {
+                        if (extraHeight > 0) {
+                            psize.rheight() += per + (remainder-- > 0 ? 1 : 0);
+
+                        } else {
+                            int& href = psize.rheight();
+                            href = qMax(href + per - (remainder++ < 0 ? 1 : 0), 0);
+                        }
                     }
                 }
-            }
-        } else {
-            if (valign == Qt::AlignVCenter) {
-                y += (height - totalHeight) / 2;
-            } else if (valign == Qt::AlignBottom) {
-                y += height - totalHeight;
+            } else {
+                if (valign == Qt::AlignVCenter) {
+                    y += extraHeight / 2;
+                } else if (valign == Qt::AlignBottom) {
+                    y += extraHeight;
+                }
             }
         }
 
@@ -349,13 +361,19 @@ void TableLayout::apply (Container* container) const
     int extraHeight = height - accumulate(heights.data(), heights.data() + nrows, rgap);
 
     // add to stretch columns, if any; otherwise, center horizontally
-    if (extraWidth > 0) {
+    if (extraWidth != 0) {
         int nscols = _stretchColumns.size();
         if (nscols > 0) {
             int per = extraWidth / nscols;
             int remainder = extraWidth % nscols;
             foreach (int col, _stretchColumns) {
-                widths[col] += per + (remainder-- > 0 ? 1 : 0);
+                if (extraWidth > 0) {
+                    widths[col] += per + (remainder-- > 0 ? 1 : 0);
+
+                } else {
+                    int& wref = widths[col];
+                    wref = qMax(wref + per - (remainder++ < 0 ? 1 : 0), 0);
+                }
             }
         } else {
             x += extraWidth/2;
@@ -363,13 +381,19 @@ void TableLayout::apply (Container* container) const
     }
 
     // add to stretch rows, if any; otherwise, center vertically
-    if (extraHeight > 0) {
+    if (extraHeight != 0) {
         int nsrows = _stretchRows.size();
         if (nsrows > 0) {
             int per = extraHeight / nsrows;
             int remainder = extraHeight % nsrows;
             foreach (int row, _stretchRows) {
-                heights[row] += per + (remainder-- > 0 ? 1 : 0);
+                if (extraHeight > 0) {
+                    heights[row] += per + (remainder-- > 0 ? 1 : 0);
+
+                } else {
+                    int& href = heights[row];
+                    href = qMax(href + per - (remainder++ < 0 ? 1 : 0), 0);
+                }
             }
         } else {
             y += extraHeight/2;

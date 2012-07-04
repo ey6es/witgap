@@ -554,6 +554,9 @@ public:
 
     /** The number of spaces currently open in the instance. */
     STREAM quint32 open;
+
+    /** The peer region. */
+    QString region;
 };
 
 DECLARE_STREAMABLE_METATYPE(InstanceInfo)

@@ -1,8 +1,8 @@
 //
 // $Id$
 
-#ifndef ID_CHOOSER_DIALOG
-#define ID_CHOOSER_DIALOG
+#ifndef RESOURCE_CHOOSER_DIALOG
+#define RESOURCE_CHOOSER_DIALOG
 
 #include "ui/Window.h"
 #include "util/General.h"
@@ -12,9 +12,9 @@ class ScrollingList;
 class TextField;
 
 /**
- * Base class for id chooser dialogs.
+ * Base class for resource chooser dialogs.
  */
-class IdChooserDialog : public Window
+class ResourceChooserDialog : public Window
 {
     Q_OBJECT
 
@@ -25,14 +25,14 @@ public:
      *
      * @param allowZero whether or not we allow a zero selection.
      */
-    IdChooserDialog (Session* parent, quint32 id = 0, bool allowZero = true);
+    ResourceChooserDialog (Session* parent, quint32 id = 0, bool allowZero = true);
 
 signals:
 
     /**
-     * Fired when an id has been selected.
+     * Fired when a resource has been chosen.
      */
-    void idSelected (quint32 id, const QString& name);
+    void resourceChosen (const ResourceDescriptor& desc);
 
 protected slots:
 
@@ -47,16 +47,16 @@ protected slots:
     void updateOk ();
 
     /**
-     * Fires the item selected signal with the selected id and name.
+     * Fires the resource chosen signal with the selected descriptor.
      */
-    void emitIdSelected ();
+    void emitResourceChosen ();
 
 protected:
 
     /**
      * Populates the list with the supplied descriptors.
      */
-    Q_INVOKABLE void populateList (const DescriptorList& values);
+    Q_INVOKABLE void populateList (const ResourceDescriptorList& resources);
 
     /** The name field. */
     TextField* _name;
@@ -72,12 +72,15 @@ protected:
 
     /** Whether or not we allow a zero id. */
     bool _allowZero;
+
+    /** The resources corresponding to the names. */
+    ResourceDescriptorList _resources;
 };
 
 /**
  * Chooser for zone ids.
  */
-class ZoneIdChooserDialog : public IdChooserDialog
+class ZoneChooserDialog : public ResourceChooserDialog
 {
     Q_OBJECT
 
@@ -86,13 +89,13 @@ public:
     /**
      * Initializes the dialog.
      */
-    ZoneIdChooserDialog (Session* parent, quint32 id = 0, bool allowZero = true);
+    ZoneChooserDialog (Session* parent, quint32 id = 0, bool allowZero = true);
 };
 
 /**
  * Chooser for scene ids.
  */
-class SceneIdChooserDialog : public IdChooserDialog
+class SceneChooserDialog : public ResourceChooserDialog
 {
     Q_OBJECT
 
@@ -101,7 +104,7 @@ public:
     /**
      * Initializes the dialog.
      */
-    SceneIdChooserDialog (Session* parent, quint32 id = 0, bool allowZero = true);
+    SceneChooserDialog (Session* parent, quint32 id = 0, bool allowZero = true);
 };
 
-#endif // ID_CHOOSER_DIALOG
+#endif // RESOURCE_CHOOSER_DIALOG

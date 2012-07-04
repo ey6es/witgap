@@ -1,6 +1,6 @@
-set(HEADERS Button.h Component.h IdChooserDialog.h Label.h Menu.h ObjectEditor.h
+set(HEADERS Button.h Component.h Label.h Menu.h ObjectEditor.h ResourceChooserDialog.h
     ScrollPane.h ScrollingList.h TextField.h Window.h)
-set(SOURCES Button.cpp Component.cpp IdChooserDialog.cpp Label.cpp Menu.cpp ObjectEditor.cpp
+set(SOURCES Button.cpp Component.cpp Label.cpp Menu.cpp ObjectEditor.cpp ResourceChooserDialog.cpp
     ScrollPane.cpp ScrollingList.cpp TextField.cpp Window.cpp)
 
 qt4_wrap_cpp(SOURCES ${HEADERS})

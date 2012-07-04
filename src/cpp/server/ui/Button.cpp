@@ -10,7 +10,7 @@
 #include "ui/Menu.h"
 
 Button::Button (const QString& label, Qt::Alignment alignment, QObject* parent) :
-    Label(QIntVector(), alignment, parent),
+    Label(QIntVector(), alignment, NoWrap, parent),
     _label(label)
 {
     updateText();
