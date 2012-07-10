@@ -136,6 +136,19 @@ void ConnectionManager::tell (
     }
 }
 
+void ConnectionManager::summon (
+    const QString& name, const QString& summoner, const Callback& callback)
+{
+    Session* session = _names.value(name.toLower());
+    if (session != 0) {
+        QMetaObject::invokeMethod(session, "moveToPlayer", Q_ARG(const QString&, summoner));
+        callback.invoke(Q_ARG(bool, true));
+
+    } else {
+        callback.invoke(Q_ARG(bool, false));
+    }
+}
+
 void ConnectionManager::sessionNameChanged (const QString& oldName, const QString& newName)
 {
     Session* session = _names.take(oldName.toLower());

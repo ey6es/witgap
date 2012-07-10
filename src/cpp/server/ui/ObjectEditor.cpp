@@ -250,80 +250,34 @@ void StringPropertyEditor::apply ()
 }
 
 ResourceIdPropertyEditor::ResourceIdPropertyEditor (
-        const QMetaProperty& property, QObject* parent) :
+        const QMetaProperty& property, ResourceChooserButton* button, QObject* parent) :
     PropertyEditor(property, parent),
-    _button(new Button())
+    _button(button)
 {
     addChild(_button);
-    connect(_button, SIGNAL(pressed()), SLOT(openDialog()));
+    connect(_button, SIGNAL(idChanged(quint32)), SLOT(apply()));
 }
 
 void ResourceIdPropertyEditor::update ()
 {
-    quint32 id = _property.read(_object).toUInt();
-    if (id == 0) {
-        setButtonLabel(0, "");
-        return;
-    }
-    _button->setLabel(QString::number(id));
-
-    // if we have the session, load the name from the database
-    Session* session = this->session();
-    if (session != 0) {
-        loadName(session, id);
-    }
+    _button->setId(_property.read(_object).toUInt());
 }
 
-void ResourceIdPropertyEditor::setValue (const ResourceDescriptor& value)
+void ResourceIdPropertyEditor::apply ()
 {
-    _property.write(_object, value.id);
-    setButtonLabel(value.id, value.name);
-}
-
-void ResourceIdPropertyEditor::setButtonLabel (quint32 id, const QString& name)
-{
-    _button->setLabel(id == 0 ? "---" : QString::number(id) + (": " + name));
+    _property.write(_object, _button->id());
 }
 
 ZoneIdPropertyEditor::ZoneIdPropertyEditor (
         QObject* object, const QMetaProperty& property, QObject* parent) :
-    ResourceIdPropertyEditor(property, parent)
+    ResourceIdPropertyEditor(property, new ZoneChooserButton(), parent)
 {
     setObject(object);
-}
-
-void ZoneIdPropertyEditor::openDialog ()
-{
-    ZoneChooserDialog* dialog = new ZoneChooserDialog(session(), _property.read(_object).toUInt());
-    connect(dialog, SIGNAL(resourceChosen(ResourceDescriptor)),
-        SLOT(setValue(ResourceDescriptor)));
-}
-
-void ZoneIdPropertyEditor::loadName (Session* session, quint32 id)
-{
-    QMetaObject::invokeMethod(session->app()->databaseThread()->sceneRepository(), "loadZoneName",
-        Q_ARG(quint32, id), Q_ARG(const Callback&, Callback(
-            _this, "setButtonLabel(quint32,QString)", Q_ARG(quint32, id))));
 }
 
 SceneIdPropertyEditor::SceneIdPropertyEditor (
         QObject* object, const QMetaProperty& property, QObject* parent) :
-    ResourceIdPropertyEditor(property, parent)
+    ResourceIdPropertyEditor(property, new SceneChooserButton(), parent)
 {
     setObject(object);
-}
-
-void SceneIdPropertyEditor::openDialog ()
-{
-    SceneChooserDialog* dialog = new SceneChooserDialog(
-        session(), _property.read(_object).toUInt());
-    connect(dialog, SIGNAL(resourceChosen(ResourceDescriptor)),
-        SLOT(setValue(ResourceDescriptor)));
-}
-
-void SceneIdPropertyEditor::loadName (Session* session, quint32 id)
-{
-    QMetaObject::invokeMethod(session->app()->databaseThread()->sceneRepository(), "loadSceneName",
-        Q_ARG(quint32, id), Q_ARG(const Callback&, Callback(
-            _this, "setButtonLabel(quint32,QString)", Q_ARG(quint32, id))));
 }

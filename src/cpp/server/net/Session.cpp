@@ -28,6 +28,7 @@
 #include "ui/Button.h"
 #include "ui/Label.h"
 #include "ui/Layout.h"
+#include "ui/ResourceChooserDialog.h"
 #include "ui/Window.h"
 
 // translate through the translator
@@ -354,12 +355,35 @@ void Session::moveToZone (quint32 id, quint32 sceneId, const QVariant& portal)
             Q_ARG(quint32, sceneId), Q_ARG(const QVariant&, portal))));
 }
 
+void Session::moveToInstance (quint64 id, quint32 sceneId, const QVariant& portal)
+{
+    // if we're already in the instance, move to the scene
+    if (_instance != 0 && _instance->info().id == id) {
+        moveToScene(sceneId, portal);
+        return;
+    }
+
+    // reserve a place in an instance
+    QMetaObject::invokeMethod(_app->peerManager(), "reserveInstancePlace",
+        Q_ARG(quint64, _record.id), Q_ARG(quint64, id),
+        Q_ARG(const Callback&, Callback(_this,
+            "continueMovingToZone(quint32,QVariant,QString,quint64)",
+            Q_ARG(quint32, sceneId), Q_ARG(const QVariant&, portal))));
+}
+
 void Session::moveToPlayer (const QString& name)
 {
+    QMetaObject::invokeMethod(_app->peerManager(), "getSessionInfo", Q_ARG(const QString&, name),
+        Q_ARG(const Callback&, Callback(_this, "continueMovingToPlayer(QString,SessionInfo)",
+            Q_ARG(const QString&, name))));
 }
 
 void Session::summonPlayer (const QString& name)
 {
+    _app->peerManager()->invokeSession(name, _app->connectionManager(),
+        "summon(QString,QString,Callback)", Q_ARG(const QString&, name),
+        Q_ARG(const QString&, _record.name), Q_ARG(const Callback&, Callback(
+            _this, "maybeSummoned(QString,bool)", Q_ARG(const QString&, name))));
 }
 
 void Session::reconnect (const QString& host, quint16 port)
@@ -467,6 +491,20 @@ void Session::showLogonDialog ()
 void Session::showLogoffDialog ()
 {
     showConfirmDialog(tr("Are you sure you want to log off?"), Callback(_this, "logoff()"));
+}
+
+void Session::showGoToZoneDialog ()
+{
+    ZoneChooserDialog* dialog = new ZoneChooserDialog(this, 0, false);
+    connect(dialog, SIGNAL(resourceChosen(ResourceDescriptor)),
+        SLOT(moveToZone(ResourceDescriptor)));
+}
+
+void Session::showGoToSceneDialog ()
+{
+    SceneChooserDialog* dialog = new SceneChooserDialog(this, 0, false);
+    connect(dialog, SIGNAL(resourceChosen(ResourceDescriptor)),
+        SLOT(moveToScene(ResourceDescriptor)));
 }
 
 void Session::createScene ()
@@ -733,8 +771,14 @@ void Session::sceneMaybeResolved (const QVariant& portal, QObject* scene)
     }
     // enter the scene
     _scene = static_cast<Scene*>(scene);
-//    _mainWindow->connect(_scene, SIGNAL(recordChanged(SceneRecord)), SLOT(updateTitle()));
+    _mainWindow->connect(_scene, SIGNAL(recordChanged(SceneRecord)), SLOT(updateTitle()));
     _pawn = _scene->addSession(this, portal);
+    _mainWindow->updateTitle();
+
+    // update info on all peers
+    _info.sceneId = _scene->record().id;
+    _app->peerManager()->invoke(_app->peerManager(), "sessionUpdated(SessionInfo)",
+        Q_ARG(const SessionInfo&, _info));
 
     emit didEnterScene(_scene);
 }
@@ -748,6 +792,11 @@ void Session::leaveScene ()
         _scene->disconnect(_mainWindow);
         _scene = 0;
         _pawn = 0;
+
+        // update info on all peers
+        _info.sceneId = 0;
+        _app->peerManager()->invoke(_app->peerManager(), "sessionUpdated(SessionInfo)",
+            Q_ARG(const SessionInfo&, _info));
     }
 }
 
@@ -759,6 +808,19 @@ void Session::continueMovingToZone (const ResourceDescriptorList& zones)
     }
     // pick one at random
     moveToZone(zones.at(qrand() % zones.size()).id);
+}
+
+void Session::continueMovingToPlayer (const QString& name, const SessionInfo& info)
+{
+    if (info.id == 0) {
+        _chatWindow->display(tr("There is no one online named %1.").arg(name));
+        return;
+    }
+    if (info.instanceId == 0) {
+        _chatWindow->display(tr("%1 is not in an instance.").arg(name));
+        return;
+    }
+    moveToInstance(info.instanceId, info.sceneId, name);
 }
 
 void Session::continueMovingToZone (
@@ -794,6 +856,11 @@ void Session::leaveZone ()
         _instance->removeSession(this);
         _instance->disconnect(_mainWindow);
         _instance = 0;
+
+        // update info on all peers
+        _info.instanceId = 0;
+        _app->peerManager()->invoke(_app->peerManager(), "sessionUpdated(SessionInfo)",
+            Q_ARG(const SessionInfo&, _info));
     }
 }
 
@@ -803,6 +870,11 @@ void Session::continueMovingToZone (QObject* instance, quint32 sceneId, const QV
     _mainWindow->connect(_instance, SIGNAL(recordChanged(ZoneRecord)), SLOT(updateTitle()));
     _instance->addSession(this);
     _mainWindow->updateTitle();
+
+    // update info on all peers
+    _info.instanceId = 0;
+    _app->peerManager()->invoke(_app->peerManager(), "sessionUpdated(SessionInfo)",
+        Q_ARG(const SessionInfo&, _info));
 
     // now move to the requested (or default) scene
     if (sceneId == 0) {
@@ -817,6 +889,13 @@ void Session::maybeTold (const QString& recipient, const QString& message, bool 
 {
     _chatWindow->display(success ? tr("You tell %1, \"%2\"").arg(recipient, message) :
         tr("There is no one online named %1.").arg(recipient));
+}
+
+void Session::maybeSummoned (const QString& name, bool success)
+{
+    if (!success) {
+        _chatWindow->display(tr("There is no one online named %1.").arg(name));
+    }
 }
 
 void Session::loggedOff (const QString& name)

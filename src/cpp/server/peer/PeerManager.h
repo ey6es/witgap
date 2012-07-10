@@ -225,12 +225,25 @@ public:
     void freeInstanceIds (const QSet<quint64>& ids) { _reservedInstanceIds.subtract(ids); }
 
     /**
+     * Attempts to retrieve the info for the named session.  The callback will receive the
+     * SessionInfo object (a default-constructed one if not found).
+     */
+    Q_INVOKABLE void getSessionInfo (const QString& name, const Callback& callback);
+
+    /**
      * Reserves a place in an instance of the identified zone for the identified session in the
      * named region, creating a new instance if necessary.  The callback will receive the peer name
      * and instance id.
      */
     Q_INVOKABLE void reserveInstancePlace (
         quint64 sessionId, const QString& region, quint32 zoneId, const Callback& callback);
+
+    /**
+     * Reserves a place in the identified instance.  The callback will receive the peer name and
+     * instance id, or the empty string and 0 if unsuccessful.
+     */
+    Q_INVOKABLE void reserveInstancePlace (
+        quint64 sessionId, quint64 instanceId, const Callback& callback);
 
     /**
      * Executes an action on this peer and all others.
@@ -364,6 +377,13 @@ protected:
     Q_INVOKABLE void instancePlaceMaybeReserved (
         quint64 sessionId, const QString& region, const QString& peer,
         quint64 instanceId, const Callback& callback, bool success);
+
+    /**
+     * Notifies us of the result of an instance place request.
+     */
+    Q_INVOKABLE void instancePlaceMaybeReserved (
+        quint64 sessionId, const QString& peer, quint64 instanceId,
+        const Callback& callback, bool success);
 
     /**
      * Executes an action on this peer and all others.
@@ -533,6 +553,12 @@ public:
 
     /** The peer name. */
     STREAM QString peer;
+
+    /** The id of the occupied instance, if any. */
+    STREAM quint64 instanceId;
+
+    /** The id of the occupied scene, if any. */
+    STREAM quint32 sceneId;
 };
 
 DECLARE_STREAMABLE_METATYPE(SessionInfo)
@@ -553,7 +579,7 @@ public:
     STREAM QString peer;
 
     /** The number of spaces currently open in the instance. */
-    STREAM quint32 open;
+    STREAM qint32 open;
 
     /** The peer region. */
     QString region;

@@ -509,9 +509,11 @@ public:
      * Draws the supplied contents.
      *
      * @param opaque if false, check for zero values and don't draw them.
+     * @param stride the stride between lines, or zero to use the width.
      */
     void drawContents (
-        int x, int y, int width, int height, const int* contents, bool opaque = true);
+        int x, int y, int width, int height, const int* contents,
+        bool opaque = true, int stride = 0);
 
     /**
      * Draws a string.

@@ -30,11 +30,18 @@ void Zone::createInstance (quint64 sessionId, const Callback& callback)
             Q_ARG(const Callback&, callback))));
 }
 
-void Zone::recordUpdated (const ZoneRecord& record)
+void Zone::updated (const ZoneRecord& record)
 {
     _record = record;
     foreach (Instance* instance, _instances) {
-        QMetaObject::invokeMethod(instance, "recordUpdated", Q_ARG(const ZoneRecord&, record));
+        QMetaObject::invokeMethod(instance, "updated", Q_ARG(const ZoneRecord&, record));
+    }
+}
+
+void Zone::deleted ()
+{
+    foreach (Instance* instance, _instances) {
+        QMetaObject::invokeMethod(instance, "deleted");
     }
 }
 
@@ -65,22 +72,28 @@ bool Instance::canEdit (Session* session) const
     return session->admin();
 }
 
-void Instance::setProperties (const QString& name, quint16 maxPopulation)
+void Instance::setProperties (const QString& name, quint16 maxPopulation, quint32 defaultSceneId)
 {
     // update the record
     ZoneRecord record = _record;
     record.name = name;
     record.maxPopulation = maxPopulation;
+    record.defaultSceneId = defaultSceneId;
 
     // update in database
     QMetaObject::invokeMethod(_zone->app()->databaseThread()->sceneRepository(), "updateZone",
         Q_ARG(const ZoneRecord&, record), Q_ARG(const Callback&, Callback(
-            _zone->app()->sceneManager(), "broadcastZoneRecordUpdated(ZoneRecord)",
+            _zone->app()->sceneManager(), "broadcastZoneUpdated(ZoneRecord)",
             Q_ARG(const ZoneRecord&, record))));
 }
 
 void Instance::remove ()
 {
+    // remove from database
+    QMetaObject::invokeMethod(_zone->app()->databaseThread()->sceneRepository(), "deleteZone",
+        Q_ARG(quint32, _record.id), Q_ARG(const Callback&, Callback(
+            _zone->app()->sceneManager(), "broadcastZoneDeleted(quint32)",
+            Q_ARG(quint32, _record.id))));
 }
 
 /** The time for which we hold a reserved place. */
@@ -154,9 +167,21 @@ void Instance::resolveScene (quint32 id, const Callback& callback)
             Callback(_this, "sceneMaybeLoaded(quint32,SceneRecord)", Q_ARG(quint32, id))));
 }
 
-void Instance::recordUpdated (const ZoneRecord& record)
+void Instance::updated (const ZoneRecord& record)
 {
+    // adjust the number of open spaces if necessary
+    int maxDelta = (int)record.maxPopulation - _record.maxPopulation;
+    if (maxDelta != 0) {
+        _info.open += maxDelta;
+        _zone->app()->peerManager()->invoke(_zone->app()->peerManager(),
+            "instanceUpdated(InstanceInfo)", Q_ARG(const InstanceInfo&, _info));
+    }
     emit recordChanged(_record = record);
+}
+
+void Instance::deleted ()
+{
+    // TODO
 }
 
 void Instance::clearPlaceReservation ()

@@ -38,6 +38,8 @@ RuntimeConfigDialog::RuntimeConfigDialog (Session* parent) :
     connect(ok, SIGNAL(pressed()), SLOT(deleteLater()));
     addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, cancel, apply, ok));
 
+    setPreferredSize(QSize(45, -1));
+
     pack();
     center();
 }

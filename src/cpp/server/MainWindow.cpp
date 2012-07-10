@@ -41,7 +41,8 @@ void MainWindow::updateTitle ()
         if (session->scene() != 0) {
             scene = tr(", %1").arg(session->scene()->record().name);
         }
-        location = tr(" in %1%2").arg(session->instance()->record().name, scene);
+        location = tr(" in %1 %2%3").arg(session->instance()->record().name,
+            QString::number(getInstanceOffset(session->instance()->info().id)), scene);
     }
     setBorder(new TitledBorder(tr("{ %1%2 }").arg(name, location)));
 }

@@ -116,6 +116,16 @@ public:
     void removeSession (Session* session);
 
     /**
+     * Notes that the scene record has been updated in the database.
+     */
+    void updated (const SceneRecord& record);
+
+    /**
+     * Notes that the scene has been deleted from the database.
+     */
+    void deleted ();
+
+    /**
      * Adds the specified actor's visual representation to the scene contents.  This is done when
      * the actor is created, and just after the actor is moved.
      */
@@ -161,9 +171,9 @@ public:
 signals:
 
     /**
-     * Fired when the scene properties have been modified.
+     * Fired when the scene record has been modified.
      */
-    void propertiesChanged ();
+    void recordChanged (const SceneRecord& record);
 
 public slots:
 

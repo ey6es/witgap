@@ -7,6 +7,7 @@
 #include "ui/Window.h"
 
 class Button;
+class SceneChooserButton;
 class Session;
 class TextField;
 
@@ -58,6 +59,9 @@ protected:
 
     /** The max population field. */
     TextField* _maxPopulation;
+
+    /** The default scene field. */
+    SceneChooserButton* _defaultScene;
 
     /** The apply/OK buttons. */
     Button* _apply, *_ok;

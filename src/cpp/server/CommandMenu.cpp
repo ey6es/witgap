@@ -38,6 +38,7 @@ CommandMenu::CommandMenu (Session* parent, int deleteOnReleaseKey) :
     }
 
     addButton(tr("&Settings..."), &SettingsDialog::staticMetaObject, Q_ARG(Session*, parent));
+    addButton(tr("&Tools >"), this, SLOT(createToolsMenu()));
     if (loggedOn) {
         addButton(tr("&Logoff"), parent, SLOT(showLogoffDialog()));
     } else {
@@ -53,8 +54,8 @@ void CommandMenu::createNewMenu ()
     Session* session = this->session();
     Menu* menu = new Menu(session, _deleteOnReleaseKey);
 
-    menu->addButton(tr("&Scene"), session, SLOT(createScene()));
     menu->addButton(tr("&Zone"), session, SLOT(createZone()));
+    menu->addButton(tr("&Scene"), session, SLOT(createScene()));
 
     menu->pack();
     menu->center();
@@ -65,17 +66,29 @@ void CommandMenu::createEditMenu ()
     Session* session = this->session();
     Menu* menu = new Menu(session, _deleteOnReleaseKey);
 
+    Instance* instance = session->instance();
+    if (instance != 0 && instance->canEdit(session)) {
+        menu->addButton(tr("&Zone Properties..."), &ZonePropertiesDialog::staticMetaObject,
+            Q_ARG(Session*, session));
+    }
+
     Scene* scene = session->scene();
     if (scene != 0 && scene->canEdit(session)) {
         menu->addButton(tr("&Scene Properties..."), &ScenePropertiesDialog::staticMetaObject,
             Q_ARG(Session*, session));
     }
 
-    Instance* instance = session->instance();
-    if (instance != 0 && instance->canEdit(session)) {
-        menu->addButton(tr("&Zone Properties..."), &ZonePropertiesDialog::staticMetaObject,
-            Q_ARG(Session*, session));
-    }
+    menu->pack();
+    menu->center();
+}
+
+void CommandMenu::createToolsMenu ()
+{
+    Session* session = this->session();
+    Menu* menu = new Menu(session, _deleteOnReleaseKey);
+
+    menu->addButton(tr("Go to &Zone"), session, SLOT(showGoToZoneDialog()));
+    menu->addButton(tr("Go to &Scene"), session, SLOT(showGoToSceneDialog()));
 
     menu->pack();
     menu->center();

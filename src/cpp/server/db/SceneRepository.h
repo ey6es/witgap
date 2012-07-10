@@ -61,7 +61,7 @@ public:
     /**
      * Updates a scene record.
      */
-    Q_INVOKABLE void updateScene (const SceneRecord& srec);
+    Q_INVOKABLE void updateScene (const SceneRecord& srec, const Callback& callback);
 
     /**
      * Updates a scene's blocks.
@@ -71,7 +71,7 @@ public:
     /**
      * Deletes the identified scene.
      */
-    Q_INVOKABLE void deleteScene (quint32 id);
+    Q_INVOKABLE void deleteScene (quint32 id, const Callback& callback);
 
     /**
      * Inserts a new zone into the database.  The callback will receive the (quint32) zone id.
@@ -105,7 +105,7 @@ public:
     /**
      * Deletes the identified zone.
      */
-    Q_INVOKABLE void deleteZone (quint32 id);
+    Q_INVOKABLE void deleteZone (quint32 id, const Callback& callback);
 };
 
 /**

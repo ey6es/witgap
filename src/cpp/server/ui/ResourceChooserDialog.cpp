@@ -109,3 +109,79 @@ SceneChooserDialog::SceneChooserDialog (Session* parent, quint32 id, bool allowZ
         Q_ARG(const QString&, ""), Q_ARG(quint32, 0), Q_ARG(const Callback&, Callback(_this,
             "populateList(ResourceDescriptorList)")));
 }
+
+ResourceChooserButton::ResourceChooserButton (QObject* parent) :
+    Button(QString(), Qt::AlignLeft, parent),
+    _id(-1)
+{
+    connect(this, SIGNAL(pressed()), SLOT(openDialog()));
+}
+
+void ResourceChooserButton::setId (quint32 id)
+{
+    if (_id != id) {
+        if ((_id = id) == 0) {
+            updateLabel("");
+            return;
+        }
+        setLabel(QString::number(_id));
+
+        Session* session = this->session();
+        if (session != 0) {
+            loadName(session);
+        }
+    }
+}
+
+void ResourceChooserButton::setValue (const ResourceDescriptor& value)
+{
+    if (_id != value.id) {
+        _id = value.id;
+        updateLabel(value.name);
+
+        emit idChanged(_id);
+    }
+}
+
+void ResourceChooserButton::updateLabel (const QString& name)
+{
+    setLabel(_id == 0 ? "---" : QString::number(_id) + (": " + name));
+}
+
+ZoneChooserButton::ZoneChooserButton (quint32 id, QObject* parent) :
+    ResourceChooserButton(parent)
+{
+    setId(id);
+}
+
+SceneChooserButton::SceneChooserButton (quint32 id, QObject* parent) :
+    ResourceChooserButton(parent)
+{
+    setId(id);
+}
+
+void ZoneChooserButton::openDialog ()
+{
+    ZoneChooserDialog* dialog = new ZoneChooserDialog(session(), _id);
+    connect(dialog, SIGNAL(resourceChosen(ResourceDescriptor)),
+        SLOT(setValue(ResourceDescriptor)));
+}
+
+void ZoneChooserButton::loadName (Session* session)
+{
+    QMetaObject::invokeMethod(session->app()->databaseThread()->sceneRepository(), "loadZoneName",
+        Q_ARG(quint32, _id), Q_ARG(const Callback&, Callback(_this, "updateLabel(QString)")));
+}
+
+void SceneChooserButton::openDialog ()
+{
+    SceneChooserDialog* dialog = new SceneChooserDialog(session(), _id);
+    connect(dialog, SIGNAL(resourceChosen(ResourceDescriptor)),
+        SLOT(setValue(ResourceDescriptor)));
+}
+
+void SceneChooserButton::loadName (Session* session)
+{
+    QMetaObject::invokeMethod(session->app()->databaseThread()->sceneRepository(), "loadSceneName",
+        Q_ARG(quint32, _id), Q_ARG(const Callback&, Callback(_this, "updateLabel(QString)")));
+}

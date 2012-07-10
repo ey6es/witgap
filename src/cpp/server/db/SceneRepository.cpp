@@ -156,7 +156,7 @@ void SceneRepository::findScenes (
     callback.invoke(Q_ARG(const ResourceDescriptorList&, descs));
 }
 
-void SceneRepository::updateScene (const SceneRecord& srec)
+void SceneRepository::updateScene (const SceneRecord& srec, const Callback& callback)
 {
     QSqlQuery query;
     query.prepare("update SCENES set NAME = ?, NAME_LOWER = ?, SCROLL_WIDTH = ?, "
@@ -167,6 +167,8 @@ void SceneRepository::updateScene (const SceneRecord& srec)
     query.addBindValue(srec.scrollHeight);
     query.addBindValue(srec.id);
     query.exec();
+
+    callback.invoke();
 }
 
 void SceneRepository::updateSceneBlocks (const SceneRecord& srec)
@@ -202,7 +204,7 @@ void SceneRepository::updateSceneBlocks (const SceneRecord& srec)
     }
 }
 
-void SceneRepository::deleteScene (quint32 id)
+void SceneRepository::deleteScene (quint32 id, const Callback& callback)
 {
     QSqlQuery query;
     query.prepare("delete from SCENES where ID = ?");
@@ -212,6 +214,8 @@ void SceneRepository::deleteScene (quint32 id)
     query.prepare("delete from SCENE_BLOCKS where ID = ?");
     query.addBindValue(id);
     query.exec();
+
+    callback.invoke();
 }
 
 void SceneRepository::insertZone (const QString& name, quint32 creatorId, const Callback& callback)
@@ -296,15 +300,18 @@ void SceneRepository::updateZone (const ZoneRecord& zrec, const Callback& callba
     query.addBindValue(zrec.defaultSceneId);
     query.addBindValue(zrec.id);
     query.exec();
+
     callback.invoke();
 }
 
-void SceneRepository::deleteZone (quint32 id)
+void SceneRepository::deleteZone (quint32 id, const Callback& callback)
 {
     QSqlQuery query;
     query.prepare("delete from ZONES where ID = ?");
     query.addBindValue(id);
     query.exec();
+
+    callback.invoke();
 }
 
 SceneRecord::Block::Block () :

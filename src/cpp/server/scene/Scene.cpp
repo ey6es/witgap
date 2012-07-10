@@ -95,16 +95,16 @@ bool Scene::canEdit (Session* session) const
 void Scene::setProperties (const QString& name, quint16 scrollWidth, quint16 scrollHeight)
 {
     // update the record
-    _record.name = name;
-    _record.scrollWidth = scrollWidth;
-    _record.scrollHeight = scrollHeight;
+    SceneRecord record = _record;
+    record.name = name;
+    record.scrollWidth = scrollWidth;
+    record.scrollHeight = scrollHeight;
 
     // update in database
     QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "updateScene",
-        Q_ARG(const SceneRecord&, _record));
-
-    // notify listeners
-    emit propertiesChanged();
+        Q_ARG(const SceneRecord&, record), Q_ARG(const Callback&, Callback(
+            _app->sceneManager(), "broadcastSceneUpdated(SceneRecord)",
+            Q_ARG(const SceneRecord&, record))));
 }
 
 void Scene::set (const QPoint& pos, int character)
@@ -125,7 +125,9 @@ void Scene::remove ()
 {
     // delete from the database
     QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "deleteScene",
-        Q_ARG(quint64, _record.id));
+        Q_ARG(quint64, _record.id), Q_ARG(const Callback&, Callback(
+            _app->sceneManager(), "broadcastSceneDeleted(quint32)",
+            Q_ARG(quint32, _record.id))));
 }
 
 Pawn* Scene::addSession (Session* session, const QVariant& portal)
@@ -148,6 +150,16 @@ void Scene::removeSession (Session* session)
         delete pawn;
     }
     _sessions.removeOne(session);
+}
+
+void Scene::updated (const SceneRecord& record)
+{
+    emit recordChanged(_record = record);
+}
+
+void Scene::deleted ()
+{
+    // TODO
 }
 
 void Scene::addSpatial (Actor* actor)

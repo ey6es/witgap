@@ -1,6 +1,8 @@
 //
 // $Id$
 
+#include <QtDebug>
+
 #include "actor/Pawn.h"
 #include "net/Session.h"
 #include "scene/Scene.h"
@@ -57,7 +59,7 @@ void SceneView::setWorldBounds (const QRect& bounds)
 void SceneView::handleDidEnterScene (Scene* scene)
 {
     scene->addSpatial(this);
-    connect(scene, SIGNAL(propertiesChanged()), SLOT(maybeScroll()));
+    connect(scene, SIGNAL(recordChanged(SceneRecord)), SLOT(maybeScroll()));
 
     Pawn* pawn = session()->pawn();
     if (pawn != 0) {
@@ -140,15 +142,20 @@ void SceneView::draw (DrawContext* ctx)
     int bx2 = dirty.right() >> Scene::Block::LgSize;
     int by1 = dirty.top() >> Scene::Block::LgSize;
     int by2 = dirty.bottom() >> Scene::Block::LgSize;
+    QRect bbounds(0, 0, Scene::Block::Size, Scene::Block::Size);
     for (int by = by1; by <= by2; by++) {
         for (int bx = bx1; bx <= bx2; bx++) {
             QHash<QPoint, Scene::Block>::const_iterator it = blocks.constFind(QPoint(bx, by));
             if (it != blocks.constEnd()) {
                 const Scene::Block& block = *it;
+                bbounds.moveTo(bx << Scene::Block::LgSize, by << Scene::Block::LgSize);
+                QRect ibounds = bbounds.intersected(_worldBounds);
                 ctx->drawContents(
-                    (bx << Scene::Block::LgSize) - _worldBounds.left(),
-                    (by << Scene::Block::LgSize) - _worldBounds.top(),
-                    Scene::Block::Size, Scene::Block::Size, block.constData());
+                    ibounds.left() - _worldBounds.left(), ibounds.top() - _worldBounds.top(),
+                    ibounds.width(), ibounds.height(), block.constData() +
+                        (ibounds.top() - bbounds.top() << Scene::Block::LgSize) +
+                        (ibounds.left() - bbounds.left()),
+                    true, Scene::Block::Size);
             }
         }
     }

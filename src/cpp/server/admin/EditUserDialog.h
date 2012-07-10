@@ -103,11 +103,8 @@ protected:
     /** The email field. */
     TextField* _email;
 
-    /** The banned flag check box. */
-    CheckBox* _banned;
-
-    /** The admin flag check box. */
-    CheckBox* _admin;
+    /** The flag check boxes. */
+    CheckBox* _banned, *_admin, *_insider;
 
     /** The status label. */
     StatusLabel* _status;

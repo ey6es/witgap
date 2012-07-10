@@ -107,18 +107,51 @@ void SceneManager::resolveZone (quint32 id, const Callback& callback)
             Callback(_this, "zoneMaybeLoaded(quint32,ZoneRecord)", Q_ARG(quint32, id))));
 }
 
-void SceneManager::broadcastZoneRecordUpdated (const ZoneRecord& record)
+void SceneManager::broadcastZoneUpdated (const ZoneRecord& record)
 {
-    _app->peerManager()->invoke(this, "zoneRecordUpdated(ZoneRecord)",
-        Q_ARG(const ZoneRecord&, record));
+    _app->peerManager()->invoke(this, "zoneUpdated(ZoneRecord)", Q_ARG(const ZoneRecord&, record));
 }
 
-void SceneManager::zoneRecordUpdated (const ZoneRecord& record)
+void SceneManager::zoneUpdated (const ZoneRecord& record)
 {
     Zone* zone = _zones.value(record.id);
     if (zone != 0) {
-        zone->recordUpdated(record);
+        zone->updated(record);
     }
+}
+
+void SceneManager::broadcastZoneDeleted (quint32 id)
+{
+    _app->peerManager()->invoke(this, "zoneDeleted(quint32)", Q_ARG(quint32, id));
+}
+
+void SceneManager::zoneDeleted (quint32 id)
+{
+    Zone* zone = _zones.value(id);
+    if (zone != 0) {
+        zone->deleted();
+    }
+}
+
+void SceneManager::broadcastSceneUpdated (const SceneRecord& record)
+{
+    _app->peerManager()->invoke(this, "sceneUpdated(SceneRecord)",
+        Q_ARG(const SceneRecord&, record));
+}
+
+void SceneManager::sceneUpdated (const SceneRecord& record)
+{
+
+}
+
+void SceneManager::broadcastSceneDeleted (quint32 id)
+{
+    _app->peerManager()->invoke(this, "sceneDeleted(quint32)", Q_ARG(quint32, id));
+}
+
+void SceneManager::sceneDeleted (quint32 id)
+{
+
 }
 
 void SceneManager::zoneMaybeLoaded (quint32 id, const ZoneRecord& record)

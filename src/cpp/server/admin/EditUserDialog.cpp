@@ -82,6 +82,9 @@ EditUserDialog::EditUserDialog (Session* parent) :
     icont->addChild(new Label(tr("Admin:")));
     icont->addChild(BoxLayout::createHBox(Qt::AlignLeft, 0, _admin = new CheckBox()));
 
+    icont->addChild(new Label(tr("Insider:")));
+    icont->addChild(BoxLayout::createHBox(Qt::AlignLeft, 0, _insider = new CheckBox()));
+
     addChild(_status = new StatusLabel());
 
     Button* cancel = new Button(tr("Cancel"));
@@ -150,7 +153,8 @@ void EditUserDialog::apply ()
     _user.email = _email->text();
     _user.flags =
         (_banned->selected() ? UserRecord::Banned : UserRecord::NoFlag) |
-        (_admin->selected() ? UserRecord::Admin : UserRecord::NoFlag);
+        (_admin->selected() ? UserRecord::Admin : UserRecord::NoFlag) |
+        (_insider->selected() ? UserRecord::Insider : UserRecord::NoFlag);
 
     // send the request off to the database
     QMetaObject::invokeMethod(
@@ -180,6 +184,7 @@ void EditUserDialog::userMaybeLoaded (const UserRecord& user)
     _email->setText(user.email);
     _banned->setSelected(user.flags.testFlag(UserRecord::Banned));
     _admin->setSelected(user.flags.testFlag(UserRecord::Admin));
+    _insider->setSelected(user.flags.testFlag(UserRecord::Insider));
     _apply->setVisible(true);
     _apply->setEnabled(true);
     _ok->setVisible(true);

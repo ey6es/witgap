@@ -4,10 +4,10 @@
 #ifndef RESOURCE_CHOOSER_DIALOG
 #define RESOURCE_CHOOSER_DIALOG
 
+#include "ui/Button.h"
 #include "ui/Window.h"
 #include "util/General.h"
 
-class Button;
 class ScrollingList;
 class TextField;
 
@@ -105,6 +105,116 @@ public:
      * Initializes the dialog.
      */
     SceneChooserDialog (Session* parent, quint32 id = 0, bool allowZero = true);
+};
+
+/**
+ * A button that brings up a resource chooser dialog.
+ */
+class ResourceChooserButton : public Button
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the button.
+     */
+    ResourceChooserButton (QObject* parent = 0);
+
+    /**
+     * Sets the resource id.
+     */
+    void setId (quint32 id);
+
+    /**
+     * Returns the currently selected id.
+     */
+    quint32 id () const { return _id; }
+
+signals:
+
+    /**
+     * Fired when the selected id has changed.
+     */
+    void idChanged (quint32 id);
+
+protected slots:
+
+    /**
+     * Opens the dialog to change the id.
+     */
+    virtual void openDialog () = 0;
+
+    /**
+     * Applies a change selected in the dialog.
+     */
+    void setValue (const ResourceDescriptor& value);
+
+protected:
+
+    /**
+     * Loads from the database the name corresponding to the current id, calling back to
+     * updateLabel.
+     */
+    virtual void loadName (Session* session) = 0;
+
+    /**
+     * Sets the label with the specified id and name.
+     */
+    Q_INVOKABLE void updateLabel (const QString& name);
+
+    /** The currently selected id. */
+    quint32 _id;
+};
+
+/**
+ * Chooser button for zones.
+ */
+class ZoneChooserButton : public ResourceChooserButton
+{
+    Q_OBJECT
+
+public:
+
+    ZoneChooserButton (quint32 id = 0, QObject* parent = 0);
+
+protected:
+
+    /**
+     * Opens the dialog to change the id.
+     */
+    virtual void openDialog ();
+
+    /**
+     * Loads from the database the name corresponding to the current id, calling back to
+     * updateLabel.
+     */
+    virtual void loadName (Session* session);
+};
+
+/**
+ * Chooser button for scenes.
+ */
+class SceneChooserButton : public ResourceChooserButton
+{
+    Q_OBJECT
+
+public:
+
+    SceneChooserButton (quint32 id = 0, QObject* parent = 0);
+
+protected:
+
+    /**
+     * Opens the dialog to change the id.
+     */
+    virtual void openDialog ();
+
+    /**
+     * Loads from the database the name corresponding to the current id, calling back to
+     * updateLabel.
+     */
+    virtual void loadName (Session* session);
 };
 
 #endif // RESOURCE_CHOOSER_DIALOG

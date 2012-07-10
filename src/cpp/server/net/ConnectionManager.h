@@ -85,6 +85,13 @@ public:
         const QString& recipient, const Callback& callback);
 
     /**
+     * Attempts to summon the named player.  The callback will receive a bool indicating
+     * whether or not the summon was successful.
+     */
+    Q_INVOKABLE void summon (
+        const QString& name, const QString& summoner, const Callback& callback);
+
+    /**
      * Notifies the manager that a session's name has changed (because of logon/logoff).
      */
     Q_INVOKABLE void sessionNameChanged (const QString& oldName, const QString& newName);

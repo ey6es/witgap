@@ -58,7 +58,12 @@ public:
     /**
      * Notes that the zone record has been updated in the database.
      */
-    void recordUpdated (const ZoneRecord& record);
+    void updated (const ZoneRecord& record);
+
+    /**
+     * Notes that the zone has been deleted from the database.
+     */
+    void deleted ();
 
 protected:
 
@@ -103,6 +108,11 @@ public:
     const ZoneRecord& record () const { return _record; }
 
     /**
+     * Returns a reference to our instance info.
+     */
+    const InstanceInfo& info () const { return _info; }
+
+    /**
      * Checks whether the specified session can edit the zone.
      */
     bool canEdit (Session* session) const;
@@ -110,7 +120,7 @@ public:
     /**
      * Sets the zone properties.
      */
-    void setProperties (const QString& name, quint16 maxPopulation);
+    void setProperties (const QString& name, quint16 maxPopulation, quint32 defaultSceneId);
 
     /**
      * Deletes the zone.
@@ -147,7 +157,12 @@ public:
     /**
      * Notes that the zone record has been updated in the database.
      */
-    Q_INVOKABLE void recordUpdated (const ZoneRecord& record);
+    Q_INVOKABLE void updated (const ZoneRecord& record);
+
+    /**
+     * Notes that the zone has been deleted from the database.
+     */
+    Q_INVOKABLE void deleted ();
 
 signals:
 

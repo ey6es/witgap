@@ -12,6 +12,7 @@
 #include "ui/Button.h"
 #include "ui/Label.h"
 #include "ui/Layout.h"
+#include "ui/ResourceChooserDialog.h"
 #include "ui/TextField.h"
 #include "util/Callback.h"
 
@@ -58,6 +59,9 @@ ZonePropertiesDialog::ZonePropertiesDialog (Session* parent) :
         new RegExpDocument(UShortExp, QString::number(record.maxPopulation), 5), true));
     connect(_name, SIGNAL(textChanged()), SLOT(updateApply()));
 
+    icont->addChild(new Label(tr("Default Scene:")));
+    icont->addChild(_defaultScene = new SceneChooserButton(record.defaultSceneId, this));
+
     Button* cancel = new Button(tr("Cancel"));
     connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
     Button* del = new Button(tr("Delete"));
@@ -98,7 +102,7 @@ void ZonePropertiesDialog::apply ()
 {
     // handle update through the instance
     session()->instance()->setProperties(_name->text().simplified(),
-        _maxPopulation->text().toInt());
+        _maxPopulation->text().toInt(), _defaultScene->id());
 }
 
 void ZonePropertiesDialog::reallyDelete ()

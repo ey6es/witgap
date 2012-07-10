@@ -82,12 +82,42 @@ public:
     /**
      * Broadcasts a change of zone record to instances on all peers.
      */
-    Q_INVOKABLE void broadcastZoneRecordUpdated (const ZoneRecord& record);
+    Q_INVOKABLE void broadcastZoneUpdated (const ZoneRecord& record);
 
     /**
      * Notifies the manager that a zone record has been modified in the database.
      */
-    Q_INVOKABLE void zoneRecordUpdated (const ZoneRecord& record);
+    Q_INVOKABLE void zoneUpdated (const ZoneRecord& record);
+
+    /**
+     * Broadcasts a zone deletion to all peers.
+     */
+    Q_INVOKABLE void broadcastZoneDeleted (quint32 id);
+
+    /**
+     * Notifies the manager that a zone has been deleted from the database.
+     */
+    Q_INVOKABLE void zoneDeleted (quint32 id);
+
+    /**
+     * Broadcasts a change of scene record to instances on all peers.
+     */
+    Q_INVOKABLE void broadcastSceneUpdated (const SceneRecord& record);
+
+    /**
+     * Notifies the manager that a scene has been updated in the database.
+     */
+    Q_INVOKABLE void sceneUpdated (const SceneRecord& record);
+
+    /**
+     * Broadcasts a scene deletion to all peers.
+     */
+    Q_INVOKABLE void broadcastSceneDeleted (quint32 id);
+
+    /**
+     * Notifies the manager that a scene has been deleted from the database.
+     */
+    Q_INVOKABLE void sceneDeleted (quint32 id);
 
 protected:
 

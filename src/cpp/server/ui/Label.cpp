@@ -43,18 +43,42 @@ void Label::setWrap (Wrap wrap)
     }
 }
 
+/**
+ * Helper for setTextFlags: sets the specified flags in the given vector.
+ */
+void setFlags (QIntVector& text, int flags, int mask)
+{
+    for (int* ptr = text.data(), *end = ptr + text.size(); ptr < end; ptr++) {
+        *ptr = (*ptr & mask) | flags;
+    }
+}
+
 void Label::setTextFlags (int flags, int mask)
 {
-    for (int* ptr = _text.data(), *end = ptr + _text.size(); ptr < end; ptr++) {
-        *ptr = (*ptr & mask) | flags;
+    // apply to both the original text and cached lines
+    setFlags(_text, flags, mask);
+    for (QIntVector* ptr = _lines.data(), *end = ptr + _lines.size(); ptr < end; ptr++) {
+        setFlags(*ptr, flags, mask);
     }
     dirty();
 }
 
+/**
+ * Helper for toggleTextFlags: toggles the specified flags in the given vector.
+ */
+void toggleFlags (QIntVector& text, int flags)
+{
+    for (int* ptr = text.data(), *end = ptr + text.size(); ptr < end; ptr++) {
+        *ptr ^= flags;
+    }
+}
+
 void Label::toggleTextFlags (int flags)
 {
-    for (int* ptr = _text.data(), *end = ptr + _text.size(); ptr < end; ptr++) {
-        *ptr ^= flags;
+    // apply to both the original text and cached lines
+    toggleFlags(_text, flags);
+    for (QIntVector* ptr = _lines.data(), *end = ptr + _lines.size(); ptr < end; ptr++) {
+        toggleFlags(*ptr, flags);
     }
     dirty();
 }
@@ -202,15 +226,11 @@ void Label::appendLine (const int* start, int length)
     }
     // likewise, if we exceed the width, replace end with ellipsis
     if (length > inner.width()) {
-        QIntVector line(inner.width(), '.');
-        length = qMax(inner.width() - 3, 0);
-        qCopy(start, start + length, line.data());
-
         // copy the flags from the last character
+        length = qMax(inner.width() - 3, 0);
         int flags = getFlags(*(start + qMax(0, length - 1)));
-        for (int* ptr = line.data() + length, *end = line.data() + line.size(); ptr < end; ptr++) {
-            *ptr |= flags;
-        }
+        QIntVector line(inner.width(), '.' | flags);
+        qCopy(start, start + length, line.data());
         _lines.append(line);
         return;
     }

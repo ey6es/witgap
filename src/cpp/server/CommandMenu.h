@@ -31,6 +31,11 @@ protected slots:
      * Creates the "edit" submenu.
      */
     void createEditMenu ();
+
+    /**
+     * Creates the "tools" submenu.
+     */
+    void createToolsMenu ();
 };
 
 #endif // COMMAND_MENU

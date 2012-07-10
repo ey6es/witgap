@@ -650,11 +650,14 @@ void DrawContext::fillRect (int x, int y, int width, int height, int ch, bool fo
 }
 
 void DrawContext::drawContents (
-    int x, int y, int width, int height, const int* contents, bool opaque)
+    int x, int y, int width, int height, const int* contents, bool opaque, int stride)
 {
     // apply offset
     x += _pos.x();
     y += _pos.y();
+
+    // zero stride indicates use width
+    int sstride = (stride == 0) ? width : stride;
 
     // check against each rect
     QRect draw(x, y, width, height);
@@ -664,16 +667,16 @@ void DrawContext::drawContents (
         if (isect.isEmpty()) {
             continue;
         }
-        int stride = rect.width();
-        int* ldptr = _buffers[ii].data() + (isect.y() - rect.y())*stride + (isect.x() - rect.x());
-        const int* lsptr = contents + (isect.y() - y)*width + (isect.x() - x);
+        int dstride = rect.width();
+        int* ldptr = _buffers[ii].data() + (isect.y() - rect.y())*dstride + (isect.x() - rect.x());
+        const int* lsptr = contents + (isect.y() - y)*sstride + (isect.x() - x);
 
         // if we're opaque, we can just copy line-by-line; otherwise, we must check for zero values
         if (opaque) {
             for (int yy = isect.height(); yy > 0; yy--) {
                 qCopy(lsptr, lsptr + isect.width(), ldptr);
-                lsptr += width;
-                ldptr += stride;
+                lsptr += sstride;
+                ldptr += dstride;
             }
         } else {
             int ch;
@@ -684,8 +687,8 @@ void DrawContext::drawContents (
                         *dptr = ch;
                     }
                 }
-                lsptr += width;
-                ldptr += stride;
+                lsptr += sstride;
+                ldptr += dstride;
             }
         }
     }

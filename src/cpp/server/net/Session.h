@@ -238,6 +238,11 @@ public:
     void moveToZone (quint32 id, quint32 sceneId = 0, const QVariant& portal = QVariant());
 
     /**
+     * Moves the user to the identified instance.
+     */
+    void moveToInstance (quint64 id, quint32 sceneId = 0, const QVariant& portal = QVariant());
+
+    /**
      * Moves to the named player.
      */
     void moveToPlayer (const QString& name);
@@ -312,6 +317,16 @@ public slots:
     void showLogoffDialog ();
 
     /**
+     * Shows the go-to-zone dialog.
+     */
+    void showGoToZoneDialog ();
+
+    /**
+     * Shows the go-to-scene dialog.
+     */
+    void showGoToSceneDialog ();
+
+    /**
      * Initiates the process of creating a new scene and transferring the user to it.
      */
     void createScene ();
@@ -358,6 +373,16 @@ protected slots:
      */
     void close ();
 
+    /**
+     * Moves to the described zone.
+     */
+    void moveToZone (const ResourceDescriptor& desc) { moveToZone(desc.id); }
+
+    /**
+     * Moves to the described scene.
+     */
+    void moveToScene (const ResourceDescriptor& desc) { moveToScene(desc.id); }
+
 protected:
 
     /**
@@ -396,6 +421,11 @@ protected:
     Q_INVOKABLE void continueMovingToZone (const ResourceDescriptorList& zones);
 
     /**
+     * Continues the process of moving to a player, having fetched the session info.
+     */
+    Q_INVOKABLE void continueMovingToPlayer (const QString& name, const SessionInfo& info);
+
+    /**
      * Continues the process of moving to a zone.
      */
     Q_INVOKABLE void continueMovingToZone (
@@ -422,6 +452,11 @@ protected:
      * Reports back from a tell request.
      */
     Q_INVOKABLE void maybeTold (const QString& recipient, const QString& message, bool success);
+
+    /**
+     * Reports back from a summon request.
+     */
+    Q_INVOKABLE void maybeSummoned (const QString& name, bool success);
 
     /**
      * Reports back from a logoff request.

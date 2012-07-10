@@ -221,7 +221,7 @@ public:
             return usage(translator, cmd);
         }
         QString recipient = args.left(idx);
-        if (recipient.toLower() == session->user().name.toLower()) {
+        if (recipient.toLower() == session->record().name.toLower()) {
             return tr("Talking to yourself is a sign of insanity.");
         }
         session->tell(recipient, args.mid(idx + 1));
@@ -369,7 +369,9 @@ public:
         if (args.isEmpty()) {
             return usage(translator, cmd);
         }
-        session->moveToPlayer(args);
+        if (args.toLower() != session->record().name.toLower()) {
+            session->moveToPlayer(args);
+        }
         return "";
     }
 };
@@ -395,7 +397,9 @@ public:
         if (args.isEmpty()) {
             return usage(translator, cmd);
         }
-        session->summonPlayer(args);
+        if (args.toLower() != session->record().name.toLower()) {
+            session->summonPlayer(args);
+        }
         return "";
     }
 };

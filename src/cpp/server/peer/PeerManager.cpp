@@ -224,6 +224,17 @@ void PeerManager::reserveInstanceId (
     }
 }
 
+void PeerManager::getSessionInfo (const QString& name, const Callback& callback)
+{
+    SessionInfoPointer ptr = _sessionsByName.value(name.toLower());
+    if (ptr) {
+        callback.invoke(Q_ARG(const SessionInfo&, *ptr));
+
+    } else {
+        callback.invokeWithDefaults();
+    }
+}
+
 void PeerManager::reserveInstancePlace (
     quint64 sessionId, const QString& region, quint32 zoneId, const Callback& callback)
 {
@@ -231,7 +242,7 @@ void PeerManager::reserveInstancePlace (
     InstanceInfoPointerMap map = _zoneInstances.value(zoneId);
     if (!map.isEmpty()) {
         InstanceInfoPointerMap::const_iterator last = map.constEnd() - 1;
-        quint32 open = last.key()->open;
+        qint32 open = last.key()->open;
         if (open > 0) {
             // find the first instance with the same number of open slots
             InstanceInfoPointerMap::const_iterator first = last;
@@ -271,6 +282,22 @@ void PeerManager::reserveInstancePlace (
                 "instanceMaybeCreated(quint64,QString,quint32,QString,Callback,quint64)",
                 Q_ARG(quint64, sessionId), Q_ARG(const QString&, region), Q_ARG(quint32, zoneId),
                 Q_ARG(const QString&, lowestName), Q_ARG(const Callback&, callback))));
+}
+
+void PeerManager::reserveInstancePlace (
+    quint64 sessionId, quint64 instanceId, const Callback& callback)
+{
+    InstanceInfoPointer ptr = _instances.value(instanceId);
+    if (ptr) {
+        invoke(ptr->peer, _app->sceneManager(), "reserveInstancePlace(quint64,quint64,Callback)",
+            Q_ARG(quint64, sessionId), Q_ARG(quint64, instanceId), Q_ARG(const Callback&, Callback(
+                _this, "instancePlaceMaybeReserved(quint64,QString,quint64,Callback,bool)",
+                Q_ARG(quint64, sessionId), Q_ARG(const QString&, ptr->peer),
+                Q_ARG(quint64, instanceId), Q_ARG(const Callback&, callback))));
+
+    } else {
+        callback.invokeWithDefaults();
+    }
 }
 
 void PeerManager::peerDestroyed (Peer* peer)
@@ -650,6 +677,29 @@ void PeerManager::instancePlaceMaybeReserved (
 
     } else {
         reserveInstancePlace(sessionId, region, getZoneId(instanceId), callback);
+    }
+}
+
+void PeerManager::instancePlaceMaybeReserved (
+    quint64 sessionId, const QString& peer, quint64 instanceId,
+    const Callback& callback, bool success)
+{
+    // make sure the session still exists on this server
+    if (!_localSessions.contains(sessionId)) {
+        if (success) {
+            invoke(peer, _app->sceneManager(), "cancelInstancePlaceReservation(quint64,quint64)",
+                Q_ARG(quint64, sessionId), Q_ARG(quint64, instanceId));
+        }
+        return;
+    }
+
+    // if it succeeded, provide the callback with the peer and instance id;
+    // otherwise, with default arguments
+    if (success) {
+        callback.invoke(Q_ARG(const QString&, peer), Q_ARG(quint64, instanceId));
+
+    } else {
+        callback.invokeWithDefaults();
     }
 }
 
