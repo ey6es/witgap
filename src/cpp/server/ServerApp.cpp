@@ -16,6 +16,7 @@
 
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
+#include "http/HttpManager.h"
 #include "net/ConnectionManager.h"
 #include "scene/SceneManager.h"
 #include "util/General.h"
@@ -278,6 +279,7 @@ ServerApp::ServerApp (int& argc, char** argv) :
     _peerManager = new PeerManager(this);
     _runtimeConfig = new SynchronizedStorage<RuntimeConfig>(new RuntimeConfig(this));
     _connectionManager = new ConnectionManager(this);
+    _httpManager = new HttpManager(this);
     _sceneManager = new SceneManager(this);
 
     // register for remote invocation

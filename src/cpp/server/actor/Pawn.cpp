@@ -9,7 +9,7 @@
 #include "scene/Scene.h"
 
 Pawn::Pawn (Scene* scene, Session* session, const QPoint& position) :
-    Actor(scene, session->record().avatar.unicode(), position),
+    Actor(scene, session->record().avatar.unicode(), position, session->record().name),
     _session(session),
     _cursor(false)
 {

@@ -83,13 +83,21 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
     }
 
     // force logon if the server isn't open
-    if (user.id == 0 && _app->runtimeConfig()->logonPolicy() != RuntimeConfig::Everyone) {
+    RuntimeConfig* runtimeConfig = _app->runtimeConfig();
+    if (user.id == 0 && runtimeConfig->logonPolicy() != RuntimeConfig::Everyone) {
         showLogonDialog();
+        return;
     }
 
-    // continue into an instance if appropriate
+    // continue into an instance
     if (transfer.instanceId != 0) {
         continueMovingToZone(transfer.sceneId, transfer.portal, peer, transfer.instanceId);
+
+    } else if (user.lastZoneId != 0) {
+        moveToZone(user.lastZoneId, user.lastSceneId);
+
+    } else if (runtimeConfig->introZone() != 0) {
+        moveToZone(runtimeConfig->introZone(), runtimeConfig->introScene());
     }
 }
 

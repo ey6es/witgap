@@ -164,6 +164,12 @@ public:
     /** The time at which the user was last online. */
     STREAM QDateTime lastOnline;
 
+    /** The zone occupied by the user. */
+    STREAM quint32 lastZoneId;
+
+    /** The scene last occupied by the user. */
+    STREAM quint32 lastSceneId;
+
     /**
      * Sets the password hash.
      */

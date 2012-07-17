@@ -57,6 +57,8 @@ void UserRepository::init ()
                 "AVATAR smallint unsigned not null,"
                 "CREATED datetime not null,"
                 "LAST_ONLINE datetime not null,"
+                "LAST_ZONE_ID int unsigned not null,"
+                "LAST_SCENE_ID int unsigned not null,"
                 "index (EMAIL))");
     }
 

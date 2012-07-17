@@ -21,7 +21,7 @@ public:
     /**
      * Creates a new actor.
      */
-    Actor (Scene* scene, int character, const QPoint& position);
+    Actor (Scene* scene, int character, const QPoint& position, const QString& label);
 
     /**
      * Destroys the actor.
@@ -59,6 +59,16 @@ public:
     const QPoint& position () const { return _position; }
 
     /**
+     * Sets the actor's label.
+     */
+    void setLabel (const QString& label);
+
+    /**
+     * Returns a reference to the actor's label.
+     */
+    const QString& label () const { return _label; }
+
+    /**
      * Notifies the actor that the location under it has changed in the scene record.
      */
     virtual void sceneChangedUnderneath (int character) { };
@@ -85,6 +95,9 @@ protected:
 
     /** The actor's position. */
     QPoint _position;
+
+    /** The actor's label, if any. */
+    QString _label;
 };
 
 #endif // ACTOR

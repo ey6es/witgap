@@ -22,6 +22,7 @@ class ArgumentDescriptorList;
 class Callback;
 class ConnectionManager;
 class DatabaseThread;
+class HttpManager;
 class PeerManager;
 class SceneManager;
 
@@ -83,6 +84,11 @@ public:
      * Returns a pointer to the peer manager.
      */
     PeerManager* peerManager () const { return _peerManager; }
+
+    /**
+     * Returns a pointer to the HTTP manager.
+     */
+    HttpManager* httpManager () const { return _httpManager; }
 
     /**
      * Returns a pointer to the scene manager.
@@ -167,6 +173,9 @@ protected:
 
     /** The peer manager. */
     PeerManager* _peerManager;
+
+    /** The HTTP manager. */
+    HttpManager* _httpManager;
 
     /** The scene manager. */
     SceneManager* _sceneManager;
