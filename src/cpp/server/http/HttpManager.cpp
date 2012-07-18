@@ -25,6 +25,11 @@ HttpManager::HttpManager (ServerApp* app) :
     connect(this, SIGNAL(newConnection()), SLOT(acceptConnections()));
 }
 
+void HttpManager::handleRequest (HttpConnection* connection)
+{
+    connection->respond("404 Not Found", "Resource not found.");
+}
+
 void HttpManager::acceptConnections ()
 {
     QTcpSocket* socket;

@@ -6,6 +6,7 @@
 
 #include <QTcpServer>
 
+class HttpConnection;
 class ServerApp;
 
 /**
@@ -21,6 +22,11 @@ public:
      * Initializes the manager.
      */
     HttpManager (ServerApp* app);
+
+    /**
+     * Handles a request received from a connection.
+     */
+    void handleRequest (HttpConnection* connection);
 
 protected slots:
 
