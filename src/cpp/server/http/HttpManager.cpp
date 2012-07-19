@@ -8,6 +8,35 @@
 #include "http/HttpConnection.h"
 #include "http/HttpManager.h"
 
+void HttpSubrequestHandler::registerSubhandler (const QString& name, HttpRequestHandler* handler)
+{
+    _subhandlers.insert(name, handler);
+}
+
+void HttpSubrequestHandler::handleRequest (
+    HttpConnection* connection, const QString& name, const QString& path)
+{
+    QString subpath = path;
+    if (subpath.startsWith('/')) {
+        subpath.remove(0, 1);
+    }
+    QString subname;
+    int idx = subpath.indexOf('/');
+    if (idx == -1) {
+        subname = subpath;
+        subpath = "";
+    } else {
+        subname = subpath.left(idx);
+        subpath = subpath.mid(idx + 1);
+    }
+    HttpRequestHandler* handler = _subhandlers.value(subname);
+    if (handler != 0) {
+        handler->handleRequest(connection, subname, subpath);
+    } else {
+        connection->respond("404 Not Found", "Resource not found.");
+    }
+}
+
 HttpManager::HttpManager (ServerApp* app) :
     QTcpServer(app),
     _app(app)
@@ -23,11 +52,6 @@ HttpManager::HttpManager (ServerApp* app) :
 
     // connect the connection signal
     connect(this, SIGNAL(newConnection()), SLOT(acceptConnections()));
-}
-
-void HttpManager::handleRequest (HttpConnection* connection)
-{
-    connection->respond("404 Not Found", "Resource not found.");
 }
 
 void HttpManager::acceptConnections ()

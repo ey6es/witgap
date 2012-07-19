@@ -17,6 +17,7 @@
 #include "ServerApp.h"
 #include "db/DatabaseThread.h"
 #include "http/HttpManager.h"
+#include "http/ImportExportManager.h"
 #include "net/ConnectionManager.h"
 #include "scene/SceneManager.h"
 #include "util/General.h"
@@ -280,6 +281,7 @@ ServerApp::ServerApp (int& argc, char** argv) :
     _runtimeConfig = new SynchronizedStorage<RuntimeConfig>(new RuntimeConfig(this));
     _connectionManager = new ConnectionManager(this);
     _httpManager = new HttpManager(this);
+    _importExportManager = new ImportExportManager(this);
     _sceneManager = new SceneManager(this);
 
     // register for remote invocation

@@ -122,7 +122,7 @@ void HttpConnection::readRequest ()
         return;
     }
     int idx = line.indexOf(' ') + 1;
-    _requestUrl = QUrl(line.mid(idx, line.lastIndexOf(' ') - idx));
+    _requestUrl.setEncodedUrl(line.mid(idx, line.lastIndexOf(' ') - idx));
 
     // switch to reading the header
     _socket->disconnect(this, SLOT(readRequest()));
@@ -142,7 +142,7 @@ void HttpConnection::readHeaders ()
 
             QByteArray clength = _requestHeaders.value("Content-Length");
             if (clength.isEmpty()) {
-                _app->httpManager()->handleRequest(this);
+                _app->httpManager()->handleRequest(this, "", _requestUrl.path());
 
             } else {
                 _requestContent.resize(clength.toInt());
@@ -182,7 +182,7 @@ void HttpConnection::readContent ()
     _socket->read(_requestContent.data(), size);
     _socket->disconnect(this, SLOT(readContent()));
 
-    _app->httpManager()->handleRequest(this);
+    _app->httpManager()->handleRequest(this, "", _requestUrl.path());
 }
 
 void HttpConnection::readFrame ()

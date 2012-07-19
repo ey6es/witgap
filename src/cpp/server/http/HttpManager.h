@@ -4,15 +4,56 @@
 #ifndef HTTP_MANAGER
 #define HTTP_MANAGER
 
+#include <QByteArray>
+#include <QHash>
 #include <QTcpServer>
 
 class HttpConnection;
+class HttpRequestHandler;
 class ServerApp;
+
+/**
+ * Interface for HTTP request handlers.
+ */
+class HttpRequestHandler
+{
+public:
+
+    /**
+     * Handles an HTTP request.
+     */
+    virtual void handleRequest (
+        HttpConnection* connection, const QString& name, const QString& path) = 0;
+};
+
+/**
+ * Handles requests by forwarding them to subhandlers.
+ */
+class HttpSubrequestHandler : public HttpRequestHandler
+{
+public:
+
+    /**
+     * Registers a subhandler with the given name.
+     */
+    void registerSubhandler (const QString& name, HttpRequestHandler* handler);
+
+    /**
+     * Handles an HTTP request.
+     */
+    virtual void handleRequest (
+        HttpConnection* connection, const QString& name, const QString& path);
+
+protected:
+
+    /** Subhandlers mapped by name. */
+    QHash<QString, HttpRequestHandler*> _subhandlers;
+};
 
 /**
  * Handles HTTP connections.
  */
-class HttpManager : public QTcpServer
+class HttpManager : public QTcpServer, public HttpSubrequestHandler
 {
    Q_OBJECT
 
@@ -22,11 +63,6 @@ public:
      * Initializes the manager.
      */
     HttpManager (ServerApp* app);
-
-    /**
-     * Handles a request received from a connection.
-     */
-    void handleRequest (HttpConnection* connection);
 
 protected slots:
 

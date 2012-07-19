@@ -23,6 +23,7 @@ class Callback;
 class ConnectionManager;
 class DatabaseThread;
 class HttpManager;
+class ImportExportManager;
 class PeerManager;
 class SceneManager;
 
@@ -89,6 +90,11 @@ public:
      * Returns a pointer to the HTTP manager.
      */
     HttpManager* httpManager () const { return _httpManager; }
+
+    /**
+     * Returns a pointer to the import/export manager.
+     */
+    ImportExportManager* importExportManager () const { return _importExportManager; }
 
     /**
      * Returns a pointer to the scene manager.
@@ -176,6 +182,9 @@ protected:
 
     /** The HTTP manager. */
     HttpManager* _httpManager;
+
+    /** The import/export manager. */
+    ImportExportManager* _importExportManager;
 
     /** The scene manager. */
     SceneManager* _sceneManager;
