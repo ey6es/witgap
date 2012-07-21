@@ -7,14 +7,22 @@
 #include <QHash>
 #include <QHostAddress>
 #include <QIODevice>
+#include <QList>
 #include <QNetworkAccessManager>
 #include <QObject>
+#include <QPair>
 #include <QUrl>
 
 class QTcpSocket;
 
 class MaskFilter;
 class ServerApp;
+
+/** Header hash. */
+typedef QHash<QByteArray, QByteArray> Headers;
+
+/** A form data element. */
+typedef QPair<Headers, QByteArray> FormData;
 
 /**
  * Handles a single HTTP connection.
@@ -24,9 +32,6 @@ class HttpConnection : public QObject
    Q_OBJECT
 
 public:
-
-    /** Header hash. */
-    typedef QHash<QByteArray, QByteArray> Headers;
 
     /**
      * Initializes the connection.
@@ -57,6 +62,11 @@ public:
      * Returns a reference to the request content.
      */
     const QByteArray& requestContent () const { return _requestContent; }
+
+    /**
+     * Parses the request content as form data, returning a list of header/content pairs.
+     */
+    QList<FormData> parseFormData () const;
 
     /**
      * Sends a response and closes the connection.

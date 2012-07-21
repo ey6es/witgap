@@ -1,6 +1,7 @@
 //
 // $Id$
 
+#include <QBuffer>
 #include <QCryptographicHash>
 #include <QTcpSocket>
 
@@ -36,6 +37,62 @@ HttpConnection::~HttpConnection ()
     if (_socket->error() != QAbstractSocket::UnknownSocketError) {
         base << _socket->errorString();
     }
+}
+
+QList<FormData> HttpConnection::parseFormData () const
+{
+    // make sure we have the correct MIME type
+    QList<QByteArray> elements = _requestHeaders.value("Content-Type").split(';');
+    if (elements.at(0).trimmed() != "multipart/form-data") {
+        return QList<FormData>();
+    }
+
+    // retrieve the boundary marker
+    QByteArray boundary;
+    for (int ii = 1, nn = elements.size(); ii < nn; ii++) {
+        QByteArray element = elements.at(ii).trimmed();
+        if (element.startsWith("boundary")) {
+            boundary = element.mid(element.indexOf('=') + 1).trimmed();
+            break;
+        }
+    }
+    QByteArray start = "--" + boundary;
+    QByteArray end = "\r\n--" + boundary + "--\r\n";
+
+    QList<FormData> data;
+    QBuffer buffer(const_cast<QByteArray*>(&_requestContent));
+    buffer.open(QIODevice::ReadOnly);
+    while (buffer.canReadLine()) {
+        QByteArray line = buffer.readLine().trimmed();
+        if (line == start) {
+            FormData datum;
+            while (buffer.canReadLine()) {
+                QByteArray line = buffer.readLine().trimmed();
+                if (line.isEmpty()) {
+                    // content starts after this line
+                    int idx = _requestContent.indexOf(end, buffer.pos());
+                    if (idx == -1) {
+                        qWarning() << "Missing end boundary." << _address;
+                        return data;
+                    }
+                    datum.second = _requestContent.mid(buffer.pos(), idx - buffer.pos());
+                    data.append(datum);
+                    buffer.seek(idx + end.length());
+
+                } else {
+                    // it's a header element
+                    int idx = line.indexOf(':');
+                    if (idx == -1) {
+                        qWarning() << "Invalid header line." << _address << line;
+                        continue;
+                    }
+                    datum.first.insert(line.left(idx).trimmed(), line.mid(idx + 1).trimmed());
+                }
+            }
+        }
+    }
+
+    return data;
 }
 
 void HttpConnection::respond (

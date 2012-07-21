@@ -5,6 +5,8 @@
 
 #include <limits>
 
+#include "ServerApp.h"
+#include "http/ImportExportManager.h"
 #include "net/Session.h"
 #include "scene/Scene.h"
 #include "scene/ScenePropertiesDialog.h"
@@ -27,7 +29,7 @@ ScenePropertiesDialog::ScenePropertiesDialog (Session* parent) :
     Window(parent, parent->highestWindowLayer(), true, true)
 {
     setBorder(new FrameBorder());
-    setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
+    setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 0));
 
     Container* icont = new Container(new TableLayout(2));
     icont->setBorder(new CharBorder(QMargins(1, 0, 1, 0), 0));
@@ -61,6 +63,14 @@ ScenePropertiesDialog::ScenePropertiesDialog (Session* parent) :
         new RegExpDocument(UShortExp, QString::number(record.scrollHeight), 5), true));
     connect(_name, SIGNAL(textChanged()), SLOT(updateApply()));
 
+    addChild(new Spacer(1, 1));
+
+    Button* imp = new Button(tr("Import"));
+    connect(imp, SIGNAL(pressed()), SLOT(importScene()));
+    Button* exp = new Button(tr("Export"));
+    connect(exp, SIGNAL(pressed()), SLOT(exportScene()));
+    addChild(BoxLayout::createHBox(Qt::AlignCenter, 2, imp, exp));
+
     Button* cancel = new Button(tr("Cancel"));
     connect(cancel, SIGNAL(pressed()), SLOT(deleteLater()));
     Button* del = new Button(tr("Delete"));
@@ -85,6 +95,23 @@ void ScenePropertiesDialog::updateApply ()
     _ok->setEnabled(enable);
 }
 
+void ScenePropertiesDialog::importScene ()
+{
+    Session* session = this->session();
+    QMetaObject::invokeMethod(session->app()->importExportManager(), "addImport",
+        Q_ARG(const QString&, "scene.json"),
+        Q_ARG(const Callback&, Callback(_this, "importScene(QByteArray)")),
+        Q_ARG(const Callback&, Callback(session, "openUrl(QUrl)")));
+}
+
+void ScenePropertiesDialog::exportScene ()
+{
+    Session* session = this->session();
+    QMetaObject::invokeMethod(session->app()->importExportManager(), "addExport",
+        Q_ARG(const QString&, "scene.json"), Q_ARG(const QByteArray&, "Testing!"),
+        Q_ARG(const Callback&, Callback(session, "openUrl(QUrl)")));
+}
+
 void ScenePropertiesDialog::confirmDelete ()
 {
     session()->showConfirmDialog(tr("Are you sure you want to delete this scene?"),
@@ -96,6 +123,11 @@ void ScenePropertiesDialog::apply ()
     // handle update through the scene
     session()->scene()->setProperties(_name->text().simplified(),
         _scrollWidth->text().toInt(), _scrollHeight->text().toInt());
+}
+
+void ScenePropertiesDialog::importScene (const QByteArray& content)
+{
+    qDebug() << content;
 }
 
 void ScenePropertiesDialog::reallyDelete ()

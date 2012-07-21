@@ -32,6 +32,16 @@ protected slots:
     void updateApply ();
 
     /**
+     * Prepares for scene import.
+     */
+    void importScene ();
+
+    /**
+     * Exports the scene.
+     */
+    void exportScene ();
+
+    /**
      * Makes sure the user really wants to delete the scene.
      */
     void confirmDelete ();
@@ -42,6 +52,11 @@ protected slots:
     void apply ();
 
 protected:
+
+    /**
+     * Imports an uploaded scene.
+     */
+    Q_INVOKABLE void importScene (const QByteArray& content);
 
     /**
      * Actually deletes the scene, having confirmed that that's what the user wants.

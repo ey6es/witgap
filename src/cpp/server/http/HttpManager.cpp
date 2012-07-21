@@ -13,7 +13,7 @@ void HttpSubrequestHandler::registerSubhandler (const QString& name, HttpRequest
     _subhandlers.insert(name, handler);
 }
 
-void HttpSubrequestHandler::handleRequest (
+bool HttpSubrequestHandler::handleRequest (
     HttpConnection* connection, const QString& name, const QString& path)
 {
     QString subpath = path;
@@ -30,11 +30,10 @@ void HttpSubrequestHandler::handleRequest (
         subpath = subpath.mid(idx + 1);
     }
     HttpRequestHandler* handler = _subhandlers.value(subname);
-    if (handler != 0) {
-        handler->handleRequest(connection, subname, subpath);
-    } else {
+    if (handler == 0 || !handler->handleRequest(connection, subname, subpath)) {
         connection->respond("404 Not Found", "Resource not found.");
     }
+    return true;
 }
 
 HttpManager::HttpManager (ServerApp* app) :
@@ -49,6 +48,8 @@ HttpManager::HttpManager (ServerApp* app) :
         qCritical() << "Failed to open HTTP server socket:" << errorString();
         return;
     }
+    _baseUrl = "http://" + _app->peerManager()->record().externalHostname + ":" +
+        QString::number(port);
 
     // connect the connection signal
     connect(this, SIGNAL(newConnection()), SLOT(acceptConnections()));

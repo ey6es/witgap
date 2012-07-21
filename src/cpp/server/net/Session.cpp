@@ -9,6 +9,7 @@
 #include <QPoint>
 #include <QTimer>
 #include <QTranslator>
+#include <QUrl>
 #include <QtDebug>
 
 #include "LogonDialog.h"
@@ -451,6 +452,14 @@ void Session::submitBugReport (const QString& description)
     qDebug() << "Submitting bug report." << who() << description;
     _app->sendMail(_app->bugReportAddress(), "Witgap bug report",
         who() + ": " + description, Callback());
+}
+
+void Session::openUrl (const QUrl& url)
+{
+    if (_connection) {
+        Connection::evaluateMetaMethod().invoke(_connection.data(), Q_ARG(const QString&,
+            "window.open('" + url.toString() + "')"));
+    }
 }
 
 void Session::windowCreated (Window* window)

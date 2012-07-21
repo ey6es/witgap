@@ -278,6 +278,11 @@ public:
     Q_INVOKABLE void submitBugReport (const QString& description);
 
     /**
+     * Opens the specified url.
+     */
+    Q_INVOKABLE void openUrl (const QUrl& url);
+
+    /**
      * Notifies us that a window has been created.
      */
     void windowCreated (Window* window);

@@ -22,7 +22,7 @@ public:
     /**
      * Handles an HTTP request.
      */
-    virtual void handleRequest (
+    virtual bool handleRequest (
         HttpConnection* connection, const QString& name, const QString& path) = 0;
 };
 
@@ -41,7 +41,7 @@ public:
     /**
      * Handles an HTTP request.
      */
-    virtual void handleRequest (
+    virtual bool handleRequest (
         HttpConnection* connection, const QString& name, const QString& path);
 
 protected:
@@ -64,6 +64,11 @@ public:
      */
     HttpManager (ServerApp* app);
 
+    /**
+     * Returns a reference to the server's base URL.
+     */
+    const QString& baseUrl () const { return _baseUrl; }
+
 protected slots:
 
     /**
@@ -75,6 +80,9 @@ protected:
 
     /** The server application. */
     ServerApp* _app;
+
+    /** The base URL for the server. */
+    QString _baseUrl;
 };
 
 #endif // HTTP_MANAGER
