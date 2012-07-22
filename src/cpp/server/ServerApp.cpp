@@ -279,9 +279,9 @@ ServerApp::ServerApp (int& argc, char** argv) :
     // create the managers (peer manager first, as the others must register with it)
     _peerManager = new PeerManager(this);
     _runtimeConfig = new SynchronizedStorage<RuntimeConfig>(new RuntimeConfig(this));
-    _connectionManager = new ConnectionManager(this);
     _httpManager = new HttpManager(this);
     _importExportManager = new ImportExportManager(this);
+    _connectionManager = new ConnectionManager(this);
     _sceneManager = new SceneManager(this);
 
     // register for remote invocation

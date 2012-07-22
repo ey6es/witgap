@@ -12,6 +12,7 @@
 #include "chat/ChatWindow.h"
 #include "db/DatabaseThread.h"
 #include "db/SessionRepository.h"
+#include "http/HttpConnection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
 #include "peer/PeerConnection.h"
@@ -50,6 +51,9 @@ ConnectionManager::ConnectionManager (ServerApp* app) :
 
     // connect the connection signal
     connect(this, SIGNAL(newConnection()), SLOT(acceptConnections()));
+
+    // register for /client
+    _app->httpManager()->registerSubhandler("client", this);
 }
 
 ConnectionManager::~ConnectionManager ()
@@ -161,6 +165,16 @@ void ConnectionManager::sessionClosed (quint64 id, const QString& name)
     _names.remove(name.toLower());
 
     session->deleteLater();
+}
+
+bool ConnectionManager::handleRequest (
+    HttpConnection* connection, const QString& name, const QString& path)
+{
+    if (connection->isWebSocketRequest()) {
+        connection->switchToWebSocket();
+        return true;
+    }
+    return false;
 }
 
 void ConnectionManager::acceptConnections ()

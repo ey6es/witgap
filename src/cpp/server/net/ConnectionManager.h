@@ -11,6 +11,7 @@
 
 #include <GeoIP.h>
 
+#include "http/HttpManager.h"
 #include "net/Connection.h"
 #include "peer/PeerManager.h"
 #include "util/Callback.h"
@@ -25,7 +26,7 @@ class UserRecord;
 /**
  * Listens for TCP connections.
  */
-class ConnectionManager : public QTcpServer, public SharedObject
+class ConnectionManager : public QTcpServer, public SharedObject, public HttpRequestHandler
 {
     Q_OBJECT
 
@@ -100,6 +101,12 @@ public:
      * Notifies the manager that a session has been closed.
      */
     Q_INVOKABLE void sessionClosed (quint64 id, const QString& name);
+
+    /**
+     * Handles an HTTP request.
+     */
+    virtual bool handleRequest (
+        HttpConnection* connection, const QString& name, const QString& path);
 
 protected slots:
 

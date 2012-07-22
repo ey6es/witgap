@@ -6,18 +6,73 @@
         <meta name="author" content="Andrzej Kapolka"/>
     </head>
 
-    <body style="background-color: #000000;">
-        <pre id="field"></pre>
-
-        <form>
-            <select id="color">
-                <option>White</option>
-                <option>Green</option>
-                <option>Amber</option>
-            </select>
-        </form>
+    <body style="background-color: #000000;" onload="init()">
+        <canvas width="800" height="600" id="canvas"/>
 
         <script type="text/javascript">
+            var ctx;
+            var charWidth, charHeight;
+            var width, height;
+            var offsetX, offsetY;
+            var bitmapData = Object();
+            var socket;
+
+            function init () {
+                var canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                ctx.font = "12px Courier";
+                ctx.fillStyle = "#00FF00";
+                ctx.textAlign = "left";
+                ctx.textBaseline = "top";
+                charWidth = ctx.measureText("A").width;
+                charHeight = 12;
+                width = Math.floor(canvas.width / charWidth);
+                height = Math.floor(canvas.height / charHeight);
+                offsetX = Math.round((canvas.width % charWidth) / 2);
+                offsetY = Math.round((canvas.height % charHeight) / 2);
+
+                document.onkeydown = function (event) {
+                };
+                document.onkeyup = function (event) {
+                };
+
+                if ("WebSocket" in window) {
+                    socket = new WebSocket("ws://localhost:8080/client");
+                } else if ("MozWebSocket" in window) {
+                    socket = new MozWebSocket("ws://localhost:8080/client");
+                }
+                socket.onopen = function () {
+                };
+                socket.onerror = function () {
+                    fatalError("No connection to server.  Please wait a moment, " +
+                        "then reload the page.");
+                };
+                socket.onmessage = function (event) {
+                };
+            }
+            function fatalError (text) {
+                addClientWindow(Number.MAX_VALUE, text);
+            }
+            function addClientWindow (id, text) {
+                text = " " + text + " ";
+
+                updateDisplay();
+            }
+            function updateDisplay () {
+
+            }
+            function drawCharacter (x, y, value) {
+                var px = offsetX + x*charWidth;
+                var py = offsetY + y*charHeight;
+                var data = bitmapData[value];
+                if (data) {
+                    ctx.putImageData(data, px, py);
+                    return;
+                }
+                ctx.clearRect(px, py, charWidth, charHeight);
+                ctx.fillText(String.fromCharCode(value & 0xFFFF), px, py);
+                bitmapData[value] = ctx.getImageData(px, py, charWidth, charHeight);
+            }
             function setCookie (key, value) {
                 var expires = new Date();
                 expires.setFullYear(expires.getFullYear() + 5);
@@ -34,19 +89,6 @@
                     }
                 }
                 return def;
-            }
-            function setColor (color) {
-                var rgb = "#00FF00";
-                var idx = 1;
-                if (color == "White") {
-                    rgb = "#FFFFFF";
-                    idx = 0;
-                } else if (color == "Amber") {
-                    rgb = "#FFAF00";
-                    idx = 2;
-                }
-                document.getElementById("field").style.color = rgb;
-                document.getElementById("color").selectedIndex = idx;
             }
             function getQtKeyCode (event) {
                 switch (event.keyCode) {
@@ -158,46 +200,6 @@
                     default: return 0x01ffffff;
                 }
             }
-
-            var field = document.getElementById("field");
-            var content = "";
-            var line = "";
-            for (ii = 0; ii < 114; ii++) {
-                line += " ";
-            }
-            line += "\n";
-            for (ii = 0; ii < 40; ii++) {
-                content += line;
-            }
-            field.innerHTML = content;
-
-            var color = document.getElementById("color");
-            color.onchange = function () {
-                var text = color.options[color.selectedIndex].text;
-                setCookie("color", text);
-                setColor(text);
-            };
-            setColor(getCookie("color", "Green"));
-
-            var socket;
-            if ("WebSocket" in window) {
-                socket = new WebSocket("ws://localhost:4015");
-            } else if ("MozWebSocket" in window) {
-                socket = new MozWebSocket("ws://localhost:4015");
-            }
-            socket.onopen = function () {
-            };
-            socket.onerror = function () {
-                field.innerHTML = "whoops!";
-            };
-            socket.onmessage = function (event) {
-            };
-
-            document.onkeydown = function (event) {
-            };
-            document.onkeyup = function (event) {
-
-            };
         </script>
     </body>
 </html>

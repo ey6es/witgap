@@ -13,7 +13,7 @@ HttpConnection::HttpConnection (ServerApp* app, QTcpSocket* socket) :
     QObject(app->httpManager()),
     _app(app),
     _socket(socket),
-    _masker(new MaskFilter(socket, this)),
+    _unmasker(new MaskFilter(socket, this)),
     _stream(socket),
     _address(socket->peerAddress())
 {
@@ -37,6 +37,11 @@ HttpConnection::~HttpConnection ()
     if (_socket->error() != QAbstractSocket::UnknownSocketError) {
         base << _socket->errorString();
     }
+}
+
+bool HttpConnection::isWebSocketRequest ()
+{
+    return _requestHeaders.value("Upgrade") == "websocket";
 }
 
 QList<FormData> HttpConnection::parseFormData () const
@@ -144,8 +149,10 @@ void HttpConnection::switchToWebSocket (const char* protocol)
     hash.addData("258EAFA5-E914-47DA-95CA-C5AB0DC85B11"); // from WebSocket draft RFC
     _socket->write(hash.result().toBase64());
 
-    _socket->write("\r\nSec-WebSocket-Protocol: ");
-    _socket->write(protocol);
+    if (protocol != 0) {
+        _socket->write("\r\nSec-WebSocket-Protocol: ");
+        _socket->write(protocol);
+    }
     _socket->write("\r\n\r\n");
 
     connect(_socket, SIGNAL(readyRead()), SLOT(readFrame()));
@@ -295,9 +302,64 @@ void HttpConnection::readFrame ()
     if (masked) {
         _stream >> mask;
     }
-    _masker->setMask(mask);
+    _unmasker->setMask(mask);
 
+    // if not final, add to continuing message
+    FrameOpcode opcode = (FrameOpcode)(finalOpcode & 0x0F);
+    if ((finalOpcode & 0x80) == 0) {
+        if (opcode != ContinuationFrame) {
+            _continuingOpcode = opcode;
+        }
+        _continuingMessage += _unmasker->read(length);
+        return;
+    }
 
+    // if continuing, add to and read from buffer
+    QIODevice* device = _unmasker;
+    FrameOpcode copcode = opcode;
+    if (opcode == ContinuationFrame) {
+        _continuingMessage += _unmasker->read(length);
+        device = new QBuffer(&_continuingMessage, this);
+        device->open(QIODevice::ReadOnly);
+        copcode = _continuingOpcode;
+    }
+
+    // act according to opcode
+    switch (copcode) {
+        case TextFrame:
+            emit webSocketMessageAvailable(device, length, true);
+            break;
+
+        case BinaryFrame:
+            emit webSocketMessageAvailable(device, length, false);
+            break;
+
+        case ConnectionClose:
+            device->read(length);
+            emit webSocketClosed();
+            break;
+
+        case Ping:
+            // send the pong out immediately
+            writeFrameHeader(Pong, length, true);
+            _socket->write(device->read(length));
+            break;
+
+        case Pong:
+            qWarning() << "Got unsolicited WebSocket pong." << _address << device->read(length);
+            break;
+
+        default:
+            qWarning() << "Received unknown WebSocket opcode." << _address << opcode <<
+                device->read(length);
+            break;
+    }
+
+    // clear the continuing message buffer
+    if (opcode == ContinuationFrame) {
+        _continuingMessage.clear();
+        delete device;
+    }
 }
 
 void HttpConnection::writeFrameHeader (FrameOpcode opcode, int size, bool final)

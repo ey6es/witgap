@@ -458,7 +458,7 @@ void Session::openUrl (const QUrl& url)
 {
     if (_connection) {
         Connection::evaluateMetaMethod().invoke(_connection.data(), Q_ARG(const QString&,
-            "window.open('" + url.toString() + "')"));
+            "document.getElementById('importExport').src = '" + url.toString() + "'"));
     }
 }
 

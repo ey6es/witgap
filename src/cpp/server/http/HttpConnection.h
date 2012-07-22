@@ -44,6 +44,12 @@ public:
     virtual ~HttpConnection ();
 
     /**
+     * Returns a pointer to the underlying socket, to which WebSocket message bodies should be
+     * written.
+     */
+    QTcpSocket* socket () const { return _socket; }
+
+    /**
      * Returns the request operation.
      */
     QNetworkAccessManager::Operation requestOperation () const { return _requestOperation; }
@@ -64,6 +70,11 @@ public:
     const QByteArray& requestContent () const { return _requestContent; }
 
     /**
+     * Checks whether the request is asking to switch to a WebSocket.
+     */
+    bool isWebSocketRequest ();
+
+    /**
      * Parses the request content as form data, returning a list of header/content pairs.
      */
     QList<FormData> parseFormData () const;
@@ -78,7 +89,25 @@ public:
     /**
      * Switches to a WebSocket.
      */
-    void switchToWebSocket (const char* protocol);
+    void switchToWebSocket (const char* protocol = 0);
+
+    /**
+     * Writes a header for a WebSocket message of the specified size.  The body of the message
+     * should be written through the socket.
+     */
+    void writeWebSocketHeader (int size) { writeFrameHeader(BinaryFrame, size); }
+
+signals:
+
+    /**
+     * Fired when a WebSocket message of the specified size is available to read.
+     */
+    void webSocketMessageAvailable (QIODevice* device, int length, bool text);
+
+    /**
+     * Fired when the WebSocket has been closed by the other side.
+     */
+    void webSocketClosed ();
 
 protected slots:
 
@@ -104,7 +133,7 @@ protected slots:
 
 protected:
 
-    /** The available frame opcodes. */
+    /** The available WebSocket frame opcodes. */
     enum FrameOpcode { ContinuationFrame, TextFrame, BinaryFrame,
         ConnectionClose = 0x08, Ping, Pong };
 
@@ -120,7 +149,7 @@ protected:
     QTcpSocket* _socket;
 
     /** The mask filter for WebSocket frames. */
-    MaskFilter* _masker;
+    MaskFilter* _unmasker;
 
     /** The data stream for writing to the socket. */
     QDataStream _stream;
@@ -142,6 +171,12 @@ protected:
 
     /** The content of the request. */
     QByteArray _requestContent;
+
+    /** The opcode for the WebSocket message being continued. */
+    FrameOpcode _continuingOpcode;
+
+    /** The WebSocket message being continued. */
+    QByteArray _continuingMessage;
 };
 
 /**
