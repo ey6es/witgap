@@ -107,7 +107,7 @@ signals:
     /**
      * Fired when the WebSocket has been closed by the other side.
      */
-    void webSocketClosed ();
+    void webSocketClosed (quint16 reasonCode, QByteArray reason);
 
 protected slots:
 

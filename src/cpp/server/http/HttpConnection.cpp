@@ -335,8 +335,14 @@ void HttpConnection::readFrame ()
             break;
 
         case ConnectionClose:
-            device->read(length);
-            emit webSocketClosed();
+            if (length >= 2) {
+                QDataStream stream(device);
+                quint16 reasonCode;
+                stream >> reasonCode;
+                emit webSocketClosed(reasonCode, device->read(length - 2));
+            } else {
+                emit webSocketClosed(0, QByteArray());
+            }
             break;
 
         case Ping:
