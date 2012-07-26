@@ -15,7 +15,8 @@ HttpConnection::HttpConnection (ServerApp* app, QTcpSocket* socket) :
     _socket(socket),
     _unmasker(new MaskFilter(socket, this)),
     _stream(socket),
-    _address(socket->peerAddress())
+    _address(socket->peerAddress()),
+    _webSocketPaused(false)
 {
     // take over ownership of the socket
     _socket->setParent(this);
@@ -155,7 +156,25 @@ void HttpConnection::switchToWebSocket (const char* protocol)
     }
     _socket->write("\r\n\r\n");
 
-    connect(_socket, SIGNAL(readyRead()), SLOT(readFrame()));
+    // connect socket, start reading frames
+    setWebSocketPaused(false);
+}
+
+void HttpConnection::setWebSocketPaused (bool paused)
+{
+    if (_webSocketPaused = paused) {
+        _socket->disconnect(this, SLOT(readFrames()));
+
+    } else {
+        connect(_socket, SIGNAL(readyRead()), SLOT(readFrames()));
+        readFrames();
+    }
+}
+
+void HttpConnection::closeWebSocket ()
+{
+    writeFrameHeader(ConnectionClose);
+    _socket->disconnectFromHost();
 }
 
 void HttpConnection::readRequest ()
@@ -249,12 +268,18 @@ void HttpConnection::readContent ()
     _app->httpManager()->handleRequest(this, "", _requestUrl.path());
 }
 
-void HttpConnection::readFrame ()
+void HttpConnection::readFrames()
+{
+    // read as many messages as are available
+    while (maybeReadFrame());
+}
+
+bool HttpConnection::maybeReadFrame ()
 {
     // make sure we have at least the first two bytes
     qint64 available = _socket->bytesAvailable();
-    if (available < 2) {
-        return;
+    if (available < 2 || _webSocketPaused) {
+        return false;
     }
     // read the first two, which tell us whether we need more for the length
     quint8 finalOpcode, maskLength;
@@ -294,7 +319,7 @@ void HttpConnection::readFrame ()
     if (length == -1) {
         _socket->ungetChar(maskLength);
         _socket->ungetChar(finalOpcode);
-        return;
+        return false;
     }
 
     // read the mask and set it in the filter
@@ -311,7 +336,7 @@ void HttpConnection::readFrame ()
             _continuingOpcode = opcode;
         }
         _continuingMessage += _unmasker->read(length);
-        return;
+        return true;
     }
 
     // if continuing, add to and read from buffer
@@ -366,6 +391,8 @@ void HttpConnection::readFrame ()
         _continuingMessage.clear();
         delete device;
     }
+
+    return true;
 }
 
 void HttpConnection::writeFrameHeader (FrameOpcode opcode, int size, bool final)

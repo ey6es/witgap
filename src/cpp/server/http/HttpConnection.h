@@ -97,6 +97,16 @@ public:
      */
     void writeWebSocketHeader (int size) { writeFrameHeader(BinaryFrame, size); }
 
+    /**
+     * Pauses or unpauses the WebSocket.  A paused WebSocket buffers messages until unpaused.
+     */
+    void setWebSocketPaused (bool paused);
+
+    /**
+     * Closes the WebSocket.
+     */
+    void closeWebSocket ();
+
 signals:
 
     /**
@@ -127,15 +137,20 @@ protected slots:
     void readContent ();
 
     /**
-     * Reads a WebSocket frame.
+     * Reads any incoming WebSocket frames.
      */
-    void readFrame ();
+    void readFrames ();
 
 protected:
 
     /** The available WebSocket frame opcodes. */
     enum FrameOpcode { ContinuationFrame, TextFrame, BinaryFrame,
         ConnectionClose = 0x08, Ping, Pong };
+
+    /**
+     * Attempts to read a single WebSocket frame, returning true if successful.
+     */
+    bool maybeReadFrame ();
 
     /**
      * Writes a WebSocket frame header.
@@ -177,6 +192,9 @@ protected:
 
     /** The WebSocket message being continued. */
     QByteArray _continuingMessage;
+
+    /** Whether or not the WebSocket is paused (buffering messages for future processing). */
+    bool _webSocketPaused;
 };
 
 /**

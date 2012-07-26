@@ -23,6 +23,7 @@ class QPoint;
 class QRect;
 
 class Connection;
+class HttpConnection;
 class ServerApp;
 
 /** A shared connection pointer that we'll register with the metatype system. */
@@ -111,9 +112,14 @@ public:
     static const QMetaMethod& evaluateMetaMethod ();
 
     /**
-     * Initializes the connection.
+     * Initializes the connection for a raw socket.
      */
     Connection (ServerApp* app, QTcpSocket* socket);
+
+    /**
+     * Initializes the connection for a WebSocket.
+     */
+    Connection (ServerApp* app, HttpConnection* httpConnection);
 
     /**
      * Destroys the connection.
@@ -243,17 +249,32 @@ signals:
      */
     void closed ();
 
+    /**
+     * Signals that we're ready to read from the specified device.
+     */
+    void readyRead (int bytesAvailable);
+
 protected slots:
+
+    /**
+     * Emits a ready-read signal for the socket.
+     */
+    void emitReadyRead ();
 
     /**
      * Reads a chunk of incoming header (before transitioning to messages).
      */
-    void readHeader ();
+    void readHeader (int bytesAvailable);
 
     /**
      * Reads a chunk of incoming messages (after validating header).
      */
-    void readMessages ();
+    void readMessages (int bytesAvailable);
+
+    /**
+     * Reads an incoming WebSocket message.
+     */
+    void readWebSocketMessage (QIODevice* device, int length, bool text);
 
     /**
      * Pings the client.
@@ -266,6 +287,11 @@ protected slots:
     void close ();
 
 protected:
+
+    /**
+     * Shared initialization.
+     */
+    void init ();
 
     /**
      * Starts a message of the specified (unencrypted) length.
@@ -298,7 +324,7 @@ protected:
      * @param available the number of available bytes to read.
      * @return true if we processed a message, false if we're still waiting for more data.
      */
-    bool maybeReadMessage (QDataStream& stream, qint64 available);
+    bool maybeReadMessage (QDataStream& stream, int& available);
 
     /** A shared pointer to the connection itself. */
     SharedConnectionPointer _pointer;
@@ -308,6 +334,9 @@ protected:
 
     /** The underlying socket. */
     QTcpSocket* _socket;
+
+    /** The underlying HTTP connection, if this is a WebSocket connection. */
+    HttpConnection* _httpConnection;
 
     /** The stored address. */
     QHostAddress _address;

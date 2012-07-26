@@ -18,6 +18,7 @@
 
 #include "Protocol.h"
 #include "ServerApp.h"
+#include "http/HttpConnection.h"
 #include "net/Connection.h"
 #include "net/ConnectionManager.h"
 
@@ -153,6 +154,7 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     _pointer(this, &QObject::deleteLater),
     _app(app),
     _socket(socket),
+    _httpConnection(0),
     _address(socket->peerAddress()),
     _stream(socket),
     _crypto(false),
@@ -160,38 +162,45 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
     _compoundCount(0),
     _throttle(50, 1000)
 {
-    // init crypto bits
-    EVP_CIPHER_CTX_init(&_ectx);
-    EVP_CIPHER_CTX_init(&_dctx);
-
-    // and geoip/region bits
-    _geoIpRecord = GeoIP_record_by_ipnum(_app->connectionManager()->geoIp(),
-        _address.toIPv4Address());
-    _region = Regions[0].name;
-    if (_geoIpRecord != 0) {
-        // find the closest region
-        double leastDist = Regions[0].distance(_geoIpRecord->latitude, _geoIpRecord->longitude);
-        for (int ii = 1, nn = sizeof(Regions) / sizeof(Region); ii < nn; ii++) {
-            double dist = Regions[ii].distance(_geoIpRecord->latitude, _geoIpRecord->longitude);
-            if (dist < leastDist) {
-                _region = Regions[ii].name;
-                leastDist = dist;
-            }
-        }
-    }
+    init();
 
     // take over ownership of the socket and set its low delay option
     _socket->setParent(this);
-    _socket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
 
     // connect initial slots
-    connect(socket, SIGNAL(readyRead()), SLOT(readHeader()));
+    connect(socket, SIGNAL(readyRead()), SLOT(emitReadyRead()));
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(close()));
     connect(socket, SIGNAL(disconnected()), SLOT(close()));
     connect(this, SIGNAL(windowClosed()), SLOT(close()));
 
     // log the connection
     qDebug() << "Connection opened." << _address;
+}
+
+Connection::Connection (ServerApp* app, HttpConnection* httpConnection) :
+    _pointer(this, &QObject::deleteLater),
+    _app(app),
+    _socket(httpConnection->socket()),
+    _httpConnection(httpConnection),
+    _address(_socket->peerAddress()),
+    _stream(_socket),
+    _crypto(false),
+    _clientCrypto(false),
+    _compoundCount(0),
+    _throttle(50, 1000)
+{
+    init();
+
+    // take over ownership of the HTTP connection
+    _httpConnection->setParent(this);
+
+    // connect initial slots
+    connect(httpConnection, SIGNAL(webSocketMessageAvailable(QIODevice*,int,bool)),
+        SLOT(readWebSocketMessage(QIODevice*,int,bool)));
+    connect(httpConnection, SIGNAL(webSocketClosed(quint16,QByteArray)), SLOT(close()));
+
+    // log the connection
+    qDebug() << "WebSocket connection opened." << _address;
 }
 
 Connection::~Connection ()
@@ -209,10 +218,16 @@ Connection::~Connection ()
 void Connection::activate ()
 {
     // connect the signal in order to read incoming messages
-    connect(_socket, SIGNAL(readyRead()), SLOT(readMessages()));
+    connect(this, SIGNAL(readyRead(int)), SLOT(readMessages(int)));
 
-    // call it manually in case we already have something to read
-    readMessages();
+    if (_httpConnection != 0) {
+        // unpause WebSocket, processing buffered messages
+        _httpConnection->setWebSocketPaused(false);
+
+    } else {
+        // read any messages already available
+        readMessages(_socket->bytesAvailable());
+    }
 }
 
 void Connection::deactivate (const QString& reason)
@@ -223,7 +238,12 @@ void Connection::deactivate (const QString& reason)
     _stream << CLOSE_MSG;
     _stream.writeRawData(rbytes.constData(), rlen);
     endMessage();
-    _socket->disconnectFromHost();
+
+    if (_httpConnection != 0) {
+        _httpConnection->closeWebSocket();
+    } else {
+        _socket->disconnectFromHost();
+    }
 }
 
 void Connection::updateWindow (int id, int layer, const QRect& bounds, int fill)
@@ -299,6 +319,9 @@ void Connection::setCookie (const QString& name, const QString& value)
 
 void Connection::toggleCrypto ()
 {
+    if (_httpConnection != 0) {
+        return; // TODO: encryption for WebSockets
+    }
     startMessage(1);
     _stream << TOGGLE_CRYPTO_MSG;
     endMessage();
@@ -350,7 +373,12 @@ void Connection::reconnect (const QString& host, quint16 port)
     _stream.writeRawData(hbytes.constData(), hlen);
     _stream << port;
     endMessage();
-    _socket->disconnectFromHost();
+
+    if (_httpConnection != 0) {
+        _httpConnection->closeWebSocket();
+    } else {
+        _socket->disconnectFromHost();
+    }
 }
 
 void Connection::evaluate (const QString& expression)
@@ -363,10 +391,15 @@ void Connection::evaluate (const QString& expression)
     endMessage();
 }
 
-void Connection::readHeader ()
+void Connection::emitReadyRead ()
+{
+    emit readyRead(_socket->bytesAvailable());
+}
+
+void Connection::readHeader (int bytesAvailable)
 {
     // if we don't have the full header, wait until we do
-    if (_socket->bytesAvailable() < 12) {
+    if (bytesAvailable < 12) {
         return;
     }
     // check the magic number and version
@@ -379,23 +412,23 @@ void Connection::readHeader ()
             "<cross-domain-policy>\n"
             "  <allow-access-from domain=\"*\" to-ports=\"*\"/>\n"
             "</cross-domain-policy>\n");
-        _socket->disconnect(this, SLOT(readHeader()));
+        disconnect(this, SLOT(readHeader(int)));
         _socket->disconnectFromHost();
         return;
     }
     if (magic != PROTOCOL_MAGIC) {
-        qWarning() << "Invalid protocol magic number:" << magic << _socket->peerAddress();
+        qWarning() << "Invalid protocol magic number:" << magic << _address;
         deactivate("Invalid magic number.");
         return;
     }
     _stream >> version;
     if (version != PROTOCOL_VERSION) {
-        qWarning() << "Wrong protocol version:" << version << _socket->peerAddress();
+        qWarning() << "Wrong protocol version:" << version << _address;
         deactivate("Wrong protocol version.");
         return;
     }
     _stream >> length;
-    if (_socket->bytesAvailable() < length) {
+    if (bytesAvailable - 12 < length) {
         // push back what we read and wait for the rest
         unget(_socket, length);
         unget(_socket, PROTOCOL_VERSION);
@@ -407,30 +440,35 @@ void Connection::readHeader ()
     _stream >> height;
     _displaySize = QSize(width, height);
 
-    QByteArray encryptedSecret = _socket->read(128);
-    QByteArray secret(32, 0);
-    int len = RSA_private_decrypt(128, (const unsigned char*)encryptedSecret.constData(),
-        (unsigned char*)secret.data(), _app->connectionManager()->rsa(), RSA_PKCS1_PADDING);
-    if (len != 32) {
-        qWarning() << "Invalid encryption key:" << _socket->peerAddress();
-        deactivate("Invalid encryption key.");
-        return;
-    }
-    EVP_EncryptInit_ex(&_ectx, EVP_aes_128_cbc(), 0, (unsigned char*)secret.data(),
-        (unsigned char*)secret.data() + 16);
-    EVP_DecryptInit_ex(&_dctx, EVP_aes_128_cbc(), 0, (unsigned char*)secret.data(),
-        (unsigned char*)secret.data() + 16);
+    QByteArray output;
+    if (_httpConnection == 0) {
+        QByteArray encryptedSecret = _stream.device()->read(128);
+        QByteArray secret(32, 0);
+        int len = RSA_private_decrypt(128, (const unsigned char*)encryptedSecret.constData(),
+            (unsigned char*)secret.data(), _app->connectionManager()->rsa(), RSA_PKCS1_PADDING);
+        if (len != 32) {
+            qWarning() << "Invalid encryption key:" << _address;
+            deactivate("Invalid encryption key.");
+            return;
+        }
+        EVP_EncryptInit_ex(&_ectx, EVP_aes_128_cbc(), 0, (unsigned char*)secret.data(),
+            (unsigned char*)secret.data() + 16);
+        EVP_DecryptInit_ex(&_dctx, EVP_aes_128_cbc(), 0, (unsigned char*)secret.data(),
+            (unsigned char*)secret.data() + 16);
 
-    // the rest is encrypted with the secret key
-    QByteArray output = readEncrypted(length - 4 - 128);
+        // the rest is encrypted with the secret key
+        output = readEncrypted(length - 4 - 128);
+    }
     QDataStream ostream(output);
+    QDataStream& stream = (_httpConnection == 0) ? ostream : _stream;
+
     quint16 qlen, clen;
-    ostream >> qlen;
+    stream >> qlen;
     QByteArray query(qlen, 0);
-    ostream.readRawData(query.data(), qlen);
-    ostream >> clen;
+    stream.readRawData(query.data(), qlen);
+    stream >> clen;
     QByteArray cookie(clen, 0);
-    ostream.readRawData(cookie.data(), clen);
+    stream.readRawData(cookie.data(), clen);
 
     // parse out the query and cookie values
     if (query.startsWith('?')) {
@@ -450,7 +488,10 @@ void Connection::readHeader ()
     }
 
     // disable the connection until we're ready to read subsequent messages
-    _socket->disconnect(this, SLOT(readHeader()));
+    disconnect(this, SLOT(readHeader(int)));
+    if (_httpConnection != 0) {
+        _httpConnection->setWebSocketPaused(true);
+    }
 
     // log the establishment
     qDebug() << "Connection established." << _displaySize;
@@ -459,24 +500,36 @@ void Connection::readHeader ()
     _app->connectionManager()->connectionEstablished(this);
 }
 
-void Connection::readMessages ()
+void Connection::readMessages (int bytesAvailable)
 {
     // read as many messages as are available
     while (true) {
         if (_clientCrypto) {
             // all messages fit within a single block, so that's exactly the size we want
             int blockSize = EVP_CIPHER_CTX_block_size(&_dctx);
-            if (_socket->bytesAvailable() < blockSize) {
+            if (bytesAvailable < blockSize) {
                 return;
             }
             // read the block in and decrypt it
             QByteArray decrypted = readEncrypted(blockSize);
+            bytesAvailable -= blockSize;
             QDataStream stream(decrypted);
             maybeReadMessage(stream, blockSize);
 
-        } else if (!maybeReadMessage(_stream, _socket->bytesAvailable())) {
+        } else if (!maybeReadMessage(_stream, bytesAvailable)) {
             return; // wait for the rest of the message
         }
+    }
+}
+
+void Connection::readWebSocketMessage (QIODevice* device, int length, bool text)
+{
+    if (text) {
+        qWarning() << "Got text message over WebSocket." << device->read(length);
+    } else {
+        _stream.setDevice(device);
+        emit readyRead(length);
+        _stream.setDevice(_socket);
     }
 }
 
@@ -507,17 +560,51 @@ void Connection::close ()
     emit closed();
 }
 
+void Connection::init ()
+{
+    // init crypto bits
+    EVP_CIPHER_CTX_init(&_ectx);
+    EVP_CIPHER_CTX_init(&_dctx);
+
+    // and geoip/region bits
+    _geoIpRecord = GeoIP_record_by_ipnum(_app->connectionManager()->geoIp(),
+        _address.toIPv4Address());
+    _region = Regions[0].name;
+    if (_geoIpRecord != 0) {
+        // find the closest region
+        double leastDist = Regions[0].distance(_geoIpRecord->latitude, _geoIpRecord->longitude);
+        for (int ii = 1, nn = sizeof(Regions) / sizeof(Region); ii < nn; ii++) {
+            double dist = Regions[ii].distance(_geoIpRecord->latitude, _geoIpRecord->longitude);
+            if (dist < leastDist) {
+                _region = Regions[ii].name;
+                leastDist = dist;
+            }
+        }
+    }
+
+    // set the socket's low delay option, in case it helps with latency
+    _socket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+
+    // connect initial slot
+    connect(this, SIGNAL(readyRead(int)), SLOT(readHeader(int)));
+}
+
 void Connection::startMessage (quint16 length)
 {
-    if (_crypto && _compoundCount == 0) {
-        // replace the socket with a buffer that will write to a byte array
-        QBuffer* buffer = new QBuffer();
-        buffer->open(QIODevice::WriteOnly);
-        _stream.setDevice(buffer);
-
-    } else {
-        _stream << length;
+    if (_compoundCount == 0) {
+        if (_crypto) {
+            // replace the socket with a buffer that will write to a byte array
+            QBuffer* buffer = new QBuffer();
+            buffer->open(QIODevice::WriteOnly);
+            _stream.setDevice(buffer);
+            return;
+        }
+        if (_httpConnection != 0) {
+            _httpConnection->writeWebSocketHeader(length);
+            return;
+        }
     }
+    _stream << length;
 }
 
 void Connection::endMessage ()
@@ -541,7 +628,7 @@ void Connection::write (const QRect& rect)
 
 QByteArray Connection::readEncrypted (int length)
 {
-    QByteArray in = _socket->read(length);
+    QByteArray in = _stream.device()->read(length);
     QByteArray out(in.length(), 0);
     int outl;
     EVP_DecryptUpdate(&_dctx, (unsigned char*)out.data(), &outl,
@@ -564,14 +651,18 @@ void Connection::writeEncrypted (QByteArray& in)
     int finall;
     EVP_EncryptFinal_ex(&_ectx, (unsigned char*)out.data() + outl, &finall);
     int length = outl + finall;
-    _stream << (quint16)length;
+    if (_httpConnection != 0) {
+        _httpConnection->writeWebSocketHeader(length);
+    } else {
+        _stream << (quint16)length;
+    }
     _socket->write(out.constData(), length);
 
     // immediately reinitialize
     EVP_EncryptInit_ex(&_ectx, 0, 0, 0, (unsigned char*)out.data() + length - blockSize);
 }
 
-bool Connection::maybeReadMessage (QDataStream& stream, qint64 available)
+bool Connection::maybeReadMessage (QDataStream& stream, int& available)
 {
     if (available < 1) {
         return false; // wait until we have the type
@@ -579,9 +670,11 @@ bool Connection::maybeReadMessage (QDataStream& stream, qint64 available)
     quint8 type;
     stream >> type;
     if (type == WINDOW_CLOSED_MSG) {
+        available--;
         emit windowClosed();
 
     } else if (type == CRYPTO_TOGGLED_MSG) {
+        available--;
         _clientCrypto = !_clientCrypto;
 
     } else if (type == PONG_MSG) {
@@ -591,6 +684,7 @@ bool Connection::maybeReadMessage (QDataStream& stream, qint64 available)
         }
         quint64 then;
         stream >> then;
+        available -= 9;
         qDebug() << "rtt" << (currentTimeMillis() - then);
 
     } else if (type == MOUSE_PRESSED_MSG || type == MOUSE_RELEASED_MSG) {
@@ -601,6 +695,7 @@ bool Connection::maybeReadMessage (QDataStream& stream, qint64 available)
         quint16 x, y;
         stream >> x;
         stream >> y;
+        available -= 5;
         emit (type == MOUSE_PRESSED_MSG) ? mousePressed(x, y) : mouseReleased(x, y);
 
     } else {
@@ -614,6 +709,7 @@ bool Connection::maybeReadMessage (QDataStream& stream, qint64 available)
         quint16 ch;
         stream >> key;
         stream >> ch;
+        available -= 7;
         switch (type) {
             case KEY_PRESSED_MSG:
                 emit keyPressed(key, ch, false);

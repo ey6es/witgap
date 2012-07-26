@@ -1,14 +1,80 @@
 //
 // $Id$
 
+/** Flag indicating that the character should be displayed in reverse. */
+var REVERSE_FLAG = 0x10000;
+
+/** Flag indicating that the character should be displayed half-bright. */
+var DIM_FLAG = 0x20000;
+
+/** The magic number that identifies the protocol. */
+var PROTOCOL_MAGIC = 0x57544750; // "WTGP"
+
+/** The protocol version. */
+var PROTOCOL_VERSION = 0x00000001;
+
+/** Outgoing message: mouse pressed. */
+var MOUSE_PRESSED_MSG = 0;
+
+/** Outgoing message: mouse released. */
+var MOUSE_RELEASED_MSG = 1;
+
+/** Outgoing message: key pressed. */
+var KEY_PRESSED_MSG = 2;
+
+/** Outgoing message: key pressed on the number pad. */
+var KEY_PRESSED_NUMPAD_MSG = 3;
+
+/** Outgoing message: key released. */
+var KEY_RELEASED_MSG = 4;
+
+/** Outgoing message: key released on the number pad. */
+var KEY_RELEASED_NUMPAD_MSG = 5;
+
+/** Outgoing message: window closed. */
+var WINDOW_CLOSED_MSG = 6;
+
+/** Outgoing message: encryption toggled. */
+var CRYPTO_TOGGLED_MSG = 7;
+
+/** Outgoing message: pong. */
+var PONG_MSG = 8;
+
+/** Incoming message: add or update window. */
+var UPDATE_WINDOW_MSG = 0;
+
+/** Incoming message: remove window. */
+var REMOVE_WINDOW_MSG = 1;
+
+/** Incoming message: set contents. */
+var SET_CONTENTS_MSG = 2;
+
+/** Incoming message: move contents. */
+var MOVE_CONTENTS_MSG = 3;
+
+/** Incoming message: set cookie. */
+var SET_COOKIE_MSG = 4;
+
+/** Incoming message: close. */
+var CLOSE_MSG = 5;
+
+/** Incoming message: toggle encryption. */
+var TOGGLE_CRYPTO_MSG = 6;
+
+/** Incoming message: compound message follows. */
+var COMPOUND_MSG = 7;
+
+/** Incoming message: ping. */
+var PING_MSG = 8;
+
+/** Incoming message: reconnect. */
+var RECONNECT_MSG = 9;
+
+/** Incoming message: evaluate. */
+var EVALUATE_MSG = 10;
+
 /** The 2D graphics context for the canvas. */
 var ctx;
-
-/** The dimensions of each character in pixels. */
-var charWidth, charHeight;
-
-/** The width and height of the display in characters. */
-var width, height;
 
 /** The pixel offset of the character grid within the display. */
 var offsetX, offsetY;
@@ -19,8 +85,17 @@ var contents;
 /** Cached character bitmaps mapped by value. */
 var bitmapData = Object();
 
+/** The width and height of the display in characters. */
+var width, height;
+
+/** The dimensions of each character in pixels. */
+var charWidth, charHeight;
+
 /** The socket through which we communicate with the server. */
 var socket;
+
+/** Whether or not to encrypt incoming/outgoing messages. */
+var crypto = false;
 
 /** The list of windows (sorted by layer). */
 var windows = new Array();
@@ -58,19 +133,164 @@ function init ()
     document.onkeyup = function (event) {
     };
 
+    connect("localhost", 8080);
+}
+
+/**
+ * Attempts to connect to the WebSocket server at the specified host and port.
+ */
+function connect (host, port)
+{
+    var url = "ws://" + host + ":" + port + "/client";
     if ("WebSocket" in window) {
-        socket = new WebSocket("ws://localhost:8080/client");
+        socket = new WebSocket(url);
     } else if ("MozWebSocket" in window) {
-        socket = new MozWebSocket("ws://localhost:8080/client");
+        socket = new MozWebSocket(url);
     }
+    socket.binaryType = "arraybuffer";
     socket.onopen = function () {
+        // clear out the windows
+        windows.length = 0;
+        dirty.setTo(0, 0, width, height);
+
+        // write the preamble
+        var header = new ByteArray();
+        header.writeUnsignedInt(PROTOCOL_MAGIC);
+        header.writeUnsignedInt(PROTOCOL_VERSION);
+
+        var remainder = new ByteArray();
+        remainder.writeShort(width);
+        remainder.writeShort(height);
+
+        remainder.writeUTF(location.search);
+        remainder.writeUTF(document.cookie);
+
+        header.writeUnsignedInt(remainder.size);
+        header.writeBytes(remainder);
+
+        socket.send(header.compact());
     };
     socket.onerror = function () {
         fatalError("No connection to server.  Please wait a moment, " +
             "then reload the page.");
     };
     socket.onmessage = function (event) {
+        if (decodeMessage(new ByteArray(event.data))) {
+            updateDisplay();
+        }
     };
+}
+
+/**
+ * Decodes the message contained in the provided byte array.
+ *
+ * @return whether or not the message modified the display.
+ */
+function decodeMessage (bytes)
+{
+    var type = bytes.readUnsignedByte();
+    switch (type) {
+        case UPDATE_WINDOW_MSG:
+            updateWindow(bytes.readInt(), bytes.readInt(),
+                readRectangle(bytes), bytes.readInt());
+            return true;
+
+        case REMOVE_WINDOW_MSG:
+            removeWindow(bytes.readInt());
+            return true;
+
+        case SET_CONTENTS_MSG:
+            var id = bytes.readInt();
+            var bounds = readRectangle(bytes);
+            var contents = new Array(bounds.width * bounds.height);
+            for (var ii = 0; ii < contents.length; ii++) {
+                contents[ii] = bytes.readInt();
+            }
+            setWindowContents(id, bounds, contents);
+            return true;
+
+        case MOVE_CONTENTS_MSG:
+            moveWindowContents(bytes.readInt(), readRectangle(bytes),
+                new Point(bytes.readShort(), bytes.readShort()), bytes.readInt());
+            return true;
+
+        case SET_COOKIE_MSG:
+            setCookie(bytes.readUTF(), bytes.readUTFBytes(bytes.bytesAvailable()));
+            return false;
+
+        case CLOSE_MSG:
+            fatalError(bytes.readUTFBytes(bytes.bytesAvailable()));
+            socket.close();
+            return false;
+
+        case TOGGLE_CRYPTO_MSG:
+            // respond immediately in the affirmative and toggle
+            var out = startMessage();
+            out.writeByte(CRYPTO_TOGGLED_MSG);
+            endMessage(out);
+            crypto = !crypto;
+            return false;
+
+        case COMPOUND_MSG:
+            var modified = false;
+            while (bytes.bytesAvailable() > 0) {
+                var mbytes = new ByteArray();
+                bytes.readBytes(mbytes, 0, bytes.readUnsignedShort());
+                mbytes.position = 0;
+                modified = decodeMessage(mbytes) || modified;
+            }
+            return modified;
+
+        case PING_MSG:
+            // respond immediately with the pong
+            out = startMessage();
+            out.writeByte(PONG_MSG);
+            out.writeBytes(bytes, bytes.position, bytes.bytesAvailable());
+            endMessage(out);
+            return false;
+
+        case RECONNECT_MSG:
+            socket.close();
+            connect(bytes.readUTFBytes(bytes.bytesAvailable() - 2), bytes.readUnsignedShort());
+            return false;
+
+        case EVALUATE_MSG:
+            eval(bytes.readUTFBytes(bytes.bytesAvailable()));
+            return false;
+
+        default:
+            console.log("Unknown message type.", type);
+            return false;
+    }
+}
+
+/**
+ * Starts a message.
+ *
+ * @return the output array to write to.
+ */
+function startMessage ()
+{
+    return new ByteArray();
+}
+
+/**
+ * Finishes a message.
+ *
+ * @param out the output array returned from {@link #startMessage}.
+ */
+function endMessage (out)
+{
+    socket.send(out.compact());
+}
+
+/**
+ * Reads and returns a rectangle from the provided array.
+ */
+function readRectangle (bytes)
+{
+    return new Rectangle(bytes.readShort(), bytes.readShort(),
+        bytes.readShort(), bytes.readShort());
 }
 
 /**

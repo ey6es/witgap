@@ -95,6 +95,17 @@ Rectangle.prototype.equals = function (orect)
 };
 
 /**
+ * Sets the fields of the rectangle.
+ */
+Rectangle.prototype.setTo = function (x, y, width, height)
+{
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+};
+
+/**
  * Copies values from another rectangle.
  */
 Rectangle.prototype.copyFrom = function (orect)

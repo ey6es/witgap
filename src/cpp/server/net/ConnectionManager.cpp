@@ -172,6 +172,7 @@ bool ConnectionManager::handleRequest (
 {
     if (connection->isWebSocketRequest()) {
         connection->switchToWebSocket();
+        new Connection(_app, connection);
         return true;
     }
     return false;
