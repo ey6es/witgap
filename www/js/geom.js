@@ -34,6 +34,12 @@ function Rectangle (x, y, width, height)
  */
 Rectangle.prototype.intersection = function (orect)
 {
+    if (this.isEmpty()) {
+        return orect.clone();
+    }
+    if (orect.isEmpty()) {
+        return this.clone();
+    }
     var mx = Math.max(this.x, orect.x);
     var my = Math.max(this.y, orect.y);
     return new Rectangle(mx, my,
@@ -46,6 +52,12 @@ Rectangle.prototype.intersection = function (orect)
  */
 Rectangle.prototype.union = function (orect)
 {
+    if (this.isEmpty()) {
+        return orect.clone();
+    }
+    if (orect.isEmpty()) {
+        return this.clone();
+    }
     var mx = Math.min(this.x, orect.x);
     var my = Math.min(this.y, orect.y);
     return new Rectangle(mx, my,

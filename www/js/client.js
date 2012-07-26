@@ -128,10 +128,8 @@ function init ()
         contents[ii] = 0x20;
     }
 
-    document.onkeydown = function (event) {
-    };
-    document.onkeyup = function (event) {
-    };
+    document.onkeydown = sendKeyMessage;
+    document.onkeyup = sendKeyMessage;
 
     connect("localhost", 8080);
 }
@@ -179,6 +177,18 @@ function connect (host, port)
             updateDisplay();
         }
     };
+}
+
+function sendKeyMessage (event)
+{
+    if (socket.readyState != WebSocket.OPEN) {
+        return;
+    }
+    var out = startMessage();
+    out.writeByte(event.type == "keydown" ? KEY_PRESSED_MSG : KEY_RELEASED_MSG);
+    out.writeUnsignedInt(getQtKeyCode(event));
+    out.writeShort(event.which);
+    endMessage(out);
 }
 
 /**
@@ -698,5 +708,5 @@ Window.prototype.moveContents = function (src, dest, fill)
     }
 
     // then set it in the main one
-    setContents(new Rectangle(dest.x, dest.y, src.width, src.height), values);
+    this.setContents(new Rectangle(dest.x, dest.y, src.width, src.height), values);
 }

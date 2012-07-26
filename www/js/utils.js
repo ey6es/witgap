@@ -126,7 +126,7 @@ ByteArray.prototype.writeBytes = function (array, position, size)
         size = array.size;
     }
     this.willWrite(this.position, size);
-    this.view.set(array.view.subarray(position, size), this.position);
+    this.view.set(array.view.subarray(position, position + size), this.position);
     this.position += size;
 };
 
@@ -142,7 +142,7 @@ ByteArray.prototype.readBytes = function (array, position, size)
         size = this.bytesAvailable();
     }
     array.willWrite(position, size);
-    array.view.subarray(position, size).set(this.view.subarray(this.position, size));
+    array.view.set(this.view.subarray(this.position, this.position + size), position);
     this.position += size;
 };
 
