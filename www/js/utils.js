@@ -40,7 +40,7 @@ ByteArray.prototype.clear = function ()
 
 ByteArray.prototype.bytesAvailable = function ()
 {
-    return this.size - this.position;
+    return (this.size - this.position);
 };
 
 ByteArray.prototype.compact = function ()
@@ -80,7 +80,7 @@ ByteArray.prototype.writeShort = function (value)
  */
 ByteArray.prototype.readShort = function ()
 {
-    return (this.view[this.position++] << 16) | (this.view[this.position++] & 0xFF);
+    return (this.view[this.position++] << 8) | (this.view[this.position++] & 0xFF);
 };
 
 /**
@@ -88,7 +88,7 @@ ByteArray.prototype.readShort = function ()
  */
 ByteArray.prototype.readUnsignedShort = function ()
 {
-    return ((this.view[this.position++] & 0xFF) << 16) | (this.view[this.position++] & 0xFF);
+    return ((this.view[this.position++] & 0xFF) << 8) | (this.view[this.position++] & 0xFF);
 };
 
 /**

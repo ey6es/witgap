@@ -21,9 +21,23 @@
                     document.getElementById("outer")).willBeUnloaded();
             };
         </script>
+        <style type="text/css">
+            body {
+                color: #00FF00;
+                background-color: #000000;
+                font-size: small;
+            }
+            a:link {
+                color: inherit;
+            }
+            a:visited {
+                color: inherit;
+            }
+        </style>
     </head>
 
-    <body style="background-color: #000000;">
+    <body>
+        <div style="width: 800;">
         <object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000"
                 width="800" height="600" id="outer" align="middle">
             <param name="movie" value="client.swf"/>
@@ -41,6 +55,9 @@
             <!--[if !IE]>-->
             </object>
             <!--<![endif]-->
-        </object>
+        </object><br>
+        <div style="text-align: right;">flash / <a href="html5.html">html5</a></div><br>
+        <iframe frameborder="0" scrolling="no" width="800" height="50" id="importExport"></iframe>
+        </div>
     </body>
 </html>

@@ -73,6 +73,9 @@ var RECONNECT_MSG = 9;
 /** Incoming message: evaluate. */
 var EVALUATE_MSG = 10;
 
+/** The canvas element. */
+var canvas;
+
 /** The 2D graphics context for the canvas. */
 var ctx;
 
@@ -91,6 +94,9 @@ var width, height;
 /** The dimensions of each character in pixels. */
 var charWidth, charHeight;
 
+/** The foreground, background, and dim colors. */
+var foreground, background, dim;
+
 /** The socket through which we communicate with the server. */
 var socket;
 
@@ -108,14 +114,13 @@ var dirty;
  */
 function init ()
 {
-    var canvas = document.getElementById("canvas");
+    canvas = document.getElementById("canvas");
     ctx = canvas.getContext("2d");
-    ctx.font = "12px Courier";
-    ctx.fillStyle = "#00FF00";
+    ctx.font = "12px/1.3em Monospace";
     ctx.textAlign = "left";
-    ctx.textBaseline = "top";
+    ctx.textBaseline = "bottom";
     charWidth = ctx.measureText("A").width;
-    charHeight = 12;
+    charHeight = 15;
     width = Math.floor(canvas.width / charWidth);
     height = Math.floor(canvas.height / charHeight);
     offsetX = Math.round((canvas.width % charWidth) / 2);
@@ -128,8 +133,13 @@ function init ()
         contents[ii] = 0x20;
     }
 
+    setColors(getForeground(), getBackground());
+
     document.onkeydown = sendKeyMessage;
     document.onkeyup = sendKeyMessage;
+    canvas.onmousedown = sendMouseMessage;
+    canvas.onmouseup = sendMouseMessage;
+    window.onbeforeunload = willBeUnloaded;
 
     connect("localhost", 8080);
 }
@@ -143,6 +153,7 @@ function connect (host, port)
     if ("WebSocket" in window) {
         socket = new WebSocket(url);
     } else if ("MozWebSocket" in window) {
+        WebSocket = MozWebSocket;
         socket = new MozWebSocket(url);
     }
     socket.binaryType = "arraybuffer";
@@ -179,6 +190,9 @@ function connect (host, port)
     };
 }
 
+/**
+ * Sends a key message corresponding to the given event.
+ */
 function sendKeyMessage (event)
 {
     if (socket.readyState != WebSocket.OPEN) {
@@ -189,6 +203,40 @@ function sendKeyMessage (event)
     out.writeUnsignedInt(getQtKeyCode(event));
     out.writeShort(event.which);
     endMessage(out);
+}
+
+/**
+ * Sends a mouse message corresponding to the given event.
+ */
+function sendMouseMessage (event)
+{
+    if (socket.readyState != WebSocket.OPEN) {
+        return;
+    }
+    var x = Math.floor((event.clientX - canvas.offsetLeft - offsetX) / charWidth);
+    var y = Math.floor((event.clientY - canvas.offsetTop - offsetY) / charHeight);
+    if (x < 0 || y < 0 || x >= width || y >= height) {
+        return;
+    }
+    var out = startMessage();
+    out.writeByte(event.type == "mousedown" ? MOUSE_PRESSED_MSG : MOUSE_RELEASED_MSG);
+    out.writeShort(x);
+    out.writeShort(y);
+    endMessage(out);
+}
+
+/**
+ * Sends a window closed message.
+ */
+function willBeUnloaded (event)
+{
+    if (socket.readyState != WebSocket.OPEN) {
+        return;
+    }
+    var out = startMessage();
+    out.writeByte(WINDOW_CLOSED_MSG);
+    endMessage(out);
+    socket.close();
 }
 
 /**
@@ -499,9 +547,59 @@ function drawCharacter (x, y, value)
         ctx.putImageData(data, px, py);
         return;
     }
-    ctx.clearRect(px, py, charWidth, charHeight);
-    ctx.fillText(String.fromCharCode(value & 0xFFFF), px, py);
+    if ((value & REVERSE_FLAG) == 0) {
+        ctx.fillStyle = background;
+        ctx.fillRect(px, py, charWidth, charHeight);
+        ctx.fillStyle = (value & DIM_FLAG) == 0 ? foreground : dim;
+
+    } else {
+        ctx.fillStyle = foreground;
+        ctx.fillRect(px, py, charWidth, charHeight);
+        ctx.fillStyle = background;
+    }
+    ctx.fillText(String.fromCharCode(value & 0xFFFF), px, py + charHeight - 1);
     bitmapData[value] = ctx.getImageData(px, py, charWidth, charHeight);
+}
+
+/**
+ * Sets the foreground and background colors.
+ */
+function setColors (fg, bg)
+{
+    foreground = "#" + fg;
+    background = "#" + bg;
+
+    document.body.style.color = foreground;
+    document.body.style.backgroundColor = background;
+
+    // the dim color is halfway between foreground and background
+    var ifg = parseInt(fg, 16);
+    var ibg = parseInt(bg, 16);
+    var r = ((ifg >> 16) + (ibg >> 16)) / 2;
+    var g = (((ifg >> 8) & 0xFF) + ((ibg >> 8) & 0xFF)) / 2;
+    var b = ((ifg & 0xFF) + (ibg & 0xFF)) / 2;
+    dim = "#" + padColor(((r << 16) | (g << 8) | b).toString(16));
+
+    // dispose of all cached bitmaps
+    bitmapData = new Object();
+
+    // invalidate the contents, make everything dirty, refresh
+    for (var ii = 0; ii < contents.length; ii++) {
+        contents[ii] = -1;
+    }
+    dirty.setTo(0, 0, width, height);
+    updateDisplay();
+}
+
+/**
+ * Pads a color out to the full six digits.
+ */
+function padColor (str)
+{
+    while (str.length < 6) {
+        str = "0" + str;
+    }
+    return str;
 }
 
 /**
@@ -512,6 +610,22 @@ function setCookie (key, value)
     var expires = new Date();
     expires.setFullYear(expires.getFullYear() + 5);
     document.cookie = key + "=" + escape(value) + "; expires=" + expires.toUTCString();
+}
+
+/**
+ * Retrieves the foreground color preference as a string.
+ */
+function getForeground ()
+{
+    return getCookie("foreground", "00FF00");
+}
+
+/**
+ * Retrieves the background color preference as a string.
+ */
+function getBackground ()
+{
+    return getCookie("background", "000000");
 }
 
 /**

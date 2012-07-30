@@ -4,12 +4,30 @@
         <meta name="description" content="..."/>
         <meta name="keywords" content="ASCII,online,game,sandbox,MMO"/>
         <meta name="author" content="Andrzej Kapolka"/>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
         <script type="text/javascript" src="js/geom.js"></script>
         <script type="text/javascript" src="js/utils.js"></script>
         <script type="text/javascript" src="js/client.js"></script>
+        <style type="text/css">
+            body {
+                color: #00FF00;
+                background-color: #000000;
+                font-size: small;
+            }
+            a:link {
+                color: inherit;
+            }
+            a:visited {
+                color: inherit;
+            }
+        </style>
     </head>
 
-    <body style="background-color: #000000;" onload="init()">
-        <canvas width="800" height="600" id="canvas"/>
+    <body onload="init()">
+        <div style="width: 800;">
+        <canvas width="800" height="600" id="canvas"></canvas><br>
+        <div style="text-align: right;"><a href="index.html">flash</a> / html5</div><br>
+        <iframe frameborder="0" scrolling="no" width="800" height="50" id="importExport"></iframe>
+        </div>
     </body>
 </html>
