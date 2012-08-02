@@ -23,7 +23,7 @@ function ByteArray (buffer)
 
 ByteArray.prototype.get = function (position)
 {
-    return this.view[position];
+    return this.view[position] & 0xFF;
 };
 
 ByteArray.prototype.set = function (position, value)
@@ -218,4 +218,14 @@ ByteArray.prototype.willWrite = function (position, size)
     var oview = this.view;
     this.view = new Int8Array(ncapacity);
     this.view.set(oview.subarray(0, osize));
+};
+
+ByteArray.prototype.toString = function ()
+{
+    var str = "";
+    for (var ii = 0; ii < this.size; ii++) {
+        var num = this.get(ii).toString(16);
+        str += (num.length == 1 ? "0" : "") + num;
+    }
+    return str;
 };

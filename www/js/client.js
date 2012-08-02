@@ -1,6 +1,9 @@
 //
 // $Id$
 
+/** The minimum delay, in ms, between key repeats. */
+var MIN_KEY_REPEAT_DELAY = 30;
+
 /** Flag indicating that the character should be displayed in reverse. */
 var REVERSE_FLAG = 0x10000;
 
@@ -109,6 +112,18 @@ var windows = new Array();
 /** The current dirty rectangle. */
 var dirty;
 
+/** Last times each key was pressed. */
+var keyPressedTimes = new Object();
+
+/** The key press event being processed, if any. */
+var keyPressEvent;
+
+/** The timeout corresponding to the key press event, if any. */
+var keyPressTimeout;
+
+/** Maps key codes to characters. */
+var keyCharacters = new Object();
+
 /**
  * Entry point: called on load to initialize the client.
  */
@@ -137,9 +152,12 @@ function init ()
 
     document.onkeydown = sendKeyMessage;
     document.onkeyup = sendKeyMessage;
+    document.onkeypress = sendKeyMessage;
     canvas.onmousedown = sendMouseMessage;
     canvas.onmouseup = sendMouseMessage;
     window.onbeforeunload = willBeUnloaded;
+
+    window.focus();
 
     connect("localhost", 8080);
 }
@@ -161,6 +179,13 @@ function connect (host, port)
         // clear out the windows
         windows.length = 0;
         dirty.setTo(0, 0, width, height);
+
+        // create our encryption key/iv and encrypt using the public key
+        var rand = new Random();
+        var secret = new ByteArray(), iv = new ByteArray();
+        rand.nextBytes(secret, 16);
+        rand.nextBytes(iv, 16);
+        console.log(secret.toString(), iv.toString());
 
         // write the preamble
         var header = new ByteArray();
@@ -198,10 +223,64 @@ function sendKeyMessage (event)
     if (socket.readyState != WebSocket.OPEN) {
         return;
     }
+    switch (event.type) {
+        case "keydown":
+            // rather than sending a message immediately, we wait for a subsequent keypress
+            // event in case that can tell us the character corresponding to the code
+            if (keyPressTimeout) {
+                writeKeyMessage(true, keyPressEvent, 0);
+
+            } else {
+                keyPressTimeout = window.setTimeout(flushKeyPress, 0);
+            }
+            keyPressEvent = event;
+            break;
+
+        case "keypress":
+            if (keyPressTimeout) {
+                // see http://unixpapa.com/js/key.html, "Conclusions"
+                var character = 0;
+                if (event.which == null) {
+                    character = event.keyCode;
+                } else if (event.which != 0 && event.charCode != 0) {
+                    character = event.which;
+                }
+                keyCharacters[keyPressEvent.keyCode] = character;
+                writeKeyMessage(true, keyPressEvent, character);
+                window.clearTimeout(keyPressTimeout);
+                keyPressTimeout = null;
+            }
+            break;
+
+        case "keyup":
+            if (keyPressTimeout) {
+                window.clearTimeout(keyPressTimeout);
+                flushKeyPress();
+            }
+            writeKeyMessage(false, event, keyCharacters[event.keyCode]);
+            break;
+    }
+    return false;
+}
+
+/**
+ * Flushes any key press currently being processed.
+ */
+function flushKeyPress ()
+{
+    writeKeyMessage(true, keyPressEvent, 0);
+    keyPressTimeout = null;
+}
+
+/**
+ * Writes out the actual key message.
+ */
+function writeKeyMessage (pressed, event, character)
+{
     var out = startMessage();
-    out.writeByte(event.type == "keydown" ? KEY_PRESSED_MSG : KEY_RELEASED_MSG);
+    out.writeByte(pressed ? KEY_PRESSED_MSG : KEY_RELEASED_MSG);
     out.writeUnsignedInt(getQtKeyCode(event));
-    out.writeShort(event.which);
+    out.writeShort(character);
     endMessage(out);
 }
 
@@ -339,6 +418,9 @@ function startMessage ()
  */
 function endMessage (out)
 {
+    if (crypto) {
+
+    }
     socket.send(out.compact());
 }
 
