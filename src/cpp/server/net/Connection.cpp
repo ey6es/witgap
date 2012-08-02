@@ -319,9 +319,6 @@ void Connection::setCookie (const QString& name, const QString& value)
 
 void Connection::toggleCrypto ()
 {
-    if (_httpConnection != 0) {
-        return; // TODO: encryption for WebSockets
-    }
     startMessage(1);
     _stream << TOGGLE_CRYPTO_MSG;
     endMessage();
@@ -440,10 +437,10 @@ void Connection::readHeader (int bytesAvailable)
     _stream >> height;
     _displaySize = QSize(width, height);
 
-    QByteArray output;
+    QByteArray encryptedSecret = _stream.device()->read(128);
+    QByteArray secret(32, 0);
+
     if (_httpConnection == 0) {
-        QByteArray encryptedSecret = _stream.device()->read(128);
-        QByteArray secret(32, 0);
         int len = RSA_private_decrypt(128, (const unsigned char*)encryptedSecret.constData(),
             (unsigned char*)secret.data(), _app->connectionManager()->rsa(), RSA_PKCS1_PADDING);
         if (len != 32) {
@@ -451,16 +448,17 @@ void Connection::readHeader (int bytesAvailable)
             deactivate("Invalid encryption key.");
             return;
         }
-        EVP_EncryptInit_ex(&_ectx, EVP_aes_128_cbc(), 0, (unsigned char*)secret.data(),
-            (unsigned char*)secret.data() + 16);
-        EVP_DecryptInit_ex(&_dctx, EVP_aes_128_cbc(), 0, (unsigned char*)secret.data(),
-            (unsigned char*)secret.data() + 16);
-
-        // the rest is encrypted with the secret key
-        output = readEncrypted(length - 4 - 128);
+    } else {
+        qCopy(encryptedSecret.constBegin(), encryptedSecret.constBegin() + 32, secret.begin());
     }
-    QDataStream ostream(output);
-    QDataStream& stream = (_httpConnection == 0) ? ostream : _stream;
+    EVP_EncryptInit_ex(&_ectx, EVP_aes_128_cbc(), 0, (unsigned char*)secret.data(),
+        (unsigned char*)secret.data() + 16);
+    EVP_DecryptInit_ex(&_dctx, EVP_aes_128_cbc(), 0, (unsigned char*)secret.data(),
+        (unsigned char*)secret.data() + 16);
+
+    // the rest is encrypted with the secret key
+    QByteArray output = readEncrypted(length - 4 - 128);
+    QDataStream stream(output);
 
     quint16 qlen, clen;
     stream >> qlen;

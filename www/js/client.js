@@ -103,6 +103,9 @@ var foreground, background, dim;
 /** The socket through which we communicate with the server. */
 var socket;
 
+/** The encryption and decryption contexts. */
+var ectx, dctx;
+
 /** Whether or not to encrypt incoming/outgoing messages. */
 var crypto = false;
 
@@ -185,7 +188,14 @@ function connect (host, port)
         var secret = new ByteArray(), iv = new ByteArray();
         rand.nextBytes(secret, 16);
         rand.nextBytes(iv, 16);
-        console.log(secret.toString(), iv.toString());
+        ectx = new CBCMode(new AESKey(secret), iv);
+        dctx = new CBCMode(new AESKey(secret), iv);
+
+        var combined = new ByteArray(), encrypted = new ByteArray();
+        combined.writeBytes(secret);
+        combined.writeBytes(iv);
+        encrypted.writeBytes(combined);
+        encrypted.set(127, 0);
 
         // write the preamble
         var header = new ByteArray();
@@ -195,9 +205,13 @@ function connect (host, port)
         var remainder = new ByteArray();
         remainder.writeShort(width);
         remainder.writeShort(height);
+        remainder.writeBytes(encrypted);
 
-        remainder.writeUTF(location.search);
-        remainder.writeUTF(document.cookie);
+        encrypted = new ByteArray();
+        encrypted.writeUTF(location.search);
+        encrypted.writeUTF(document.cookie);
+        ectx.encrypt(encrypted);
+        remainder.writeBytes(encrypted);
 
         header.writeUnsignedInt(remainder.size);
         header.writeBytes(remainder);
@@ -209,7 +223,12 @@ function connect (host, port)
             "then reload the page.");
     };
     socket.onmessage = function (event) {
-        if (decodeMessage(new ByteArray(event.data))) {
+        var bytes = new ByteArray(event.data);
+        if (crypto) {
+            dctx.decrypt(bytes);
+        }
+        bytes.position = 0;
+        if (decodeMessage(bytes)) {
             updateDisplay();
         }
     };
@@ -419,7 +438,7 @@ function startMessage ()
 function endMessage (out)
 {
     if (crypto) {
-
+        ectx.encrypt(out);
     }
     socket.send(out.compact());
 }
