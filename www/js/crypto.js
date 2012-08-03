@@ -117,8 +117,6 @@ CBCMode.prototype.decrypt = function (src)
         vector.position = 0;
         vector.writeBytes(tmp, 0, this.blockSize);
     }
-    console.log(src.toString());
-
     this.padding.unpad(src);
 }
 
@@ -517,4 +515,618 @@ AESKey.prototype.invMixSubColumns = function ()
 	for (var ii = 0; ii < 4 * this.Nb; ii++) {
 	    this.state.set(ii, this.InvSbox[this.tmp.get(ii)]);
 	}
+}
+
+function ClassicReduction (m)
+{
+    this.m = m;
+}
+
+ClassicReduction.prototype.convert = function (x)
+{
+    return (x.s < 0 || x.compareTo(this.m) >= 0) ? x.mod(this.m) : x;
+}
+
+ClassicReduction.prototype.sqrTo = function (x, r)
+{
+    x.squareTo(r);
+    this.reduce(r);
+}
+
+ClassicReduction.prototype.mulTo = function (x, y, r)
+{
+    x.multiplyTo(y, r);
+    this.reduce(r);
+}
+
+ClassicReduction.prototype.revert = function (x)
+{
+    return x;
+}
+
+ClassicReduction.prototype.reduce = function (x)
+{
+    x.divRemTo(this.m, null, x);
+}
+
+function MontgomeryReduction (m)
+{
+    this.m = m;
+    this.mp = m.invDigit();
+    this.mpl = this.mp & 0x7fff;
+    this.mph = this.mp >> 15;
+    this.um = (1<<(BigInteger.prototype.DB-15)) - 1;
+    this.mt2 = 2 * m.t;
+}
+
+MontgomeryReduction.prototype.convert = function (x)
+{
+    var r = new BigInteger();
+    x.abs().dlShiftTo(this.m.t, r);
+    r.divRemTo(this.m, null, r);
+    if (x.s < 0 && r.compareTo(BigInteger.prototype.ZERO) > 0) {
+        this.m.subTo(r, r);
+    }
+    return r;
+}
+
+MontgomeryReduction.prototype.sqrTo = function (x, r)
+{
+    x.squareTo(r);
+    this.reduce(r);
+}
+
+MontgomeryReduction.prototype.mulTo = function (x, y, r)
+{
+    x.multiplyTo(y, r);
+    this.reduce(r);
+}
+
+MontgomeryReduction.prototype.revert = function (x)
+{
+    var r = new BigInteger();
+    x.copyTo(r);
+    this.reduce(r);
+    return r;
+}
+
+MontgomeryReduction.prototype.reduce = function (x)
+{
+    while (x.t <= this.mt2) { // pad x so am has enough room later
+        x.a[x.t++] = 0;
+    }
+    for (var ii = 0; ii < this.m.t; ii++) {
+        // faster way of calculating u0 = x[i]*mp mod DV
+        var j = x.a[ii] & 0x7fff;
+        var u0 = (j*this.mpl+(((j*this.mph+(x.a[ii]>>15)*this.mpl)&this.um)<<15))&
+            BigInteger.prototype.DM;
+        // use am to combine the multiply-shift-add into one call
+        j = ii+this.m.t;
+        x.a[j] += this.m.am(0, u0, x, ii, 0, this.m.t);
+        // propagate carry
+        while (x.a[j] >= BigInteger.prototype.DV) {
+            x.a[j] -= BigInteger.prototype.DV;
+            x.a[++j]++;
+        }
+    }
+    x.clamp();
+    x.drShiftTo(this.m.t, x);
+    if (x.compareTo(this.m) >= 0) {
+        x.subTo(this.m, x);
+    }
+}
+
+function BigInteger (value)
+{
+    this.a = new Array();
+    if (value != null) {
+        this.fromArray(value);
+    }
+}
+
+function nbv (value)
+{
+    var bn = new BigInteger();
+    bn.fromInt(value);
+    return bn;
+}
+
+BigInteger.prototype.fromInt = function (value)
+{
+    this.t = 1;
+    this.s = (value < 0) ? -1 : 0;
+    if (value > 0) {
+        this.a[0] = value;
+    } else if (value < -1) {
+        this.a[0] = value + this.DV;
+    } else {
+        this.t = 0;
+    }
+}
+
+BigInteger.prototype.DB = 30; // number of significant bits per chunk
+BigInteger.prototype.DV = (1 << BigInteger.prototype.DB);
+BigInteger.prototype.DM = (BigInteger.prototype.DV-1); // Max value in a chunk
+BigInteger.prototype.ZERO = nbv(0);
+BigInteger.prototype.ONE = nbv(1);
+BigInteger.prototype.BI_FP = 52;
+BigInteger.prototype.FV = Math.pow(2, BigInteger.prototype.BI_FP);
+BigInteger.prototype.F1 = BigInteger.prototype.BI_FP - BigInteger.prototype.DB;
+BigInteger.prototype.F2 = 2*BigInteger.prototype.DB - BigInteger.prototype.BI_FP;
+
+BigInteger.prototype.fromArray = function (value)
+{
+    var sh = 0;
+    this.t = 0;
+    this.s = 0;
+    for (var ii = value.size - 1; ii >= 0; ii--) {
+        var x = value.get(ii);
+        if (sh == 0) {
+            this.a[this.t++] = x;
+        } else if (sh + 8 > this.DB) {
+            this.a[this.t - 1] |= (x&((1<<(this.DB-sh))-1))<<sh;
+            this.a[this.t++] = x >> (this.DB - sh);
+        } else {
+            this.a[this.t - 1] |= x << sh;
+        }
+        sh += 8;
+        if (sh >= this.DB) {
+            sh -= this.DB;
+        }
+    }
+    this.clamp();
+}
+
+BigInteger.prototype.toArray = function (array)
+{
+    var km = (1<<8)-1;
+    var d = 0;
+    var i = this.t;
+    var p = this.DB - (i*this.DB)%8;
+    var m = false;
+    var c = 0;
+    if (i-- > 0) {
+        if (p < this.DB && (d=this.a[i]>>p)>0) {
+            m = true;
+            array.writeByte(d);
+            c++;
+        }
+        while (i >= 0) {
+            if (p < 8) {
+                d = (this.a[i]&((1<<p)-1))<<(8-p);
+                d |= this.a[--i]>>(p+=this.DB-8);
+            } else {
+                d = (this.a[i]>>(p-=8))&km;
+                if (p <= 0) {
+                    p += this.DB;
+                    --i;
+                }
+            }
+            if (d > 0) {
+                m = true;
+            }
+            if (m) {
+                array.writeByte(d);
+                c++;
+            }
+        }
+    }
+    return c;
+}
+
+BigInteger.prototype.modPowInt = function (e, m)
+{
+    var z = (e < 256 || m.isEven()) ? new ClassicReduction(m) : new MontgomeryReduction(m);
+    return this.exp(e, z);
+}
+
+BigInteger.prototype.isEven = function ()
+{
+    return ((this.t>0)?(this.a[0]&1):this.s) == 0;
+}
+
+BigInteger.prototype.exp = function (e, z)
+{
+    if (e > 0xffffffff || e < 1) {
+        return this.ONE;
+    }
+    var r = new BigInteger();
+    var r2 = new BigInteger();
+    var g = z.convert(this);
+    var i = this.nbits(e) - 1;
+    g.copyTo(r);
+    while (--i >= 0) {
+        z.sqrTo(r, r2);
+        if ((e&(1<<i))>0) {
+            z.mulTo(r2,g,r);
+        } else {
+            var t = r;
+            r = r2;
+            r2 = t;
+        }
+    }
+    return z.revert(r);
+}
+
+BigInteger.prototype.nbits = function (x)
+{
+    var r = 1;
+    var t;
+    if ((t=x>>>16) != 0) { x = t; r += 16; }
+    if ((t=x>>8) != 0) { x = t; r += 8; }
+    if ((t=x>>4) != 0) { x = t; r += 4; }
+    if ((t=x>>2) != 0) { x = t; r += 2; }
+    if ((t=x>>1) != 0) { x = t; r += 1; }
+    return r;
+}
+
+BigInteger.prototype.copyTo = function (r)
+{
+    for (var ii = this.t - 1; ii >= 0; ii--) {
+        r.a[ii] = this.a[ii];
+    }
+    r.t = this.t;
+    r.s = this.s;
+}
+
+BigInteger.prototype.mod = function (v)
+{
+    var r = new BigInteger();
+    this.abs().divRemTo(v, null, r);
+    if (this.s < 0 && r.compareTo(this.ZERO) > 0) {
+        v.subTo(r, r);
+    }
+    return r;
+}
+
+BigInteger.prototype.squareTo = function (r)
+{
+    var x = this.abs();
+    var i = r.t = 2*x.t;
+    while (--i >= 0) {
+        r.a[i] = 0;
+    }
+    for (i = 0; i < x.t - 1; i++) {
+        var c = x.am(i, x.a[i], r, 2*i, 0, 1);
+        if ((r.a[i+x.t] += x.am(i+1, 2*x.a[i], r, 2*i+1, c, x.t-i-1)) >= this.DV) {
+            r.a[i+x.t] -= this.DV;
+            r.a[i+x.t+1] = 1;
+        }
+    }
+    if (r.t > 0) {
+        r.a[r.t-1] += x.am(i, x.a[i], r, 2*i, 0, 1);
+    }
+    r.s = 0;
+    r.clamp();
+}
+
+BigInteger.prototype.divRemTo = function (m, q, r)
+{
+    var pm = m.abs();
+    if (pm.t <= 0) {
+        return;
+    }
+    var pt = this.abs();
+    if (pt.t < pm.t) {
+        if (q != null) {
+            q.fromInt(0);
+        }
+        if (r != null) {
+            this.copyTo(r);
+        }
+        return;
+    }
+    if (r == null) {
+        r = new BigInteger();
+    }
+    var y = new BigInteger();
+    var ts = this.s;
+    var ms = m.s;
+    var nsh = this.DB - this.nbits(pm.a[pm.t-1]); // normalize modulus
+    if (nsh > 0) {
+        pm.lShiftTo(nsh, y);
+        pt.lShiftTo(nsh, r);
+    } else {
+        pm.copyTo(y);
+        pt.copyTo(r);
+    }
+    var ys = y.t;
+    var y0 = y.a[ys-1];
+    if (y0==0) {
+        return;
+    }
+    var yt = y0*(1<<this.F1)+((ys>1)?y.a[ys-2]>>this.F2:0);
+    var d1 = this.FV/yt;
+    var d2 = (1<<this.F1)/yt;
+    var e = 1<<this.F2;
+    var i = r.t;
+    var j = i-ys;
+    var t = (q == null) ? new BigInteger() : q;
+    y.dlShiftTo(j, t);
+    t.subTo(y, y); // "negative" y so we can replace sub with am later.
+    while (y.t < ys) {
+        y.a[y.t++] = 0;
+    }
+    while (--j >= 0) {
+        // Estimate quotient digit
+        var qd = Math.floor((r.a[--i]==y0)?this.DM:Number(r.a[i])*d1+(Number(r.a[i-1])+e)*d2);
+        if ((r.a[i]+= y.am(0, qd, r, j, 0, ys))<qd) { // Try it out
+            y.dlShiftTo(j, t);
+            r.subTo(t,r);
+            while (r.a[i]<--qd) {
+                r.subTo(t,r);
+            }
+        }
+    }
+    if (q != null) {
+        r.drShiftTo(ys, q);
+        if (ts != ms) {
+            this.ZERO.subTo(q, q);
+        }
+    }
+    r.t = ys;
+    r.clamp();
+    if (nsh > 0) {
+        r.rShiftTo(nsh, r); // Denormalize remainder
+    }
+    if (ts < 0) {
+        ZERO.subTo(r, r);
+    }
+}
+
+BigInteger.prototype.invDigit = function ()
+{
+    if (this.t < 1) {
+        return 0;
+    }
+    var x = this.a[0];
+    if ((x&1)==0) {
+        return 0;
+    }
+    var y = x&3;                                // y == 1/x mod 2^2
+    y = (y*(2-(x&0xf )*y))             &0xf;    // y == 1/x mod 2^4
+    y = (y*(2-(x&0xff)*y))             &0xff;   // y == 1/x mod 2^8
+    y = (y*(2-(((x&0xffff)*y)&0xffff)))&0xffff;	// y == 1/x mod 2^16
+    // last step - calculate inverse mod DV directly;
+    // assumes 16 < DB <= 32 and assumes ability to handle 48-bit ints
+    // XXX 48 bit ints? Whaaaa? is there an implicit float conversion in here?
+    y = (y*(2-x*y%this.DV))%this.DV;  // y == 1/x mod 2^dbits
+    // we really want the negative inverse, and -DV < y < DV
+    return (y>0)?this.DV-y:-y;
+}
+
+BigInteger.prototype.abs = function ()
+{
+    return (this.s < 0) ? this.negate() : this;
+}
+
+BigInteger.prototype.dlShiftTo = function (n, r)
+{
+    for (var ii = this.t - 1; ii >= 0; ii--) {
+        r.a[ii + n] = this.a[ii];
+    }
+    for (var ii = n - 1; ii >= 0; ii--) {
+        r.a[ii] = 0;
+    }
+    r.t = this.t + n;
+    r.s = this.s;
+}
+
+BigInteger.prototype.compareTo = function (v)
+{
+    var r = this.s - v.s;
+    if (r != 0) {
+        return r;
+    }
+    var i = this.t;
+    r = i - v.t;
+    if (r != 0) {
+        return r;
+    }
+    while (--i >= 0) {
+        r = this.a[i] - v.a[i];
+        if (r != 0) {
+            return r;
+        }
+    }
+    return 0;
+}
+
+BigInteger.prototype.subTo = function (v, r)
+{
+    var i = 0;
+    var c = 0;
+    var m = Math.min(v.t, this.t);
+    while (i < m) {
+        c += this.a[i] - v.a[i];
+        r.a[i++] = c & this.DM;
+        c >>= this.DB;
+    }
+    if (v.t < this.t) {
+        c -= v.s;
+        while (i < this.t) {
+            c += this.a[i];
+            r.a[i++] = c&this.DM;
+            c >>= this.DB;
+        }
+        c += this.s;
+
+    } else {
+        c += this.s;
+        while (i < v.t) {
+            c -= v.a[i];
+            r.a[i++] = c&this.DM;
+            c >>= this.DB;
+        }
+        c -= v.s;
+    }
+    r.s = (c < 0) ? -1 : 0;
+    if (c < -1) {
+        r.a[i++] = this.DV+c;
+    } else if (c > 0) {
+        r.a[i++] = c;
+    }
+    r.t = i;
+    r.clamp();
+}
+
+BigInteger.prototype.multiplyTo = function (v, r)
+{
+    var x = this.abs();
+    var y = v.abs();
+    var i = x.t;
+    r.t = i + y.t;
+    while (--i >= 0) {
+        r.a[i] = 0;
+    }
+    for (i = 0; i < y.t; ++i) {
+        r.a[i+x.t] = x.am(0, y.a[i], r, i, 0, x.t);
+    }
+    r.s = 0;
+    r.clamp();
+    if (this.s != v.s) {
+        this.ZERO.subTo(r, r);
+    }
+}
+
+BigInteger.prototype.drShiftTo = function (n, r)
+{
+    for (var ii = n; ii < this.t; ii++) {
+        r.a[ii - n] = this.a[ii];
+    }
+    r.t = Math.max(this.t - n, 0);
+    r.s = this.s;
+}
+
+BigInteger.prototype.clamp = function ()
+{
+    var c = this.s & this.DM;
+    while (this.t > 0 && this.a[this.t - 1] == c) {
+        --this.t;
+    }
+}
+
+BigInteger.prototype.am = function (i, x, w, j, c, n)
+{
+    var xl = x & 0x7fff;
+    var xh = x >> 15;
+    while (--n >= 0) {
+        var l = this.a[i] & 0x7fff;
+        var h = this.a[i++] >> 15;
+        var m = xh*l + h*xl;
+        l = xl*l + ((m&0x7fff)<<15)+w.a[j]+(c&0x3fffffff);
+        c = (l>>>30)+(m>>>15)+xh*h+(c>>>30);
+        w.a[j++] = l&0x3fffffff;
+    }
+    return c;
+}
+
+BigInteger.prototype.negate = function ()
+{
+    var r = new BigInteger();
+    this.ZERO.subTo(this, r);
+    return r;
+}
+
+BigInteger.prototype.lShiftTo = function (n, r)
+{
+    var bs = n % this.DB;
+    var cbs = this.DB - bs;
+    var bm = (1<<cbs)-1;
+    var ds = Math.floor(n/this.DB);
+    var c = (this.s<<bs)&this.DM;
+    var i;
+    for (i = this.t - 1; i >= 0; --i) {
+        r.a[i+ds+1] = (this.a[i]>>cbs)|c;
+        c = (this.a[i]&bm)<<bs;
+    }
+    for (i = ds - 1; i >= 0; --i) {
+        r.a[i] = 0;
+    }
+    r.a[ds] = c;
+    r.t = this.t+ds+1;
+    r.s = this.s;
+    r.clamp();
+}
+
+BigInteger.prototype.rShiftTo = function (n, r)
+{
+    r.s = this.s;
+    var ds = Math.floor(n / this.DB);
+    if (ds >= this.t) {
+        r.t = 0;
+        return;
+    }
+    var bs = n % this.DB;
+    var cbs = this.DB - bs;
+    var bm = (1<<bs)-1;
+    r.a[0] = this.a[ds]>>bs;
+    var i;
+    for (i = ds + 1; i < this.t; ++i) {
+        r.a[i-ds-1] |= (this.a[i]&bm)<<cbs;
+        r.a[i-ds] = this.a[i]>>bs;
+    }
+    if (bs > 0) {
+        r.a[this.t-ds-1] |= (this.s&bm)<<cbs;
+    }
+    r.t = this.t-ds;
+    r.clamp();
+}
+
+BigInteger.prototype.bitLength = function ()
+{
+    if (this.t <= 0) {
+        return 0;
+    }
+    return this.DB*(this.t-1)+this.nbits(this.a[this.t-1]^(this.s&this.DM));
+}
+
+RSAKey = function (N, E)
+{
+    var bytes = new ByteArray();
+    for (var ii = 0; ii < N.length; ii += 2) {
+        bytes.writeByte(parseInt(N.substr(ii, 2), 16));
+    }
+    bytes.position = 0;
+
+    this.n = new BigInteger(bytes);
+    this.e = parseInt(E, 16);
+}
+
+RSAKey.prototype.encrypt = function (src, dst, len)
+{
+    if (src.position >= src.size) {
+        src.position = 0;
+    }
+    var bl = Math.floor((this.n.bitLength()+7)/8);
+    var end = src.position + len;
+    while (src.position < end) {
+        var block = new BigInteger(this.pkcs1pad(src, end, bl));
+        var chunk = block.modPowInt(this.e, this.n);
+        chunk.toArray(dst);
+    }
+}
+
+RSAKey.prototype.pkcs1pad = function (src, end, n)
+{
+    var out = new ByteArray();
+    var p = src.position;
+    end = Math.min(end, src.size, p + n - 11);
+    src.position = end;
+    var i = end - 1;
+    while (i >= p && n > 11) {
+        out.set(--n, src.get(i--));
+    }
+    out.set(--n, 0);
+    var rng = new Random();
+    while (n > 2) {
+        var x = 0;
+        while (x == 0) {
+            x = rng.nextByte();
+        }
+        out.set(--n, x);
+    }
+    out.set(--n, 0x02);
+    out.set(--n, 0);
+    return out;
 }

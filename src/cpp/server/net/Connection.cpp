@@ -439,17 +439,12 @@ void Connection::readHeader (int bytesAvailable)
 
     QByteArray encryptedSecret = _stream.device()->read(128);
     QByteArray secret(32, 0);
-
-    if (_httpConnection == 0) {
-        int len = RSA_private_decrypt(128, (const unsigned char*)encryptedSecret.constData(),
-            (unsigned char*)secret.data(), _app->connectionManager()->rsa(), RSA_PKCS1_PADDING);
-        if (len != 32) {
-            qWarning() << "Invalid encryption key:" << _address;
-            deactivate("Invalid encryption key.");
-            return;
-        }
-    } else {
-        qCopy(encryptedSecret.constBegin(), encryptedSecret.constBegin() + 32, secret.begin());
+    int len = RSA_private_decrypt(128, (const unsigned char*)encryptedSecret.constData(),
+        (unsigned char*)secret.data(), _app->connectionManager()->rsa(), RSA_PKCS1_PADDING);
+    if (len != 32) {
+        qWarning() << "Invalid encryption key:" << _address;
+        deactivate("Invalid encryption key.");
+        return;
     }
     EVP_EncryptInit_ex(&_ectx, EVP_aes_128_cbc(), 0, (unsigned char*)secret.data(),
         (unsigned char*)secret.data() + 16);

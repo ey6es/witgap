@@ -191,11 +191,11 @@ function connect (host, port)
         ectx = new CBCMode(new AESKey(secret), iv);
         dctx = new CBCMode(new AESKey(secret), iv);
 
+        var rsaKey = new RSAKey("ACDD1383FF248EC3179EECAF0CD406E5BD9F77B8248B207ACF14573515B60B9C8D3A4045D33AB169FC7505F6CC3DE85C1350AC589C65C9269548999B413102A244635BDC08EF261A3451CB51B1A582D464BFF9BA6DEEF46AE8FAD1D850E421AD6FA5BA37915E40264EB8D5E8543C61EF346CB0489B3D1303ADE2BF44FC49F87D", "10001");
         var combined = new ByteArray(), encrypted = new ByteArray();
         combined.writeBytes(secret);
         combined.writeBytes(iv);
-        encrypted.writeBytes(combined);
-        encrypted.set(127, 0);
+        rsaKey.encrypt(combined, encrypted, 32);
 
         // write the preamble
         var header = new ByteArray();
