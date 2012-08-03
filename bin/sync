@@ -9,4 +9,6 @@ rsync -avz etc/blocked_names.txt etc/name_chain.dat etc/GeoLiteCity.dat etc/en.q
 rsync -avz etc/server.ini.prod witgap.com:/export/witgap/etc/server.ini
 rsync -avz etc/server.conf.prod witgap.com:/export/witgap/etc/server.conf
 rsync -avz www/client.swf www/crossdomain.xml witgap.com:/export/witgap/www
+rsync -avz www/js/*.js witgap.com:/export/witgap/www/js
 rsync -avz www/index.html.prod witgap.com:/export/witgap/www/index.html
+rsync -avz www/html5.html.prod witgap.com:/export/witgap/www/html5.html

@@ -158,18 +158,19 @@ ByteArray.prototype.writeUTF = function (value)
             array.writeByte(ch);
 
         } else if (ch <= 0x7FF) {
-
+            array.writeByte(0xC0 | (ch >> 6));
+            array.writeByte(0x80 | (ch & 0x3F));
 
         } else if (ch <= 0xFFFF) {
+            array.writeByte(0xE0 | (ch >> 12));
+            array.writeByte(0x80 | ((ch >> 6) & 0x3F));
+            array.writeByte(0x80 | (ch & 0x3F));
 
-
-        } else if (ch <= 0x1FFFFF) {
-
-
-        } else if (ch <= 0x3FFFFFF) {
-
-        } else { // ch <= 0x7FFFFFFF
-
+        } else { // ch <= 0x10FFFF
+            array.writeByte(0xF0 | (ch >> 18));
+            array.writeByte(0x80 | ((ch >> 12) & 0x3F));
+            array.writeByte(0x80 | ((ch >> 6) & 0x3F));
+            array.writeByte(0x80 | (ch & 0x3F));
         }
     }
     this.writeShort(array.size);
@@ -192,8 +193,26 @@ ByteArray.prototype.readUTFBytes = function (len)
     var value = "";
     for (var ii = 0; ii < len; ii++) {
         var ch = this.readUnsignedByte();
-        if (ch <= 0x7F) {
+        if (ch < 0x80) {
             value += String.fromCharCode(ch);
+
+        } else if (ch < 0xE0) {
+            value += String.fromCharCode(
+                ((ch & 0x1F) << 6) |
+                (this.readUnsignedByte() & 0x3F));
+
+        } else if (ch < 0xF0) {
+            value += String.fromCharCode(
+                ((ch & 0x0F) << 12) |
+                ((this.readUnsignedByte() & 0x3F) << 6) |
+                (this.readUnsignedByte() & 0x3F));
+
+        } else {
+            value += String.fromCharCode(
+                ((ch & 0x07) << 18) |
+                ((this.readUnsignedByte() & 0x3F) << 12) |
+                ((this.readUnsignedByte() & 0x3F) << 6) |
+                (this.readUnsignedByte() & 0x3F));
         }
     }
     return value;
