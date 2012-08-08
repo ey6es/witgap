@@ -164,9 +164,6 @@ Connection::Connection (ServerApp* app, QTcpSocket* socket) :
 {
     init();
 
-    // take over ownership of the socket and set its low delay option
-    _socket->setParent(this);
-
     // connect initial slots
     connect(socket, SIGNAL(readyRead()), SLOT(emitReadyRead()));
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(close()));
@@ -197,7 +194,7 @@ Connection::Connection (ServerApp* app, HttpConnection* httpConnection) :
     // connect initial slots
     connect(httpConnection, SIGNAL(webSocketMessageAvailable(QIODevice*,int,bool)),
         SLOT(readWebSocketMessage(QIODevice*,int,bool)));
-    connect(httpConnection, SIGNAL(webSocketClosed(quint16,QByteArray)), SLOT(close()));
+    connect(httpConnection, SIGNAL(destroyed()), SLOT(close()));
 
     // log the connection
     qDebug() << "WebSocket connection opened." << _address;
@@ -546,6 +543,12 @@ void Connection::close ()
     // we need nothing else from the socket
     _socket->disconnect(this);
 
+    // or the http connection
+    if (_httpConnection != 0) {
+        _httpConnection->disconnect(this);
+        _httpConnection = 0;
+    }
+
     // clear the shared pointer so that we can be deleted
     _pointer.clear();
 
@@ -575,7 +578,8 @@ void Connection::init ()
         }
     }
 
-    // set the socket's low delay option, in case it helps with latency
+    // take over ownership of the socket and set its low delay option
+    _socket->setParent(this);
     _socket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
 
     // connect initial slot

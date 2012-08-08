@@ -110,7 +110,7 @@ var socket;
 var ectx, dctx;
 
 /** Whether or not to encrypt incoming/outgoing messages. */
-var crypto = false;
+var cryptoEnabled = false;
 
 /** The list of windows (sorted by layer). */
 var windows = new Array();
@@ -183,9 +183,10 @@ function connect (host, port)
     }
     socket.binaryType = "arraybuffer";
     socket.onopen = function () {
-        // clear out the windows
+        // clear out the windows, etc.
         windows.length = 0;
         dirty.setTo(0, 0, width, height);
+        cryptoEnabled = false;
 
         // create our encryption key/iv and encrypt using the public key
         var rand = new Random();
@@ -228,7 +229,7 @@ function connect (host, port)
     };
     socket.onmessage = function (event) {
         var bytes = new ByteArray(event.data);
-        if (crypto) {
+        if (cryptoEnabled) {
             dctx.decrypt(bytes);
         }
         bytes.position = 0;
@@ -388,7 +389,7 @@ function decodeMessage (bytes)
             var out = startMessage();
             out.writeByte(CRYPTO_TOGGLED_MSG);
             endMessage(out);
-            crypto = !crypto;
+            cryptoEnabled = !cryptoEnabled;
             return false;
 
         case COMPOUND_MSG:
@@ -441,7 +442,7 @@ function startMessage ()
  */
 function endMessage (out)
 {
-    if (crypto) {
+    if (cryptoEnabled) {
         ectx.encrypt(out);
     }
     socket.send(out.compact());

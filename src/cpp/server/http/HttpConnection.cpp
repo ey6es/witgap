@@ -25,6 +25,7 @@ HttpConnection::HttpConnection (ServerApp* app, QTcpSocket* socket) :
     connect(socket, SIGNAL(readyRead()), SLOT(readRequest()));
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(deleteLater()));
     connect(socket, SIGNAL(disconnected()), SLOT(deleteLater()));
+    connect(this, SIGNAL(webSocketClosed(quint16,QByteArray)), SLOT(deleteLater()));
 
     // log the connection
     qDebug() << "HTTP connection opened." << _address;
