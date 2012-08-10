@@ -521,16 +521,16 @@ public class ClientApp extends Sprite {
     /**
      * Handles key events.
      */
-    protected function sendKeyMessage (event :KeyboardEvent) :void
+    protected function sendKeyMessage (event :KeyboardEvent) :Boolean
     {
         if (!_socket.connected) {
-            return;
+            return false;
         }
         if (event.type == KeyboardEvent.KEY_DOWN) {
             var now :int = getTimer();
             var then :int = _keyPressedTimes[event.keyCode];
             if (now - then < MIN_KEY_REPEAT_DELAY) {
-                return; // repeat rate is too high; drop it
+                return false; // repeat rate is too high; drop it
             }
             _keyPressedTimes[event.keyCode] = now;
 
@@ -545,6 +545,7 @@ public class ClientApp extends Sprite {
         out.writeUnsignedInt(getQtKeyCode(event));
         out.writeShort(event.charCode);
         endMessage(out);
+        return false;
     }
 
     /**

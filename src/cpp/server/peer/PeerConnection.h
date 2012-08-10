@@ -44,9 +44,9 @@ public:
     const QString& host () const { return _host; }
 
     /**
-     * Returns the client port.
+     * Returns the port offset.
      */
-    quint16 port () const { return _port; }
+    quint16 portOffset () const { return _portOffset; }
 
     /**
      * Returns the peer's load estimate.
@@ -109,8 +109,8 @@ protected:
     /** The public hostname. */
     QString _host;
 
-    /** The client port. */
-    quint16 _port;
+    /** The port offset. */
+    quint16 _portOffset;
 
     /** The sessions registered by this connection. */
     QHash<quint64, SessionInfoPointer> _sessions;

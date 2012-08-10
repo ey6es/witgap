@@ -358,14 +358,15 @@ void Connection::commitCompound ()
     delete buffer;
 }
 
-void Connection::reconnect (const QString& host, quint16 port)
+void Connection::reconnect (const QString& host, quint16 portOffset)
 {
     QByteArray hbytes = host.toUtf8();
     int hlen = hbytes.length();
     startMessage(3 + hlen);
     _stream << RECONNECT_MSG;
     _stream.writeRawData(hbytes.constData(), hlen);
-    _stream << port;
+    _stream << (quint16)(_app->config().value(_httpConnection == 0 ?
+        "listen_port" : "http_listen_port").toInt() + portOffset);
     endMessage();
 
     if (_httpConnection != 0) {

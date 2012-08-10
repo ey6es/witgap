@@ -16,7 +16,8 @@ HttpConnection::HttpConnection (ServerApp* app, QTcpSocket* socket) :
     _unmasker(new MaskFilter(socket, this)),
     _stream(socket),
     _address(socket->peerAddress()),
-    _webSocketPaused(false)
+    _webSocketPaused(false),
+    _closeSent(false)
 {
     // take over ownership of the socket
     _socket->setParent(this);
@@ -25,7 +26,6 @@ HttpConnection::HttpConnection (ServerApp* app, QTcpSocket* socket) :
     connect(socket, SIGNAL(readyRead()), SLOT(readRequest()));
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(deleteLater()));
     connect(socket, SIGNAL(disconnected()), SLOT(deleteLater()));
-    connect(this, SIGNAL(webSocketClosed(quint16,QByteArray)), SLOT(deleteLater()));
 
     // log the connection
     qDebug() << "HTTP connection opened." << _address;
@@ -172,10 +172,20 @@ void HttpConnection::setWebSocketPaused (bool paused)
     }
 }
 
-void HttpConnection::closeWebSocket ()
+void HttpConnection::closeWebSocket (quint16 reasonCode, const char* reason)
 {
-    writeFrameHeader(ConnectionClose);
-    _socket->disconnectFromHost();
+    if (reasonCode == NoReason) {
+        writeFrameHeader(ConnectionClose);
+
+    } else {
+        int rlen = (reason == 0) ? 0 : qstrlen(reason);
+        writeFrameHeader(ConnectionClose, 2 + rlen);
+        _stream << reasonCode;
+        if (rlen > 0) {
+            _socket->write(reason);
+        }
+    }
+    _closeSent = true;
 }
 
 void HttpConnection::readRequest ()
@@ -361,6 +371,10 @@ bool HttpConnection::maybeReadFrame ()
             break;
 
         case ConnectionClose:
+            // if this is not a response to our own close request, send a close reply
+            if (!_closeSent) {
+                closeWebSocket(GoingAway);
+            }
             if (length >= 2) {
                 QDataStream stream(device);
                 quint16 reasonCode;
@@ -369,6 +383,7 @@ bool HttpConnection::maybeReadFrame ()
             } else {
                 emit webSocketClosed(0, QByteArray());
             }
+            _socket->disconnectFromHost();
             break;
 
         case Ping:
@@ -398,6 +413,10 @@ bool HttpConnection::maybeReadFrame ()
 
 void HttpConnection::writeFrameHeader (FrameOpcode opcode, int size, bool final)
 {
+    if (_closeSent) {
+        qWarning() << "Writing frame header after close message." << _address << opcode;
+        return;
+    }
     _socket->putChar((final ? 0x80 : 0x0) | opcode);
     if (size < 126) {
         _socket->putChar(size);

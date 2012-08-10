@@ -258,7 +258,7 @@ function sendKeyMessage (event)
                 keyPressTimeout = window.setTimeout(flushKeyPress, 0);
             }
             keyPressEvent = event;
-            break;
+            return isPrinting(event);
 
         case "keypress":
             if (keyPressTimeout) {
@@ -274,7 +274,7 @@ function sendKeyMessage (event)
                 window.clearTimeout(keyPressTimeout);
                 keyPressTimeout = null;
             }
-            break;
+            return false;
 
         case "keyup":
             if (keyPressTimeout) {
@@ -282,9 +282,8 @@ function sendKeyMessage (event)
                 flushKeyPress();
             }
             writeKeyMessage(false, event, keyCharacters[event.keyCode]);
-            break;
+            return isPrinting(event);
     }
-    return false;
 }
 
 /**
@@ -411,8 +410,12 @@ function decodeMessage (bytes)
             return false;
 
         case RECONNECT_MSG:
+            var host = bytes.readUTFBytes(bytes.bytesAvailable() - 2);
+            var port = bytes.readUnsignedShort();
+            socket.onclose = function () {
+                connect(host, port);
+            };
             socket.close();
-            connect(bytes.readUTFBytes(bytes.bytesAvailable() - 2), bytes.readUnsignedShort());
             return false;
 
         case EVALUATE_MSG:
@@ -752,115 +755,124 @@ function getCookie (key, def)
 }
 
 /**
+ * Checks whether the specified event represents a printing character (as opposed to a control
+ * character).  We allow processing for printing characters so as not to block keypress events.
+ */
+function isPrinting (event)
+{
+    return getQtKeyCode(event) < 0xFF;
+}
+
+/**
  * Returns the Qt key code corresponding to the given keyboard event.
  */
 function getQtKeyCode (event)
 {
     switch (event.keyCode) {
-        case 27: return 0x01000000;
-        case 112: return 0x01000030;
-        case 113: return 0x01000031;
-        case 114: return 0x01000032;
-        case 115: return 0x01000033;
-        case 116: return 0x01000034;
-        case 117: return 0x01000035;
-        case 118: return 0x01000036;
-        case 119: return 0x01000037;
-        case 120: return 0x01000038;
-        case 121: return 0x01000039;
-        case 122: return 0x0100003a;
-        case 123: return 0x0100003b;
-        case 124: return 0x0100003c;
-        case 125: return 0x0100003d;
-        case 126: return 0x0100003e;
-        case 44: return 0x01000009;
-        case 145: return 0x01000026;
-        case 19: return 0x01000008;
+        case 27: return 0x01000000; // esc
+        case 112: return 0x01000030; // f1
+        case 113: return 0x01000031; // f2
+        case 114: return 0x01000032; // f3
+        case 115: return 0x01000033; // f4
+        case 116: return 0x01000034; // f5
+        case 117: return 0x01000035; // f6
+        case 118: return 0x01000036; // f7
+        case 119: return 0x01000037; // f8
+        case 120: return 0x01000038; // f9
+        case 121: return 0x01000039; // f10
+        case 122: return 0x0100003a; // f11
+        case 123: return 0x0100003b; // f12
+        case 124: return 0x0100003c; // f13
+        case 125: return 0x0100003d; // f14
+        case 126: return 0x0100003e; // f15
+        case 44: return 0x01000009; // prtscn
+        case 145: return 0x01000026; // scrlk
+        case 19: return 0x01000008; // pause
 
-        case 192: return 0x60;
-        case 48: return 0x30;
-        case 49: return 0x31;
-        case 50: return 0x32;
-        case 51: return 0x33;
-        case 52: return 0x34;
-        case 53: return 0x35;
-        case 54: return 0x36;
-        case 55: return 0x37;
-        case 56: return 0x38;
-        case 57: return 0x39;
-        case 189: return 0x2d;
-        case 187: return 0x3d;
-        case 8: return 0x01000003;
-        case 45: return 0x01000006;
-        case 36: return 0x01000010;
-        case 33: return 0x01000016;
-        case 111: return 0x2f;
-        case 106: return 0x2a;
-        case 109: return 0x2d;
+        case 192: return 0x60; // `
+        case 48: return 0x30; // 0
+        case 49: return 0x31; // 1
+        case 50: return 0x32; // 2
+        case 51: return 0x33; // 3
+        case 52: return 0x34; // 4
+        case 53: return 0x35; // 5
+        case 54: return 0x36; // 6
+        case 55: return 0x37; // 7
+        case 56: return 0x38; // 8
+        case 57: return 0x39; // 9
+        case 189: return 0x2d; // -
+        case 187: return 0x3d; // =
+        case 8: return 0x01000003; // backspace
+        case 45: return 0x01000006; // insert
+        case 36: return 0x01000010; // home
+        case 33: return 0x01000016; // page up
+        case 111: return 0x2f; // divide
+        case 106: return 0x2a; // multiply
+        case 109: return 0x2d; // subtract
 
-        case 9: return 0x01000001;
-        case 81: return 0x51;
-        case 87: return 0x57;
-        case 69: return 0x45;
-        case 82: return 0x52;
-        case 84: return 0x54;
-        case 89: return 0x59;
-        case 85: return 0x55;
-        case 73: return 0x49;
-        case 79: return 0x4f;
-        case 80: return 0x50;
-        case 219: return 0x5b;
-        case 221: return 0x5d;
-        case 220: return 0x5c;
-        case 46: return 0x01000007;
-        case 35: return 0x01000011;
-        case 34: return 0x01000017;
-        case 103: return 0x37;
-        case 104: return 0x38;
-        case 105: return 0x39;
-        case 107: return 0x2b;
+        case 9: return 0x01000001; // tab
+        case 81: return 0x51; // q
+        case 87: return 0x57; // w
+        case 69: return 0x45; // e
+        case 82: return 0x52; // r
+        case 84: return 0x54; // t
+        case 89: return 0x59; // y
+        case 85: return 0x55; // u
+        case 73: return 0x49; // i
+        case 79: return 0x4f; // o
+        case 80: return 0x50; // p
+        case 219: return 0x5b; // [
+        case 221: return 0x5d; // ]
+        case 220: return 0x5c; // back slash
+        case 46: return 0x01000007; // delete
+        case 35: return 0x01000011; // end
+        case 34: return 0x01000017; // page down
+        case 103: return 0x37; // numpad 7
+        case 104: return 0x38; // numpad 8
+        case 105: return 0x39; // numpad 9
+        case 107: return 0x2b; // add
 
-        case 20: return 0x01000024;
-        case 65: return 0x41;
-        case 83: return 0x53;
-        case 68: return 0x44;
-        case 70: return 0x46;
-        case 71: return 0x47;
-        case 72: return 0x48;
-        case 74: return 0x4a;
-        case 75: return 0x4b;
-        case 76: return 0x4c;
-        case 186: return 0x3b;
-        case 222: return 0x27;
-        case 13: return 0x01000004;
-        case 100: return 0x34;
-        case 101: return 0x35;
-        case 102: return 0x36;
+        case 20: return 0x01000024; // caps lock
+        case 65: return 0x41; // a
+        case 83: return 0x53; // s
+        case 68: return 0x44; // d
+        case 70: return 0x46; // f
+        case 71: return 0x47; // g
+        case 72: return 0x48; // h
+        case 74: return 0x4a; // j
+        case 75: return 0x4b; // k
+        case 76: return 0x4c; // l
+        case 186: return 0x3b; // ;
+        case 222: return 0x27; // '
+        case 13: return 0x01000004; // enter
+        case 100: return 0x34; // numpad 4
+        case 101: return 0x35; // numpad 5
+        case 102: return 0x36; // numpad 6
 
-        case 16: return 0x01000020;
-        case 90: return 0x5a;
-        case 88: return 0x58;
-        case 67: return 0x43;
-        case 86: return 0x56;
-        case 66: return 0x42;
-        case 78: return 0x4e;
-        case 77: return 0x4d;
-        case 188: return 0x2c;
-        case 190: return 0x2e;
-        case 191: return 0x2f;
-        case 38: return 0x01000013;
-        case 97: return 0x31;
-        case 98: return 0x32;
-        case 99: return 0x33;
+        case 16: return 0x01000020; // shift
+        case 90: return 0x5a; // z
+        case 88: return 0x58; // x
+        case 67: return 0x43; // c
+        case 86: return 0x56; // v
+        case 66: return 0x42; // b
+        case 78: return 0x4e; // n
+        case 77: return 0x4d; // m
+        case 188: return 0x2c; // ,
+        case 190: return 0x2e; // .
+        case 191: return 0x2f; // /
+        case 38: return 0x01000013; // up arrow
+        case 97: return 0x31; // numpad 1
+        case 98: return 0x32; // numpad 2
+        case 99: return 0x33; // numpad 3
 
-        case 17: return 0x01000021;
-        case 224: return 0x01000021;
-        case 18: return 0x01000023;
-        case 32: return 0x20;
-        case 93: return 0x01000055;
-        case 37: return 0x01000012;
-        case 40: return 0x01000015;
-        case 39: return 0x01000014;
+        case 17: return 0x01000021; // ctrl
+        case 224: return 0x01000021; // ???
+        case 18: return 0x01000023; // alt
+        case 32: return 0x20; // space
+        case 93: return 0x01000055; // select
+        case 37: return 0x01000012; // left arrow
+        case 40: return 0x01000015; // down arrow
+        case 39: return 0x01000014; // right arrow
 
         default: return 0x01ffffff;
     }

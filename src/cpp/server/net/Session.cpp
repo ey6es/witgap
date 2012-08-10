@@ -395,11 +395,11 @@ void Session::summonPlayer (const QString& name)
             _this, "maybeSummoned(QString,bool)", Q_ARG(const QString&, name))));
 }
 
-void Session::reconnect (const QString& host, quint16 port)
+void Session::reconnect (const QString& host, quint16 portOffset)
 {
     if (_connection) {
         Connection::reconnectMetaMethod().invoke(_connection.data(),
-            Q_ARG(const QString&, host), Q_ARG(quint16, port));
+            Q_ARG(const QString&, host), Q_ARG(quint16, portOffset));
     }
     close();
 }

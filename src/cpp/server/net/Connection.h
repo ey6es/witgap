@@ -210,7 +210,7 @@ public:
     /**
      * Tells the client to reconnect to a different peer.
      */
-    Q_INVOKABLE void reconnect (const QString& host, quint16 port);
+    Q_INVOKABLE void reconnect (const QString& host, quint16 portOffset);
 
     /**
      * Tells the client to evaluate an expression in its Javascript context.

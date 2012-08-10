@@ -85,7 +85,7 @@ void Peer::sendHeader ()
     _stream << name;
     _stream << region;
     _stream << host;
-    _stream << _app->connectionManager()->serverPort();
+    _stream << (quint16)_app->args().value("port_offset").toInt();
 
     // send our instance list
     InvokeAction action;

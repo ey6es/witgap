@@ -79,6 +79,8 @@ PeerManager::PeerManager (ServerApp* app) :
     _sslConfig.setCiphers(QSslSocket::supportedCiphers());
     _expectedSslErrors.append(QSslError(
         QSslError::SelfSignedCertificate, _sslConfig.localCertificate()));
+    _expectedSslErrors.append(QSslError(
+        QSslError::HostNameMismatch, _sslConfig.localCertificate()));
 
     // register for remote invocation
     registerSharedObject(this);
@@ -336,7 +338,8 @@ void PeerManager::sessionAdded (const SessionInfo& info)
         Session* session = _app->connectionManager()->sessions().value(info.id);
         if (session != 0) {
             QMetaObject::invokeMethod(session, "reconnect",
-                Q_ARG(const QString&, connection->host()), Q_ARG(quint16, connection->port()));
+                Q_ARG(const QString&, connection->host()),
+                Q_ARG(quint16, connection->portOffset()));
         }
     }
 }

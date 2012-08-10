@@ -253,9 +253,9 @@ public:
     void summonPlayer (const QString& name);
 
     /**
-     * Closes the session, instructing it to reconnect to the specified host and port.
+     * Closes the session, instructing it to reconnect to the specified host and port offset.
      */
-    Q_INVOKABLE void reconnect (const QString& host, quint16 port);
+    Q_INVOKABLE void reconnect (const QString& host, quint16 portOffset);
 
     /**
      * Sets the user's settings.

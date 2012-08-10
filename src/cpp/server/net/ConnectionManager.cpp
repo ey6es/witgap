@@ -83,7 +83,7 @@ void ConnectionManager::connectionEstablished (Connection* connection)
         } else {
             // it's on a remote peer; tell the connection to reconnect
             PeerConnection* pconn = _app->peerManager()->connections().value(ptr->peer);
-            connection->reconnect(pconn->host(), pconn->port());
+            connection->reconnect(pconn->host(), pconn->portOffset());
         }
         return;
     }

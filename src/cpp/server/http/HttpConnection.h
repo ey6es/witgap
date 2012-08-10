@@ -33,6 +33,9 @@ class HttpConnection : public QObject
 
 public:
 
+    /** WebSocket close status codes. */
+    enum ReasonCode { NoReason = 0, NormalClosure = 1000, GoingAway = 1001 };
+
     /**
      * Initializes the connection.
      */
@@ -105,7 +108,7 @@ public:
     /**
      * Closes the WebSocket.
      */
-    void closeWebSocket ();
+    void closeWebSocket (quint16 reasonCode = NormalClosure, const char* reason = 0);
 
 signals:
 
@@ -195,6 +198,9 @@ protected:
 
     /** Whether or not the WebSocket is paused (buffering messages for future processing). */
     bool _webSocketPaused;
+
+    /** Whether or not we've sent a WebSocket close message. */
+    bool _closeSent;
 };
 
 /**

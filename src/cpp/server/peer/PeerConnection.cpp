@@ -124,7 +124,7 @@ void PeerConnection::readHeader ()
     _stream >> _name;
     _stream >> _region;
     _stream >> _host;
-    _stream >> _port;
+    _stream >> _portOffset;
 
     // map
     _app->peerManager()->connectionEstablished(this);
