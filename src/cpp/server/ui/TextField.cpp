@@ -85,6 +85,7 @@ void TextField::setDocument (Document* document)
     if (!updateDocumentPos()) {
         Component::dirty();
     }
+    _undoStack.clear();
 }
 
 void TextField::setCursorPosition (int pos)
@@ -213,23 +214,6 @@ void TextField::mouseButtonPressEvent (QMouseEvent* e)
 
 void TextField::keyPressEvent (QKeyEvent* e)
 {
-    QString text = e->text();
-    if (!text.isEmpty() && text.at(0).isPrint()) {
-        int olen = _document->text().length();
-        _document->insert(_cursorPos, text);
-        int delta = _document->text().length() - olen;
-        if (delta > 0) {
-            _cursorPos += delta;
-            if (!updateDocumentPos()) {
-                dirty(_cursorPos - delta);
-            }
-            emit textChanged();
-            if (_document->full()) {
-                emit textFull();
-            }
-        }
-        return;
-    }
     int key = e->key();
     Qt::KeyboardModifiers modifiers = e->modifiers();
     if (modifiers == Qt::ControlModifier) {
@@ -260,13 +244,28 @@ void TextField::keyPressEvent (QKeyEvent* e)
                     setCursorPosition(text.length());
                 }
             }
+        } else if (key == Qt::Key_Z) {
+            _undoStack.undo();
+
+        } else if (key == Qt::Key_Y) {
+            _undoStack.redo();
+
         } else {
             Component::keyPressEvent(e);
         }
         return;
 
+    } else if (modifiers == (Qt::ControlModifier | Qt::ShiftModifier) && key == Qt::Key_Z) {
+        _undoStack.redo();
+        return;
+
     } else if (modifiers != Qt::ShiftModifier && modifiers != Qt::NoModifier) {
         Component::keyPressEvent(e);
+        return;
+    }
+    QString text = e->text();
+    if (!text.isEmpty() && text.at(0).isPrint()) {
+        _undoStack.push(new TextEditCommand(this, _cursorPos, text));
         return;
     }
     switch (key) {
@@ -298,21 +297,13 @@ void TextField::keyPressEvent (QKeyEvent* e)
 
         case Qt::Key_Backspace:
             if (_cursorPos > 0) {
-                _document->remove(--_cursorPos, 1);
-                if (!updateDocumentPos()) {
-                    dirty(_cursorPos);
-                }
-                emit textChanged();
+                _undoStack.push(new TextEditCommand(this, _cursorPos - 1, 1, true));
             }
             break;
 
         case Qt::Key_Delete:
             if (_cursorPos < _document->text().length()) {
-                _document->remove(_cursorPos, 1);
-                if (!updateDocumentPos()) {
-                    dirty(_cursorPos);
-                }
-                emit textChanged();
+                _undoStack.push(new TextEditCommand(this, _cursorPos, 1, false));
             }
             break;
 
@@ -325,6 +316,39 @@ void TextField::keyPressEvent (QKeyEvent* e)
             Component::keyPressEvent(e);
             break;
     }
+}
+
+QString TextField::insert (int idx, const QString& text, bool cursorAfter)
+{
+    int olen = _document->text().length();
+    _document->insert(idx, text);
+    int delta = _document->text().length() - olen;
+    if (delta == 0) {
+        return QString();
+    }
+    int opos = _cursorPos;
+    _cursorPos = idx + (cursorAfter ? delta : 0);
+    if (!updateDocumentPos()) {
+        dirtyRest(qMin(opos, idx), 0);
+    }
+    emit textChanged();
+    if (_document->full()) {
+        emit textFull();
+    }
+    return _document->text().mid(idx, delta);
+}
+
+void TextField::remove (int idx, int length)
+{
+    if (length == 0) {
+        return;
+    }
+    int opos = _cursorPos;
+    _document->remove(_cursorPos = idx, length);
+    if (!updateDocumentPos()) {
+        dirtyRest(qMin(opos, _cursorPos), length);
+    }
+    emit textChanged();
 }
 
 bool TextField::updateDocumentPos ()
@@ -340,16 +364,15 @@ bool TextField::updateDocumentPos ()
     return false;
 }
 
-void TextField::dirty (int idx)
+void TextField::dirtyRest (int idx, int deleted)
 {
-    // dirty the lesser of the remaining document (plus one for a
-    // possibly deleted character) and what's visible
+    // dirty the lesser of the remaining document (plus any deleted characters) and what's visible
     int dlength = _document->text().length();
     int width = textAreaWidth();
     if (_rightAlign && dlength < width) {
-        dirty(-1, idx + 2);
+        dirty(-1, idx + deleted + 1);
     } else {
-        dirty(idx, qMin(dlength - idx + 2, width - idx + _documentPos));
+        dirty(idx, qMin(dlength - idx + deleted + 1, width - idx + _documentPos));
     }
 }
 
@@ -417,4 +440,69 @@ void FieldExpEnabler::updateComponent ()
         }
     }
     _component->setEnabled(true);
+}
+
+TextEditCommand::TextEditCommand (TextField* field, int idx, const QString& text) :
+    _field(field),
+    _insertion(true),
+    _idx(idx),
+    _text(text)
+{
+}
+
+TextEditCommand::TextEditCommand (TextField* field, int idx, int length, bool backspace) :
+    _field(field),
+    _insertion(false),
+    _backspace(backspace),
+    _idx(idx),
+    _text(field->text().mid(idx, length))
+{
+}
+
+void TextEditCommand::undo ()
+{
+    apply(true);
+}
+
+void TextEditCommand::redo ()
+{
+    apply(false);
+}
+
+int TextEditCommand::id () const
+{
+    return 1;
+}
+
+bool TextEditCommand::mergeWith (const QUndoCommand* command)
+{
+    const TextEditCommand* ocmd = static_cast<const TextEditCommand*>(command);
+    if (_insertion) {
+        if (ocmd->_insertion && _idx + _text.length() == ocmd->_idx) {
+            _text.append(ocmd->_text);
+            return true;
+        }
+    } else if (!ocmd->_insertion) {
+        if (_backspace) {
+            if (ocmd->_backspace && _idx == ocmd->_idx + ocmd->_text.length()) {
+                _text.prepend(ocmd->_text);
+                _idx = ocmd->_idx;
+                return true;
+            }
+        } else if (!ocmd->_backspace && _idx == ocmd->_idx) {
+            _text.append(ocmd->_text);
+            return true;
+        }
+    }
+    return false;
+}
+
+void TextEditCommand::apply (bool reverse)
+{
+    if (_insertion == reverse) {
+        _field->remove(_idx, _text.length());
+
+    } else {
+        _text = _field->insert(_idx, _text, _insertion || _backspace);
+    }
 }

@@ -6,8 +6,11 @@
 
 #include <QPair>
 #include <QRegExp>
+#include <QUndoStack>
 
 #include "ui/Component.h"
+
+class TextEditCommand;
 
 /**
  * Contains and controls the contents of a text field.
@@ -79,6 +82,8 @@ protected:
 class TextField : public Component
 {
     Q_OBJECT
+
+    friend class TextEditCommand;
 
 public:
 
@@ -204,6 +209,20 @@ protected:
     virtual void keyPressEvent (QKeyEvent* e);
 
     /**
+     * Inserts text into the document.
+     *
+     * @param cursorAfter whether to place the cursor after the inserted text (as opposed to at
+     * its beginning).
+     * @return the text that was actually inserted (i.e., after filtering).
+     */
+    QString insert (int idx, const QString& text, bool cursorAfter);
+
+    /**
+     * Removes text from the document.
+     */
+    void remove (int idx, int length);
+
+    /**
      * Updates the document position to match the cursor position.
      *
      * @return whether or not the component was dirtied as a result of the update.
@@ -212,8 +231,10 @@ protected:
 
     /**
      * Dirties the region starting at the supplied document index and including everything after.
+     *
+     * @param deleted the number of characters deleted from the document, if any.
      */
-    void dirty (int idx);
+    void dirtyRest (int idx, int deleted);
 
     /**
      * Dirties the region corresponding to the described document section.
@@ -242,6 +263,9 @@ protected:
 
     /** If not empty, a string to display when the document is blank and the field lacks focus. */
     QString _label;
+
+    /** The undo stack. */
+    QUndoStack _undoStack;
 };
 
 /**
@@ -314,6 +338,68 @@ protected:
 
     /** The field/regexp pairs. */
     QVector<FieldExp> _fieldExps;
+};
+
+/**
+ * An undo command representing a text edit (insertion or deletion).
+ */
+class TextEditCommand : public QUndoCommand
+{
+public:
+
+    /**
+     * Creates a new insert command.
+     */
+    TextEditCommand (TextField* field, int idx, const QString& text);
+
+    /**
+     * Creates a new delete command.
+     *
+     * @param backspace whether the deletion was a result of backspacing.
+     */
+    TextEditCommand (TextField* field, int idx, int length, bool backspace);
+
+    /**
+     * Undo the edit.
+     */
+    virtual void undo ();
+
+    /**
+     * Redo the edit.
+     */
+    virtual void redo ();
+
+    /**
+     * Returns the merge id.
+     */
+    virtual int id () const;
+
+    /**
+     * Attempts to merge this edit with another.
+     */
+    virtual bool mergeWith (const QUndoCommand* command);
+
+protected:
+
+    /**
+     * Performs or reverses the edit.
+     */
+    void apply (bool reverse);
+
+    /** The text field upon which the edit was performed. */
+    TextField* _field;
+
+    /** If true, the edit was an insertion; otherwise, a deletion. */
+    bool _insertion;
+
+    /** If true and the edit was a deletion, whether it was the result of backspacing. */
+    bool _backspace;
+
+    /** The index of the edit. */
+    int _idx;
+
+    /** The changed text. */
+    QString _text;
 };
 
 #endif // TEXT_FIELD
