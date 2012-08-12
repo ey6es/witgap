@@ -478,7 +478,12 @@ bool TextEditCommand::mergeWith (const QUndoCommand* command)
 {
     const TextEditCommand* ocmd = static_cast<const TextEditCommand*>(command);
     if (_insertion) {
-        if (ocmd->_insertion && _idx + _text.length() == ocmd->_idx) {
+        // we don't merge segments that end with whitespace with segments that begin with
+        // non-whitespace
+        int len = _text.length();
+        if (ocmd->_insertion && _idx + len == ocmd->_idx &&
+                (len == 0 || ocmd->_text.length() == 0 || !_text.at(len - 1).isSpace() ||
+                    ocmd->_text.at(0).isSpace())) {
             _text.append(ocmd->_text);
             return true;
         }
