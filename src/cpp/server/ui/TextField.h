@@ -6,6 +6,7 @@
 
 #include <QPair>
 #include <QRegExp>
+#include <QTimer>
 #include <QUndoStack>
 
 #include "ui/Component.h"
@@ -140,6 +141,16 @@ public:
     const QString& label () const { return _label; }
 
     /**
+     * Enables or disables parenthesis matching.
+     */
+    void setMatchParentheses (bool match);
+
+    /**
+     * Checks whether parenthesis matching is enabled.
+     */
+    bool matchParentheses () const { return _matchParentheses; }
+
+    /**
      * Checks whether the component accepts input focus.
      */
     virtual bool acceptsFocus () const { return _enabled && _visible; }
@@ -160,6 +171,13 @@ signals:
      * Emitted when the enter key is pressed.
      */
     void enterPressed ();
+
+protected slots:
+
+    /**
+     * Clears the currently displayed match.
+     */
+    void clearMatch ();
 
 protected:
 
@@ -184,9 +202,9 @@ protected:
     virtual void drawText (DrawContext* ctx, int x, int y, int idx, int length, int flags) const;
 
     /**
-     * Returns the character to display under the cursor.
+     * Returns the character to display for the specified index.
      */
-    virtual int cursorChar () const;
+    virtual int visibleChar (int idx) const;
 
     /**
      * Handles a focus in event.
@@ -221,6 +239,24 @@ protected:
      * Removes text from the document.
      */
     void remove (int idx, int length);
+
+    /**
+     * Depending on the cursor location and the character under the cursor, considers showing the
+     * matching parenthesis.
+     */
+    void maybeShowMatch ();
+
+    /**
+     * Considers showing the matched parenthesis for the character at the specified location.
+     *
+     * @return whether or not the location contained a parenthesis to match.
+     */
+    bool maybeShowMatch (int idx);
+
+    /**
+     * Shows a match at the specified index.
+     */
+    void showMatch (int idx);
 
     /**
      * Updates the document position to match the cursor position.
@@ -264,6 +300,15 @@ protected:
     /** If not empty, a string to display when the document is blank and the field lacks focus. */
     QString _label;
 
+    /** Whether or not parenthesis matching is enabled. */
+    bool _matchParentheses;
+
+    /** The position of the displayed match, or -1 for none. */
+    int _matchPos;
+
+    /** The match timer. */
+    QTimer _matchTimer;
+
     /** The undo stack. */
     QUndoStack _undoStack;
 };
@@ -295,9 +340,9 @@ protected:
     virtual void drawText (DrawContext* ctx, int x, int y, int idx, int length, int flags) const;
 
     /**
-     * Returns the character to display under the cursor.
+     * Returns the character to display for the specified index.
      */
-    virtual int cursorChar () const;
+    virtual int visibleChar (int idx) const;
 };
 
 /** An expression that simply requires the text to contain something other than whitespace. */

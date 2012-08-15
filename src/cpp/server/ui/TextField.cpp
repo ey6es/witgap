@@ -47,9 +47,13 @@ TextField::TextField (int minWidth, Document* document, bool rightAlign, QObject
     _document(document),
     _rightAlign(rightAlign),
     _documentPos(0),
-    _cursorPos(document->text().length())
+    _cursorPos(document->text().length()),
+    _matchParentheses(false),
+    _matchPos(-1)
 {
     connect(this, SIGNAL(enterPressed()), SLOT(transferFocus()));
+    connect(&_matchTimer, SIGNAL(timeout()), SLOT(clearMatch()));
+    _matchTimer.setSingleShot(true);
 }
 
 TextField::TextField (int minWidth, const QString& text, bool rightAlign, QObject* parent) :
@@ -58,9 +62,13 @@ TextField::TextField (int minWidth, const QString& text, bool rightAlign, QObjec
     _document(new Document(text)),
     _rightAlign(rightAlign),
     _documentPos(0),
-    _cursorPos(text.length())
+    _cursorPos(text.length()),
+    _matchParentheses(false),
+    _matchPos(-1)
 {
     connect(this, SIGNAL(enterPressed()), SLOT(transferFocus()));
+    connect(&_matchTimer, SIGNAL(timeout()), SLOT(clearMatch()));
+    _matchTimer.setSingleShot(true);
 }
 
 TextField::~TextField ()
@@ -86,6 +94,7 @@ void TextField::setDocument (Document* document)
         Component::dirty();
     }
     _undoStack.clear();
+    maybeShowMatch();
 }
 
 void TextField::setCursorPosition (int pos)
@@ -97,6 +106,7 @@ void TextField::setCursorPosition (int pos)
             dirty(_cursorPos, 1);
             dirty(opos, 1);
         }
+        maybeShowMatch();
     }
 }
 
@@ -106,6 +116,24 @@ void TextField::setLabel (const QString& label)
         _label = label;
         Component::dirty();
     }
+}
+
+void TextField::setMatchParentheses (bool match)
+{
+    _matchParentheses = match;
+}
+
+void TextField::clearMatch ()
+{
+    if (_matchPos != -1) {
+        if (_matchPos >= _documentPos && _matchPos < _documentPos + textAreaWidth()) {
+            dirty(_matchPos, 1);
+        } else {
+            Component::dirty();
+        }
+        _matchPos = -1;
+    }
+    _matchTimer.stop();
 }
 
 QSize TextField::computePreferredSize (int whint, int hhint) const
@@ -130,6 +158,17 @@ void TextField::draw (DrawContext* ctx)
     ctx->drawChar(x - 1, y, '[' | flags);
     ctx->drawChar(x + width, y, ']' | flags);
 
+    // make sure the match is visible
+    int pos = _documentPos;
+    if (_focused && _matchPos != -1) {
+        if (_matchPos < _documentPos) {
+            pos = _matchPos;
+
+        } else if (_matchPos >= _documentPos + width) {
+            pos = _matchPos - width + 1;
+        }
+    }
+
     // draw the visible portion of the contents or the label, if appropriate
     int length = _document->text().length();
     if (length == 0) {
@@ -144,18 +183,30 @@ void TextField::draw (DrawContext* ctx)
             // when focused, we allocate extra space for the cursor
             drawText(ctx, x + width - (_focused ? 1 : 0) - length, y, 0, length, flags);
         } else {
-            drawText(ctx, x, y, _documentPos, qMin(length - _documentPos, width), flags);
+            drawText(ctx, x, y, pos, qMin(length - pos, width), flags);
         }
     }
 
-    // draw the cursor if in focus
+    // draw the cursor and match if in focus
     if (_focused) {
         if (_rightAlign && length < width) {
             ctx->drawChar(x + width - length - 1 + _cursorPos, y,
-                REVERSE_FLAG | (_cursorPos < length ? cursorChar() : ' '));
-        } else {
-            ctx->drawChar(x + (_cursorPos - _documentPos), y,
-                REVERSE_FLAG | (_cursorPos < length ? cursorChar() : ' '));
+                REVERSE_FLAG | (_cursorPos < length ? visibleChar(_cursorPos) : ' '));
+
+        } else if (_cursorPos >= pos && _cursorPos < pos + width) {
+            ctx->drawChar(x + (_cursorPos - pos), y,
+                REVERSE_FLAG | (_cursorPos < length ? visibleChar(_cursorPos) : ' '));
+        }
+
+        // draw the match if appropriate
+        if (_matchPos != -1) {
+            if (_rightAlign && length < width) {
+                ctx->drawChar(x + width - length - 1 + _matchPos, y,
+                    REVERSE_FLAG | visibleChar(_matchPos));
+
+            } else {
+                ctx->drawChar(x + (_matchPos - pos), y, REVERSE_FLAG | visibleChar(_matchPos));
+            }
         }
     }
 }
@@ -165,9 +216,9 @@ void TextField::drawText (DrawContext* ctx, int x, int y, int idx, int length, i
     ctx->drawString(x, y, _document->text().constData() + idx, length, flags);
 }
 
-int TextField::cursorChar () const
+int TextField::visibleChar (int idx) const
 {
-    return _document->text().at(_cursorPos).unicode();
+    return _document->text().at(idx).unicode();
 }
 
 void TextField::focusInEvent (QFocusEvent* e)
@@ -181,6 +232,8 @@ void TextField::focusInEvent (QFocusEvent* e)
     } else {
         dirty(_cursorPos, 1);
     }
+
+    maybeShowMatch();
 }
 
 void TextField::focusOutEvent (QFocusEvent* e)
@@ -192,6 +245,8 @@ void TextField::focusOutEvent (QFocusEvent* e)
     } else {
         dirty(_cursorPos, 1);
     }
+
+    clearMatch();
 }
 
 void TextField::mouseButtonPressEvent (QMouseEvent* e)
@@ -275,6 +330,7 @@ void TextField::keyPressEvent (QKeyEvent* e)
                 if (!updateDocumentPos()) {
                     dirty(_cursorPos, 2);
                 }
+                maybeShowMatch();
             }
             break;
 
@@ -284,6 +340,7 @@ void TextField::keyPressEvent (QKeyEvent* e)
                 if (!updateDocumentPos()) {
                     dirty(_cursorPos - 1, 2);
                 }
+                maybeShowMatch();
             }
             break;
 
@@ -335,6 +392,7 @@ QString TextField::insert (int idx, const QString& text, bool cursorAfter)
     if (_document->full()) {
         emit textFull();
     }
+    maybeShowMatch();
     return _document->text().mid(idx, delta);
 }
 
@@ -348,7 +406,69 @@ void TextField::remove (int idx, int length)
     if (!updateDocumentPos()) {
         dirtyRest(qMin(opos, _cursorPos), length);
     }
+    maybeShowMatch();
     emit textChanged();
+}
+
+void TextField::maybeShowMatch ()
+{
+    clearMatch();
+    if (!_matchParentheses) {
+        return;
+    }
+    if (!(_cursorPos < _document->text().length() && maybeShowMatch(_cursorPos)) &&
+            _cursorPos > 0) {
+        maybeShowMatch(_cursorPos - 1);
+    }
+}
+
+bool TextField::maybeShowMatch (int idx)
+{
+    const QString& text = _document->text();
+    QChar ch = text.at(idx);
+    if (ch == '(') {
+        int depth = 1;
+        for (int ii = idx + 1, nn = text.length(); ii < nn; ii++) {
+            QChar ch = text.at(ii);
+            if (ch == '(') {
+                depth++;
+
+            } else if (ch == ')' && --depth == 0) {
+                showMatch(ii);
+                break;
+            }
+        }
+        return true;
+
+    } else if (ch == ')') {
+        int depth = 1;
+        for (int ii = idx - 1; ii >= 0; ii--) {
+            QChar ch = text.at(ii);
+            if (ch == ')') {
+                depth++;
+
+            } else if (ch == '(' && --depth == 0) {
+                showMatch(ii);
+                break;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+/** The number of milliseconds for which we show a parenthesis match. */
+static const int MatchDuration = 1000;
+
+void TextField::showMatch (int idx)
+{
+    _matchPos = idx;
+    _matchTimer.start(MatchDuration);
+    if (_matchPos >= _documentPos && _matchPos < _documentPos + textAreaWidth()) {
+        dirty(_matchPos, 1);
+    } else {
+        Component::dirty();
+    }
 }
 
 bool TextField::updateDocumentPos ()
@@ -409,7 +529,7 @@ void PasswordField::drawText (DrawContext* ctx, int x, int y, int idx, int lengt
     ctx->fillRect(x, y, length, 1, '*' | flags);
 }
 
-int PasswordField::cursorChar () const
+int PasswordField::visibleChar (int idx) const
 {
     return '*';
 }

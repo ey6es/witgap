@@ -300,6 +300,17 @@ function flushKeyPress ()
  */
 function writeKeyMessage (pressed, event, character)
 {
+    if (pressed) {
+        var now = event.timeStamp;
+        var then = keyPressedTimes[event.keyCode];
+        if (now - then < MIN_KEY_REPEAT_DELAY) {
+            return; // repeat rate is too high; drop it
+        }
+        keyPressedTimes[event.keyCode] = now;
+
+    } else {
+        keyPressedTimes[event.keyCode] = 0;
+    }
     var out = startMessage();
     out.writeByte(pressed ? KEY_PRESSED_MSG : KEY_RELEASED_MSG);
     out.writeUnsignedInt(getQtKeyCode(event));
