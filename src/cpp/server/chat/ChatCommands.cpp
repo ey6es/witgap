@@ -12,6 +12,7 @@
 #include "net/Session.h"
 #include "peer/PeerManager.h"
 #include "scene/Scene.h"
+#include "script/ScriptContext.h"
 
 // translate through the translator
 #define tr(...) translator->translate("ChatCommands", __VA_ARGS__)
@@ -405,6 +406,37 @@ public:
 };
 
 /**
+ * Handles the /eval command.
+ */
+class EvalCommand : public AdminChatCommand
+{
+    Q_DECLARE_TR_FUNCTIONS(ChatCommands)
+
+public:
+
+    virtual QString aliases (QTranslator* translator) { return tr("eval"); }
+
+    virtual QString usage (QTranslator* translator, const QString& cmd) {
+        return tr("Usage: /%1 expression\n"
+            "  Evaluates the specified expression and returns the result.").arg(cmd);
+    }
+
+    virtual QString handle (Session* session, QTranslator* translator,
+            const QString& cmd, const QString& args) {
+        if (args.isEmpty()) {
+            return usage(translator, cmd);
+        }
+        try {
+            ScriptContext::parse(args);
+            return "";
+
+        } catch (const ScriptError& e) {
+            return e.toString();
+        }
+    }
+};
+
+/**
  * Creates the map from language codes to command maps.
  */
 static QHash<QString, CommandMap> createCommandMapMap (ServerApp* app)
@@ -413,7 +445,7 @@ static QHash<QString, CommandMap> createCommandMapMap (ServerApp* app)
         new HelpCommand(), new ClearCommand(), new BugCommand(), new SayCommand(),
         new EmoteCommand(), new ShoutCommand(), new TellCommand(), new BroadcastCommand(),
         new RebootCommand(), new SGoCommand(), new ZGoCommand(), new PGoCommand(),
-        new SummonCommand() };
+        new SummonCommand(), new EvalCommand() };
 
     QHash<QString, CommandMap> map;
     for (int ii = 0; ii < sizeof(handlers) / sizeof(ChatCommand*); ii++) {

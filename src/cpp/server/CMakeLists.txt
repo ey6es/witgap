@@ -12,6 +12,7 @@ add_subdirectory(http)
 add_subdirectory(net)
 add_subdirectory(peer)
 add_subdirectory(scene)
+add_subdirectory(script)
 add_subdirectory(ui)
 
 set(HEADERS CommandMenu.h LogonDialog.h MainWindow.h RuntimeConfig.h ServerApp.h SettingsDialog.h)
@@ -22,4 +23,4 @@ qt4_wrap_cpp(SOURCES ${HEADERS})
 add_executable(witgap-server ${SOURCES} ${HEADERS} main.cpp)
 target_link_libraries(witgap-server ${QT_LIBRARIES} ${OPENSSL_LIBRARIES} ${GEOIP_LIBRARIES}
     server-admin server-net server-chat server-db server-http server-peer
-    server-scene server-actor server-ui util)
+    server-scene server-script server-actor server-ui util)
