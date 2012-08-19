@@ -12,7 +12,7 @@
 #include "net/Session.h"
 #include "peer/PeerManager.h"
 #include "scene/Scene.h"
-#include "script/ScriptContext.h"
+#include "script/Parser.h"
 
 // translate through the translator
 #define tr(...) translator->translate("ChatCommands", __VA_ARGS__)
@@ -427,7 +427,10 @@ public:
             return usage(translator, cmd);
         }
         try {
-            ScriptContext::parse(args);
+            ScriptObjectPointer datum = Parser(args).parse();
+            if (!datum.isNull()) {
+                qDebug() << datum->toString();
+            }
             return "";
 
         } catch (const ScriptError& e) {
