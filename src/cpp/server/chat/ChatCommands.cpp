@@ -12,7 +12,7 @@
 #include "net/Session.h"
 #include "peer/PeerManager.h"
 #include "scene/Scene.h"
-#include "script/Parser.h"
+#include "script/Evaluator.h"
 
 // translate through the translator
 #define tr(...) translator->translate("ChatCommands", __VA_ARGS__)
@@ -427,9 +427,9 @@ public:
             return usage(translator, cmd);
         }
         try {
-            ScriptObjectPointer datum = Parser(args).parse();
-            if (!datum.isNull()) {
-                qDebug() << datum->toString();
+            ScriptObjectPointer result = Evaluator().evaluate(args);
+            if (!result.isNull()) {
+                qDebug() << result->toString();
             }
             return "";
 

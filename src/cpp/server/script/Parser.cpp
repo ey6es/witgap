@@ -11,7 +11,7 @@ Parser::Parser (const QString& expr, const QString& source) :
 ScriptObjectPointer Parser::parse ()
 {
     ScriptObjectPointer datum = parseDatum();
-    if (datum->type() == ScriptObject::SentinelType) {
+    if (!datum.isNull() && datum->type() == ScriptObject::SentinelType) {
         Sentinel* sentinel = static_cast<Sentinel*>(datum.data());
         throw ScriptError("Missing start parenthesis.", sentinel->position());
     }
