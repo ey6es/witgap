@@ -10,16 +10,16 @@
 #include "script/ScriptObject.h"
 
 /**
- * A scope used for binding.
+ * A scope used for compilation.
  */
-class BindScope
+class Scope
 {
 public:
 
     /**
-     * Creates a new bind scope.
+     * Creates a new scope.
      */
-    BindScope (BindScope* parent = 0);
+    Scope (Scope* parent = 0);
 
     /**
      * Sets the scope's arguments.
@@ -33,54 +33,46 @@ public:
     ScriptObjectPointer resolve (const QString& name);
 
     /**
-     * Defines a member in this scope with the supplied name and bound initialization expression.
+     * Defines a member in this scope with the supplied name.
      */
-    ScriptObjectPointer define (const QString& name, ScriptObjectPointer expr);
+    ScriptObjectPointer define (const QString& name);
+
+    /**
+     * Returns the number of members in this scope.
+     */
+    int memberCount () const { return _memberCount; }
+
+    /**
+     * Returns a reference to the scope's list of constants.
+     */
+    const QList<ScriptObjectPointer>& constants () const { return _constants; }
+
+    /**
+     * Adds a constant and returns its index.
+     */
+    int addConstant (ScriptObjectPointer value);
+
+    /**
+     * Returns a reference to the initialization bytecode.
+     */
+    QByteArray& initBytecode () { return _initBytecode; }
 
 protected:
 
-    /** A pair of pointers to script objects. */
-    typedef QPair<ScriptObjectPointer, ScriptObjectPointer> ScriptObjectPointerPair;
-
     /** The parent scope, if any. */
-    BindScope* _parent;
+    Scope* _parent;
 
-    /** Maps argument names to Argument objects. */
-    QHash<QString, ScriptObjectPointer> _arguments;
+    /** Maps variable names to their Argument/Member objects. */
+    QHash<QString, ScriptObjectPointer> _variables;
 
-    /** Maps member names to their indices and initialization expressions. */
-    QHash<QString, ScriptObjectPointerPair> _members;
-};
+    /** The number of members defined in this scope. */
+    int _memberCount;
 
-/**
- * A scope in which symbol names are mapped to objects.
- */
-class Scope
-{
-public:
+    /** The list of constants. */
+    QList<ScriptObjectPointer> _constants;
 
-    /**
-     * Creates a new scope.
-     */
-    Scope (const Scope* parent = 0);
-
-    /**
-     * Assigns a value to a symbol name in this scope.
-     */
-    void set (const QString& name, ScriptObjectPointer value);
-
-    /**
-     * Attempts to resolve a symbol name.
-     */
-    ScriptObjectPointer resolve (const QString& name) const;
-
-protected:
-
-    /** Maps symbol names to objects. */
-    QHash<QString, ScriptObjectPointer> _objects;
-
-    /** The parent scope, if any. */
-    const Scope* _parent;
+    /** The initialization bytecode. */
+    QByteArray _initBytecode;
 };
 
 /**
@@ -101,35 +93,52 @@ public:
      */
     ScriptObjectPointer evaluate (const QString& expr);
 
+    /**
+     * Runs the evaluator for a fixed number of cycles, or until a result is returned.
+     *
+     * @param maxCycles the maximum number of cycles to execute, or zero for unlimited.
+     * @return the result of the computation, or a null pointer if still working.
+     */
+    ScriptObjectPointer execute (int maxCycles = 0);
+
 protected:
 
     /**
-     * Binds the specified parsed expression in the given scope and returns the result.
+     * Compiles the specified parsed expression in the given scope to the supplied buffer.
      *
      * @param allowDef whether or not to allow a definition.
      */
-    ScriptObjectPointer bind (ScriptObjectPointer expr, BindScope* scope, bool allowDef);
+    void compile (ScriptObjectPointer expr, Scope* scope, bool allowDef, QByteArray& out);
 
     /**
-     * Binds and returns the body of a lambda/function definition.
+     * Compiles the body of a lambda/function definition and optionally returns the name of
+     * the defined member.
      *
-     * @param firstArg if non-zero, place the first arg here instead of processing as usual.
+     * @param define if true, we're defining a member in the current scope; return the Member.
      */
-    ScriptObjectPointer bindLambda (List* list, BindScope* scope, QString* firstArg = 0);
-
-    /**
-     * Evaluates a parsed expression in the specified scope.
-     */
-    ScriptObjectPointer evaluate (ScriptObjectPointer expr, Scope* scope);
+    ScriptObjectPointer compileLambda (List* list, Scope* scope, QByteArray& out,
+        bool define = false);
 
     /** The source of the input. */
     QString _source;
 
-    /** The top-level bind scope. */
-    BindScope _bindScope;
-
     /** The top-level scope. */
     Scope _scope;
+
+    /** The evaluation stack. */
+    QStack<ScriptObjectPointer> _stack;
+
+    /** The index of the current procedure on the stack. */
+    int _procedureIdx;
+
+    /** The index of the first argument on the stack. */
+    int _argumentIdx;
+
+    /** The index of the current instruction in the procedure definition. */
+    int _instructionIdx;
+
+    /** The current operand count. */
+    int _operandCount;
 };
 
 #endif // EVALUATOR

@@ -5,6 +5,7 @@
 #define SCRIPT_OBJECT
 
 #include <QSharedPointer>
+#include <QStack>
 
 #include "script/Script.h"
 
@@ -16,9 +17,9 @@ class ScriptObject
 public:
 
     /** The object types. */
-    enum Type { SentinelType, BooleanType, StringType, SymbolType, ListType, UnspecifiedType,
-        ProcedureType, QuoteType, ArgumentType, MemberType, SetArgumentType, SetMemberType,
-        ProcedureCallType, LambdaType, LambdaProcedureType };
+    enum Type { SentinelType, BooleanType, IntegerType, StringType, SymbolType, ListType,
+        UnspecifiedType, ArgumentType, MemberType, LambdaType, LambdaProcedureType,
+        NativeProcedureType, ReturnType };
 
     /**
      * Destroys the object.
@@ -115,6 +116,39 @@ protected:
 
     /** The boolean's value. */
     bool _value;
+};
+
+/**
+ * A datum representing an integer.
+ */
+class Integer : public Datum
+{
+public:
+
+    /**
+     * Creates a new integer.
+     */
+    Integer (int value, const ScriptPosition& position = ScriptPosition());
+
+    /**
+     * Returns the integer's value.
+     */
+    int value () const { return _value; }
+
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return IntegerType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const { return QString::number(_value); }
+
+protected:
+
+    /** The integer's value. */
+    int _value;
 };
 
 /**
@@ -236,57 +270,6 @@ public:
 };
 
 /**
- * A procedure object.
- */
-class Procedure : public ScriptObject
-{
-public:
-
-    /**
-     * Calls the procedure and returns the result.
-     */
-    virtual ScriptObjectPointer call (const QList<ScriptObjectPointer>& args) = 0;
-
-    /**
-     * Returns the type of the object.
-     */
-    virtual Type type () const { return ProcedureType; }
-};
-
-/**
- * Represents a post-bind quoted datum.
- */
-class Quote : public ScriptObject
-{
-public:
-
-    /**
-     * Creates a new quoted datum.
-     */
-    Quote (const ScriptObjectPointer& datum);
-
-    /**
-     * Returns a reference to the quoted datum.
-     */
-    const ScriptObjectPointer& datum () const { return _datum; }
-
-    /**
-     * Returns the type of the object.
-     */
-    virtual Type type () const { return QuoteType; }
-
-    /**
-     * Returns a string representation of the object.
-     */
-    virtual QString toString () const { return "(quote " + _datum->toString() + ")"; }
-
-protected:
-
-    /** The quoted datum. */
-    ScriptObjectPointer _datum;
-};
-
-/**
  * Represents a post-bind argument reference.
  */
 class Argument : public ScriptObject
@@ -361,115 +344,6 @@ protected:
 };
 
 /**
- * Represents a post-bind argument set command.
- */
-class SetArgument : public Argument
-{
-public:
-
-    /**
-     * Creates a new argument setter.
-     */
-    SetArgument (int index, const ScriptObjectPointer& expr);
-
-    /**
-     * Returns a reference to the bound value expression.
-     */
-    const ScriptObjectPointer& expr () const { return _expr; }
-
-    /**
-     * Returns the type of the object.
-     */
-    virtual Type type () const { return SetArgumentType; }
-
-    /**
-     * Returns a string representation of the object.
-     */
-    virtual QString toString () const;
-
-protected:
-
-    /** The bound value expression. */
-    ScriptObjectPointer _expr;
-};
-
-/**
- * Represents a post-bind member set command.
- */
-class SetMember : public Member
-{
-public:
-
-    /**
-     * Creates a new member setter.
-     */
-    SetMember (int scope, int index, const ScriptObjectPointer& expr);
-
-    /**
-     * Returns a reference to the bound value expression.
-     */
-    const ScriptObjectPointer& expr () const { return _expr; }
-
-    /**
-     * Returns the type of the object.
-     */
-    virtual Type type () const { return SetMemberType; }
-
-    /**
-     * Returns a string representation of the object.
-     */
-    virtual QString toString () const;
-
-protected:
-
-    /** The bound value expression. */
-    ScriptObjectPointer _expr;
-};
-
-/**
- * Represents a post-bind procedure call command.
- */
-class ProcedureCall : public ScriptObject
-{
-public:
-
-    /**
-     * Creates a new procedure call.
-     */
-    ProcedureCall (const ScriptObjectPointer& procedureExpr,
-        const QList<ScriptObjectPointer>& argumentExprs);
-
-    /**
-     * Returns the bound expression that should evaluate to the procedure.
-     */
-    const ScriptObjectPointer& procedureExpr () const { return _procedureExpr; }
-
-    /**
-     * Returns a reference to the bound expressions that evaluate to the arguments to pass to the
-     * procedure.
-     */
-    const QList<ScriptObjectPointer>& argumentExprs () const { return _argumentExprs; }
-
-    /**
-     * Returns the type of the object.
-     */
-    virtual Type type () const { return ProcedureCallType; }
-
-    /**
-     * Returns a string representation of the object.
-     */
-    virtual QString toString () const;
-
-protected:
-
-    /** The bound expression that should evaluate to the procedure. */
-    ScriptObjectPointer _procedureExpr;
-
-    /** The bound expressions that evaluate to the arguments to pass to the procedure. */
-    QList<ScriptObjectPointer> _argumentExprs;
-};
-
-/**
  * Represents a post-bind lambda expression (i.e., a function definition).
  */
 class Lambda : public ScriptObject
@@ -477,9 +351,30 @@ class Lambda : public ScriptObject
 public:
 
     /**
+     * Creates a new lambda expression.
+     */
+    Lambda (int scalarArgumentCount, bool listArgument, int memberCount,
+        const QList<ScriptObjectPointer>& constants, const QByteArray& bytecode, int bodyIdx);
+
+    /**
+     * Returns a reference to the procedure bytecode.
+     */
+    const QByteArray& bytecode () const { return _bytecode; }
+
+    /**
+     * Returns a reference to the constant at the specified index.
+     */
+    const ScriptObjectPointer& constant (int idx) const { return _constants.at(idx); }
+
+    /**
      * Returns the type of the object.
      */
     virtual Type type () const { return LambdaType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const;
 
 protected:
 
@@ -489,19 +384,45 @@ protected:
     /** If true, put the rest of the arguments in a list. */
     bool _listArgument;
 
-    /** The bound initial expressions for each member. */
-    QList<ScriptObjectPointer> _memberExprs;
+    /** The number of members. */
+    int _memberCount;
 
-    /** The bound function body expressions. */
-    QList<ScriptObjectPointer> _bodyExprs;
+    /** The function constants. */
+    QList<ScriptObjectPointer> _constants;
+
+    /** The function bytecode. */
+    QByteArray _bytecode;
+
+    /** The index within the bytecode of the function body. */
+    int _bodyIdx;
 };
 
 /**
  * Represents the result of a lambda expression (i.e., a function instance).
  */
-class LambdaProcedure : public Procedure
+class LambdaProcedure : public ScriptObject
 {
 public:
+
+    /**
+     * Creates a new lambda procedure.
+     */
+    LambdaProcedure ();
+
+    /**
+     * Returns a reference to the procedure's definition.
+     */
+    const ScriptObjectPointer& lambda () const { return _lambda; }
+
+    /**
+     * Returns a reference to the member with the specified scope and index.
+     */
+    const ScriptObjectPointer& member (int scope, int idx) const;
+
+    /**
+     * Sets the value of the member at the specified scope and index.
+     */
+    void setMember (int scope, int idx, const ScriptObjectPointer& value);
 
     /**
      * Calls the procedure and returns the result.
@@ -510,8 +431,94 @@ public:
 
 protected:
 
+    /** The definition of the procedure. */
+    ScriptObjectPointer _lambda;
+
+    /** The procedure's parent scope. */
+    ScriptObjectPointer _parent;
+
     /** The current member values. */
-    QList<ScriptObjectPointer> _memberExprs;
+    QList<ScriptObjectPointer> _members;
+};
+
+/**
+ * Base class for native procedures.
+ */
+class NativeProcedure : public ScriptObject
+{
+public:
+
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return NativeProcedureType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const;
+
+    /**
+     * Calls the procedure.
+     */
+    virtual void call (QStack<ScriptObjectPointer>& stack, int operandCount) = 0;
+};
+
+/**
+ * Contains the information necessary to return from a procedure call.
+ */
+class Return : public ScriptObject
+{
+public:
+
+    /**
+     * Creates a new return.
+     */
+    Return (int procedureIdx, int argumentIdx, int instructionIdx, int operandCount);
+
+    /**
+     * Returns the index of the procedure on the stack.
+     */
+    int procedureIdx () const { return _procedureIdx; }
+
+    /**
+     * Returns the index of the first argument on the stack.
+     */
+    int argumentIdx () const { return _argumentIdx; }
+
+    /**
+     * Returns the index of the next instruction in the procedure definition.
+     */
+    int instructionIdx () const { return _instructionIdx; }
+
+    /**
+     * Returns the current operand count.
+     */
+    int operandCount () const { return _operandCount; }
+
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return ReturnType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const;
+
+protected:
+
+    /** The index of the procedure on the stack. */
+    int _procedureIdx;
+
+    /** The index of the first argument on the stack. */
+    int _argumentIdx;
+
+    /** The index of the next instruction in the procedure definition. */
+    int _instructionIdx;
+
+    /** The current operand count. */
+    int _operandCount;
 };
 
 #endif // SCRIPT_OBJECT

@@ -23,6 +23,12 @@ Boolean::Boolean (bool value, const ScriptPosition& position) :
 {
 }
 
+Integer::Integer (int value, const ScriptPosition& position) :
+    Datum(position),
+    _value(value)
+{
+}
+
 String::String (const QString& contents, const ScriptPosition& position) :
     Datum(position),
     _contents(contents)
@@ -54,11 +60,6 @@ QString List::toString () const
     return string;
 }
 
-Quote::Quote (const ScriptObjectPointer& datum) :
-    _datum(datum)
-{
-}
-
 Argument::Argument (int index) :
     _index(index)
 {
@@ -75,44 +76,53 @@ QString Member::toString () const
     return "{member " + QString::number(_scope) + " " + QString::number(_index) + "}";
 }
 
-SetArgument::SetArgument (int index, const ScriptObjectPointer& expr) :
-    Argument(index),
-    _expr(expr)
+Lambda::Lambda (int scalarArgumentCount, bool listArgument, int memberCount,
+        const QList<ScriptObjectPointer>& constants, const QByteArray& bytecode, int bodyIdx) :
+    _scalarArgumentCount(scalarArgumentCount),
+    _listArgument(listArgument),
+    _memberCount(memberCount),
+    _constants(constants),
+    _bytecode(bytecode),
+    _bodyIdx(bodyIdx)
 {
 }
 
-QString SetArgument::toString () const
+QString Lambda::toString () const
 {
-    return "{set-argument " + QString::number(_index) + " " + _expr->toString() + "}";
+    return "{lambda " + QString::number(_scalarArgumentCount) + " " +
+        (_listArgument ? "#t" : "#f") + "}";
 }
 
-SetMember::SetMember (int scope, int index, const ScriptObjectPointer& expr) :
-    Member(scope, index),
-    _expr(expr)
+const ScriptObjectPointer& LambdaProcedure::member (int scope, int idx) const
 {
-}
-
-QString SetMember::toString () const
-{
-    return "{set-member " + QString::number(_scope) + " " +
-        QString::number(_index) + " " + _expr->toString() + "}";
-}
-
-ProcedureCall::ProcedureCall (
-        const ScriptObjectPointer& procedureExpr,
-        const QList<ScriptObjectPointer>& argumentExprs) :
-    _procedureExpr(procedureExpr),
-    _argumentExprs(argumentExprs)
-{
-}
-
-QString ProcedureCall::toString () const
-{
-    QString string("(" + _procedureExpr->toString());
-    foreach (const ScriptObjectPointer& argumentExpr, _argumentExprs) {
-        string.append(' ');
-        string.append(argumentExpr->toString());
+    if (scope == 0) {
+        return _members.at(idx);
     }
-    string.append(')');
-    return string;
+    LambdaProcedure* parent = static_cast<LambdaProcedure*>(_parent.data());
+    return parent->member(scope - 1, idx);
+}
+
+void LambdaProcedure::setMember (int scope, int idx, const ScriptObjectPointer& value)
+{
+    if (scope == 0) {
+        _members[idx] = value;
+    }
+    LambdaProcedure* parent = static_cast<LambdaProcedure*>(_parent.data());
+    parent->setMember(scope - 1, idx, value);
+}
+
+Return::Return (int procedureIdx, int argumentIdx, int instructionIdx, int operandCount) :
+    _procedureIdx(procedureIdx),
+    _argumentIdx(argumentIdx),
+    _instructionIdx(instructionIdx),
+    _operandCount(operandCount)
+{
+}
+
+QString Return::toString () const
+{
+    return "{return " + QString::number(_procedureIdx) + " " +
+        QString::number(_argumentIdx) + " " +
+        QString::number(_instructionIdx) + " " +
+        QString::number(_operandCount) + "}";
 }

@@ -6,34 +6,82 @@
 #include "script/Evaluator.h"
 #include "script/Parser.h"
 
-BindScope::BindScope (BindScope* parent) :
-    _parent(parent)
+/** The bytecode instructions. */
+enum {
+
+    /** Pushes the constant at the specified index onto the stack. */
+    ConstantOp,
+
+    /** Pushes the argument at the specified index onto the stack. */
+    ArgumentOp,
+
+    /** Pushes the member at the specified scope/index onto the stack. */
+    MemberOp,
+
+    /** Pops a value off the stack and assigns it to the argument at the specified index. */
+    SetArgumentOp,
+
+    /** Pops a value off the stack and assigns it to the member at the specified scope/index. */
+    SetMemberOp,
+
+    /** Pushes the current operand count and sets the count to zero. */
+    ResetOperandCountOp,
+
+    /** Performs a function call. */
+    CallOp,
+
+    /** Returns from a function call. */
+    ReturnOp,
+
+    /** Pops a value off the stack and discards it. */
+    PopOp
+};
+
+/**
+ * Writes an integer in network byte order to the specified ByteArray.
+ */
+inline void writeInteger (QByteArray& array, int value)
+{
+    array.append(value >> 24);
+    array.append(value >> 16);
+    array.append(value >> 8);
+    array.append(value);
+}
+
+/**
+ * Reads and returns an integer in network byte order, advancing the given pointer.
+ */
+inline int readInteger (const unsigned char*& bytecode)
+{
+    return (*bytecode++) << 24 |
+        (*bytecode++) << 16 |
+        (*bytecode++) << 8 |
+        (*bytecode++);
+}
+
+Scope::Scope (Scope* parent) :
+    _parent(parent),
+    _memberCount(0)
 {
 }
 
-void BindScope::setArguments (const QStringList& firstArgs, const QString& restArg)
+void Scope::setArguments (const QStringList& firstArgs, const QString& restArg)
 {
     int idx = 0;
     foreach (const QString& arg, firstArgs) {
-        _arguments.insert(arg, ScriptObjectPointer(new Argument(idx++)));
+        _variables.insert(arg, ScriptObjectPointer(new Argument(idx++)));
     }
     if (!restArg.isEmpty()) {
-        _arguments.insert(restArg, ScriptObjectPointer(new Argument(idx++)));
+        _variables.insert(restArg, ScriptObjectPointer(new Argument(idx++)));
     }
 }
 
-ScriptObjectPointer BindScope::resolve (const QString& name)
+ScriptObjectPointer Scope::resolve (const QString& name)
 {
-    // first check the local arguments
-    ScriptObjectPointer argument = _arguments.value(name);
-    if (!argument.isNull()) {
-        return argument;
-    }
-
-    // then the local members
-    ScriptObjectPointer member = _members.value(name).first;
-    if (!member.isNull()) {
-        return member;
+    // first check the local variables
+    ScriptObjectPointer variable = _variables.value(name);
+    if (!variable.isNull()) {
+        return variable;
     }
 
     // try the parent, if any
@@ -41,10 +89,16 @@ ScriptObjectPointer BindScope::resolve (const QString& name)
         ScriptObjectPointer pbinding = _parent->resolve(name);
         if (!pbinding.isNull()) {
             switch (pbinding->type()) {
-                case ScriptObject::ArgumentType:
+                case ScriptObject::ArgumentType: {
                     // copy parent argument to local member on initialization
-                    return define(name, pbinding);
-
+                    Argument* argument = static_cast<Argument*>(pbinding.data());
+                    _initBytecode.append(ArgumentOp);
+                    writeInteger(_initBytecode, argument->index());
+                    _initBytecode.append(SetMemberOp);
+                    writeInteger(_initBytecode, 0);
+                    writeInteger(_initBytecode, _memberCount);
+                    return define(name);
+                }
                 case ScriptObject::MemberType: {
                     Member* member = static_cast<Member*>(pbinding.data());
                     return ScriptObjectPointer(new Member(member->scope() + 1, member->index()));
@@ -57,27 +111,17 @@ ScriptObjectPointer BindScope::resolve (const QString& name)
     return ScriptObjectPointer();
 }
 
-ScriptObjectPointer BindScope::define (const QString& name, ScriptObjectPointer expr)
+ScriptObjectPointer Scope::define (const QString& name)
 {
-    ScriptObjectPointer member(new Member(0, _members.size()));
-    _members.insert(name, ScriptObjectPointerPair(member, expr));
+    ScriptObjectPointer member(new Member(0, _memberCount++));
+    _variables.insert(name, member);
     return member;
 }
 
-Scope::Scope (const Scope* parent) :
-    _parent(parent)
+int Scope::addConstant (ScriptObjectPointer value)
 {
-}
-
-void Scope::set (const QString& name, ScriptObjectPointer value)
-{
-    _objects.insert(name, value);
-}
-
-ScriptObjectPointer Scope::resolve (const QString& name) const
-{
-    ScriptObjectPointer value = _objects.value(name);
-    return (!value.isNull() || _parent == 0) ? value : _parent->resolve(name);
+    _constants.append(value);
+    return _constants.size() - 1;
 }
 
 Evaluator::Evaluator (const QString& source) :
@@ -91,24 +135,108 @@ ScriptObjectPointer Evaluator::evaluate (const QString& expr)
     ScriptObjectPointer datum;
     ScriptObjectPointer result;
     while (!(datum = parser.parse()).isNull()) {
-        ScriptObjectPointer bound = bind(datum, &_bindScope, true);
-        if (bound->type() == ScriptObject::SymbolType) {
-            // base level definition; initialize immediately
-            Symbol* symbol = static_cast<Symbol*>(bound.data());
+        QByteArray out;
+        compile(datum, &_scope, true, out);
 
-        } else {
-            result = evaluate(bound, &_scope);
-        }
     }
     return result;
 }
 
-ScriptObjectPointer Evaluator::bind (ScriptObjectPointer expr, BindScope* scope, bool allowDef)
+ScriptObjectPointer Evaluator::execute (int maxCycles)
+{
+    // copy members to locals
+    int procedureIdx = _procedureIdx;
+    int argumentIdx = _argumentIdx;
+    int instructionIdx = _instructionIdx;
+    int operandCount = _operandCount;
+    QStack<ScriptObjectPointer>& stack = _stack;
+
+    // initialize state
+    LambdaProcedure* proc = static_cast<LambdaProcedure*>(stack.at(procedureIdx).data());
+    Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
+    const unsigned char* bytecode = (const unsigned char*)lambda->bytecode().constData() +
+        instructionIdx;
+
+    while (maxCycles == 0 || maxCycles-- > 0) {
+        switch (*bytecode++) {
+            case ConstantOp:
+                stack.push(lambda->constant(readInteger(bytecode)));
+                operandCount++;
+                break;
+
+            case ArgumentOp:
+                stack.push(stack.at(argumentIdx + readInteger(bytecode)));
+                operandCount++;
+                break;
+
+            case MemberOp:
+                stack.push(proc->member(readInteger(bytecode), readInteger(bytecode)));
+                operandCount++;
+                break;
+
+            case SetArgumentOp:
+                stack[argumentIdx + readInteger(bytecode)] = stack.pop();
+                operandCount--;
+                break;
+
+            case SetMemberOp:
+                proc->setMember(readInteger(bytecode), readInteger(bytecode), stack.pop());
+                operandCount--;
+                break;
+
+            case ResetOperandCountOp:
+                stack.push(ScriptObjectPointer(new Integer(operandCount)));
+                operandCount = 0;
+                break;
+
+            case CallOp: {
+                ScriptObjectPointer sproc = stack.at(stack.size() - operandCount);
+                switch (sproc->type()) {
+                    case ScriptObject::NativeProcedureType: {
+                        NativeProcedure* nproc = static_cast<NativeProcedure*>(sproc.data());
+                        nproc->call(stack, operandCount);
+                        operandCount = 1;
+                        break;
+                    }
+                    case ScriptObject::LambdaProcedureType: {
+                        LambdaProcedure* lproc = static_cast<LambdaProcedure*>(sproc.data());
+                        stack.push(ScriptObjectPointer(new Return(
+                            procedureIdx, argumentIdx, instructionIdx, operandCount)));
+
+                        break;
+                    }
+                    default:
+                        break;
+                }
+                break;
+            }
+            case ReturnOp:
+                break;
+
+            case PopOp:
+                stack.pop();
+                operandCount--;
+                break;
+        }
+    }
+
+    // restore members
+    _procedureIdx = procedureIdx;
+    _argumentIdx = argumentIdx;
+    _instructionIdx = instructionIdx;
+    _operandCount = operandCount;
+
+    return ScriptObjectPointer();
+}
+
+void Evaluator::compile (ScriptObjectPointer expr, Scope* scope, bool allowDef, QByteArray& out)
 {
     switch (expr->type()) {
         case ScriptObject::BooleanType:
         case ScriptObject::StringType:
-            return expr;
+            out.append(ConstantOp);
+            writeInteger(out, scope->addConstant(expr));
+            return;
 
         case ScriptObject::SymbolType: {
             Symbol* symbol = static_cast<Symbol*>(expr.data());
@@ -116,7 +244,21 @@ ScriptObjectPointer Evaluator::bind (ScriptObjectPointer expr, BindScope* scope,
             if (binding.isNull()) {
                 throw ScriptError("Unresolved symbol.", symbol->position());
             }
-            return binding;
+            switch (binding->type()) {
+                case ScriptObject::ArgumentType: {
+                    Argument* argument = static_cast<Argument*>(binding.data());
+                    out.append(ArgumentOp);
+                    writeInteger(out, argument->index());
+                    return;
+                }
+                case ScriptObject::MemberType: {
+                    Member* member = static_cast<Member*>(binding.data());
+                    out.append(MemberOp);
+                    writeInteger(out, member->scope());
+                    writeInteger(out, member->index());
+                    return;
+                }
+            }
         }
         case ScriptObject::ListType: {
             List* list = static_cast<List*>(expr.data());
@@ -136,35 +278,38 @@ ScriptObjectPointer Evaluator::bind (ScriptObjectPointer expr, BindScope* scope,
                         throw ScriptError("Invalid definition.", list->position());
                     }
                     ScriptObjectPointer cadr = contents.at(1);
+                    ScriptObjectPointer member;
                     switch (cadr->type()) {
                         case ScriptObject::SymbolType: {
                             Symbol* variable = static_cast<Symbol*>(cadr.data());
+                            member = scope->define(variable->name());
                             if (contents.size() == 2) {
-                                scope->define(variable->name(),
-                                    ScriptObjectPointer(new Unspecified()));
+                                return;
 
                             } else if (contents.size() == 3) {
-                                scope->define(variable->name(),
-                                    bind(contents.at(2), scope, false));
+                                compile(contents.at(2), scope, false, scope->initBytecode());
 
                             } else {
                                 throw ScriptError("Invalid definition.", list->position());
                             }
-                            return cadr;
+                            break;
                         }
                         case ScriptObject::ListType: {
-                            QString variable;
-                            ScriptObjectPointer lambda = bindLambda(list, scope, &variable);
-                            if (variable.isEmpty()) {
-                                throw ScriptError("Invalid definition.", list->position());
-                            }
-                            scope->define(variable, lambda);
+                            member = compileLambda(list, scope, scope->initBytecode(), true);
+                            break;
                         }
                         default:
                             throw ScriptError("Invalid definition.", list->position());
                     }
+                    Member* mem = static_cast<Member*>(member.data());
+                    scope->initBytecode().append(SetMemberOp);
+                    writeInteger(scope->initBytecode(), 0);
+                    writeInteger(scope->initBytecode(), mem->index());
+                    return;
+
                 } else if (name == "lambda") {
-                    return bindLambda(list, scope);
+                    compileLambda(list, scope, out);
+                    return;
 
                 } else if (name == "set!") {
                     if (contents.size() != 3) {
@@ -180,42 +325,52 @@ ScriptObjectPointer Evaluator::bind (ScriptObjectPointer expr, BindScope* scope,
                     if (binding.isNull()) {
                         throw ScriptError("Unresolved symbol.", var->position());
                     }
-                    ScriptObjectPointer value = bind(contents.at(2), scope, false);
+                    compile(contents.at(2), scope, false, out);
                     switch (binding->type()) {
                         case ScriptObject::ArgumentType: {
                             Argument* argument = static_cast<Argument*>(binding.data());
-                            return ScriptObjectPointer(new SetArgument(argument->index(), value));
+                            out.append(SetArgumentOp);
+                            writeInteger(out, argument->index());
                         }
                         case ScriptObject::MemberType: {
                             Member* member = static_cast<Member*>(binding.data());
-                            return ScriptObjectPointer(new SetMember(
-                                member->scope(), member->index(), value));
+                            out.append(SetMemberOp);
+                            writeInteger(out, member->scope());
+                            writeInteger(out, member->index());
                         }
                     }
+                    out.append(ConstantOp);
+                    writeInteger(out, scope->addConstant(ScriptObjectPointer(new Unspecified())));
+                    return;
+
                 } else if (name == "quote") {
                     if (contents.size() != 2) {
                         throw ScriptError("Invalid expression.", list->position());
                     }
-                    return ScriptObjectPointer(new Quote(contents.at(1)));
+                    out.append(ConstantOp);
+                    writeInteger(out, scope->addConstant(contents.at(1)));
+                    return;
                 }
             }
-            ScriptObjectPointer procedureExpr = bind(car, scope, false);
-            QList<ScriptObjectPointer> argumentExprs;
-            for (int ii = 1, nn = contents.size(); ii < nn; ii++) {
-                argumentExprs.append(bind(contents.at(ii), scope, false));
+            out.append(ResetOperandCountOp);
+            foreach (const ScriptObjectPointer& operand, contents) {
+                compile(operand, scope, false, out);
             }
-            return ScriptObjectPointer(new ProcedureCall(procedureExpr, argumentExprs));
+            out.append(CallOp);
+            return;
         }
     }
 }
 
-ScriptObjectPointer Evaluator::bindLambda (List* list, BindScope* scope, QString* firstArg)
+ScriptObjectPointer Evaluator::compileLambda (
+    List* list, Scope* scope, QByteArray& out, bool define)
 {
     const QList<ScriptObjectPointer>& contents = list->contents();
     if (contents.size() < 3) {
         throw ScriptError("Invalid lambda.", list->position());
     }
     ScriptObjectPointer args = contents.at(1);
+    ScriptObjectPointer member;
     QStringList firstArgs;
     QString restArg;
     switch (args->type()) {
@@ -233,8 +388,8 @@ ScriptObjectPointer Evaluator::bindLambda (List* list, BindScope* scope, QString
                     throw ScriptError("Invalid argument.", datum->position());
                 }
                 Symbol* var = static_cast<Symbol*>(arg.data());
-                if (firstArg != 0 && firstArg->isEmpty()) {
-                    *firstArg = var->name();
+                if (define && member.isNull()) {
+                    member = scope->define(var->name());
                     continue;
                 }
                 if (rest) {
@@ -256,138 +411,45 @@ ScriptObjectPointer Evaluator::bindLambda (List* list, BindScope* scope, QString
             Datum* datum = static_cast<Datum*>(args.data());
             throw ScriptError("Invalid formals.", datum->position());
     }
-    BindScope subscope(scope);
-    bool exprs = false;
-    QList<ScriptObjectPointer> memberExprs;
-    QList<ScriptObjectPointer> bodyExprs;
+    // make sure we have a member if necessary
+    if (define && member.isNull()) {
+        throw ScriptError("Invalid definition.", list->position());
+    }
+    Scope subscope(scope);
+    QByteArray bodyBytecode;
     for (int ii = 2, nn = contents.size(); ii < nn; ii++) {
-        ScriptObjectPointer bound = bind(contents.at(ii), &subscope, true);
-        if (bound.isNull()) {
-
-        }
-
-    }
-    return ScriptObjectPointer();
-}
-
-ScriptObjectPointer Evaluator::evaluate (ScriptObjectPointer expr, Scope* scope)
-{
-    switch (expr->type()) {
-        case ScriptObject::BooleanType:
-        case ScriptObject::StringType:
-        case ScriptObject::UnspecifiedType:
-            return expr;
-
-        case ScriptObject::QuoteType: {
-            Quote* quote = static_cast<Quote*>(expr.data());
-            return quote->datum();
-        }
-        case ScriptObject::ArgumentType: {
-            Argument* argument = static_cast<Argument*>(expr.data());
-        }
-        case ScriptObject::MemberType: {
-            Member* member = static_cast<Member*>(expr.data());
-        }
-        case ScriptObject::SetArgumentType: {
-            SetArgument* setter = static_cast<SetArgument*>(expr.data());
-            evaluate(setter->expr(), scope);
-        }
-        case ScriptObject::SetMemberType: {
-            SetMember* setter = static_cast<SetMember*>(expr.data());
-            evaluate(setter->expr(), scope);
-        }
-        case ScriptObject::ProcedureCallType: {
-            ProcedureCall* call = static_cast<ProcedureCall*>(expr.data());
-
-        }
-        case ScriptObject::LambdaType: {
-            Lambda* lambda = static_cast<Lambda*>(expr.data());
-
-        }
-        case ScriptObject::SymbolType: {
-            Symbol* symbol = static_cast<Symbol*>(expr.data());
-            ScriptObjectPointer value = scope->resolve(symbol->name());
-            if (value.isNull()) {
-                throw ScriptError("Unresolved symbol.", symbol->position());
-            }
-            return value;
-        }
-        case ScriptObject::ListType: {
-            List* list = static_cast<List*>(expr.data());
-            const QList<ScriptObjectPointer>& contents = list->contents();
-            if (contents.isEmpty()) {
-                throw ScriptError("Invalid expression.", list->position());
-            }
-            ScriptObjectPointer car = contents.at(0);
-            if (car->type() == ScriptObject::SymbolType) {
-                Symbol* symbol = static_cast<Symbol*>(car.data());
-                QString name = symbol->name();
-                if (name == "define") {
-
-                    return ScriptObjectPointer();
-
-                } else if (name == "lambda") {
-                    if (contents.size() < 3) {
-                        throw ScriptError("Invalid expression.", list->position());
-                    }
-                    ScriptObjectPointer args = contents.at(1);
-                    QList<QString> firstArgs;
-                    QString restArg;
-                    switch (args->type()) {
-                        case ScriptObject::SymbolType: {
-                            Symbol* symbol = static_cast<Symbol*>(args.data());
-                            restArg = symbol->name();
-                            break;
+        ScriptObjectPointer element = contents.at(ii);
+        if (bodyBytecode.isEmpty()) {
+            if (element->type() == ScriptObject::ListType) {
+                // peek in to see if it's a define
+                List* list = static_cast<List*>(element.data());
+                if (!list->contents().isEmpty()) {
+                    ScriptObjectPointer car = list->contents().at(0);
+                    if (car->type() == ScriptObject::SymbolType) {
+                        Symbol* symbol = static_cast<Symbol*>(car.data());
+                        if (symbol->name() == "define") {
+                            compile(element, &subscope, true, bodyBytecode);
+                            continue;
                         }
-                        case ScriptObject::ListType: {
-                            List* alist = static_cast<List*>(args.data());
-                            foreach (ScriptObjectPointer arg, alist->contents()) {
-
-                            }
-                            break;
-                        }
-                        default:
-                            Datum* datum = static_cast<Datum*>(args.data());
-                            throw ScriptError("Invalid formals.", datum->position());
                     }
-
-                } else if (name == "set!") {
-                    if (contents.size() != 3) {
-                        throw ScriptError("Invalid expression.", list->position());
-                    }
-                    ScriptObjectPointer variable = contents.at(1);
-                    if (variable->type() != ScriptObject::SymbolType) {
-                        Datum* datum = static_cast<Datum*>(variable.data());
-                        throw ScriptError("Not a variable.", datum->position());
-                    }
-                    Symbol* var = static_cast<Symbol*>(variable.data());
-
-                    return ScriptObjectPointer(new Unspecified());
-
-                } else if (name == "quote") {
-                    if (contents.size() != 2) {
-                        throw ScriptError("Invalid expression.", list->position());
-                    }
-                    return contents.at(1);
                 }
             }
-            ScriptObjectPointer fn = evaluate(car, scope);
-            if (fn.isNull() || fn->type() != ScriptObject::ProcedureType) {
-                Datum* datum = static_cast<Datum*>(car.data());
-                throw ScriptError("Doesn't evaluate to procedure.", datum->position());
-            }
-            QList<ScriptObjectPointer> args;
-            for (int ii = 1, nn = contents.size(); ii < nn; ii++) {
-                ScriptObjectPointer element = contents.at(ii);
-                ScriptObjectPointer result = evaluate(element, scope);
-                if (result.isNull()) {
-                    Datum* datum = static_cast<Datum*>(element.data());
-                    throw ScriptError("Doesn't evaluate to value.", datum->position());
-                }
-                args.append(result);
-            }
-            Procedure* procedure = static_cast<Procedure*>(fn.data());
-            return procedure->call(args);
+            // install the arguments now that the defines have ended
+            subscope.setArguments(firstArgs, restArg);
+
+        } else {
+            bodyBytecode.append(PopOp);
         }
+        compile(element, &subscope, false, bodyBytecode);
     }
+    if (bodyBytecode.isEmpty()) {
+        throw ScriptError("Function has no body.", list->position());
+    }
+    bodyBytecode.append(ReturnOp);
+    ScriptObjectPointer lambda(new Lambda(firstArgs.size(), !restArg.isEmpty(),
+        subscope.memberCount(), subscope.constants(), subscope.initBytecode() + bodyBytecode,
+        subscope.initBytecode().length()));
+    out.append(ConstantOp);
+    writeInteger(out, scope->addConstant(lambda));
+    return member;
 }
