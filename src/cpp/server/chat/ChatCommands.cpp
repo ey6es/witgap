@@ -9,6 +9,7 @@
 #include "actor/Pawn.h"
 #include "chat/ChatCommands.h"
 #include "chat/ChatWindow.h"
+#include "http/ImportExportManager.h"
 #include "net/Session.h"
 #include "peer/PeerManager.h"
 #include "scene/Scene.h"
@@ -440,6 +441,32 @@ public:
 };
 
 /**
+ * Handles the /upload command.
+ */
+class UploadCommand : public AdminChatCommand
+{
+    Q_DECLARE_TR_FUNCTIONS(ChatCommands)
+
+public:
+
+    virtual QString aliases (QTranslator* translator) { return tr("upload"); }
+
+    virtual QString usage (QTranslator* translator, const QString& cmd) {
+        return tr("Usage: /%1 expression\n"
+            "  Accepts a script upload to execute.").arg(cmd);
+    }
+
+    virtual QString handle (Session* session, QTranslator* translator,
+            const QString& cmd, const QString& args) {
+        QMetaObject::invokeMethod(session->app()->importExportManager(), "addImport",
+            Q_ARG(const QString&, "script.scm"),
+            Q_ARG(const Callback&, Callback(session, "runScript(QByteArray)")),
+            Q_ARG(const Callback&, Callback(session, "openUrl(QUrl)")));
+        return "";
+    }
+};
+
+/**
  * Creates the map from language codes to command maps.
  */
 static QHash<QString, CommandMap> createCommandMapMap (ServerApp* app)
@@ -448,7 +475,7 @@ static QHash<QString, CommandMap> createCommandMapMap (ServerApp* app)
         new HelpCommand(), new ClearCommand(), new BugCommand(), new SayCommand(),
         new EmoteCommand(), new ShoutCommand(), new TellCommand(), new BroadcastCommand(),
         new RebootCommand(), new SGoCommand(), new ZGoCommand(), new PGoCommand(),
-        new SummonCommand(), new EvalCommand() };
+        new SummonCommand(), new EvalCommand(), new UploadCommand() };
 
     QHash<QString, CommandMap> map;
     for (int ii = 0; ii < sizeof(handlers) / sizeof(ChatCommand*); ii++) {

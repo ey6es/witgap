@@ -29,6 +29,12 @@ Integer::Integer (int value, const ScriptPosition& position) :
 {
 }
 
+Float::Float (float value, const ScriptPosition& position) :
+    Datum(position),
+    _value(value)
+{
+}
+
 String::String (const QString& contents, const ScriptPosition& position) :
     Datum(position),
     _contents(contents)
@@ -93,6 +99,15 @@ QString Lambda::toString () const
         (_listArgument ? "#t" : "#f") + "}";
 }
 
+LambdaProcedure::LambdaProcedure (
+        const ScriptObjectPointer& lambda, const ScriptObjectPointer& parent) :
+    _lambda(lambda),
+    _parent(parent)
+{
+    Lambda* lam = static_cast<Lambda*>(lambda.data());
+    _members.resize(lam->memberCount());
+}
+
 const ScriptObjectPointer& LambdaProcedure::member (int scope, int idx) const
 {
     if (scope == 0) {
@@ -111,10 +126,10 @@ void LambdaProcedure::setMember (int scope, int idx, const ScriptObjectPointer& 
     parent->setMember(scope - 1, idx, value);
 }
 
-Return::Return (int procedureIdx, int argumentIdx, int instructionIdx, int operandCount) :
+Return::Return (int procedureIdx, int argumentIdx, const quint8* instruction, int operandCount) :
     _procedureIdx(procedureIdx),
     _argumentIdx(argumentIdx),
-    _instructionIdx(instructionIdx),
+    _instruction(instruction),
     _operandCount(operandCount)
 {
 }
@@ -123,6 +138,5 @@ QString Return::toString () const
 {
     return "{return " + QString::number(_procedureIdx) + " " +
         QString::number(_argumentIdx) + " " +
-        QString::number(_instructionIdx) + " " +
         QString::number(_operandCount) + "}";
 }

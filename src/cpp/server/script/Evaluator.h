@@ -119,11 +119,19 @@ protected:
     ScriptObjectPointer compileLambda (List* list, Scope* scope, QByteArray& out,
         bool define = false);
 
+    /**
+     * Returns a pointer to the global scope.
+     */
+    static Scope* globalScope ();
+
     /** The source of the input. */
     QString _source;
 
-    /** The top-level scope. */
+    /** The evaluator-level scope. */
     Scope _scope;
+
+    /** The top-level lambda procedure. */
+    ScriptObjectPointer _lambdaProc;
 
     /** The evaluation stack. */
     QStack<ScriptObjectPointer> _stack;
@@ -134,8 +142,8 @@ protected:
     /** The index of the first argument on the stack. */
     int _argumentIdx;
 
-    /** The index of the current instruction in the procedure definition. */
-    int _instructionIdx;
+    /** The pointer to the next instruction in the procedure definition. */
+    const quint8* _instruction;
 
     /** The current operand count. */
     int _operandCount;

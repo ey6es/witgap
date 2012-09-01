@@ -7,6 +7,7 @@
 
 #include <QByteArray>
 #include <QDateTime>
+#include <QFile>
 #include <QMetaObject>
 #include <QStringList>
 #include <QThreadPool>
@@ -20,6 +21,7 @@
 #include "http/ImportExportManager.h"
 #include "net/ConnectionManager.h"
 #include "scene/SceneManager.h"
+#include "script/Evaluator.h"
 #include "util/General.h"
 #include "util/Mailer.h"
 
@@ -135,6 +137,8 @@ static ArgumentDescriptorList createArgumentDescriptors ()
     args.append("config_file", "The path of the configuration file.",
         QVariant(), QVariant::String);
     args.append("port_offset", "The offset of the server ports.", 0, QVariant::UInt);
+    args.append("startup_script", "The path of a script to execute on startup.", QVariant(),
+        QVariant::String);
 
     // add descriptors for arguments required by other modules
     PeerManager::appendArguments(&args);
@@ -296,6 +300,25 @@ ServerApp::ServerApp (int& argc, char** argv) :
 
     // note startup
     qDebug() << "Server initialized.";
+
+    // run our startup script, if any
+    QString sscript = _args.value("startup_script").toString();
+    if (sscript.isEmpty()) {
+        return;
+    }
+    QFile file(sscript);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "Couldn't open startup script." << sscript << file.errorString();
+        return;
+    }
+    try {
+        ScriptObjectPointer result = Evaluator(sscript).evaluate(QTextStream(&file).readAll());
+        if (!result.isNull()) {
+            qDebug() << "Startup script returned: " << result->toString();
+        }
+    } catch (const ScriptError& error) {
+        qWarning() << error.toString();
+    }
 }
 
 QString ServerApp::translationLocale (const QString& locale) const

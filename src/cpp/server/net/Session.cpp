@@ -25,6 +25,7 @@
 #include "scene/Scene.h"
 #include "scene/SceneManager.h"
 #include "scene/Zone.h"
+#include "script/Evaluator.h"
 #include "ui/Border.h"
 #include "ui/Button.h"
 #include "ui/Label.h"
@@ -459,6 +460,18 @@ void Session::openUrl (const QUrl& url)
     if (_connection) {
         Connection::evaluateMetaMethod().invoke(_connection.data(), Q_ARG(const QString&,
             "document.getElementById('importExport').src = '" + url.toString() + "'"));
+    }
+}
+
+void Session::runScript (const QByteArray& script)
+{
+    try {
+        ScriptObjectPointer result = Evaluator().evaluate(script);
+        if (!result.isNull()) {
+            _chatWindow->display(result->toString());
+        }
+    } catch (const ScriptError& error) {
+        _chatWindow->display(error.toString());
     }
 }
 

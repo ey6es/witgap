@@ -17,8 +17,8 @@ class ScriptObject
 public:
 
     /** The object types. */
-    enum Type { SentinelType, BooleanType, IntegerType, StringType, SymbolType, ListType,
-        UnspecifiedType, ArgumentType, MemberType, LambdaType, LambdaProcedureType,
+    enum Type { SentinelType, BooleanType, IntegerType, FloatType, StringType, SymbolType,
+        ListType, UnspecifiedType, ArgumentType, MemberType, LambdaType, LambdaProcedureType,
         NativeProcedureType, ReturnType };
 
     /**
@@ -149,6 +149,39 @@ protected:
 
     /** The integer's value. */
     int _value;
+};
+
+/**
+ * A datum representing a floating point number.
+ */
+class Float : public Datum
+{
+public:
+
+    /**
+     * Creates a new float.
+     */
+    Float (float value, const ScriptPosition& position = ScriptPosition());
+
+    /**
+     * Returns the float's value.
+     */
+    float value () const { return _value; }
+
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return FloatType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const { return QString::number(_value); }
+
+protected:
+
+    /** The float's value. */
+    float _value;
 };
 
 /**
@@ -357,6 +390,21 @@ public:
         const QList<ScriptObjectPointer>& constants, const QByteArray& bytecode, int bodyIdx);
 
     /**
+     * Returns the number of scalar arguments expected by the function.
+     */
+    int scalarArgumentCount () const { return _scalarArgumentCount; }
+
+    /**
+     * Returns whether or not to put the rest of the arguments in a list.
+     */
+    bool listArgument () const { return _listArgument; }
+
+    /**
+     * Returns the number of members in the function.
+     */
+    int memberCount () const { return _memberCount; }
+
+    /**
      * Returns a reference to the procedure bytecode.
      */
     const QByteArray& bytecode () const { return _bytecode; }
@@ -407,7 +455,7 @@ public:
     /**
      * Creates a new lambda procedure.
      */
-    LambdaProcedure ();
+    LambdaProcedure (const ScriptObjectPointer& lambda, const ScriptObjectPointer& parent);
 
     /**
      * Returns a reference to the procedure's definition.
@@ -424,11 +472,6 @@ public:
      */
     void setMember (int scope, int idx, const ScriptObjectPointer& value);
 
-    /**
-     * Calls the procedure and returns the result.
-     */
-    virtual ScriptObjectPointer call (const QList<ScriptObjectPointer>& args);
-
 protected:
 
     /** The definition of the procedure. */
@@ -438,7 +481,7 @@ protected:
     ScriptObjectPointer _parent;
 
     /** The current member values. */
-    QList<ScriptObjectPointer> _members;
+    QVector<ScriptObjectPointer> _members;
 };
 
 /**
@@ -459,9 +502,9 @@ public:
     virtual QString toString () const;
 
     /**
-     * Calls the procedure.
+     * Calls the procedure.  Throws a QString message on failure.
      */
-    virtual void call (QStack<ScriptObjectPointer>& stack, int operandCount) = 0;
+    virtual ScriptObjectPointer call (int argc, ScriptObjectPointer* argv) = 0;
 };
 
 /**
@@ -474,7 +517,7 @@ public:
     /**
      * Creates a new return.
      */
-    Return (int procedureIdx, int argumentIdx, int instructionIdx, int operandCount);
+    Return (int procedureIdx, int argumentIdx, const quint8* instruction, int operandCount);
 
     /**
      * Returns the index of the procedure on the stack.
@@ -487,9 +530,9 @@ public:
     int argumentIdx () const { return _argumentIdx; }
 
     /**
-     * Returns the index of the next instruction in the procedure definition.
+     * Returns the pointer to the next instruction in the procedure definition.
      */
-    int instructionIdx () const { return _instructionIdx; }
+    const quint8* instruction () const { return _instruction; }
 
     /**
      * Returns the current operand count.
@@ -514,8 +557,8 @@ protected:
     /** The index of the first argument on the stack. */
     int _argumentIdx;
 
-    /** The index of the next instruction in the procedure definition. */
-    int _instructionIdx;
+    /** The pointer to the next instruction in the procedure definition. */
+    const quint8* _instruction;
 
     /** The current operand count. */
     int _operandCount;

@@ -283,6 +283,11 @@ public:
     Q_INVOKABLE void openUrl (const QUrl& url);
 
     /**
+     * Runs an uploaded script.
+     */
+    Q_INVOKABLE void runScript (const QByteArray& script);
+
+    /**
      * Notifies us that a window has been created.
      */
     void windowCreated (Window* window);
