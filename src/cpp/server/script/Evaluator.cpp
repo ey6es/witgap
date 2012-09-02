@@ -205,8 +205,12 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         NativeProcedure* nproc = static_cast<NativeProcedure*>(sproc.data());
                         int ocidx = pidx - 1;
                         ScriptObjectPointer* sdata = stack.data();
-                        ScriptObjectPointer result = nproc->call(
-                            operandCount - 1, sdata + ocidx + 2);
+                        ScriptObjectPointer result;
+                        try {
+                            result = nproc->call(operandCount - 1, sdata + ocidx + 2);
+                        } catch (const QString& message) {
+                            // TODO
+                        }
                         operandCount = static_cast<Integer*>(sdata[ocidx].data())->value();
                         stack.resize(ocidx + 1);
                         stack[ocidx] = result;
@@ -231,7 +235,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         lambda = nlambda;
                         procedureIdx = pidx;
                         argumentIdx = pidx + 1;
-                        // instruction = nlambda
+                        instruction = lambda->body();
                         operandCount = 0;
                         break;
                     }
@@ -240,17 +244,33 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                 }
                 break;
             }
-            case ReturnOp:
-                break;
-
-            case LambdaOp: {
-                ScriptObjectPointer nlambda = lambda->constant(readInteger(instruction));
+            case ReturnOp: {
 
                 break;
             }
-            case LambdaReturnOp:
+            case LambdaOp: {
+                ScriptObjectPointer nlambda = lambda->constant(readInteger(instruction));
+                lambda = static_cast<Lambda*>(nlambda.data());
+                stack.push(ScriptObjectPointer(proc = new LambdaProcedure(
+                    nlambda, stack.at(procedureIdx))));
+                operandCount++;
+                stack.push(ScriptObjectPointer(new Return(
+                    procedureIdx, argumentIdx, instruction, operandCount)));
+                procedureIdx = stack.size() - 2;
+                instruction = lambda->initializer();
+                operandCount = 0;
                 break;
-
+            }
+            case LambdaReturnOp: {
+                ScriptObjectPointer rptr = stack.pop();
+                Return* ret = static_cast<Return*>(rptr.data());
+                procedureIdx = ret->procedureIdx();
+                instruction = ret->instruction();
+                operandCount = ret->operandCount();
+                proc = static_cast<LambdaProcedure*>(stack.at(procedureIdx).data());
+                lambda = static_cast<Lambda*>(proc->lambda().data());
+                break;
+            }
             case PopOp:
                 stack.pop();
                 operandCount--;
@@ -485,6 +505,7 @@ ScriptObjectPointer Evaluator::compileLambda (
     if (bodyBytecode.isEmpty()) {
         throw ScriptError("Function has no body.", list->position());
     }
+    subscope.initBytecode().append(LambdaReturnOp);
     bodyBytecode.append(ReturnOp);
     ScriptObjectPointer lambda(new Lambda(firstArgs.size(), !restArg.isEmpty(),
         subscope.memberCount(), subscope.constants(), subscope.initBytecode() + bodyBytecode,

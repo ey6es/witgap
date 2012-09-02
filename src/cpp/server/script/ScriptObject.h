@@ -405,14 +405,19 @@ public:
     int memberCount () const { return _memberCount; }
 
     /**
-     * Returns a reference to the procedure bytecode.
-     */
-    const QByteArray& bytecode () const { return _bytecode; }
-
-    /**
      * Returns a reference to the constant at the specified index.
      */
     const ScriptObjectPointer& constant (int idx) const { return _constants.at(idx); }
+
+    /**
+     * Returns a pointer to the initializer bytecode.
+     */
+    const quint8* initializer () const { return (const quint8*)_bytecode.constData(); }
+
+    /**
+     * Returns a pointer to the body bytecode.
+     */
+    const quint8* body () const { return (const quint8*)_bytecode.constData() + _bodyIdx; }
 
     /**
      * Returns the type of the object.
@@ -472,6 +477,16 @@ public:
      */
     void setMember (int scope, int idx, const ScriptObjectPointer& value);
 
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return LambdaProcedureType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const { return "#lproc" + QString::number((int)this, 16); }
+
 protected:
 
     /** The definition of the procedure. */
@@ -492,6 +507,11 @@ class NativeProcedure : public ScriptObject
 public:
 
     /**
+     * Calls the procedure.  Throws a QString message on failure.
+     */
+    virtual ScriptObjectPointer call (int argc, ScriptObjectPointer* argv) = 0;
+
+    /**
      * Returns the type of the object.
      */
     virtual Type type () const { return NativeProcedureType; }
@@ -499,12 +519,7 @@ public:
     /**
      * Returns a string representation of the object.
      */
-    virtual QString toString () const;
-
-    /**
-     * Calls the procedure.  Throws a QString message on failure.
-     */
-    virtual ScriptObjectPointer call (int argc, ScriptObjectPointer* argv) = 0;
+    virtual QString toString () const { return "#nproc" + QString::number((int)this, 16); }
 };
 
 /**
