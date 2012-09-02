@@ -1,4 +1,4 @@
-find_package(Qt4 4.6.2 REQUIRED QtCore)
+find_package(Qt4 REQUIRED QtCore)
 include(${QT_USE_FILE})
 
 add_executable(mtc mtc.cpp)

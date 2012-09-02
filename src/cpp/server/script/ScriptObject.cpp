@@ -1,6 +1,7 @@
 //
 // $Id$
 
+#include "script/Evaluator.h"
 #include "script/ScriptObject.h"
 
 ScriptObject::~ScriptObject ()
@@ -93,6 +94,27 @@ Lambda::Lambda (int scalarArgumentCount, bool listArgument, int memberCount,
 {
 }
 
+Lambda::Lambda () :
+    _scalarArgumentCount(0),
+    _listArgument(false),
+    _memberCount(0),
+    _bodyIdx(0)
+{
+}
+
+void Lambda::setConstantsAndBytecode (
+    const QList<ScriptObjectPointer>& constants, const QByteArray bytecode)
+{
+    _constants = constants;
+    _bytecode = bytecode;
+}
+
+void Lambda::clearConstantsAndBytecode ()
+{
+    _constants.clear();
+    _bytecode.clear();
+}
+
 QString Lambda::toString () const
 {
     return "{lambda " + QString::number(_scalarArgumentCount) + " " +
@@ -121,9 +143,15 @@ void LambdaProcedure::setMember (int scope, int idx, const ScriptObjectPointer& 
 {
     if (scope == 0) {
         _members[idx] = value;
+        return;
     }
     LambdaProcedure* parent = static_cast<LambdaProcedure*>(_parent.data());
     parent->setMember(scope - 1, idx, value);
+}
+
+NativeProcedure::NativeProcedure (Function function) :
+    _function(function)
+{
 }
 
 Return::Return (int procedureIdx, int argumentIdx, const quint8* instruction, int operandCount) :

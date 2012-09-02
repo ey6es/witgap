@@ -1,4 +1,4 @@
-find_package(Qt4 4.6.2 REQUIRED QtCore QtNetwork)
+find_package(Qt4 REQUIRED QtCore QtNetwork)
 include(${QT_USE_FILE})
 
 set(HEADERS Callback.h General.h)

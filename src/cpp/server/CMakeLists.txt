@@ -1,4 +1,4 @@
-find_package(Qt4 4.6.2 REQUIRED QtCore QtGui QtNetwork QtSql)
+find_package(Qt4 REQUIRED QtCore QtGui QtNetwork QtSql)
 find_package(OpenSSL)
 find_package(GeoIP)
 include(${QT_USE_FILE})
@@ -21,6 +21,6 @@ set(SOURCES CommandMenu.cpp LogonDialog.cpp MainWindow.cpp
 
 qt4_wrap_cpp(SOURCES ${HEADERS})
 add_executable(witgap-server ${SOURCES} ${HEADERS} main.cpp)
-target_link_libraries(witgap-server ${QT_LIBRARIES} ${OPENSSL_LIBRARIES} ${GEOIP_LIBRARIES}
-    server-admin server-net server-chat server-db server-http server-peer
-    server-scene server-script server-actor server-ui util)
+target_link_libraries(witgap-server server-admin server-net server-chat server-db server-http
+    server-peer server-scene server-script server-actor server-ui util
+    ${QT_LIBRARIES} ${OPENSSL_LIBRARIES} ${GEOIP_LIBRARIES})

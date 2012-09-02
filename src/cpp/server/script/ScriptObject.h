@@ -9,6 +9,8 @@
 
 #include "script/Script.h"
 
+class Evaluator;
+
 /**
  * Base class for script objects.
  */
@@ -390,6 +392,11 @@ public:
         const QList<ScriptObjectPointer>& constants, const QByteArray& bytecode, int bodyIdx);
 
     /**
+     * Creates a new empty lambda expression.
+     */
+    Lambda ();
+
+    /**
      * Returns the number of scalar arguments expected by the function.
      */
     int scalarArgumentCount () const { return _scalarArgumentCount; }
@@ -403,6 +410,17 @@ public:
      * Returns the number of members in the function.
      */
     int memberCount () const { return _memberCount; }
+
+    /**
+     * Sets the constants and bytecode.
+     */
+    void setConstantsAndBytecode (
+        const QList<ScriptObjectPointer>& constants, const QByteArray bytecode);
+
+    /**
+     * Clears out all constants and bytecode.
+     */
+    void clearConstantsAndBytecode ();
 
     /**
      * Returns a reference to the constant at the specified index.
@@ -460,7 +478,8 @@ public:
     /**
      * Creates a new lambda procedure.
      */
-    LambdaProcedure (const ScriptObjectPointer& lambda, const ScriptObjectPointer& parent);
+    LambdaProcedure (const ScriptObjectPointer& lambda = ScriptObjectPointer(),
+        const ScriptObjectPointer& parent = ScriptObjectPointer());
 
     /**
      * Returns a reference to the procedure's definition.
@@ -476,6 +495,11 @@ public:
      * Sets the value of the member at the specified scope and index.
      */
     void setMember (int scope, int idx, const ScriptObjectPointer& value);
+
+    /**
+     * Appends a local member.
+     */
+    void appendMember (const ScriptObjectPointer& value) { _members.append(value); }
 
     /**
      * Returns the type of the object.
@@ -500,16 +524,24 @@ protected:
 };
 
 /**
- * Base class for native procedures.
+ * Class for native procedures.
  */
 class NativeProcedure : public ScriptObject
 {
 public:
 
+    /** The function type. */
+    typedef ScriptObjectPointer (*Function)(Evaluator* eval, int argc, ScriptObjectPointer* argv);
+
     /**
-     * Calls the procedure.  Throws a QString message on failure.
+     * Creates a new native procedure.
      */
-    virtual ScriptObjectPointer call (int argc, ScriptObjectPointer* argv) = 0;
+    NativeProcedure (Function function);
+    
+    /**
+     * Returns the native function.
+     */
+    Function function () const { return _function; }
 
     /**
      * Returns the type of the object.
@@ -520,6 +552,11 @@ public:
      * Returns a string representation of the object.
      */
     virtual QString toString () const { return "#nproc" + QString::number((int)this, 16); }
+
+protected:
+
+    /** The function to call. */
+    Function _function;
 };
 
 /**

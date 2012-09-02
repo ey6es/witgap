@@ -137,7 +137,7 @@ static ArgumentDescriptorList createArgumentDescriptors ()
     args.append("config_file", "The path of the configuration file.",
         QVariant(), QVariant::String);
     args.append("port_offset", "The offset of the server ports.", 0, QVariant::UInt);
-    args.append("startup_script", "The path of a script to execute on startup.", QVariant(),
+    args.append("startup_script", "The path of a script to execute on startup.", QString(),
         QVariant::String);
 
     // add descriptors for arguments required by other modules

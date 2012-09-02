@@ -18,8 +18,15 @@ public:
 
     /**
      * Creates a new scope.
+     *
+     * @param withValues if true, create an associated lambda procedure to hold member values.
      */
-    Scope (Scope* parent = 0);
+    Scope (Scope* parent = 0, bool withValues = false);
+
+    /**
+     * Returns a reference to the internal lambda procedure.
+     */
+    const ScriptObjectPointer& lambdaProc () const { return _lambdaProc; }
 
     /**
      * Sets the scope's arguments.
@@ -33,9 +40,15 @@ public:
     ScriptObjectPointer resolve (const QString& name);
 
     /**
-     * Defines a member in this scope with the supplied name.
+     * Defines a native function in the scope.
      */
-    ScriptObjectPointer define (const QString& name);
+    ScriptObjectPointer define (const QString& name, NativeProcedure::Function function);
+
+    /**
+     * Defines a member in this scope with the supplied name and optional value.
+     */
+    ScriptObjectPointer define (const QString& name,
+        const ScriptObjectPointer& value = ScriptObjectPointer());
 
     /**
      * Returns the number of members in this scope.
@@ -45,7 +58,7 @@ public:
     /**
      * Returns a reference to the scope's list of constants.
      */
-    const QList<ScriptObjectPointer>& constants () const { return _constants; }
+    QList<ScriptObjectPointer>& constants () { return _constants; }
 
     /**
      * Adds a constant and returns its index.
@@ -73,6 +86,9 @@ protected:
 
     /** The initialization bytecode. */
     QByteArray _initBytecode;
+    
+    /** An optional lambda procedure associated with the scope, containing member values. */
+    ScriptObjectPointer _lambdaProc;
 };
 
 /**
@@ -119,19 +135,11 @@ protected:
     ScriptObjectPointer compileLambda (List* list, Scope* scope, QByteArray& out,
         bool define = false);
 
-    /**
-     * Returns a pointer to the global scope.
-     */
-    static Scope* globalScope ();
-
     /** The source of the input. */
     QString _source;
 
     /** The evaluator-level scope. */
     Scope _scope;
-
-    /** The top-level lambda procedure. */
-    ScriptObjectPointer _lambdaProc;
 
     /** The evaluation stack. */
     QStack<ScriptObjectPointer> _stack;

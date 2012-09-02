@@ -1,4 +1,4 @@
-find_package(Qt4 4.6.2)
+find_package(Qt4)
 
 qt4_create_translation(en.qm ${CMAKE_SOURCE_DIR}/src en.ts)
 

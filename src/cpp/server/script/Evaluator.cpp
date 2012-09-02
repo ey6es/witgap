@@ -3,8 +3,10 @@
 
 #include <QStringList>
 #include <QtDebug>
+#include <QtEndian>
 
 #include "script/Evaluator.h"
+#include "script/Globals.h"
 #include "script/Parser.h"
 
 /** The bytecode instructions. */
@@ -41,13 +43,19 @@ enum {
     LambdaReturnOp,
 
     /** Pops a value off the stack and discards it. */
-    PopOp
+    PopOp,
+    
+    /** Returns from the current execution cycle with the value on the stack as a result. */
+    ExitOp,
+    
+    /** Returns from the current execution cycle with Unspecified as a result. */
+    LambdaExitOp,
 };
 
 /**
  * Writes an integer in network byte order to the specified ByteArray.
  */
-inline void writeInteger (QByteArray& array, int value)
+inline void writeInteger (QByteArray& array, qint32 value)
 {
     array.append(value >> 24);
     array.append(value >> 16);
@@ -55,20 +63,11 @@ inline void writeInteger (QByteArray& array, int value)
     array.append(value);
 }
 
-/**
- * Reads and returns an integer in network byte order, advancing the given pointer.
- */
-inline int readInteger (const quint8*& bytecode)
-{
-    return (*bytecode++) << 24 |
-        (*bytecode++) << 16 |
-        (*bytecode++) << 8 |
-        (*bytecode++);
-}
-
-Scope::Scope (Scope* parent) :
+Scope::Scope (Scope* parent, bool withValues) :
     _parent(parent),
-    _memberCount(0)
+    _memberCount(0),
+    _lambdaProc(withValues ? new LambdaProcedure(ScriptObjectPointer(new Lambda()),
+        parent == 0 ? ScriptObjectPointer() : parent->_lambdaProc) : 0)
 {
 }
 
@@ -118,10 +117,20 @@ ScriptObjectPointer Scope::resolve (const QString& name)
     return ScriptObjectPointer();
 }
 
-ScriptObjectPointer Scope::define (const QString& name)
+ScriptObjectPointer Scope::define (const QString& name, NativeProcedure::Function function)
 {
-    ScriptObjectPointer member(new Member(0, _memberCount++));
+    return define(name, ScriptObjectPointer(new NativeProcedure(function)));
+}
+
+ScriptObjectPointer Scope::define (const QString& name, const ScriptObjectPointer& value)
+{
+    int idx = _memberCount++;
+    ScriptObjectPointer member(new Member(0, idx));
     _variables.insert(name, member);
+    if (!_lambdaProc.isNull()) {
+        LambdaProcedure* proc = static_cast<LambdaProcedure*>(_lambdaProc.data());
+        proc->appendMember(value);
+    }
     return member;
 }
 
@@ -133,8 +142,12 @@ int Scope::addConstant (ScriptObjectPointer value)
 
 Evaluator::Evaluator (const QString& source) :
     _source(source),
-    _scope(globalScope())
+    _scope(globalScope(), true),
+    _procedureIdx(0),
+    _argumentIdx(1),
+    _operandCount(0)
 {
+    _stack.push(_scope.lambdaProc());
 }
 
 ScriptObjectPointer Evaluator::evaluate (const QString& expr)
@@ -142,12 +155,28 @@ ScriptObjectPointer Evaluator::evaluate (const QString& expr)
     Parser parser(expr, _source);
     ScriptObjectPointer datum;
     ScriptObjectPointer result;
+    LambdaProcedure* proc = static_cast<LambdaProcedure*>(_scope.lambdaProc().data());
+    Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
+    QByteArray bodyBytecode;
     while (!(datum = parser.parse()).isNull()) {
-        qDebug() << datum->toString();
-
-        QByteArray out;
-        compile(datum, &_scope, true, out);
-
+        compile(datum, &_scope, true, bodyBytecode);
+        
+        if (!bodyBytecode.isEmpty()) {
+            bodyBytecode.append(ExitOp);
+            lambda->setConstantsAndBytecode(_scope.constants(), bodyBytecode);
+            bodyBytecode.clear();
+            
+        } else {
+            _scope.initBytecode().append(LambdaExitOp);
+            lambda->setConstantsAndBytecode(_scope.constants(), _scope.initBytecode());
+            _scope.initBytecode().clear();
+        }
+        _scope.constants().clear();
+        
+        _instruction = lambda->body();
+        result = execute();
+        
+        lambda->clearConstantsAndBytecode();
     }
     return result;
 }
@@ -168,30 +197,37 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
     while (maxCycles == 0 || maxCycles-- > 0) {
         switch (*instruction++) {
             case ConstantOp:
-                stack.push(lambda->constant(readInteger(instruction)));
+                stack.push(lambda->constant(qFromBigEndian<qint32>(instruction)));
+                instruction += 4;
                 operandCount++;
                 break;
 
             case ArgumentOp:
-                stack.push(stack.at(argumentIdx + readInteger(instruction)));
+                stack.push(stack.at(argumentIdx + qFromBigEndian<qint32>(instruction)));
+                instruction += 4;
                 operandCount++;
                 break;
 
             case MemberOp:
-                stack.push(proc->member(readInteger(instruction), readInteger(instruction)));
+                stack.push(proc->member(qFromBigEndian<qint32>(instruction),
+                    qFromBigEndian<qint32>(instruction + 4)));
+                instruction += 8;
                 operandCount++;
                 break;
-
+            
             case SetArgumentOp:
-                stack[argumentIdx + readInteger(instruction)] = stack.pop();
+                stack[argumentIdx + qFromBigEndian<qint32>(instruction)] = stack.pop();
+                instruction += 4;
                 operandCount--;
                 break;
 
-            case SetMemberOp:
-                proc->setMember(readInteger(instruction), readInteger(instruction), stack.pop());
+            case SetMemberOp: 
+                proc->setMember(qFromBigEndian<qint32>(instruction),
+                    qFromBigEndian<qint32>(instruction + 4), stack.pop());
+                instruction += 8;
                 operandCount--;
                 break;
-
+            
             case ResetOperandCountOp:
                 stack.push(ScriptObjectPointer(new Integer(operandCount)));
                 operandCount = 0;
@@ -207,11 +243,11 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         ScriptObjectPointer* sdata = stack.data();
                         ScriptObjectPointer result;
                         try {
-                            result = nproc->call(operandCount - 1, sdata + ocidx + 2);
+                            result = nproc->function()(this, operandCount - 1, sdata + ocidx + 2);
                         } catch (const QString& message) {
                             // TODO
                         }
-                        operandCount = static_cast<Integer*>(sdata[ocidx].data())->value();
+                        operandCount = static_cast<Integer*>(sdata[ocidx].data())->value() + 1;
                         stack.resize(ocidx + 1);
                         stack[ocidx] = result;
                         break;
@@ -224,7 +260,13 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             if (lsize < 0) {
                                 return ScriptObjectPointer(); // TODO: error, wrong # of arguments
                             }
-
+                            QList<ScriptObjectPointer> contents;
+                            int ssize = stack.size() - lsize;
+                            for (int ii = ssize, nn = stack.size(); ii < nn; ii++) {
+                                contents.append(stack.at(ii));
+                            }
+                            stack.resize(ssize);
+                            stack.push(ScriptObjectPointer(new List(contents)));
 
                         } else if (operandCount - 1 != nlambda->scalarArgumentCount()) {
                             return ScriptObjectPointer(); // TODO: error, wrong number of arguments
@@ -245,11 +287,25 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                 break;
             }
             case ReturnOp: {
-
+                int ocidx = procedureIdx - 1;
+                ScriptObjectPointer& ocref = stack[ocidx];
+                Integer* oc = static_cast<Integer*>(ocref.data());
+                operandCount = oc->value() + 1;
+                int ridx = stack.size() - 1;
+                ocref = stack.at(ridx);
+                Return* ret = static_cast<Return*>(stack.at(ridx - 1).data());
+                procedureIdx = ret->procedureIdx();
+                argumentIdx = ret->argumentIdx();
+                instruction = ret->instruction();
+                proc = static_cast<LambdaProcedure*>(stack.at(procedureIdx).data());
+                lambda = static_cast<Lambda*>(proc->lambda().data());
+                stack.resize(ocidx + 1);
                 break;
             }
             case LambdaOp: {
-                ScriptObjectPointer nlambda = lambda->constant(readInteger(instruction));
+                ScriptObjectPointer nlambda = lambda->constant(
+                    qFromBigEndian<qint32>(instruction));
+                instruction += 4;
                 lambda = static_cast<Lambda*>(nlambda.data());
                 stack.push(ScriptObjectPointer(proc = new LambdaProcedure(
                     nlambda, stack.at(procedureIdx))));
@@ -275,6 +331,12 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                 stack.pop();
                 operandCount--;
                 break;
+                
+            case ExitOp:
+                return stack.pop();
+                
+            case LambdaExitOp:
+                return ScriptObjectPointer(new Unspecified());
         }
     }
 
@@ -515,17 +577,3 @@ ScriptObjectPointer Evaluator::compileLambda (
     return member;
 }
 
-/**
- * Creates the global scope object.
- */
-static Scope createGlobalScope ()
-{
-    Scope scope;
-    return scope;
-}
-
-Scope* Evaluator::globalScope ()
-{
-    static Scope global = createGlobalScope();
-    return &global;
-}
