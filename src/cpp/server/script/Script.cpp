@@ -1,6 +1,8 @@
 //
 // $Id$
 
+#include <QtEndian>
+
 #include "script/Script.h"
 
 ScriptPosition::ScriptPosition (
@@ -55,4 +57,39 @@ QString ScriptError::toString (bool compact) const
         return _position.toString(true) + ": " + _message;
     }
     return _position.toString(false) + _message;
+}
+
+void Bytecode::append (BytecodeOp op, const ScriptPosition& pos)
+{
+    _positions.insert(_data.size(), pos);
+    append(op);
+}
+
+void Bytecode::append (BytecodeOp op, int p1)
+{
+    int size = _data.size();
+    _data.resize(size + 5);
+    uchar* dst = (uchar*)(_data.data() + size);
+    *dst = op;
+    qToBigEndian<qint32>(p1, dst + 1);
+}
+
+void Bytecode::append (BytecodeOp op, int p1, int p2)
+{
+    int size = _data.size();
+    _data.resize(size + 9);
+    uchar* dst = (uchar*)(_data.data() + size);
+    *dst = op;
+    qToBigEndian<qint32>(p1, dst + 1);
+    qToBigEndian<qint32>(p2, dst + 5);
+}
+
+void Bytecode::append (const Bytecode& bytecode)
+{
+    int offset = _data.size();
+    _data.append(bytecode._data);
+    for (QHash<int, ScriptPosition>::const_iterator it = bytecode._positions.constBegin(),
+            end = bytecode._positions.constEnd(); it != end; it++) {
+        _positions.insert(it.key() + offset, it.value());
+    }
 }

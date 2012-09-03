@@ -84,7 +84,7 @@ QString Member::toString () const
 }
 
 Lambda::Lambda (int scalarArgumentCount, bool listArgument, int memberCount,
-        const QList<ScriptObjectPointer>& constants, const QByteArray& bytecode, int bodyIdx) :
+        const QList<ScriptObjectPointer>& constants, const Bytecode& bytecode, int bodyIdx) :
     _scalarArgumentCount(scalarArgumentCount),
     _listArgument(listArgument),
     _memberCount(memberCount),
@@ -103,7 +103,7 @@ Lambda::Lambda () :
 }
 
 void Lambda::setConstantsAndBytecode (
-    const QList<ScriptObjectPointer>& constants, const QByteArray bytecode)
+    const QList<ScriptObjectPointer>& constants, const Bytecode& bytecode)
 {
     _constants = constants;
     _bytecode = bytecode;

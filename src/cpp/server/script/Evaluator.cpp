@@ -9,60 +9,6 @@
 #include "script/Globals.h"
 #include "script/Parser.h"
 
-/** The bytecode instructions. */
-enum {
-
-    /** Pushes the constant at the specified index onto the stack. */
-    ConstantOp,
-
-    /** Pushes the argument at the specified index onto the stack. */
-    ArgumentOp,
-
-    /** Pushes the member at the specified scope/index onto the stack. */
-    MemberOp,
-
-    /** Pops a value off the stack and assigns it to the argument at the specified index. */
-    SetArgumentOp,
-
-    /** Pops a value off the stack and assigns it to the member at the specified scope/index. */
-    SetMemberOp,
-
-    /** Pushes the current operand count and sets the count to zero. */
-    ResetOperandCountOp,
-
-    /** Performs a function call. */
-    CallOp,
-
-    /** Returns from a function call. */
-    ReturnOp,
-
-    /** Creates a function instance. */
-    LambdaOp,
-
-    /** Returns from function initialization. */
-    LambdaReturnOp,
-
-    /** Pops a value off the stack and discards it. */
-    PopOp,
-    
-    /** Returns from the current execution cycle with the value on the stack as a result. */
-    ExitOp,
-    
-    /** Returns from the current execution cycle with Unspecified as a result. */
-    LambdaExitOp,
-};
-
-/**
- * Writes an integer in network byte order to the specified ByteArray.
- */
-inline void writeInteger (QByteArray& array, qint32 value)
-{
-    array.append(value >> 24);
-    array.append(value >> 16);
-    array.append(value >> 8);
-    array.append(value);
-}
-
 Scope::Scope (Scope* parent, bool withValues) :
     _parent(parent),
     _memberCount(0),
@@ -98,11 +44,8 @@ ScriptObjectPointer Scope::resolve (const QString& name)
                 case ScriptObject::ArgumentType: {
                     // copy parent argument to local member on initialization
                     Argument* argument = static_cast<Argument*>(pbinding.data());
-                    _initBytecode.append(ArgumentOp);
-                    writeInteger(_initBytecode, argument->index());
-                    _initBytecode.append(SetMemberOp);
-                    writeInteger(_initBytecode, 0);
-                    writeInteger(_initBytecode, _memberCount);
+                    _initBytecode.append(ArgumentOp, argument->index());
+                    _initBytecode.append(SetMemberOp, 0, _memberCount);
                     return define(name);
                 }
                 case ScriptObject::MemberType: {
@@ -157,7 +100,7 @@ ScriptObjectPointer Evaluator::evaluate (const QString& expr)
     ScriptObjectPointer result;
     LambdaProcedure* proc = static_cast<LambdaProcedure*>(_scope.lambdaProc().data());
     Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
-    QByteArray bodyBytecode;
+    Bytecode bodyBytecode;
     while (!(datum = parser.parse()).isNull()) {
         compile(datum, &_scope, true, bodyBytecode);
         
@@ -186,7 +129,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
     // copy members to locals
     int procedureIdx = _procedureIdx;
     int argumentIdx = _argumentIdx;
-    const quint8* instruction = _instruction;
+    const uchar* instruction = _instruction;
     int operandCount = _operandCount;
     QStack<ScriptObjectPointer>& stack = _stack;
 
@@ -245,7 +188,8 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         try {
                             result = nproc->function()(this, operandCount - 1, sdata + ocidx + 2);
                         } catch (const QString& message) {
-                            // TODO
+                            throw ScriptError(message,
+                                lambda->bytecode().position(instruction - 1));
                         }
                         operandCount = static_cast<Integer*>(sdata[ocidx].data())->value() + 1;
                         stack.resize(ocidx + 1);
@@ -258,7 +202,8 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         if (nlambda->listArgument()) {
                             int lsize = operandCount - 1 - nlambda->scalarArgumentCount();
                             if (lsize < 0) {
-                                return ScriptObjectPointer(); // TODO: error, wrong # of arguments
+                                throw ScriptError("Too few arguments.",
+                                    lambda->bytecode().position(instruction - 1));
                             }
                             QList<ScriptObjectPointer> contents;
                             int ssize = stack.size() - lsize;
@@ -269,7 +214,8 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             stack.push(ScriptObjectPointer(new List(contents)));
 
                         } else if (operandCount - 1 != nlambda->scalarArgumentCount()) {
-                            return ScriptObjectPointer(); // TODO: error, wrong number of arguments
+                            throw ScriptError("Wrong number of arguments.",
+                                lambda->bytecode().position(instruction - 1));
                         }
                         stack.push(ScriptObjectPointer(new Return(
                             procedureIdx, argumentIdx, instruction, operandCount)));
@@ -282,7 +228,8 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         break;
                     }
                     default:
-                        return ScriptObjectPointer(); // TODO: error, not a procedure
+                        throw ScriptError("First operand not a procedure.",
+                            lambda->bytecode().position(instruction - 1));
                 }
                 break;
             }
@@ -349,15 +296,14 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
     return ScriptObjectPointer();
 }
 
-void Evaluator::compile (ScriptObjectPointer expr, Scope* scope, bool allowDef, QByteArray& out)
+void Evaluator::compile (ScriptObjectPointer expr, Scope* scope, bool allowDef, Bytecode& out)
 {
     switch (expr->type()) {
         case ScriptObject::BooleanType:
         case ScriptObject::IntegerType:
         case ScriptObject::FloatType:
         case ScriptObject::StringType:
-            out.append(ConstantOp);
-            writeInteger(out, scope->addConstant(expr));
+            out.append(ConstantOp, scope->addConstant(expr));
             return;
 
         case ScriptObject::SymbolType: {
@@ -369,15 +315,12 @@ void Evaluator::compile (ScriptObjectPointer expr, Scope* scope, bool allowDef, 
             switch (binding->type()) {
                 case ScriptObject::ArgumentType: {
                     Argument* argument = static_cast<Argument*>(binding.data());
-                    out.append(ArgumentOp);
-                    writeInteger(out, argument->index());
+                    out.append(ArgumentOp, argument->index());
                     return;
                 }
                 case ScriptObject::MemberType: {
                     Member* member = static_cast<Member*>(binding.data());
-                    out.append(MemberOp);
-                    writeInteger(out, member->scope());
-                    writeInteger(out, member->index());
+                    out.append(MemberOp, member->scope(), member->index());
                     return;
                 }
             }
@@ -424,9 +367,7 @@ void Evaluator::compile (ScriptObjectPointer expr, Scope* scope, bool allowDef, 
                             throw ScriptError("Invalid definition.", list->position());
                     }
                     Member* mem = static_cast<Member*>(member.data());
-                    scope->initBytecode().append(SetMemberOp);
-                    writeInteger(scope->initBytecode(), 0);
-                    writeInteger(scope->initBytecode(), mem->index());
+                    scope->initBytecode().append(SetMemberOp, 0, mem->index());
                     return;
 
                 } else if (name == "lambda") {
@@ -451,41 +392,44 @@ void Evaluator::compile (ScriptObjectPointer expr, Scope* scope, bool allowDef, 
                     switch (binding->type()) {
                         case ScriptObject::ArgumentType: {
                             Argument* argument = static_cast<Argument*>(binding.data());
-                            out.append(SetArgumentOp);
-                            writeInteger(out, argument->index());
+                            out.append(SetArgumentOp, argument->index());
                         }
                         case ScriptObject::MemberType: {
                             Member* member = static_cast<Member*>(binding.data());
-                            out.append(SetMemberOp);
-                            writeInteger(out, member->scope());
-                            writeInteger(out, member->index());
+                            out.append(SetMemberOp, member->scope(), member->index());
                         }
                     }
-                    out.append(ConstantOp);
-                    writeInteger(out, scope->addConstant(ScriptObjectPointer(new Unspecified())));
+                    out.append(ConstantOp, scope->addConstant(ScriptObjectPointer(new Unspecified())));
                     return;
 
                 } else if (name == "quote") {
                     if (contents.size() != 2) {
                         throw ScriptError("Invalid expression.", list->position());
                     }
-                    out.append(ConstantOp);
-                    writeInteger(out, scope->addConstant(contents.at(1)));
+                    out.append(ConstantOp, scope->addConstant(contents.at(1)));
                     return;
+                    
+                } else if (name == "if") {
+                    int csize = contents.size();
+                    if (csize != 3 && csize != 4) {
+                        throw ScriptError("Invalid expression.", list->position());
+                    }
+                    compile(contents.at(1), scope, false, out);
+                    
                 }
             }
             out.append(ResetOperandCountOp);
             foreach (const ScriptObjectPointer& operand, contents) {
                 compile(operand, scope, false, out);
             }
-            out.append(CallOp);
+            out.append(CallOp, list->position());
             return;
         }
     }
 }
 
 ScriptObjectPointer Evaluator::compileLambda (
-    List* list, Scope* scope, QByteArray& out, bool define)
+    List* list, Scope* scope, Bytecode& out, bool define)
 {
     const QList<ScriptObjectPointer>& contents = list->contents();
     if (contents.size() < 3) {
@@ -538,7 +482,7 @@ ScriptObjectPointer Evaluator::compileLambda (
         throw ScriptError("Invalid definition.", list->position());
     }
     Scope subscope(scope);
-    QByteArray bodyBytecode;
+    Bytecode bodyBytecode;
     for (int ii = 2, nn = contents.size(); ii < nn; ii++) {
         ScriptObjectPointer element = contents.at(ii);
         if (bodyBytecode.isEmpty()) {
@@ -569,11 +513,13 @@ ScriptObjectPointer Evaluator::compileLambda (
     }
     subscope.initBytecode().append(LambdaReturnOp);
     bodyBytecode.append(ReturnOp);
+    
+    int bodyIdx = subscope.initBytecode().length();
+    subscope.initBytecode().append(bodyBytecode);
     ScriptObjectPointer lambda(new Lambda(firstArgs.size(), !restArg.isEmpty(),
-        subscope.memberCount(), subscope.constants(), subscope.initBytecode() + bodyBytecode,
-        subscope.initBytecode().length()));
-    out.append(LambdaOp);
-    writeInteger(out, scope->addConstant(lambda));
+        subscope.memberCount(), subscope.constants(), subscope.initBytecode(),
+        bodyIdx));
+    out.append(LambdaOp, scope->addConstant(lambda));
     return member;
 }
 

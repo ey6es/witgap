@@ -68,7 +68,7 @@ public:
     /**
      * Returns a reference to the initialization bytecode.
      */
-    QByteArray& initBytecode () { return _initBytecode; }
+    Bytecode& initBytecode () { return _initBytecode; }
 
 protected:
 
@@ -85,7 +85,7 @@ protected:
     QList<ScriptObjectPointer> _constants;
 
     /** The initialization bytecode. */
-    QByteArray _initBytecode;
+    Bytecode _initBytecode;
     
     /** An optional lambda procedure associated with the scope, containing member values. */
     ScriptObjectPointer _lambdaProc;
@@ -124,7 +124,7 @@ protected:
      *
      * @param allowDef whether or not to allow a definition.
      */
-    void compile (ScriptObjectPointer expr, Scope* scope, bool allowDef, QByteArray& out);
+    void compile (ScriptObjectPointer expr, Scope* scope, bool allowDef, Bytecode& out);
 
     /**
      * Compiles the body of a lambda/function definition and optionally returns the name of
@@ -132,7 +132,7 @@ protected:
      *
      * @param define if true, we're defining a member in the current scope; return the Member.
      */
-    ScriptObjectPointer compileLambda (List* list, Scope* scope, QByteArray& out,
+    ScriptObjectPointer compileLambda (List* list, Scope* scope, Bytecode& out,
         bool define = false);
 
     /** The source of the input. */
@@ -151,7 +151,7 @@ protected:
     int _argumentIdx;
 
     /** The pointer to the next instruction in the procedure definition. */
-    const quint8* _instruction;
+    const uchar* _instruction;
 
     /** The current operand count. */
     int _operandCount;

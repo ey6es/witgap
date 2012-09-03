@@ -4,6 +4,7 @@
 #ifndef SCRIPT_OBJECT
 #define SCRIPT_OBJECT
 
+#include <QHash>
 #include <QSharedPointer>
 #include <QStack>
 
@@ -389,7 +390,7 @@ public:
      * Creates a new lambda expression.
      */
     Lambda (int scalarArgumentCount, bool listArgument, int memberCount,
-        const QList<ScriptObjectPointer>& constants, const QByteArray& bytecode, int bodyIdx);
+        const QList<ScriptObjectPointer>& constants, const Bytecode& bytecode, int bodyIdx);
 
     /**
      * Creates a new empty lambda expression.
@@ -415,7 +416,7 @@ public:
      * Sets the constants and bytecode.
      */
     void setConstantsAndBytecode (
-        const QList<ScriptObjectPointer>& constants, const QByteArray bytecode);
+        const QList<ScriptObjectPointer>& constants, const Bytecode& bytecode);
 
     /**
      * Clears out all constants and bytecode.
@@ -428,14 +429,19 @@ public:
     const ScriptObjectPointer& constant (int idx) const { return _constants.at(idx); }
 
     /**
+     * Returns a reference to the bytecode.
+     */
+    const Bytecode& bytecode () const { return _bytecode; }
+
+    /**
      * Returns a pointer to the initializer bytecode.
      */
-    const quint8* initializer () const { return (const quint8*)_bytecode.constData(); }
+    const uchar* initializer () const { return _bytecode.data(); }
 
     /**
      * Returns a pointer to the body bytecode.
      */
-    const quint8* body () const { return (const quint8*)_bytecode.constData() + _bodyIdx; }
+    const uchar* body () const { return _bytecode.data() + _bodyIdx; }
 
     /**
      * Returns the type of the object.
@@ -462,7 +468,7 @@ protected:
     QList<ScriptObjectPointer> _constants;
 
     /** The function bytecode. */
-    QByteArray _bytecode;
+    Bytecode _bytecode;
 
     /** The index within the bytecode of the function body. */
     int _bodyIdx;

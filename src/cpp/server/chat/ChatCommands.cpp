@@ -429,10 +429,7 @@ public:
         }
         try {
             ScriptObjectPointer result = Evaluator().evaluate(args);
-            if (!result.isNull()) {
-                qDebug() << result->toString();
-            }
-            return "";
+            return result.isNull() ? "" : result->toString();
 
         } catch (const ScriptError& e) {
             return e.toString();

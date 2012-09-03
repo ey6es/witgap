@@ -94,7 +94,7 @@ void SessionRepository::validateToken (
             query.prepare("select NAME, AVATAR, USER_ID from SESSIONS where ID = ?");
             query.addBindValue(id);
             query.exec();
-            Q_ASSERT(query.next());
+            query.next();
             SessionRecord srec = {
                 id, token, query.value(0).toString(), QChar(query.value(1).toUInt()),
                 query.value(2).toUInt(), now };
