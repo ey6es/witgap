@@ -117,6 +117,12 @@ enum BytecodeOp {
     
     /** Returns from the current execution cycle with Unspecified as a result. */
     LambdaExitOp,
+    
+    /** Jumps to the specified offset. */
+    JumpOp,
+    
+    /** Pops a value off the stack; if it's false, jumps to the specified offset. */
+    ConditionalJumpOp
 };
 
 /**

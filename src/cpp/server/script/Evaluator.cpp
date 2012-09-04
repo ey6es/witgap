@@ -277,6 +277,21 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                 
             case LambdaExitOp:
                 return ScriptObjectPointer(new Unspecified());
+            
+            case JumpOp:
+                _registers.instruction += qFromBigEndian<qint32>(_registers.instruction) + 4;
+                break;
+            
+            case ConditionalJumpOp: {
+                ScriptObjectPointer boolean = _stack.pop();
+                Boolean* b = static_cast<Boolean*>(boolean.data());
+                if (b->value()) {
+                    _registers.instruction += 4;
+                } else {
+                    _registers.instruction += qFromBigEndian<qint32>(_registers.instruction) + 4;
+                }
+                break;
+            }
         }
     }
 
@@ -402,7 +417,20 @@ void Evaluator::compile (ScriptObjectPointer expr, Scope* scope, bool allowDef, 
                         throw ScriptError("Invalid expression.", list->position());
                     }
                     compile(contents.at(1), scope, false, out);
-                    
+                    Bytecode thencode;
+                    compile(contents.at(2), scope, false, thencode);
+                    Bytecode elsecode;
+                    if (csize == 4) {
+                        compile(contents.at(3), scope, false, elsecode);
+                    } else {
+                        elsecode.append(ConstantOp, scope->addConstant(
+                            ScriptObjectPointer(new Unspecified())));
+                    }
+                    thencode.append(JumpOp, elsecode.length());
+                    out.append(ConditionalJumpOp, thencode.length());
+                    out.append(thencode);
+                    out.append(elsecode);
+                    return;
                 }
             }
             out.append(ResetOperandCountOp);
