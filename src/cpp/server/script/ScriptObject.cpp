@@ -154,17 +154,14 @@ NativeProcedure::NativeProcedure (Function function) :
 {
 }
 
-Return::Return (int procedureIdx, int argumentIdx, const quint8* instruction, int operandCount) :
-    _procedureIdx(procedureIdx),
-    _argumentIdx(argumentIdx),
-    _instruction(instruction),
-    _operandCount(operandCount)
+Return::Return (const Registers& registers) :
+    _registers(registers)
 {
 }
 
 QString Return::toString () const
 {
-    return "{return " + QString::number(_procedureIdx) + " " +
-        QString::number(_argumentIdx) + " " +
-        QString::number(_operandCount) + "}";
+    return "{return " + QString::number(_registers.procedureIdx) + " " +
+        QString::number(_registers.argumentIdx) + " " +
+        QString::number(_registers.operandCount) + "}";
 }

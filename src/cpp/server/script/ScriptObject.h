@@ -575,27 +575,12 @@ public:
     /**
      * Creates a new return.
      */
-    Return (int procedureIdx, int argumentIdx, const quint8* instruction, int operandCount);
+    Return (const Registers& registers);
 
     /**
-     * Returns the index of the procedure on the stack.
+     * Returns a reference to the register values.
      */
-    int procedureIdx () const { return _procedureIdx; }
-
-    /**
-     * Returns the index of the first argument on the stack.
-     */
-    int argumentIdx () const { return _argumentIdx; }
-
-    /**
-     * Returns the pointer to the next instruction in the procedure definition.
-     */
-    const quint8* instruction () const { return _instruction; }
-
-    /**
-     * Returns the current operand count.
-     */
-    int operandCount () const { return _operandCount; }
+    const Registers& registers () const { return _registers; }
 
     /**
      * Returns the type of the object.
@@ -609,17 +594,8 @@ public:
 
 protected:
 
-    /** The index of the procedure on the stack. */
-    int _procedureIdx;
-
-    /** The index of the first argument on the stack. */
-    int _argumentIdx;
-
-    /** The pointer to the next instruction in the procedure definition. */
-    const quint8* _instruction;
-
-    /** The current operand count. */
-    int _operandCount;
+    /** The stored register values. */
+    Registers _registers;
 };
 
 #endif // SCRIPT_OBJECT

@@ -86,9 +86,7 @@ int Scope::addConstant (ScriptObjectPointer value)
 Evaluator::Evaluator (const QString& source) :
     _source(source),
     _scope(globalScope(), true),
-    _procedureIdx(0),
-    _argumentIdx(1),
-    _operandCount(0)
+    _registers()
 {
     _stack.push(_scope.lambdaProc());
 }
@@ -116,7 +114,7 @@ ScriptObjectPointer Evaluator::evaluate (const QString& expr)
         }
         _scope.constants().clear();
         
-        _instruction = lambda->body();
+        _registers.instruction = lambda->body();
         result = execute();
         
         lambda->clearConstantsAndBytecode();
@@ -126,172 +124,161 @@ ScriptObjectPointer Evaluator::evaluate (const QString& expr)
 
 ScriptObjectPointer Evaluator::execute (int maxCycles)
 {
-    // copy members to locals
-    int procedureIdx = _procedureIdx;
-    int argumentIdx = _argumentIdx;
-    const uchar* instruction = _instruction;
-    int operandCount = _operandCount;
-    QStack<ScriptObjectPointer>& stack = _stack;
-
     // initialize state
-    LambdaProcedure* proc = static_cast<LambdaProcedure*>(stack.at(procedureIdx).data());
+    LambdaProcedure* proc = static_cast<LambdaProcedure*>(
+        _stack.at(_registers.procedureIdx).data());
     Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
 
     while (maxCycles == 0 || maxCycles-- > 0) {
-        switch (*instruction++) {
+        switch (*_registers.instruction++) {
             case ConstantOp:
-                stack.push(lambda->constant(qFromBigEndian<qint32>(instruction)));
-                instruction += 4;
-                operandCount++;
+                _stack.push(lambda->constant(qFromBigEndian<qint32>(_registers.instruction)));
+                _registers.instruction += 4;
+                _registers.operandCount++;
                 break;
 
             case ArgumentOp:
-                stack.push(stack.at(argumentIdx + qFromBigEndian<qint32>(instruction)));
-                instruction += 4;
-                operandCount++;
+                _stack.push(_stack.at(_registers.argumentIdx +
+                    qFromBigEndian<qint32>(_registers.instruction)));
+                _registers.instruction += 4;
+                _registers.operandCount++;
                 break;
 
             case MemberOp:
-                stack.push(proc->member(qFromBigEndian<qint32>(instruction),
-                    qFromBigEndian<qint32>(instruction + 4)));
-                instruction += 8;
-                operandCount++;
+                _stack.push(proc->member(qFromBigEndian<qint32>(_registers.instruction),
+                    qFromBigEndian<qint32>(_registers.instruction + 4)));
+                _registers.instruction += 8;
+                _registers.operandCount++;
                 break;
             
             case SetArgumentOp:
-                stack[argumentIdx + qFromBigEndian<qint32>(instruction)] = stack.pop();
-                instruction += 4;
-                operandCount--;
+                _stack[_registers.argumentIdx +
+                    qFromBigEndian<qint32>(_registers.instruction)] = _stack.pop();
+                _registers.instruction += 4;
+                _registers.operandCount--;
                 break;
 
             case SetMemberOp: 
-                proc->setMember(qFromBigEndian<qint32>(instruction),
-                    qFromBigEndian<qint32>(instruction + 4), stack.pop());
-                instruction += 8;
-                operandCount--;
+                proc->setMember(qFromBigEndian<qint32>(_registers.instruction),
+                    qFromBigEndian<qint32>(_registers.instruction + 4), _stack.pop());
+                _registers.instruction += 8;
+                _registers.operandCount--;
                 break;
             
             case ResetOperandCountOp:
-                stack.push(ScriptObjectPointer(new Integer(operandCount)));
-                operandCount = 0;
+                _stack.push(ScriptObjectPointer(new Integer(_registers.operandCount)));
+                _registers.operandCount = 0;
                 break;
 
             case CallOp: {
-                int pidx = stack.size() - operandCount;
-                ScriptObjectPointer sproc = stack.at(pidx);
+                int pidx = _stack.size() - _registers.operandCount;
+                ScriptObjectPointer sproc = _stack.at(pidx);
                 switch (sproc->type()) {
                     case ScriptObject::NativeProcedureType: {
                         NativeProcedure* nproc = static_cast<NativeProcedure*>(sproc.data());
                         int ocidx = pidx - 1;
-                        ScriptObjectPointer* sdata = stack.data();
+                        ScriptObjectPointer* sdata = _stack.data();
                         ScriptObjectPointer result;
                         try {
-                            result = nproc->function()(this, operandCount - 1, sdata + ocidx + 2);
+                            result = nproc->function()(this, _registers.operandCount - 1,
+                                sdata + ocidx + 2);
                         } catch (const QString& message) {
-                            throw ScriptError(message,
-                                lambda->bytecode().position(instruction - 1));
+                            throwScriptError(message);
+                            break;
                         }
-                        operandCount = static_cast<Integer*>(sdata[ocidx].data())->value() + 1;
-                        stack.resize(ocidx + 1);
-                        stack[ocidx] = result;
+                        _registers.operandCount = static_cast<Integer*>(
+                            sdata[ocidx].data())->value() + 1;
+                        _stack.resize(ocidx + 1);
+                        _stack[ocidx] = result;
                         break;
                     }
                     case ScriptObject::LambdaProcedureType: {
                         LambdaProcedure* nproc = static_cast<LambdaProcedure*>(sproc.data());
                         Lambda* nlambda = static_cast<Lambda*>(nproc->lambda().data());
                         if (nlambda->listArgument()) {
-                            int lsize = operandCount - 1 - nlambda->scalarArgumentCount();
+                            int lsize = _registers.operandCount - 1 -
+                                nlambda->scalarArgumentCount();
                             if (lsize < 0) {
-                                throw ScriptError("Too few arguments.",
-                                    lambda->bytecode().position(instruction - 1));
+                                throwScriptError("Too few arguments.");
+                                break;
                             }
                             QList<ScriptObjectPointer> contents;
-                            int ssize = stack.size() - lsize;
-                            for (int ii = ssize, nn = stack.size(); ii < nn; ii++) {
-                                contents.append(stack.at(ii));
+                            int ssize = _stack.size() - lsize;
+                            for (int ii = ssize, nn = _stack.size(); ii < nn; ii++) {
+                                contents.append(_stack.at(ii));
                             }
-                            stack.resize(ssize);
-                            stack.push(ScriptObjectPointer(new List(contents)));
+                            _stack.resize(ssize);
+                            _stack.push(ScriptObjectPointer(new List(contents)));
 
-                        } else if (operandCount - 1 != nlambda->scalarArgumentCount()) {
-                            throw ScriptError("Wrong number of arguments.",
-                                lambda->bytecode().position(instruction - 1));
+                        } else if (_registers.operandCount - 1 != nlambda->scalarArgumentCount()) {
+                            throwScriptError("Wrong number of arguments.");
+                            break;
                         }
-                        stack.push(ScriptObjectPointer(new Return(
-                            procedureIdx, argumentIdx, instruction, operandCount)));
+                        _stack.push(ScriptObjectPointer(new Return(_registers)));
                         proc = nproc;
                         lambda = nlambda;
-                        procedureIdx = pidx;
-                        argumentIdx = pidx + 1;
-                        instruction = lambda->body();
-                        operandCount = 0;
+                        _registers.procedureIdx = pidx;
+                        _registers.argumentIdx = pidx + 1;
+                        _registers.instruction = lambda->body();
+                        _registers.operandCount = 0;
                         break;
                     }
                     default:
-                        throw ScriptError("First operand not a procedure.",
-                            lambda->bytecode().position(instruction - 1));
+                        throwScriptError("First operand not a procedure.");
+                        break;
                 }
                 break;
             }
             case ReturnOp: {
-                int ocidx = procedureIdx - 1;
-                ScriptObjectPointer& ocref = stack[ocidx];
+                int ocidx = _registers.procedureIdx - 1;
+                ScriptObjectPointer& ocref = _stack[ocidx];
                 Integer* oc = static_cast<Integer*>(ocref.data());
-                operandCount = oc->value() + 1;
-                int ridx = stack.size() - 1;
-                ocref = stack.at(ridx);
-                Return* ret = static_cast<Return*>(stack.at(ridx - 1).data());
-                procedureIdx = ret->procedureIdx();
-                argumentIdx = ret->argumentIdx();
-                instruction = ret->instruction();
-                proc = static_cast<LambdaProcedure*>(stack.at(procedureIdx).data());
+                int noc = oc->value() + 1;
+                int ridx = _stack.size() - 1;
+                ocref = _stack.at(ridx);
+                Return* ret = static_cast<Return*>(_stack.at(ridx - 1).data());
+                _registers = ret->registers();
+                _registers.operandCount = noc;
+                proc = static_cast<LambdaProcedure*>(_stack.at(_registers.procedureIdx).data());
                 lambda = static_cast<Lambda*>(proc->lambda().data());
-                stack.resize(ocidx + 1);
+                _stack.resize(ocidx + 1);
                 break;
             }
             case LambdaOp: {
                 ScriptObjectPointer nlambda = lambda->constant(
-                    qFromBigEndian<qint32>(instruction));
-                instruction += 4;
+                    qFromBigEndian<qint32>(_registers.instruction));
+                _registers.instruction += 4;
                 lambda = static_cast<Lambda*>(nlambda.data());
-                stack.push(ScriptObjectPointer(proc = new LambdaProcedure(
-                    nlambda, stack.at(procedureIdx))));
-                operandCount++;
-                stack.push(ScriptObjectPointer(new Return(
-                    procedureIdx, argumentIdx, instruction, operandCount)));
-                procedureIdx = stack.size() - 2;
-                instruction = lambda->initializer();
-                operandCount = 0;
+                _stack.push(ScriptObjectPointer(proc = new LambdaProcedure(
+                    nlambda, _stack.at(_registers.procedureIdx))));
+                _registers.operandCount++;
+                _stack.push(ScriptObjectPointer(new Return(_registers)));
+                _registers.procedureIdx = _stack.size() - 2;
+                _registers.instruction = lambda->initializer();
+                _registers.operandCount = 0;
                 break;
             }
             case LambdaReturnOp: {
-                ScriptObjectPointer rptr = stack.pop();
+                ScriptObjectPointer rptr = _stack.pop();
                 Return* ret = static_cast<Return*>(rptr.data());
-                procedureIdx = ret->procedureIdx();
-                instruction = ret->instruction();
-                operandCount = ret->operandCount();
-                proc = static_cast<LambdaProcedure*>(stack.at(procedureIdx).data());
+                _registers = ret->registers();
+                proc = static_cast<LambdaProcedure*>(_stack.at(_registers.procedureIdx).data());
                 lambda = static_cast<Lambda*>(proc->lambda().data());
                 break;
             }
             case PopOp:
-                stack.pop();
-                operandCount--;
+                _stack.pop();
+                _registers.operandCount--;
                 break;
                 
             case ExitOp:
-                return stack.pop();
+                _registers.operandCount--;
+                return _stack.pop();
                 
             case LambdaExitOp:
                 return ScriptObjectPointer(new Unspecified());
         }
     }
-
-    // restore members
-    _procedureIdx = procedureIdx;
-    _argumentIdx = argumentIdx;
-    _instruction = instruction;
-    _operandCount = operandCount;
 
     return ScriptObjectPointer();
 }
@@ -422,7 +409,8 @@ void Evaluator::compile (ScriptObjectPointer expr, Scope* scope, bool allowDef, 
             foreach (const ScriptObjectPointer& operand, contents) {
                 compile(operand, scope, false, out);
             }
-            out.append(CallOp, list->position());
+            out.append(CallOp);
+            out.associate(list->position());
             return;
         }
     }
@@ -520,6 +508,46 @@ ScriptObjectPointer Evaluator::compileLambda (
         subscope.memberCount(), subscope.constants(), subscope.initBytecode(),
         bodyIdx));
     out.append(LambdaOp, scope->addConstant(lambda));
+    out.associate(list->position());
     return member;
 }
 
+void Evaluator::throwScriptError (const QString& message)
+{
+    LambdaProcedure* proc = static_cast<LambdaProcedure*>(
+        _stack.at(_registers.procedureIdx).data());
+    Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
+    
+    QVector<ScriptPosition> positions;
+    positions.append(lambda->bytecode().position(_registers.instruction));
+    
+    while (_registers.procedureIdx != 0) {
+        // remove the current set of operands; before it will either be a return frame or an oc
+        int fidx = _stack.size() - _registers.operandCount - 1;
+        ScriptObjectPointer frame = _stack.at(fidx);
+        _stack.resize(fidx);
+        switch (frame->type()) {
+            case ScriptObject::IntegerType: {
+                Integer* oc = static_cast<Integer*>(frame.data());
+                _registers.operandCount = oc->value();
+                break;
+            }
+            case ScriptObject::ReturnType: {
+                Return* ret = static_cast<Return*>(frame.data());
+                _registers = ret->registers();
+                proc = static_cast<LambdaProcedure*>(_stack.at(_registers.procedureIdx).data());
+                lambda = static_cast<Lambda*>(proc->lambda().data());
+                positions.append(lambda->bytecode().position(_registers.instruction));
+                break;
+            }
+        }
+    }
+    
+    // remove any remaining operands
+    if (_registers.operandCount != 0) {
+        _stack.resize(1);
+        _registers.operandCount = 0;
+    }
+    
+    throw ScriptError(message, positions);
+}

@@ -47,22 +47,27 @@ QString ScriptPosition::toString (bool compact) const
 
 ScriptError::ScriptError (const QString& message, const ScriptPosition& position) :
     _message(message),
-    _position(position)
+    _positions(1, position)
+{
+}
+
+ScriptError::ScriptError (const QString& message, const QVector<ScriptPosition>& positions) :
+    _message(message),
+    _positions(positions)
 {
 }
 
 QString ScriptError::toString (bool compact) const
 {
     if (compact) {
-        return _position.toString(true) + ": " + _message;
+        return _positions.at(0).toString(true) + ": " + _message;
     }
-    return _position.toString(false) + _message;
-}
-
-void Bytecode::append (BytecodeOp op, const ScriptPosition& pos)
-{
-    _positions.insert(_data.size(), pos);
-    append(op);
+    QString base = _positions.at(0).toString(false) + _message;
+    for (int ii = 1, nn = _positions.size(); ii < nn; ii++) {
+        base += "\n at ";
+        base += _positions.at(ii).toString(true);
+    }
+    return base;
 }
 
 void Bytecode::append (BytecodeOp op, int p1)

@@ -7,6 +7,7 @@
 #include <QByteArray>
 #include <QHash>
 #include <QString>
+#include <QVector>
 
 /**
  * Contains a position within a script.
@@ -52,9 +53,14 @@ class ScriptError
 public:
 
     /**
-     * Creates a new script error.
+     * Creates a new script error with a single position.
      */
     ScriptError (const QString& message, const ScriptPosition& position);
+
+    /**
+     * Creates a new script error with a list of positions.
+     */
+    ScriptError (const QString& message, const QVector<ScriptPosition>& positions);
 
     /**
      * Returns a string representation of the error.
@@ -66,8 +72,8 @@ protected:
     /** A message explaining the error. */
     QString _message;
 
-    /** The location of the error. */
-    ScriptPosition _position;
+    /** The location(s) of the error. */
+    QVector<ScriptPosition> _positions;
 };
 
 /** The bytecode instructions. */
@@ -152,11 +158,6 @@ public:
     void append (BytecodeOp op) { _data.append(op); }
 
     /**
-     * Appends an instruction to the data along with its associated position.
-     */
-    void append (BytecodeOp op, const ScriptPosition& pos);
-
-    /**
      * Appends an instruction with a single integer parameter.
      */
     void append (BytecodeOp op, int p1);
@@ -171,6 +172,11 @@ public:
      */
     void append (const Bytecode& bytecode);
 
+    /**
+     * Associates the last instruction entered with the provided position.
+     */
+    void associate (const ScriptPosition& pos) { _positions.insert(_data.size(), pos); }
+
 protected:
     
     /** The bytecode data. */
@@ -178,6 +184,26 @@ protected:
     
     /** Maps bytecode indices to positions. */
     QHash<int, ScriptPosition> _positions;
+};
+
+/**
+ * Contains the "registers" that, in addition to the stack, comprise the evaluator state.
+ */
+class Registers
+{
+public:
+
+    /** The index of the current procedure on the stack. */
+    int procedureIdx;
+
+    /** The index of the first argument on the stack. */
+    int argumentIdx;
+
+    /** The pointer to the next instruction in the procedure definition. */
+    const uchar* instruction;
+
+    /** The current operand count. */
+    int operandCount;
 };
 
 #endif // SCRIPT

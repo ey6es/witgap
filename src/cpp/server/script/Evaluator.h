@@ -135,6 +135,11 @@ protected:
     ScriptObjectPointer compileLambda (List* list, Scope* scope, Bytecode& out,
         bool define = false);
 
+    /**
+     * Throws a script error with the supplied message.
+     */
+    void throwScriptError (const QString& message);
+
     /** The source of the input. */
     QString _source;
 
@@ -144,17 +149,8 @@ protected:
     /** The evaluation stack. */
     QStack<ScriptObjectPointer> _stack;
 
-    /** The index of the current procedure on the stack. */
-    int _procedureIdx;
-
-    /** The index of the first argument on the stack. */
-    int _argumentIdx;
-
-    /** The pointer to the next instruction in the procedure definition. */
-    const uchar* _instruction;
-
-    /** The current operand count. */
-    int _operandCount;
+    /** The current register values. */
+    Registers _registers;
 };
 
 #endif // EVALUATOR
