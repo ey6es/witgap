@@ -123,8 +123,10 @@ protected:
      * Compiles the specified parsed expression in the given scope to the supplied buffer.
      *
      * @param allowDef whether or not to allow a definition.
+     * @param tailCall whether or not this is a tail call context.
      */
-    void compile (ScriptObjectPointer expr, Scope* scope, bool allowDef, Bytecode& out);
+    void compile (ScriptObjectPointer expr, Scope* scope,
+        bool allowDef, bool tailCall, Bytecode& out);
 
     /**
      * Compiles the body of a lambda/function definition and optionally returns the name of

@@ -100,6 +100,9 @@ enum BytecodeOp {
     /** Performs a function call. */
     CallOp,
 
+    /** Performs a tail function call. */
+    TailCallOp,
+
     /** Returns from a function call. */
     ReturnOp,
 
