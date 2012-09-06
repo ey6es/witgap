@@ -7,10 +7,12 @@
 
 #include "script/Evaluator.h"
 #include "script/Globals.h"
+#include "script/MacroTransformer.h"
 #include "script/Parser.h"
 
-Scope::Scope (Scope* parent, bool withValues) :
+Scope::Scope (Scope* parent, bool withValues, bool syntactic) :
     _parent(parent),
+    _syntactic(syntactic),
     _memberCount(0),
     _lambdaProc(withValues ? new LambdaProcedure(ScriptObjectPointer(new Lambda()),
         parent == 0 ? ScriptObjectPointer() : parent->_lambdaProc) : 0)
@@ -21,10 +23,10 @@ void Scope::setArguments (const QStringList& firstArgs, const QString& restArg)
 {
     int idx = 0;
     foreach (const QString& arg, firstArgs) {
-        _variables.insert(arg, ScriptObjectPointer(new Argument(idx++)));
+        define(arg, ScriptObjectPointer(new Argument(idx++)));
     }
     if (!restArg.isEmpty()) {
-        _variables.insert(restArg, ScriptObjectPointer(new Argument(idx++)));
+        define(restArg, ScriptObjectPointer(new Argument(idx++)));
     }
 }
 
@@ -37,44 +39,50 @@ ScriptObjectPointer Scope::resolve (const QString& name)
     }
 
     // try the parent, if any
-    if (_parent != 0) {
-        ScriptObjectPointer pbinding = _parent->resolve(name);
-        if (!pbinding.isNull()) {
-            switch (pbinding->type()) {
-                case ScriptObject::ArgumentType: {
-                    // copy parent argument to local member on initialization
-                    Argument* argument = static_cast<Argument*>(pbinding.data());
-                    _initBytecode.append(ArgumentOp, argument->index());
-                    _initBytecode.append(SetMemberOp, 0, _memberCount);
-                    return define(name);
-                }
-                case ScriptObject::MemberType: {
-                    Member* member = static_cast<Member*>(pbinding.data());
-                    return ScriptObjectPointer(new Member(member->scope() + 1, member->index()));
-                }
-            }
-        }
+    if (_parent == 0) {
+        return ScriptObjectPointer();
     }
-
-    // no luck
-    return ScriptObjectPointer();
+    ScriptObjectPointer pbinding = _parent->resolve(name);
+    if (_syntactic || pbinding.isNull()) {
+        return pbinding; // syntactic scopes do not modify
+    }
+    switch (pbinding->type()) {
+        case ScriptObject::ArgumentType: {
+            // copy parent argument to local member on initialization
+            Argument* argument = static_cast<Argument*>(pbinding.data());
+            _initBytecode.append(ArgumentOp, argument->index());
+            _initBytecode.append(SetMemberOp, 0, _memberCount);
+            return addMember(name);
+        }
+        case ScriptObject::MemberType: {
+            Member* member = static_cast<Member*>(pbinding.data());
+            return ScriptObjectPointer(new Member(member->scope() + 1, member->index()));
+        }
+        default:
+            return pbinding;
+    }
 }
 
-ScriptObjectPointer Scope::define (const QString& name, NativeProcedure::Function function)
+ScriptObjectPointer Scope::addMember (const QString& name, NativeProcedure::Function function)
 {
-    return define(name, ScriptObjectPointer(new NativeProcedure(function)));
+    return addMember(name, ScriptObjectPointer(new NativeProcedure(function)));
 }
 
-ScriptObjectPointer Scope::define (const QString& name, const ScriptObjectPointer& value)
+ScriptObjectPointer Scope::addMember (const QString& name, const ScriptObjectPointer& value)
 {
     int idx = _memberCount++;
     ScriptObjectPointer member(new Member(0, idx));
-    _variables.insert(name, member);
+    define(name, member);
     if (!_lambdaProc.isNull()) {
         LambdaProcedure* proc = static_cast<LambdaProcedure*>(_lambdaProc.data());
         proc->appendMember(value);
     }
     return member;
+}
+
+void Scope::define (const QString& name, const ScriptObjectPointer& value)
+{
+    _variables.insert(name, value);
 }
 
 int Scope::addConstant (ScriptObjectPointer value)
@@ -98,7 +106,7 @@ ScriptObjectPointer Evaluator::evaluate (const QString& expr)
     ScriptObjectPointer result;
     LambdaProcedure* proc = static_cast<LambdaProcedure*>(_scope.lambdaProc().data());
     Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
-    Bytecode bodyBytecode;
+    Bytecode bodyBytecode;    
     while (!(datum = parser.parse()).isNull()) {
         compile(datum, &_scope, true, false, bodyBytecode);
         
@@ -412,7 +420,7 @@ void Evaluator::compile (
                     switch (cadr->type()) {
                         case ScriptObject::SymbolType: {
                             Symbol* variable = static_cast<Symbol*>(cadr.data());
-                            member = scope->define(variable->name());
+                            member = scope->addMember(variable->name());
                             if (contents.size() == 2) {
                                 return;
 
@@ -495,6 +503,34 @@ void Evaluator::compile (
                     out.append(thencode);
                     out.append(elsecode);
                     return;
+                    
+                } else if (name == "define-syntax") {
+                    if (contents.size() != 3) {
+                        throw ScriptError("Invalid syntax definition.", list->position());
+                    }
+                    ScriptObjectPointer cadr = contents.at(1);
+                    if (cadr->type() != ScriptObject::SymbolType) {
+                        throw ScriptError("Invalid syntax definition.", list->position());
+                    }
+                    Symbol* symbol = static_cast<Symbol*>(cadr.data());
+                    scope->define(symbol->name(), createMacroTransformer(contents.at(2), scope));
+                    return;
+                    
+                } else if (name == "let-syntax") {
+                    int csize = contents.size();
+                    if (csize < 3) {
+                        throw ScriptError("Invalid syntax scope.", list->position());
+                    }
+                    // TODO
+                    return;
+                    
+                } else if (name == "letrec-syntax") {
+                    int csize = contents.size();
+                    if (csize < 3) {
+                        throw ScriptError("Invalid syntax scope.", list->position());
+                    }
+                    // TODO
+                    return;
                 }
             }
             out.append(ResetOperandCountOp);
@@ -535,7 +571,7 @@ ScriptObjectPointer Evaluator::compileLambda (
                 }
                 Symbol* var = static_cast<Symbol*>(arg.data());
                 if (define && member.isNull()) {
-                    member = scope->define(var->name());
+                    member = scope->addMember(var->name());
                     continue;
                 }
                 if (rest) {

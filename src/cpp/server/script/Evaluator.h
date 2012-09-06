@@ -20,8 +20,10 @@ public:
      * Creates a new scope.
      *
      * @param withValues if true, create an associated lambda procedure to hold member values.
+     * @param syntactic if true, this is a purely syntactic scope; it will not have an associated
+     * lambda.
      */
-    Scope (Scope* parent = 0, bool withValues = false);
+    Scope (Scope* parent = 0, bool withValues = false, bool syntactic = false);
 
     /**
      * Returns a reference to the internal lambda procedure.
@@ -34,7 +36,7 @@ public:
     void setArguments (const QStringList& firstArgs, const QString& restArg);
 
     /**
-     * Attempts to resolve a symbol name, returning a pointer to an Argument or Member if
+     * Attempts to resolve a symbol name, returning a pointer to an Argument or Member, etc., if
      * successful.
      */
     ScriptObjectPointer resolve (const QString& name);
@@ -42,13 +44,18 @@ public:
     /**
      * Defines a native function in the scope.
      */
-    ScriptObjectPointer define (const QString& name, NativeProcedure::Function function);
+    ScriptObjectPointer addMember (const QString& name, NativeProcedure::Function function);
 
     /**
      * Defines a member in this scope with the supplied name and optional value.
      */
-    ScriptObjectPointer define (const QString& name,
+    ScriptObjectPointer addMember (const QString& name,
         const ScriptObjectPointer& value = ScriptObjectPointer());
+
+    /**
+     * Defines an arbitrary object in the scope.
+     */
+    void define (const QString& name, const ScriptObjectPointer& value);
 
     /**
      * Returns the number of members in this scope.
@@ -75,7 +82,10 @@ protected:
     /** The parent scope, if any. */
     Scope* _parent;
 
-    /** Maps variable names to their Argument/Member objects. */
+    /** Whether or not this is a purely syntactic scope. */
+    bool _syntactic;
+
+    /** Maps variable names to their Argument/Member/SyntaxRules/IdentifierSyntax objects. */
     QHash<QString, ScriptObjectPointer> _variables;
 
     /** The number of members defined in this scope. */
@@ -94,8 +104,10 @@ protected:
 /**
  * Allows evaluating scripts.
  */
-class Evaluator
+class Evaluator : public QObject
 {
+    Q_OBJECT
+    
 public:
 
     /**
@@ -144,7 +156,7 @@ protected:
 
     /** The source of the input. */
     QString _source;
-
+    
     /** The evaluator-level scope. */
     Scope _scope;
 

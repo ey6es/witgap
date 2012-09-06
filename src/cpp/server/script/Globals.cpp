@@ -351,18 +351,18 @@ static Scope createGlobalScope ()
 {
     Scope scope(0, true);
     
-    scope.define("+", add);
-    scope.define("-", subtract);
-    scope.define("*", multiply);
-    scope.define("/", divide);
+    scope.addMember("+", add);
+    scope.addMember("-", subtract);
+    scope.addMember("*", multiply);
+    scope.addMember("/", divide);
     
-    scope.define("=", equal);
-    scope.define("<", less);
-    scope.define(">", greater);
-    scope.define("<=", lessEqual);
-    scope.define(">=", greaterEqual);
+    scope.addMember("=", equal);
+    scope.addMember("<", less);
+    scope.addMember(">", greater);
+    scope.addMember("<=", lessEqual);
+    scope.addMember(">=", greaterEqual);
     
-    scope.define("not", notfunc);
+    scope.addMember("not", notfunc);
     
     return scope;
 }

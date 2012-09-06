@@ -17,7 +17,7 @@ public:
     /**
      * Creates a parser for the supplied expression.
      */
-    Parser (const QString& expr, const QString& source = QString());
+    Parser (const QString& expr = QString(), const QString& source = QString());
 
     /**
      * Parses and returns the next datum, or an invalid pointer if there are no more.  Throws

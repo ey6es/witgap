@@ -2,6 +2,7 @@
 // $Id$
 
 #include "script/Evaluator.h"
+#include "script/MacroTransformer.h"
 #include "script/ScriptObject.h"
 
 ScriptObject::~ScriptObject ()
@@ -165,3 +166,16 @@ QString Return::toString () const
         QString::number(_registers.argumentIdx) + " " +
         QString::number(_registers.operandCount) + "}";
 }
+
+SyntaxRules::SyntaxRules (const QVector<PatternTemplatePair>& patternTemplatePairs) :
+    _patternTemplatePairs(patternTemplatePairs)
+{
+}
+
+IdentifierSyntax::IdentifierSyntax (
+        const TemplatePointer& templ, const PatternTemplatePair& setPatternTemplate) :
+    _template(templ),
+    _setPatternTemplate(setPatternTemplate)
+{
+}
+

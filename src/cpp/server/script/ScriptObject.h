@@ -22,7 +22,7 @@ public:
     /** The object types. */
     enum Type { SentinelType, BooleanType, IntegerType, FloatType, StringType, SymbolType,
         ListType, UnspecifiedType, ArgumentType, MemberType, LambdaType, LambdaProcedureType,
-        NativeProcedureType, ReturnType };
+        NativeProcedureType, ReturnType, SyntaxRulesType, IdentifierSyntaxType };
 
     /**
      * Destroys the object.
@@ -515,7 +515,7 @@ public:
     /**
      * Returns a string representation of the object.
      */
-    virtual QString toString () const { return "#lproc" + QString::number((int)this, 16); }
+    virtual QString toString () const { return "#lambda_proc_" + QString::number((int)this, 16); }
 
 protected:
 
@@ -557,7 +557,7 @@ public:
     /**
      * Returns a string representation of the object.
      */
-    virtual QString toString () const { return "#nproc" + QString::number((int)this, 16); }
+    virtual QString toString () const { return "#native_proc_" + QString::number((int)this, 16); }
 
 protected:
 
@@ -596,6 +596,77 @@ protected:
 
     /** The stored register values. */
     Registers _registers;
+};
+
+class Pattern;
+class Template;
+
+/** A pointer to a pattern. */
+typedef QSharedPointer<Pattern> PatternPointer;
+
+/** A pointer to a template. */
+typedef QSharedPointer<Template> TemplatePointer;
+
+/** A pattern/template pair. */
+typedef QPair<PatternPointer, TemplatePointer> PatternTemplatePair;
+
+/**
+ * A macro transformer that contains a set of rules to expand forms.
+ */
+class SyntaxRules : public ScriptObject
+{
+public:
+
+    /**
+     * Creates a new syntax rules object.
+     */
+    SyntaxRules (const QVector<PatternTemplatePair>& patternTemplatePairs);
+
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return SyntaxRulesType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const { return "#syntax_rules_" + QString::number((int)this, 16); }
+    
+protected:
+
+    /** The list of pattern/template pairs. */
+    QVector<PatternTemplatePair> _patternTemplatePairs;
+};
+
+/**
+ * A macro transformer that contains templates to expand identifiers.
+ */
+class IdentifierSyntax : public ScriptObject
+{
+public:
+
+    /**
+     * Creates a new identifier syntax object.
+     */
+    IdentifierSyntax (const TemplatePointer& templ, const PatternTemplatePair& setPatternTemplate);
+
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return IdentifierSyntaxType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const { return "#ident_syntax_" + QString::number((int)this, 16); }
+
+protected:
+    
+    /** The template to use when referencing the identifier. */
+    TemplatePointer _template;
+    
+    /** The (optional) template to use when setting the identifier. */
+    PatternTemplatePair _setPatternTemplate;
 };
 
 #endif // SCRIPT_OBJECT
