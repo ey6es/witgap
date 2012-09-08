@@ -9,6 +9,69 @@ ScriptObject::~ScriptObject ()
 {
 }
 
+bool equivalent (const ScriptObjectPointer& p1, const ScriptObjectPointer& p2)
+{
+    ScriptObject::Type t1 = p1->type();
+    if (t1 != p2->type()) {
+        return false;
+    }
+    switch (t1) {
+        case ScriptObject::BooleanType: {
+            Boolean* b1 = static_cast<Boolean*>(p1.data());
+            Boolean* b2 = static_cast<Boolean*>(p2.data());
+            return b1->value() == b2->value();
+        }
+        case ScriptObject::IntegerType: {
+            Integer* i1 = static_cast<Integer*>(p1.data());
+            Integer* i2 = static_cast<Integer*>(p2.data());
+            return i1->value() == i2->value();
+        }
+        case ScriptObject::FloatType: {
+            Float* f1 = static_cast<Float*>(p1.data());
+            Float* f2 = static_cast<Float*>(p2.data());
+            return f1->value() == f2->value();
+        }
+        case ScriptObject::StringType: {
+            String* s1 = static_cast<String*>(p1.data());
+            String* s2 = static_cast<String*>(p2.data());
+            return s1->contents() == s2->contents();
+        }
+        case ScriptObject::SymbolType: {
+            Symbol* s1 = static_cast<Symbol*>(p1.data());
+            Symbol* s2 = static_cast<Symbol*>(p2.data());
+            return s1->name() == s2->name();
+        }
+        case ScriptObject::ListType: {
+            List* l1 = static_cast<List*>(p1.data());
+            List* l2 = static_cast<List*>(p2.data());
+            const QList<ScriptObjectPointer>& c1 = l1->contents();
+            const QList<ScriptObjectPointer>& c2 = l2->contents();
+            int size = c1.size();
+            if (c2.size() != size) {
+                return false;
+            }
+            for (int ii = 0; ii < size; ii++) {
+                if (!equivalent(c1.at(ii), c2.at(ii))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        case ScriptObject::ArgumentType: {
+            Argument* a1 = static_cast<Argument*>(p1.data());
+            Argument* a2 = static_cast<Argument*>(p2.data());
+            return a1->index() == a2->index();
+        }
+        case ScriptObject::MemberType: {
+            Member* m1 = static_cast<Member*>(p1.data());
+            Member* m2 = static_cast<Member*>(p2.data());
+            return m1->scope() == m2->scope() && m1->index() == m2->index();
+        }
+        default:
+            return p1.data() == p2.data();
+    }
+}
+
 Datum::Datum (const ScriptPosition& position) :
     _position(position)
 {
@@ -49,7 +112,7 @@ Symbol::Symbol (const QString& name, const ScriptPosition& position) :
 {
 }
 
-List::List (const QList<ScriptObjectPointer>& contents, const ScriptPosition& position) :
+List::List (const ScriptObjectPointerList& contents, const ScriptPosition& position) :
     Datum(position),
     _contents(contents)
 {
@@ -167,13 +230,25 @@ QString Return::toString () const
         QString::number(_registers.operandCount) + "}";
 }
 
-SyntaxRules::SyntaxRules (const QVector<PatternTemplatePair>& patternTemplatePairs) :
-    _patternTemplatePairs(patternTemplatePairs)
+PatternTemplate::PatternTemplate (
+        int variableCount, const PatternPointer& pattern, const TemplatePointer& templ) :
+    _variableCount(variableCount),
+    _pattern(pattern),
+    _template(templ)
+{
+}
+
+PatternTemplate::PatternTemplate ()
+{
+}
+
+SyntaxRules::SyntaxRules (const QVector<PatternTemplate>& patternTemplates) :
+    _patternTemplates(patternTemplates)
 {
 }
 
 IdentifierSyntax::IdentifierSyntax (
-        const TemplatePointer& templ, const PatternTemplatePair& setPatternTemplate) :
+        const TemplatePointer& templ, const PatternTemplate& setPatternTemplate) :
     _template(templ),
     _setPatternTemplate(setPatternTemplate)
 {

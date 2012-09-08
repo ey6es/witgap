@@ -19,9 +19,11 @@ class Pattern
 public:
     
     /**
-     * Determines whether the provided form matches this pattern.
+     * Determines whether the provided form matches this pattern.  If so, populates the supplied
+     * variable list.
      */
-    virtual bool matches (ScriptObjectPointer form) = 0;
+    virtual bool matches (
+        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) = 0;
 };
 
 /**
@@ -31,6 +33,18 @@ class ConstantPattern : public Pattern
 {
 public:
 
+    /**
+     * Creates a new constant pattern.
+     */
+    ConstantPattern (const ScriptObjectPointer& constant);
+
+    /**
+     * Determines whether the provided form matches this pattern.  If so, populates the supplied
+     * variable list.
+     */
+    virtual bool matches (
+        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables);
+    
 protected:
     
     /** The constant to compare to. */
@@ -44,6 +58,18 @@ class VariablePattern : public Pattern
 {
 public:
 
+    /**
+     * Creates a new variable pattern.
+     */
+    VariablePattern (int index);
+
+    /**
+     * Determines whether the provided form matches this pattern.  If so, populates the supplied
+     * variable list.
+     */
+    virtual bool matches (
+        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables);
+    
 protected:
 
     /** The index of the variable to store under, or -1 for none. */
@@ -53,10 +79,51 @@ protected:
 /**
  * A pattern that matches a literal identifier with the same lexical binding.
  */
-class LiteralPattern : public Pattern
+class BoundLiteralPattern : public Pattern
 {
 public:
 
+    /**
+     * Creates a new bound literal pattern.
+     */
+    BoundLiteralPattern (const ScriptObjectPointer& binding);
+
+    /**
+     * Determines whether the provided form matches this pattern.  If so, populates the supplied
+     * variable list.
+     */
+    virtual bool matches (
+        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables);
+    
+protected:
+    
+    /** The binding of the identifier. */
+    ScriptObjectPointer _binding;
+};
+
+/**
+ * A pattern that matches a literal identifier with the same name and no lexical binding.
+ */
+class UnboundLiteralPattern : public Pattern
+{
+public:
+    
+    /**
+     * Creates a new unbound literal pattern.
+     */
+    UnboundLiteralPattern (const QString& name);
+
+    /**
+     * Determines whether the provided form matches this pattern.  If so, populates the supplied
+     * variable list.
+     */
+    virtual bool matches (
+        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables);
+    
+protected:
+    
+    /** The name of the identifier. */
+    QString _name;
 };
 
 /**
@@ -66,6 +133,20 @@ class ListPattern : public Pattern
 {
 public:
 
+    /**
+     * Creates a new list pattern.
+     */
+    ListPattern (const QVector<PatternPointer>& preRepeatPatterns,
+        const PatternPointer& repeatPattern, int repeatVariableIdx, int repeatVariableCount,
+        const QVector<PatternPointer>& postRepeatPatterns, const PatternPointer& restPattern);
+
+    /**
+     * Determines whether the provided form matches this pattern.  If so, populates the supplied
+     * variable list.
+     */
+    virtual bool matches (
+        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables);
+    
 protected:
 
     /** The first patterns (before the repeating pattern). */
@@ -73,6 +154,12 @@ protected:
     
     /** An optional repeating pattern. */
     PatternPointer _repeatPattern;
+    
+    /** The index of the first variable in the repeating pattern. */
+    int _repeatVariableIdx;
+    
+    /** The number of variables in the repeating pattern. */
+    int _repeatVariableCount;
     
     /** The second patterns (after the repeating pattern). */
     QVector<PatternPointer> _postRepeatPatterns;
@@ -86,19 +173,12 @@ protected:
  */
 class Template
 {
-};
-
-/**
- * A template that emits the contents of a pattern variable.
- */
-class VariableTemplate : public Template
-{
 public:
-
-protected:
     
-    /** The index of the variable to emit. */
-    int _index;
+    /**
+     * Generates the contents of the template.
+     */
+    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables) = 0;
 };
 
 /**
@@ -108,6 +188,16 @@ class DatumTemplate : public Template
 {
 public:
 
+    /**
+     * Creates a new datum template.
+     */
+    DatumTemplate (const ScriptObjectPointer& datum);
+
+    /**
+     * Generates the contents of the template.
+     */
+    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables);
+    
 protected:
     
     /** The datum to emit. */
@@ -115,17 +205,50 @@ protected:
 };
 
 /**
+ * A template that emits the contents of a pattern variable.
+ */
+class VariableTemplate : public Template
+{
+public:
+
+    /**
+     * Creates a new variable template.
+     */
+    VariableTemplate (int index);
+
+    /**
+     * Generates the contents of the template.
+     */
+    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables);
+    
+protected:
+    
+    /** The index of the variable to emit. */
+    int _index;
+};
+
+/** Pairs a template with the number of ellipses following it. */
+typedef QPair<TemplatePointer, int> Subtemplate;
+    
+/**
  * A template that emits a list with various subtemplates.
  */
 class ListTemplate : public Template
 {
 public:
 
+    /**
+     * Creates a new list template.
+     */
+    ListTemplate (const QVector<Subtemplate>& subtemplates, const TemplatePointer& restTemplate);
+
+    /**
+     * Generates the contents of the template.
+     */
+    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables);
+    
 protected:
-    
-    /** Pairs a template with the number of ellipses following it. */
-    typedef QPair<TemplatePointer, int> Subtemplate;
-    
+        
     /** The list of subtemplates. */
     QVector<Subtemplate> _subtemplates;
     

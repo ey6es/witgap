@@ -40,7 +40,13 @@ public:
     virtual QString toString () const = 0;
 };
 
+/** A reference-counted pointer to a script object. */
 typedef QSharedPointer<ScriptObject> ScriptObjectPointer;
+
+/**
+ * Compares two script objects according to their types.
+ */
+bool equivalent (const ScriptObjectPointer& p1, const ScriptObjectPointer& p2);
 
 /**
  * Base class for parsed data.
@@ -253,6 +259,9 @@ protected:
     QString _name;
 };
 
+/** A list of script pointers. */
+typedef QList<ScriptObjectPointer> ScriptObjectPointerList;
+
 /**
  * A datum containing a list of other data.
  */
@@ -263,13 +272,13 @@ public:
     /**
      * Creates a new list.
      */
-    List (const QList<ScriptObjectPointer>& contents,
+    List (const ScriptObjectPointerList& contents,
         const ScriptPosition& position = ScriptPosition());
 
     /**
      * Returns a reference to the list contents.
      */
-    const QList<ScriptObjectPointer>& contents () const { return _contents; }
+    const ScriptObjectPointerList& contents () const { return _contents; }
 
     /**
      * Returns the type of the object.
@@ -284,7 +293,7 @@ public:
 protected:
 
     /** The contents of the list. */
-    const QList<ScriptObjectPointer> _contents;
+    ScriptObjectPointerList _contents;
 };
 
 /**
@@ -607,8 +616,35 @@ typedef QSharedPointer<Pattern> PatternPointer;
 /** A pointer to a template. */
 typedef QSharedPointer<Template> TemplatePointer;
 
-/** A pattern/template pair. */
-typedef QPair<PatternPointer, TemplatePointer> PatternTemplatePair;
+/**
+ * Contains the information necessary to apply a syntax rule.
+ */
+class PatternTemplate
+{
+public:
+
+    /**
+     * Creates a new pattern template.
+     */
+    PatternTemplate (
+        int variableCount, const PatternPointer& pattern, const TemplatePointer& templ);
+    
+    /**
+     * Creates an empty, invalid pattern template.
+     */
+    PatternTemplate ();
+    
+protected:
+    
+    /** The number of variables in the rule. */
+    int _variableCount;
+    
+    /** The pattern to match. */
+    PatternPointer _pattern;
+    
+    /** The template to generate. */
+    TemplatePointer _template;
+};
 
 /**
  * A macro transformer that contains a set of rules to expand forms.
@@ -620,7 +656,7 @@ public:
     /**
      * Creates a new syntax rules object.
      */
-    SyntaxRules (const QVector<PatternTemplatePair>& patternTemplatePairs);
+    SyntaxRules (const QVector<PatternTemplate>& patternTemplates);
 
     /**
      * Returns the type of the object.
@@ -635,7 +671,7 @@ public:
 protected:
 
     /** The list of pattern/template pairs. */
-    QVector<PatternTemplatePair> _patternTemplatePairs;
+    QVector<PatternTemplate> _patternTemplates;
 };
 
 /**
@@ -648,7 +684,7 @@ public:
     /**
      * Creates a new identifier syntax object.
      */
-    IdentifierSyntax (const TemplatePointer& templ, const PatternTemplatePair& setPatternTemplate);
+    IdentifierSyntax (const TemplatePointer& templ, const PatternTemplate& setPatternTemplate);
 
     /**
      * Returns the type of the object.
@@ -666,7 +702,7 @@ protected:
     TemplatePointer _template;
     
     /** The (optional) template to use when setting the identifier. */
-    PatternTemplatePair _setPatternTemplate;
+    PatternTemplate _setPatternTemplate;
 };
 
 #endif // SCRIPT_OBJECT
