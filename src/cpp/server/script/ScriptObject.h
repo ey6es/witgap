@@ -608,6 +608,7 @@ protected:
 };
 
 class Pattern;
+class Scope;
 class Template;
 
 /** A pointer to a pattern. */
@@ -634,6 +635,12 @@ public:
      */
     PatternTemplate ();
     
+    /**
+     * Attempts to match the provided form to our pattern and generate the corresponding
+     * template, returning a null pointer if a match couldn't be made.
+     */
+    ScriptObjectPointer maybeTransform (ScriptObjectPointer form, Scope* scope) const;
+    
 protected:
     
     /** The number of variables in the rule. */
@@ -658,6 +665,12 @@ public:
      */
     SyntaxRules (const QVector<PatternTemplate>& patternTemplates);
 
+    /**
+     * Attempts to match the provided form to our pattern and generate the corresponding
+     * template, returning a null pointer if a match couldn't be made.
+     */
+    ScriptObjectPointer maybeTransform (ScriptObjectPointer form, Scope* scope) const;
+    
     /**
      * Returns the type of the object.
      */
@@ -686,6 +699,17 @@ public:
      */
     IdentifierSyntax (const TemplatePointer& templ, const PatternTemplate& setPatternTemplate);
 
+    /**
+     * Generates the output for an identifier occurrence.
+     */
+    ScriptObjectPointer generate () const;
+
+    /**
+     * Attempts to match the provided form to our pattern and generate the corresponding
+     * template, returning a null pointer if a match couldn't be made.
+     */
+    ScriptObjectPointer maybeTransform (ScriptObjectPointer form, Scope* scope) const;
+    
     /**
      * Returns the type of the object.
      */

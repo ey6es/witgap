@@ -242,9 +242,31 @@ PatternTemplate::PatternTemplate ()
 {
 }
 
+ScriptObjectPointer PatternTemplate::maybeTransform (ScriptObjectPointer form, Scope* scope) const
+{
+    if (_pattern.isNull()) {
+        return ScriptObjectPointer();
+    }
+    QVector<ScriptObjectPointer> variables(_variableCount);
+    return _pattern->matches(form, scope, variables) ?
+        _template->generate(variables) : ScriptObjectPointer();
+}
+
 SyntaxRules::SyntaxRules (const QVector<PatternTemplate>& patternTemplates) :
     _patternTemplates(patternTemplates)
 {
+}
+
+ScriptObjectPointer SyntaxRules::maybeTransform (ScriptObjectPointer form, Scope* scope) const
+{
+    ScriptObjectPointer result;
+    foreach (const PatternTemplate& templ, _patternTemplates) {
+        result = templ.maybeTransform(form, scope);
+        if (!result.isNull()) {
+            break;
+        }
+    }
+    return result;
 }
 
 IdentifierSyntax::IdentifierSyntax (
@@ -254,3 +276,13 @@ IdentifierSyntax::IdentifierSyntax (
 {
 }
 
+ScriptObjectPointer IdentifierSyntax::generate () const
+{
+    QVector<ScriptObjectPointer> variables;
+    return _template->generate(variables);
+}
+
+ScriptObjectPointer IdentifierSyntax::maybeTransform (ScriptObjectPointer form, Scope* scope) const
+{
+    return _setPatternTemplate.maybeTransform(form, scope);
+}

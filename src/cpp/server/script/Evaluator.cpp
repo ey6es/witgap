@@ -396,6 +396,14 @@ void Evaluator::compile (
                     out.append(MemberOp, member->scope(), member->index());
                     return;
                 }
+                case ScriptObject::SyntaxRulesType: {
+                    throw ScriptError("Invalid macro use.", symbol->position());
+                }
+                case ScriptObject::IdentifierSyntaxType: {
+                    IdentifierSyntax* syntax = static_cast<IdentifierSyntax*>(binding.data());
+                    compile(syntax->generate(), scope, allowDef, tailCall, out);
+                    return;
+                }
             }
         }
         case ScriptObject::ListType: {
@@ -462,18 +470,35 @@ void Evaluator::compile (
                     if (binding.isNull()) {
                         throw ScriptError("Unresolved symbol.", var->position());
                     }
-                    compile(contents.at(2), scope, false, false, out);
                     switch (binding->type()) {
                         case ScriptObject::ArgumentType: {
                             Argument* argument = static_cast<Argument*>(binding.data());
+                            compile(contents.at(2), scope, false, false, out);
                             out.append(SetArgumentOp, argument->index());
+                            out.append(ConstantOp, scope->addConstant(
+                                ScriptObjectPointer(new Unspecified())));
                         }
                         case ScriptObject::MemberType: {
                             Member* member = static_cast<Member*>(binding.data());
+                            compile(contents.at(2), scope, false, false, out);
                             out.append(SetMemberOp, member->scope(), member->index());
+                            out.append(ConstantOp, scope->addConstant(
+                                ScriptObjectPointer(new Unspecified())));
+                        }
+                        case ScriptObject::SyntaxRulesType: {
+                            throw ScriptError("Invalid macro use.", list->position());
+                        }
+                        case ScriptObject::IdentifierSyntaxType: {
+                            IdentifierSyntax* syntax =
+                                static_cast<IdentifierSyntax*>(binding.data());
+                            ScriptObjectPointer transformed = syntax->maybeTransform(
+                                contents.at(2), scope);
+                            if (transformed.isNull()) {
+                                throw ScriptError("No pattern match.", list->position());
+                            }
+                            compile(transformed, scope, allowDef, tailCall, out);
                         }
                     }
-                    out.append(ConstantOp, scope->addConstant(ScriptObjectPointer(new Unspecified())));
                     return;
 
                 } else if (name == "quote") {
@@ -530,6 +555,16 @@ void Evaluator::compile (
                         throw ScriptError("Invalid syntax scope.", list->position());
                     }
                     // TODO
+                    return;
+                }
+                ScriptObjectPointer binding = scope->resolve(name);
+                if (!binding.isNull() && binding->type() == ScriptObject::SyntaxRulesType) {
+                    SyntaxRules* syntax = static_cast<SyntaxRules*>(binding.data());
+                    ScriptObjectPointer transformed = syntax->maybeTransform(expr, scope);
+                    if (transformed.isNull()) {
+                        throw ScriptError("No pattern match.", list->position());
+                    }
+                    compile(transformed, scope, allowDef, tailCall, out);
                     return;
                 }
             }

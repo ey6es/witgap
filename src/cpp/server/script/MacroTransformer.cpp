@@ -1,14 +1,42 @@
 //
 // $Id$
 
+#include <QtDebug>
+
 #include "script/MacroTransformer.h"
+
+class RepeatGroup;
+
+/** A shared pointer to a repeat group. */
+typedef QSharedPointer<RepeatGroup> RepeatGroupPointer;
+
+/**
+ * Represents a repeat group within a pattern.
+ */
+class RepeatGroup
+{
+public:
+    
+    /** The parent group. */
+    RepeatGroupPointer parent;
+    
+    /** The index of the first variable involved in the repeat group. */
+    int variableIdx;
+    
+    /** The number of variables involved in the repeat group. */
+    int variableCount;
+};
+
+/** A variable mapping (index and repeat group). */
+typedef QPair<int, RepeatGroupPointer> Variable;
 
 /**
  * Creates a pattern from the specified expression.
  */
 static PatternPointer createPattern (
     ScriptObjectPointer expr, const QHash<QString, PatternPointer>& literals,
-    QHash<QString, int>& variables)
+    QHash<QString, Variable>& variables,
+    const RepeatGroupPointer& parentGroup = RepeatGroupPointer())
 {
     switch (expr->type()) {
         case ScriptObject::SymbolType: {
@@ -25,7 +53,7 @@ static PatternPointer createPattern (
                 throw ScriptError("Duplicate variable.", symbol->position());
             }
             int index = variables.size();
-            variables.insert(name, index);
+            variables.insert(name, Variable(index, parentGroup));
             return PatternPointer(new VariablePattern(index));
         }
         case ScriptObject::ListType: {
@@ -33,8 +61,7 @@ static PatternPointer createPattern (
             const QList<ScriptObjectPointer>& contents = list->contents();
             QVector<PatternPointer> preRepeatPatterns;
             PatternPointer repeatPattern;
-            int repeatVariableIdx;
-            int repeatVariableCount;
+            RepeatGroupPointer repeatGroup(new RepeatGroup());
             QVector<PatternPointer> postRepeatPatterns;
             PatternPointer restPattern;
             for (int ii = 0, nn = contents.size(); ii < nn; ii++) {
@@ -43,9 +70,12 @@ static PatternPointer createPattern (
                     if (next->type() == ScriptObject::SymbolType) {
                         Symbol* symbol = static_cast<Symbol*>(next.data());
                         if (symbol->name() == "...") {
-                            repeatVariableIdx = variables.size();
-                            repeatPattern = createPattern(contents.at(ii), literals, variables);
-                            repeatVariableCount = variables.size() - repeatVariableIdx;
+                            repeatGroup->parent = parentGroup;
+                            repeatGroup->variableIdx = variables.size();
+                            repeatPattern = createPattern(
+                                contents.at(ii), literals, variables, repeatGroup);
+                            repeatGroup->variableCount =
+                                variables.size() - repeatGroup->variableIdx;
                             for (ii += 2; ii < nn; ii++) {
                                 ScriptObjectPointer element = contents.at(ii);
                                 if (element->type() == ScriptObject::SymbolType) {
@@ -56,25 +86,43 @@ static PatternPointer createPattern (
                                                 list->position());
                                         }
                                         restPattern = createPattern(
-                                            contents.at(ii + 1), literals, variables);
+                                            contents.at(ii + 1), literals, variables, parentGroup);
                                         break;
                                     }
                                 }
                                 postRepeatPatterns.append(createPattern(
-                                    contents.at(ii), literals, variables));
+                                    contents.at(ii), literals, variables, parentGroup));
                             }
                             break;
                         }
                     }
                 }
-                preRepeatPatterns.append(createPattern(contents.at(ii), literals, variables));
+                preRepeatPatterns.append(createPattern(
+                    contents.at(ii), literals, variables, parentGroup));
             }
             return PatternPointer(new ListPattern(
-                preRepeatPatterns, repeatPattern, repeatVariableIdx,
-                repeatVariableCount, postRepeatPatterns, restPattern));
+                preRepeatPatterns, repeatPattern, repeatGroup->variableIdx,
+                repeatGroup->variableCount, postRepeatPatterns, restPattern));
         }
         default:
             return PatternPointer(new ConstantPattern(expr));
+    }
+}
+
+/**
+ * Assigns the repeat group if possible and not yet assigned.  Throws a ScriptError with the
+ * supplied position if the two repeat groups aren't compatible.
+ */
+void maybeAssignGroup (
+    RepeatGroupPointer& group, const RepeatGroupPointer& ngroup, const ScriptPosition& pos)
+{
+    if (!ngroup.isNull()) {
+        if (group.isNull()) {
+            group = ngroup;
+            
+        } else if (group != ngroup) {
+            throw ScriptError("Invalid repeat group.", pos);
+        }
     }
 }
 
@@ -84,17 +132,19 @@ static PatternPointer createPattern (
  * @ellipseIdents if true, treat ellipses as normal identifiers.
  */
 static TemplatePointer createTemplate (
-    ScriptObjectPointer expr, const QHash<QString, int>& variables, bool ellipseIdents = false)
+    ScriptObjectPointer expr, const QHash<QString, Variable>& variables,
+    bool ellipseIdents, RepeatGroupPointer& repeatGroup)
 {
     switch (expr->type()) {
         case ScriptObject::SymbolType: {
             Symbol* symbol = static_cast<Symbol*>(expr.data());
             const QString& name = symbol->name();
-            QHash<QString, int>::const_iterator it = variables.constFind(name);
+            QHash<QString, Variable>::const_iterator it = variables.constFind(name);
             if (it == variables.constEnd()) {
                 return TemplatePointer(new DatumTemplate(expr));
             }
-            return TemplatePointer(new VariableTemplate(*it));
+            maybeAssignGroup(repeatGroup, it.value().second, symbol->position());
+            return TemplatePointer(new VariableTemplate(it.value().first));
         }
         case ScriptObject::ListType: {
             List* list = static_cast<List*>(expr.data());
@@ -111,25 +161,66 @@ static TemplatePointer createTemplate (
                             throw ScriptError("Invalid template.", list->position());
                         }
                         restTemplate = createTemplate(contents.at(ii + 1),
-                            variables, ellipseIdents);
+                            variables, ellipseIdents, repeatGroup);
                         break;
                     }
                     if (name == "..." && !ellipseIdents) {
-                        if (ii == 0) {
-                            if (nn != 2) {
-                                throw ScriptError("Invalid template.", list->position());
-                            }
-                            return createTemplate(contents.at(1), variables, true);
+                        if (nn != 2) {
+                            throw ScriptError("Invalid template.", list->position());
                         }
-                        
+                        return createTemplate(contents.at(1), variables, true, repeatGroup);
                     }
                 }
+                RepeatGroupPointer subRepeatGroup;
+                TemplatePointer templ = createTemplate(
+                    contents.at(ii), variables, ellipseIdents, subRepeatGroup);
+                int repeatVariableIdx;
+                int repeatVariableCount;
+                int repeatDepth = 0;
+                if (!ellipseIdents) {
+                    for (ii++; ii < nn; ii++) {
+                        ScriptObjectPointer nelement = contents.at(ii);
+                        if (nelement->type() != ScriptObject::SymbolType) {
+                            break;
+                        }
+                        Symbol* symbol = static_cast<Symbol*>(nelement.data());
+                        if (symbol->name() != "...") {
+                            break;
+                        }
+                        if (subRepeatGroup.isNull()) {
+                            throw ScriptError("Invalid repeat depth.", symbol->position());
+                        }
+                        repeatVariableIdx = subRepeatGroup->variableIdx;
+                        repeatVariableCount = subRepeatGroup->variableCount;
+                        subRepeatGroup = subRepeatGroup->parent;
+                        repeatDepth++;
+                    }
+                    ii--;
+                }
+                maybeAssignGroup(repeatGroup, subRepeatGroup, list->position());
+                subtemplates.append(Subtemplate(
+                    repeatVariableIdx, repeatVariableCount, repeatDepth, templ));
             }
             return TemplatePointer(new ListTemplate(subtemplates, restTemplate));
         }
         default:
             return TemplatePointer(new DatumTemplate(expr));
     }
+}
+
+/**
+ * Creates a template from the specified expression.
+ */
+static TemplatePointer createTemplate (
+    ScriptObjectPointer expr, const QHash<QString, Variable>& variables)
+{
+    RepeatGroupPointer repeatGroup;
+    TemplatePointer templ = createTemplate(expr, variables, false, repeatGroup);
+    if (!repeatGroup.isNull()) {
+        Datum* datum = static_cast<Datum*>(expr.data());
+        throw ScriptError("Invalid repeat depth.", datum->position());
+    }
+    return templ;
 }
 
 ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* scope)
@@ -193,15 +284,65 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
                     if (rcontents.size() != 2) {
                         throw ScriptError("Invalid rule.", rlist->position());
                     }
-                    QHash<QString, int> variables;
+                    QHash<QString, Variable> variables;
                     PatternPointer pattern = createPattern(rcontents.at(0), literals, variables);
-                    TemplatePointer templ = createTemplate(rcontents.at(1), variables);
-                    patternTemplates.append(PatternTemplate(variables.size(), pattern, templ));
+                    patternTemplates.append(PatternTemplate(variables.size(), pattern,
+                        createTemplate(rcontents.at(1), variables)));
                 }
                 return ScriptObjectPointer(new SyntaxRules(patternTemplates));
                 
             } else if (name == "identifier-syntax") {
-//                return ScriptObjectPointer(new IdentifierSyntax());
+                if (csize == 2) {
+                    return ScriptObjectPointer(new IdentifierSyntax(
+                        createTemplate(contents.at(1), QHash<QString, Variable>()),
+                        PatternTemplate()));
+                }
+                if (csize != 3) {
+                    throw ScriptError("Invalid identifier syntax.", list->position());
+                }
+                ScriptObjectPointer ref = contents.at(1);
+                if (ref->type() != ScriptObject::ListType) {
+                    throw ScriptError("Invalid identifier syntax.", list->position());
+                }
+                List* rlist = static_cast<List*>(ref.data());
+                const QList<ScriptObjectPointer>& rcontents = rlist->contents();
+                if (rcontents.size() != 2 ||
+                        rcontents.at(0)->type() != ScriptObject::SymbolType) {
+                    throw ScriptError("Invalid rule.", rlist->position());
+                }
+                TemplatePointer templ = createTemplate(
+                    rcontents.at(1), QHash<QString, Variable>());
+                ScriptObjectPointer set = contents.at(2);
+                if (set->type() != ScriptObject::ListType) {
+                    throw ScriptError("Invalid identifier syntax.", list->position());
+                }
+                List* slist = static_cast<List*>(set.data());
+                const QList<ScriptObjectPointer>& scontents = slist->contents();
+                if (scontents.size() != 2) {
+                    throw ScriptError("Invalid rule.", slist->position());
+                }
+                ScriptObjectPointer pat = scontents.at(0);
+                if (pat->type() != ScriptObject::ListType) {
+                    throw ScriptError("Invalid rule.", slist->position());
+                }
+                List* plist = static_cast<List*>(pat.data());
+                const QList<ScriptObjectPointer>& pcontents = plist->contents();
+                if (pcontents.size() != 3 || pcontents.at(1)->type() != ScriptObject::SymbolType) {
+                    throw ScriptError("Invalid pattern.", plist->position());
+                }
+                ScriptObjectPointer slit = pcontents.at(0);
+                if (slit->type() != ScriptObject::SymbolType) {
+                    throw ScriptError("Invalid pattern.", plist->position());
+                }
+                Symbol* symbol = static_cast<Symbol*>(slit.data());
+                if (symbol->name() != "set!") {
+                    throw ScriptError("Invalid pattern.", plist->position());
+                }
+                QHash<QString, Variable> variables;
+                PatternPointer pattern = createPattern(
+                    pcontents.at(2), QHash<QString, PatternPointer>(), variables);
+                return ScriptObjectPointer(new IdentifierSyntax(templ, PatternTemplate(
+                    variables.size(), pattern, createTemplate(scontents.at(1), variables))));
                 
             } else {
                 throw ScriptError("Invalid macro transformer.", list->position());
@@ -218,7 +359,7 @@ ConstantPattern::ConstantPattern (const ScriptObjectPointer& constant) :
 }
 
 bool ConstantPattern::matches (
-    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables)
+    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const
 {
     return equivalent(form, _constant);
 }
@@ -229,7 +370,7 @@ VariablePattern::VariablePattern (int index) :
 }
 
 bool VariablePattern::matches (
-    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables)
+    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const
 {
     if (_index != -1) {
         variables[_index] = form;
@@ -243,7 +384,7 @@ BoundLiteralPattern::BoundLiteralPattern (const ScriptObjectPointer& binding) :
 }
 
 bool BoundLiteralPattern::matches (
-    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables)
+    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const
 {
     if (form->type() != ScriptObject::SymbolType) {
         return false;
@@ -259,7 +400,7 @@ UnboundLiteralPattern::UnboundLiteralPattern (const QString& name) :
 }
 
 bool UnboundLiteralPattern::matches (
-    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables)
+    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const
 {
     if (form->type() != ScriptObject::SymbolType) {
         return false;
@@ -281,7 +422,7 @@ ListPattern::ListPattern (const QVector<PatternPointer>& preRepeatPatterns,
 }
 
 bool ListPattern::matches (
-    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables)
+    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const
 {
     if (form->type() != ScriptObject::ListType) {
         return false;
@@ -314,7 +455,7 @@ bool ListPattern::matches (
             return false;
         }
         for (int ii = 0; ii < _repeatVariableCount; ii++) {
-            variables[ii] = ScriptObjectPointer(new List(lists.at(ii)));
+            variables[_repeatVariableIdx + ii] = ScriptObjectPointer(new List(lists.at(ii)));
         }
         for (int ii = 0; ii < postcount && idx < size; ii++, idx++) {
             if (!_postRepeatPatterns.at(ii)->matches(contents.at(idx), scope, variables)) {
@@ -337,7 +478,7 @@ DatumTemplate::DatumTemplate (const ScriptObjectPointer& datum) :
 {
 }
 
-ScriptObjectPointer DatumTemplate::generate (QVector<ScriptObjectPointer>& variables)
+ScriptObjectPointer DatumTemplate::generate (QVector<ScriptObjectPointer>& variables) const
 {
     return _datum;
 }
@@ -347,9 +488,53 @@ VariableTemplate::VariableTemplate (int index) :
 {
 }
 
-ScriptObjectPointer VariableTemplate::generate (QVector<ScriptObjectPointer>& variables)
+ScriptObjectPointer VariableTemplate::generate (QVector<ScriptObjectPointer>& variables) const
 {
     return variables.at(_index);
+}
+
+Subtemplate::Subtemplate (
+        int repeatVariableIdx, int repeatVariableCount,
+        int repeatDepth, const TemplatePointer& templ) :
+    _repeatVariableIdx(repeatVariableIdx),
+    _repeatVariableCount(repeatVariableCount),
+    _repeatDepth(repeatDepth),
+    _template(templ)
+{
+}
+
+Subtemplate::Subtemplate ()
+{
+}
+
+void Subtemplate::generate (
+    QVector<ScriptObjectPointer>& variables, ScriptObjectPointerList& out) const
+{
+    generate(variables, out, _repeatDepth);
+}
+
+void Subtemplate::generate (
+    QVector<ScriptObjectPointer>& variables, ScriptObjectPointerList& out, int depth) const
+{
+    if (depth == 0) {
+        out.append(_template->generate(variables));
+        return;
+    }
+    QVector<ScriptObjectPointer> wrapped(_repeatVariableCount);
+    for (int ii = 0; ii < _repeatVariableCount; ii++) {
+        wrapped[ii] = variables[_repeatVariableIdx + ii];
+    }
+    int count = static_cast<List*>(wrapped[0].data())->contents().size();
+    for (int ii = 0; ii < count; ii++) {
+        for (int jj = 0; jj < _repeatVariableCount; jj++) {
+            List* list = static_cast<List*>(wrapped[jj].data());
+            variables[_repeatVariableIdx + jj] = list->contents().at(ii);
+        }
+        generate(variables, out, depth - 1);
+    }
+    for (int ii = 0; ii < _repeatVariableCount; ii++) {
+        variables[_repeatVariableIdx + ii] = wrapped.at(ii);
+    }
 }
 
 ListTemplate::ListTemplate (
@@ -359,10 +544,12 @@ ListTemplate::ListTemplate (
 {
 }
 
-ScriptObjectPointer ListTemplate::generate (QVector<ScriptObjectPointer>& variables)
+ScriptObjectPointer ListTemplate::generate (QVector<ScriptObjectPointer>& variables) const
 {
     ScriptObjectPointerList list;
-    
+    foreach (const Subtemplate& subtemplate, _subtemplates) {
+        subtemplate.generate(variables, list);
+    }
     if (!_restTemplate.isNull()) {
         ScriptObjectPointer rest = _restTemplate->generate(variables);
         if (rest->type() == ScriptObject::ListType) {

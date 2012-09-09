@@ -23,7 +23,7 @@ public:
      * variable list.
      */
     virtual bool matches (
-        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) = 0;
+        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const = 0;
 };
 
 /**
@@ -43,7 +43,7 @@ public:
      * variable list.
      */
     virtual bool matches (
-        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables);
+        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const;
     
 protected:
     
@@ -68,7 +68,7 @@ public:
      * variable list.
      */
     virtual bool matches (
-        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables);
+        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const;
     
 protected:
 
@@ -93,7 +93,7 @@ public:
      * variable list.
      */
     virtual bool matches (
-        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables);
+        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const;
     
 protected:
     
@@ -118,7 +118,7 @@ public:
      * variable list.
      */
     virtual bool matches (
-        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables);
+        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const;
     
 protected:
     
@@ -145,7 +145,7 @@ public:
      * variable list.
      */
     virtual bool matches (
-        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables);
+        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const;
     
 protected:
 
@@ -178,7 +178,7 @@ public:
     /**
      * Generates the contents of the template.
      */
-    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables) = 0;
+    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables) const = 0;
 };
 
 /**
@@ -196,7 +196,7 @@ public:
     /**
      * Generates the contents of the template.
      */
-    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables);
+    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables) const;
     
 protected:
     
@@ -219,7 +219,7 @@ public:
     /**
      * Generates the contents of the template.
      */
-    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables);
+    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables) const;
     
 protected:
     
@@ -227,9 +227,50 @@ protected:
     int _index;
 };
 
-/** Pairs a template with the number of ellipses following it. */
-typedef QPair<TemplatePointer, int> Subtemplate;
+/**
+ * A subtemplate within a list template.
+ */
+class Subtemplate
+{
+public:
     
+    /**
+     * Creates a new subtemplate.
+     */
+    Subtemplate (int repeatVariableIdx, int repeatVariableCount,
+        int repeatDepth, const TemplatePointer& templ);
+
+    /**
+     * Creates an invalid subtemplate.
+     */
+    Subtemplate ();
+
+    /**
+     * Generates the contents of the subtemplate.
+     */
+    void generate (QVector<ScriptObjectPointer>& variables, ScriptObjectPointerList& out) const;
+
+protected:
+    
+    /**
+     * Generates the contents of the template.
+     */
+    void generate (QVector<ScriptObjectPointer>& variables,
+        ScriptObjectPointerList& out, int depth) const;
+    
+    /** The start of the variable range to unwrap. */
+    int _repeatVariableIdx;
+    
+    /** The length of the variable range to unwrap. */
+    int _repeatVariableCount;
+    
+    /** The repeat depth. */
+    int _repeatDepth;
+    
+    /** The template to generate. */
+    TemplatePointer _template;
+};
+
 /**
  * A template that emits a list with various subtemplates.
  */
@@ -245,7 +286,7 @@ public:
     /**
      * Generates the contents of the template.
      */
-    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables);
+    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables) const;
     
 protected:
         
