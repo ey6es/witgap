@@ -9,6 +9,9 @@
 
 #include "script/ScriptObject.h"
 
+/** Pairs a script object pointer with a boolean value. */
+typedef QPair<ScriptObjectPointer, bool> ScriptObjectPointerBoolPair;
+
 /**
  * A scope used for compilation.
  */
@@ -77,6 +80,12 @@ public:
      */
     Bytecode& initBytecode () { return _initBytecode; }
 
+    /**
+     * Returns a reference to the list of deferred define forms, paired with bools indicating
+     * whether they've yet been expanded.
+     */
+    QList<ScriptObjectPointerBoolPair>& defines () { return _defines; }
+
 protected:
 
     /** The parent scope, if any. */
@@ -96,6 +105,9 @@ protected:
 
     /** The initialization bytecode. */
     Bytecode _initBytecode;
+    
+    /** The list of deferred defines. */
+    QList<ScriptObjectPointerBoolPair> _defines;
     
     /** An optional lambda procedure associated with the scope, containing member values. */
     ScriptObjectPointer _lambdaProc;
@@ -130,24 +142,6 @@ public:
     ScriptObjectPointer execute (int maxCycles = 0);
 
 protected:
-
-    /**
-     * Compiles the specified parsed expression in the given scope to the supplied buffer.
-     *
-     * @param allowDef whether or not to allow a definition.
-     * @param tailCall whether or not this is a tail call context.
-     */
-    void compile (ScriptObjectPointer expr, Scope* scope,
-        bool allowDef, bool tailCall, Bytecode& out);
-
-    /**
-     * Compiles the body of a lambda/function definition and optionally returns the name of
-     * the defined member.
-     *
-     * @param define if true, we're defining a member in the current scope; return the Member.
-     */
-    ScriptObjectPointer compileLambda (List* list, Scope* scope, Bytecode& out,
-        bool define = false);
 
     /**
      * Throws a script error with the supplied message.
