@@ -129,10 +129,10 @@ void maybeAssignGroup (
 /**
  * Creates a template from the specified expression.
  *
- * @ellipseIdents if true, treat ellipses as normal identifiers.
+ * @param ellipseIdents if true, treat ellipses as normal identifiers.
  */
 static TemplatePointer createTemplate (
-    ScriptObjectPointer expr, const QHash<QString, Variable>& variables,
+    ScriptObjectPointer expr, Scope* scope, const QHash<QString, Variable>& variables,
     bool ellipseIdents, RepeatGroupPointer& repeatGroup)
 {
     switch (expr->type()) {
@@ -141,7 +141,8 @@ static TemplatePointer createTemplate (
             const QString& name = symbol->name();
             QHash<QString, Variable>::const_iterator it = variables.constFind(name);
             if (it == variables.constEnd()) {
-                return TemplatePointer(new DatumTemplate(expr));
+                ScriptObjectPointer binding = scope->resolve(name);
+                return TemplatePointer(new DatumTemplate(binding.isNull() ? expr : binding));
             }
             maybeAssignGroup(repeatGroup, it.value().second, symbol->position());
             return TemplatePointer(new VariableTemplate(it.value().first));
@@ -161,19 +162,19 @@ static TemplatePointer createTemplate (
                             throw ScriptError("Invalid template.", list->position());
                         }
                         restTemplate = createTemplate(contents.at(ii + 1),
-                            variables, ellipseIdents, repeatGroup);
+                            scope, variables, ellipseIdents, repeatGroup);
                         break;
                     }
                     if (name == "..." && !ellipseIdents) {
                         if (nn != 2) {
                             throw ScriptError("Invalid template.", list->position());
                         }
-                        return createTemplate(contents.at(1), variables, true, repeatGroup);
+                        return createTemplate(contents.at(1), scope, variables, true, repeatGroup);
                     }
                 }
                 RepeatGroupPointer subRepeatGroup;
                 TemplatePointer templ = createTemplate(
-                    contents.at(ii), variables, ellipseIdents, subRepeatGroup);
+                    contents.at(ii), scope, variables, ellipseIdents, subRepeatGroup);
                 int repeatVariableIdx;
                 int repeatVariableCount;
                 int repeatDepth = 0;
@@ -212,10 +213,10 @@ static TemplatePointer createTemplate (
  * Creates a template from the specified expression.
  */
 static TemplatePointer createTemplate (
-    ScriptObjectPointer expr, const QHash<QString, Variable>& variables)
+    ScriptObjectPointer expr, Scope* scope, const QHash<QString, Variable>& variables)
 {
     RepeatGroupPointer repeatGroup;
-    TemplatePointer templ = createTemplate(expr, variables, false, repeatGroup);
+    TemplatePointer templ = createTemplate(expr, scope, variables, false, repeatGroup);
     if (!repeatGroup.isNull()) {
         Datum* datum = static_cast<Datum*>(expr.data());
         throw ScriptError("Invalid repeat depth.", datum->position());
@@ -287,14 +288,14 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
                     QHash<QString, Variable> variables;
                     PatternPointer pattern = createPattern(rcontents.at(0), literals, variables);
                     patternTemplates.append(PatternTemplate(variables.size(), pattern,
-                        createTemplate(rcontents.at(1), variables)));
+                        createTemplate(rcontents.at(1), scope, variables)));
                 }
                 return ScriptObjectPointer(new SyntaxRules(patternTemplates));
                 
             } else if (name == "identifier-syntax") {
                 if (csize == 2) {
                     return ScriptObjectPointer(new IdentifierSyntax(
-                        createTemplate(contents.at(1), QHash<QString, Variable>()),
+                        createTemplate(contents.at(1), scope, QHash<QString, Variable>()),
                         PatternTemplate()));
                 }
                 if (csize != 3) {
@@ -311,7 +312,7 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
                     throw ScriptError("Invalid rule.", rlist->position());
                 }
                 TemplatePointer templ = createTemplate(
-                    rcontents.at(1), QHash<QString, Variable>());
+                    rcontents.at(1), scope, QHash<QString, Variable>());
                 ScriptObjectPointer set = contents.at(2);
                 if (set->type() != ScriptObject::ListType) {
                     throw ScriptError("Invalid identifier syntax.", list->position());
@@ -342,7 +343,8 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
                 PatternPointer pattern = createPattern(
                     pcontents.at(2), QHash<QString, PatternPointer>(), variables);
                 return ScriptObjectPointer(new IdentifierSyntax(templ, PatternTemplate(
-                    variables.size(), pattern, createTemplate(scontents.at(1), variables))));
+                    variables.size(), pattern, createTemplate(
+                        scontents.at(1), scope, variables))));
                 
             } else {
                 throw ScriptError("Invalid macro transformer.", list->position());
@@ -386,12 +388,14 @@ BoundLiteralPattern::BoundLiteralPattern (const ScriptObjectPointer& binding) :
 bool BoundLiteralPattern::matches (
     ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const
 {
-    if (form->type() != ScriptObject::SymbolType) {
-        return false;
+    if (form->type() == ScriptObject::SymbolType) {
+        Symbol* symbol = static_cast<Symbol*>(form.data());
+        form = scope->resolve(symbol->name());
+        if (form.isNull()) {
+            return false;
+        }
     }
-    Symbol* symbol = static_cast<Symbol*>(form.data());
-    ScriptObjectPointer obinding = scope->resolve(symbol->name());
-    return !obinding.isNull() && equivalent(obinding, _binding);
+    return equivalent(form, _binding);
 }
 
 UnboundLiteralPattern::UnboundLiteralPattern (const QString& name) :

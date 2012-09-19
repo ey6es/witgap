@@ -1,7 +1,6 @@
 //
 // $Id$
 
-#include <QStringList>
 #include <QtDebug>
 #include <QtEndian>
 
@@ -106,61 +105,19 @@ Evaluator::Evaluator (const QString& source) :
 }
 
 /**
- * Expands the specified parsed expression in the given scope, appending the result to the
- * provided list.
+ * Compiles the specified parsed expression in the given scope to the supplied buffer.
  *
- * @param top if true, this is a top-level form (or begin within a top-level form, etc.)
- * @param expanded if true, the form is already expanded (so, just process it).
+ * @param allowDef whether or not to allow a definition.
+ * @param tailCall whether or not this is a tail call context.
  */
-static void expand (
-    ScriptObjectPointer expr, Scope* scope, bool top, bool expanded, ScriptObjectPointerList& out);
+static void compile (
+    ScriptObjectPointer expr, Scope* scope, bool allowDef, bool tailCall, Bytecode& out);
 
 /**
- * Makes sure that all definitions have been expanded, because we are about to expand a body
- * expression.
+ * Compiles a syntax scope.
  */
-static void ensureDefsExpanded (Scope* scope, bool top, ScriptObjectPointerList& out)
-{
-    QList<ScriptObjectPointerBoolPair>& defs = scope->defines();
-    if (!top || defs.isEmpty()) {
-        return;
-    }
-    foreach (const ScriptObjectPointerBoolPair& def, defs) {
-        if (def.second) {
-            out.append(def.first);
-        } else {
-            expand(def.first, scope, false, false, out);
-        }
-    }
-    defs.clear();
-}
-
-/**
- * Expands a lambda expression/function definition.
- */
-static void expandLambda (List* list, Scope* scope, ScriptObjectPointerList& out)
-{
-    const ScriptObjectPointerList& contents = list->contents();
-    int csize = contents.size();
-    if (csize < 3) {
-        throw ScriptError("Invalid lambda.", list->position());
-    }
-    Scope subscope(scope);
-    ScriptObjectPointerList lcontents;
-    lcontents.append(contents.at(0));
-    lcontents.append(contents.at(1));
-    for (int ii = 2; ii < csize; ii++) {
-        expand(contents.at(ii), &subscope, true, false, lcontents);
-    }
-    ensureDefsExpanded(&subscope, true, lcontents);
-    out.append(ScriptObjectPointer(new List(lcontents, list->position())));
-}
-
-/**
- * Expands a let-syntax or letrec-syntax form.
- */
-static void expandSyntax (
-    List* list, Scope* scope, bool top, bool rec, ScriptObjectPointerList& out)
+static void compileSyntax (
+    List* list, Scope* scope, bool allowDef, bool tailCall, bool rec, Bytecode& out)
 {
     const ScriptObjectPointerList& contents = list->contents();
     int csize = contents.size();
@@ -187,244 +144,14 @@ static void expandSyntax (
         if (car->type() != ScriptObject::SymbolType) {
             throw ScriptError("Invalid syntax binding.", bpair->position());
         }
-        Symbol* symbol = static_cast<Symbol*>(car.data());                    
-        ScriptObjectPointerList ncontents;
-        expand(bcontents.at(1), escope, false, false, ncontents);
+        Symbol* symbol = static_cast<Symbol*>(car.data());
         subscope.define(symbol->name(),
-            createMacroTransformer(ncontents.at(0), escope));
+            createMacroTransformer(bcontents.at(1), escope));
     }
     for (int ii = 2; ii < csize; ii++) {
-        expand(contents.at(ii), &subscope, top, false, out);
-    }
+        compile(contents.at(ii), &subscope, allowDef, tailCall, out);
+    }   
 }
-
-static void expand (
-    ScriptObjectPointer expr, Scope* scope, bool top, bool expanded, ScriptObjectPointerList& out)
-{
-    switch (expr->type()) {
-        case ScriptObject::SymbolType: {
-            if (expanded) {
-                break;
-            }
-            Symbol* symbol = static_cast<Symbol*>(expr.data());
-            const QString& name = symbol->name();
-            ScriptObjectPointer binding = scope->resolve(name);
-            if (!binding.isNull()) {
-                switch (binding->type()) {
-                    case ScriptObject::SyntaxRulesType:
-                        throw ScriptError("Invalid macro use.", symbol->position());
-                        
-                    case ScriptObject::IdentifierSyntaxType: {
-                        IdentifierSyntax* syntax = static_cast<IdentifierSyntax*>(binding.data());
-                        expand(syntax->generate(), scope, top, true, out);
-                        return;
-                    }
-                }
-            }
-            break;
-        }
-        case ScriptObject::ListType: {
-            List* list = static_cast<List*>(expr.data());
-            const ScriptObjectPointerList& contents = list->contents();
-            int csize = contents.size();
-            if (csize == 0) {
-                break;
-            }
-            ScriptObjectPointer car = contents.at(0);
-            if (car->type() == ScriptObject::SymbolType) {
-                Symbol* symbol = static_cast<Symbol*>(car.data());
-                const QString& name = symbol->name();
-                if (!expanded) {
-                    ScriptObjectPointer binding = scope->resolve(name);
-                    if (!binding.isNull()) {
-                        switch (binding->type()) {
-                            case ScriptObject::SyntaxRulesType: {
-                                ScriptObjectPointerList ncontents;
-                                ncontents.append(car);
-                                for (int ii = 1; ii < csize; ii++) {
-                                    expand(contents.at(ii), scope, false, false, ncontents);
-                                }
-                                SyntaxRules* syntax = static_cast<SyntaxRules*>(binding.data());
-                                ScriptObjectPointer transformed = syntax->maybeTransform(
-                                    ScriptObjectPointer(new List(
-                                        ncontents, list->position())), scope);
-                                if (transformed.isNull()) {
-                                    throw ScriptError("No pattern match.", list->position());
-                                }
-                                expand(transformed, scope, top, true, out);
-                                return;
-                            }
-                            case ScriptObject::IdentifierSyntaxType:
-                                throw ScriptError("Invalid macro use.", symbol->position());
-                        }
-                    }
-                }
-                if (name == "define-syntax") {
-                    if (contents.size() != 3) {
-                        throw ScriptError("Invalid syntax definition.", list->position());
-                    }
-                    if (top) {
-                        ScriptObjectPointer cadr = contents.at(1);
-                        if (cadr->type() != ScriptObject::SymbolType) {
-                            throw ScriptError("Invalid syntax definition.", list->position());
-                        }
-                        Symbol* symbol = static_cast<Symbol*>(cadr.data());
-                        if (expanded) {
-                            scope->define(symbol->name(),
-                                createMacroTransformer(contents.at(2), scope));
-                            return;
-                        }
-                        ScriptObjectPointerList ncontents;
-                        expand(contents.at(2), scope, false, false, ncontents);
-                        scope->define(symbol->name(),
-                            createMacroTransformer(ncontents.at(0), scope));
-                        return;
-                    }
-                    if (expanded) {
-                        break;
-                    }
-                    ScriptObjectPointerList ncontents;
-                    ncontents.append(car);
-                    ncontents.append(contents.at(1));
-                    expand(contents.at(2), scope, false, false, ncontents);
-                    out.append(ScriptObjectPointer(new List(ncontents, list->position())));
-                    return;
-
-                } else if (name == "define") {
-                    if (csize < 2) {
-                        throw ScriptError("Invalid definition.", list->position());
-                    }
-                    ScriptObjectPointer cadr = contents.at(1);
-                    if (top) {
-                        switch (cadr->type()) {
-                            case ScriptObject::SymbolType: {
-                                Symbol* symbol = static_cast<Symbol*>(cadr.data());
-                                scope->addMember(symbol->name());
-                                break;
-                            }
-                            case ScriptObject::ListType: {
-                                List* list = static_cast<List*>(cadr.data());
-                                const ScriptObjectPointerList& lcontents = list->contents();
-                                if (lcontents.isEmpty() ||
-                                        lcontents.at(0)->type() != ScriptObject::SymbolType) {
-                                    throw ScriptError("Invalid definition.", list->position());
-                                }
-                                Symbol* symbol = static_cast<Symbol*>(lcontents.at(0).data());
-                                scope->addMember(symbol->name());
-                                break;
-                            }
-                        }
-                        scope->defines().append(ScriptObjectPointerBoolPair(expr, expanded));
-                        return;
-                    }
-                    if (expanded) {
-                        break;
-                    }
-                    switch (cadr->type()) {
-                        case ScriptObject::SymbolType:
-                            if (csize == 2) {
-                                out.append(expr);
-                                
-                            } else {
-                                ScriptObjectPointerList ncontents;
-                                ncontents.append(car);
-                                ncontents.append(cadr);
-                                expand(contents.at(2), scope, false, false, ncontents);
-                                out.append(ScriptObjectPointer(new List(
-                                    ncontents, list->position())));
-                            }
-                            return;
-                        
-                        case ScriptObject::ListType:
-                            expandLambda(list, scope, out);
-                            return;
-                    }
-                    
-                } else if (name == "set!") {
-                    if (expanded) {
-                        break;
-                    }
-                    if (csize != 3) {
-                        throw ScriptError("Invalid expression.", list->position());
-                    }
-                    ScriptObjectPointer variable = contents.at(1);
-                    if (variable->type() != ScriptObject::SymbolType) {
-                        Datum* datum = static_cast<Datum*>(variable.data());
-                        throw ScriptError("Not a variable.", datum->position());
-                    }
-                    Symbol* var = static_cast<Symbol*>(variable.data());
-                    ScriptObjectPointer binding = scope->resolve(var->name());
-                    if (!binding.isNull()) {
-                        switch (binding->type()) {
-                            case ScriptObject::SyntaxRulesType:
-                                throw ScriptError("Invalid macro use.", list->position());
-                                
-                            case ScriptObject::IdentifierSyntaxType: {
-                                ScriptObjectPointerList ncontents;
-                                expand(contents.at(2), scope, false, false, ncontents);
-                                IdentifierSyntax* syntax = static_cast<IdentifierSyntax*>(
-                                    binding.data());
-                                ScriptObjectPointer transformed = syntax->maybeTransform(
-                                    ncontents.at(0), scope);
-                                if (transformed.isNull()) {
-                                    throw ScriptError("No pattern match.", list->position());
-                                }
-                                expand(transformed, scope, top, true, out);
-                                return;
-                            }
-                        }
-                    }
-                } else if (name == "lambda") {
-                    if (expanded) {
-                        break;
-                    }
-                    ensureDefsExpanded(scope, top, out);
-                    expandLambda(list, scope, out);
-                    return;
-                
-                } else if (name == "quote") {
-                    break;
-                    
-                } else if (name == "let-syntax") {
-                    expandSyntax(list, scope, top, false, out);
-                    return;
-                    
-                } else if (name == "letrec-syntax") {
-                    expandSyntax(list, scope, top, true, out);
-                    return;
-                    
-                } else if (name == "begin" && top) {
-                    // splice in the forms
-                    for (int ii = 1; ii < csize; ii++) {
-                        expand(contents.at(ii), scope, true, false, out);
-                    }
-                    return;
-                }
-            }
-            if (expanded) {
-                break;
-            }
-            ensureDefsExpanded(scope, top, out);
-            ScriptObjectPointerList ncontents;
-            for (int ii = 0; ii < csize; ii++) {
-                expand(contents.at(ii), scope, false, false, ncontents);
-            }
-            out.append(ScriptObjectPointer(new List(ncontents, list->position())));
-            return;
-        }
-    }
-    ensureDefsExpanded(scope, top, out);
-    out.append(expr);
-}
-
-/**
- * Compiles the specified parsed expression in the given scope to the supplied buffer.
- *
- * @param allowDef whether or not to allow a definition.
- * @param tailCall whether or not this is a tail call context.
- */
-static void compile (
-    ScriptObjectPointer expr, Scope* scope, bool allowDef, bool tailCall, Bytecode& out);
 
 /**
  * Compiles the body of a lambda/function definition and optionally returns the defined Member.
@@ -434,14 +161,15 @@ static void compile (
 static ScriptObjectPointer compileLambda (
     List* list, Scope* scope, Bytecode& out, bool define = false)
 {
-    const QList<ScriptObjectPointer>& contents = list->contents();
-    if (contents.size() < 3) {
+    const ScriptObjectPointerList& contents = list->contents();
+    int csize = contents.size();
+    if (csize < 3) {
         throw ScriptError("Invalid lambda.", list->position());
     }
-    ScriptObjectPointer args = contents.at(1);
-    ScriptObjectPointer member;
     QStringList firstArgs;
     QString restArg;
+    ScriptObjectPointer member;
+    ScriptObjectPointer args = contents.at(1);
     switch (args->type()) {
         case ScriptObject::SymbolType: {
             Symbol* symbol = static_cast<Symbol*>(args.data());
@@ -486,7 +214,7 @@ static ScriptObjectPointer compileLambda (
     }
     Scope subscope(scope);
     Bytecode bodyBytecode;
-    for (int ii = 2, nn = contents.size(); ii < nn; ii++) {
+    for (int ii = 2; ii < csize; ii++) {
         ScriptObjectPointer element = contents.at(ii);
         if (bodyBytecode.isEmpty()) {
             if (element->type() == ScriptObject::ListType) {
@@ -509,7 +237,7 @@ static ScriptObjectPointer compileLambda (
         } else {
             bodyBytecode.append(PopOp);
         }
-        compile(element, &subscope, false, ii == nn - 1, bodyBytecode);
+        compile(element, &subscope, false, ii == csize - 1, bodyBytecode);
     }
     if (bodyBytecode.isEmpty()) {
         throw ScriptError("Function has no body.", list->position());
@@ -537,25 +265,33 @@ static void compile (
         case ScriptObject::StringType:
             out.append(ConstantOp, scope->addConstant(expr));
             return;
-
+            
+        case ScriptObject::ArgumentType: {
+            Argument* argument = static_cast<Argument*>(expr.data());
+            out.append(ArgumentOp, argument->index());
+            return;
+        }
+        case ScriptObject::MemberType: {
+            Member* member = static_cast<Member*>(expr.data());
+            out.append(MemberOp, member->scope(), member->index());
+            return;
+        }
+        case ScriptObject::SyntaxRulesType:
+            throw ScriptError("Invalid macro use.", ScriptPosition());
+            
+        case ScriptObject::IdentifierSyntaxType: {
+            IdentifierSyntax* syntax = static_cast<IdentifierSyntax*>(expr.data());
+            compile(syntax->generate(), scope, allowDef, tailCall, out);
+            return;
+        }
         case ScriptObject::SymbolType: {
             Symbol* symbol = static_cast<Symbol*>(expr.data());
             ScriptObjectPointer binding = scope->resolve(symbol->name());
             if (binding.isNull()) {
                 throw ScriptError("Unresolved symbol.", symbol->position());
             }
-            switch (binding->type()) {
-                case ScriptObject::ArgumentType: {
-                    Argument* argument = static_cast<Argument*>(binding.data());
-                    out.append(ArgumentOp, argument->index());
-                    return;
-                }
-                case ScriptObject::MemberType: {
-                    Member* member = static_cast<Member*>(binding.data());
-                    out.append(MemberOp, member->scope(), member->index());
-                    return;
-                }
-            }
+            compile(binding, scope, allowDef, tailCall, out);
+            return;
         }
         case ScriptObject::ListType: {
             List* list = static_cast<List*>(expr.data());
@@ -564,108 +300,216 @@ static void compile (
                 throw ScriptError("Invalid expression.", list->position());
             }
             ScriptObjectPointer car = contents.at(0);
-            if (car->type() == ScriptObject::SymbolType) {
-                Symbol* symbol = static_cast<Symbol*>(car.data());
-                QString name = symbol->name();
-                if (name == "define") {
-                    if (!allowDef) {
-                        throw ScriptError("Definitions not allowed here.", list->position());
+            switch (car->type()) {
+                case ScriptObject::SyntaxRulesType: {
+                    SyntaxRules* syntax = static_cast<SyntaxRules*>(car.data());
+                    ScriptObjectPointer transformed = syntax->maybeTransform(expr, scope);
+                    if (transformed.isNull()) {
+                        throw ScriptError("No pattern match.", list->position());
                     }
-                    if (contents.size() < 2) {
-                        throw ScriptError("Invalid definition.", list->position());
-                    }
-                    ScriptObjectPointer cadr = contents.at(1);
-                    ScriptObjectPointer member;
-                    switch (cadr->type()) {
-                        case ScriptObject::SymbolType: {
-                            Symbol* variable = static_cast<Symbol*>(cadr.data());
-                            member = scope->addMember(variable->name());
-                            if (contents.size() == 2) {
-                                return;
-
-                            } else if (contents.size() == 3) {
-                                compile(contents.at(2), scope,
-                                    false, false, scope->initBytecode());
-
-                            } else {
+                    compile(transformed, scope, allowDef, tailCall, out);
+                    return;
+                }
+                case ScriptObject::SymbolType: {
+                    Symbol* symbol = static_cast<Symbol*>(car.data());
+                    const QString& name = symbol->name();
+                    ScriptObjectPointer binding = scope->resolve(name);
+                    if (binding.isNull()) {
+                        if (name == "define-syntax") {
+                            if (contents.size() != 3) {
+                                throw ScriptError("Invalid syntax definition.", list->position());
+                            }
+                            ScriptObjectPointer cadr = contents.at(1);
+                            if (cadr->type() != ScriptObject::SymbolType) {
+                                throw ScriptError("Invalid syntax definition.", list->position());
+                            }
+                            Symbol* symbol = static_cast<Symbol*>(cadr.data());
+                            scope->define(symbol->name(),
+                                createMacroTransformer(contents.at(2), scope));
+                                
+                        } else if (name == "let-syntax") {
+                            compileSyntax(list, scope, allowDef, tailCall, false, out);
+                        
+                        } else if (name == "letrec-syntax") {
+                            compileSyntax(list, scope, allowDef, tailCall, true, out);
+                            
+                        } else if (name == "define") {
+                            if (!allowDef) {
+                                throw ScriptError("Definitions not allowed here.",
+                                    list->position());
+                            }
+                            if (contents.size() < 2) {
                                 throw ScriptError("Invalid definition.", list->position());
                             }
-                            break;
-                        }
-                        case ScriptObject::ListType: {
-                            member = compileLambda(list, scope, scope->initBytecode(), true);
-                            break;
-                        }
-                        default:
-                            throw ScriptError("Invalid definition.", list->position());
-                    }
-                    Member* mem = static_cast<Member*>(member.data());
-                    scope->initBytecode().append(SetMemberOp, 0, mem->index());
-                    return;
+                            ScriptObjectPointer cadr = contents.at(1);
+                            ScriptObjectPointer member;
+                            switch (cadr->type()) {
+                                case ScriptObject::SymbolType: {
+                                    Symbol* variable = static_cast<Symbol*>(cadr.data());
+                                    member = scope->addMember(variable->name());
+                                    if (contents.size() == 2) {
+                                        return;
 
-                } else if (name == "lambda") {
-                    compileLambda(list, scope, out);
-                    return;
+                                    } else if (contents.size() == 3) {
+                                        compile(contents.at(2), scope,
+                                            false, false, scope->initBytecode());
 
-                } else if (name == "set!") {
-                    if (contents.size() != 3) {
-                        throw ScriptError("Invalid expression.", list->position());
-                    }
-                    ScriptObjectPointer variable = contents.at(1);
-                    if (variable->type() != ScriptObject::SymbolType) {
-                        Datum* datum = static_cast<Datum*>(variable.data());
-                        throw ScriptError("Not a variable.", datum->position());
-                    }
-                    Symbol* var = static_cast<Symbol*>(variable.data());
-                    ScriptObjectPointer binding = scope->resolve(var->name());
-                    if (binding.isNull()) {
-                        throw ScriptError("Unresolved symbol.", var->position());
+                                    } else {
+                                        throw ScriptError("Invalid definition.", list->position());
+                                    }
+                                    break;
+                                }
+                                case ScriptObject::ListType: {
+                                    member = compileLambda(
+                                        list, scope, scope->initBytecode(), true);
+                                    break;
+                                }
+                                default:
+                                    throw ScriptError("Invalid definition.", list->position());
+                            }
+                            Member* mem = static_cast<Member*>(member.data());
+                            scope->initBytecode().append(SetMemberOp, 0, mem->index());
+                    
+                        } else if (name == "lambda") {
+                            compileLambda(list, scope, out);
+                            
+                        } else if (name == "set!") {
+                            if (contents.size() != 3) {
+                                throw ScriptError("Invalid expression.", list->position());
+                            }
+                            ScriptObjectPointer variable = contents.at(1);
+                            switch (variable->type()) {
+                                case ScriptObject::ArgumentType: {
+                                    Argument* argument = static_cast<Argument*>(variable.data());
+                                    compile(contents.at(2), scope, false, false, out);
+                                    out.append(SetArgumentOp, argument->index());
+                                    out.append(ConstantOp, scope->addConstant(
+                                        ScriptObjectPointer(new Unspecified())));
+                                    return;
+                                }
+                                case ScriptObject::MemberType: {
+                                    Member* member = static_cast<Member*>(variable.data());
+                                    compile(contents.at(2), scope, false, false, out);
+                                    out.append(SetMemberOp, member->scope(), member->index());
+                                    out.append(ConstantOp, scope->addConstant(
+                                        ScriptObjectPointer(new Unspecified())));
+                                    return;
+                                }
+                                case ScriptObject::SyntaxRulesType:
+                                    throw ScriptError("Invalid macro use.", list->position());
+                                    
+                                case ScriptObject::IdentifierSyntaxType: {
+                                    IdentifierSyntax* syntax = static_cast<IdentifierSyntax*>(
+                                        variable.data());
+                                    ScriptObjectPointer transformed = syntax->maybeTransform(
+                                        contents.at(2), scope);
+                                    if (transformed.isNull()) {
+                                        throw ScriptError("No pattern match.", list->position());
+                                    }
+                                    compile(transformed, scope, allowDef, tailCall, out);
+                                    return;
+                                }
+                                case ScriptObject::SymbolType: {
+                                    Symbol* var = static_cast<Symbol*>(variable.data());
+                                    ScriptObjectPointer binding = scope->resolve(var->name());
+                                    if (binding.isNull()) {
+                                        throw ScriptError("Unresolved symbol.", var->position());
+                                    }
+                                    switch (binding->type()) {
+                                        case ScriptObject::ArgumentType: {
+                                            Argument* argument =
+                                                static_cast<Argument*>(binding.data());
+                                            compile(contents.at(2), scope, false, false, out);
+                                            out.append(SetArgumentOp, argument->index());
+                                            out.append(ConstantOp, scope->addConstant(
+                                                ScriptObjectPointer(new Unspecified())));
+                                            return;
+                                        }
+                                        case ScriptObject::MemberType: {
+                                            Member* member = static_cast<Member*>(binding.data());
+                                            compile(contents.at(2), scope, false, false, out);
+                                            out.append(SetMemberOp, member->scope(),
+                                                member->index());
+                                            out.append(ConstantOp, scope->addConstant(
+                                                ScriptObjectPointer(new Unspecified())));
+                                            return;
+                                        }
+                                        case ScriptObject::SyntaxRulesType:
+                                            throw ScriptError("Invalid macro use.",
+                                                list->position());
+                                            
+                                        case ScriptObject::IdentifierSyntaxType: {
+                                            IdentifierSyntax* syntax =
+                                                static_cast<IdentifierSyntax*>(binding.data());
+                                            ScriptObjectPointer transformed =
+                                                syntax->maybeTransform(contents.at(2), scope);
+                                            if (transformed.isNull()) {
+                                                throw ScriptError("No pattern match.",
+                                                    list->position());
+                                            }
+                                            compile(transformed, scope, allowDef, tailCall, out);
+                                            return;
+                                        }
+                                    }
+                                }
+                                default:
+                                    throw ScriptError("Invalid expression.", list->position());
+                            }
+                        } else if (name == "quote") {
+                            if (contents.size() != 2) {
+                                throw ScriptError("Invalid expression.", list->position());
+                            }
+                            out.append(ConstantOp, scope->addConstant(contents.at(1)));
+                    
+                        } else if (name == "if") {
+                            int csize = contents.size();
+                            if (csize != 3 && csize != 4) {
+                                throw ScriptError("Invalid expression.", list->position());
+                            }
+                            compile(contents.at(1), scope, false, false, out);
+                            Bytecode thencode;
+                            compile(contents.at(2), scope, false, tailCall, thencode);
+                            Bytecode elsecode;
+                            if (csize == 4) {
+                                compile(contents.at(3), scope, false, tailCall, elsecode);
+                            } else {
+                                elsecode.append(ConstantOp, scope->addConstant(
+                                    ScriptObjectPointer(new Unspecified())));
+                            }
+                            thencode.append(JumpOp, elsecode.length());
+                            out.append(ConditionalJumpOp, thencode.length());
+                            out.append(thencode);
+                            out.append(elsecode);
+                            
+                        } else if (name == "begin") {
+                            int csize = contents.size();
+                            if (csize == 1) {
+                                throw ScriptError("Invalid expression.", list->position());
+                            }
+                            int lastIdx = csize - 1;
+                            for (int ii = 1; ii < lastIdx; ii++) {
+                                compile(contents.at(ii), scope, false, false, out);
+                                out.append(PopOp);
+                            }
+                            compile(contents.at(lastIdx), scope, false, tailCall, out);
+                    
+                        } else {
+                            throw ScriptError("Unresolved symbol.", symbol->position());
+                        }
+                        return;
                     }
                     switch (binding->type()) {
-                        case ScriptObject::ArgumentType: {
-                            Argument* argument = static_cast<Argument*>(binding.data());
-                            compile(contents.at(2), scope, false, false, out);
-                            out.append(SetArgumentOp, argument->index());
-                            out.append(ConstantOp, scope->addConstant(
-                                ScriptObjectPointer(new Unspecified())));
-                        }
-                        case ScriptObject::MemberType: {
-                            Member* member = static_cast<Member*>(binding.data());
-                            compile(contents.at(2), scope, false, false, out);
-                            out.append(SetMemberOp, member->scope(), member->index());
-                            out.append(ConstantOp, scope->addConstant(
-                                ScriptObjectPointer(new Unspecified())));
+                        case ScriptObject::SyntaxRulesType: {
+                            SyntaxRules* syntax = static_cast<SyntaxRules*>(binding.data());
+                            ScriptObjectPointer transformed =
+                                syntax->maybeTransform(expr, scope);
+                            if (transformed.isNull()) {
+                                throw ScriptError("No pattern match.", list->position());
+                            }
+                            compile(transformed, scope, allowDef, tailCall, out);
+                            return;     
                         }
                     }
-                    return;
-
-                } else if (name == "quote") {
-                    if (contents.size() != 2) {
-                        throw ScriptError("Invalid expression.", list->position());
-                    }
-                    out.append(ConstantOp, scope->addConstant(contents.at(1)));
-                    return;
-                    
-                } else if (name == "if") {
-                    int csize = contents.size();
-                    if (csize != 3 && csize != 4) {
-                        throw ScriptError("Invalid expression.", list->position());
-                    }
-                    compile(contents.at(1), scope, false, false, out);
-                    Bytecode thencode;
-                    compile(contents.at(2), scope, false, tailCall, thencode);
-                    Bytecode elsecode;
-                    if (csize == 4) {
-                        compile(contents.at(3), scope, false, tailCall, elsecode);
-                    } else {
-                        elsecode.append(ConstantOp, scope->addConstant(
-                            ScriptObjectPointer(new Unspecified())));
-                    }
-                    thencode.append(JumpOp, elsecode.length());
-                    out.append(ConditionalJumpOp, thencode.length());
-                    out.append(thencode);
-                    out.append(elsecode);
-                    return;
                 }
             }
             out.append(ResetOperandCountOp);
@@ -686,33 +530,26 @@ ScriptObjectPointer Evaluator::evaluate (const QString& expr)
     ScriptObjectPointer result;
     LambdaProcedure* proc = static_cast<LambdaProcedure*>(_scope.lambdaProc().data());
     Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
-    ScriptObjectPointerList expanded;
     Bytecode bodyBytecode;    
     while (!(datum = parser.parse()).isNull()) {
-        expand(datum, &_scope, true, false, expanded);
-        ensureDefsExpanded(&_scope, true, expanded);
-        
-        foreach (const ScriptObjectPointer& element, expanded) {
-            compile(element, &_scope, true, false, bodyBytecode);
-        
-            if (!bodyBytecode.isEmpty()) {
-                bodyBytecode.append(ExitOp);
-                lambda->setConstantsAndBytecode(_scope.constants(), bodyBytecode);
-                bodyBytecode.clear();
-                
-            } else {
-                _scope.initBytecode().append(LambdaExitOp);
-                lambda->setConstantsAndBytecode(_scope.constants(), _scope.initBytecode());
-                _scope.initBytecode().clear();
-            }
-            _scope.constants().clear();
+        compile(datum, &_scope, true, false, bodyBytecode);
+    
+        if (!bodyBytecode.isEmpty()) {
+            bodyBytecode.append(ExitOp);
+            lambda->setConstantsAndBytecode(_scope.constants(), bodyBytecode);
+            bodyBytecode.clear();
             
-            _registers.instruction = lambda->body();
-            result = execute();
-            
-            lambda->clearConstantsAndBytecode();
+        } else {
+            _scope.initBytecode().append(LambdaExitOp);
+            lambda->setConstantsAndBytecode(_scope.constants(), _scope.initBytecode());
+            _scope.initBytecode().clear();
         }
-        expanded.clear();
+        _scope.constants().clear();
+        
+        _registers.instruction = lambda->body();
+        result = execute();
+        
+        lambda->clearConstantsAndBytecode();
     }
     return result;
 }

@@ -5,12 +5,9 @@
 #define EVALUATOR
 
 #include <QHash>
-#include <QPair>
+#include <QStringList>
 
 #include "script/ScriptObject.h"
-
-/** Pairs a script object pointer with a boolean value. */
-typedef QPair<ScriptObjectPointer, bool> ScriptObjectPointerBoolPair;
 
 /**
  * A scope used for compilation.
@@ -81,10 +78,9 @@ public:
     Bytecode& initBytecode () { return _initBytecode; }
 
     /**
-     * Returns a reference to the list of deferred define forms, paired with bools indicating
-     * whether they've yet been expanded.
+     * Returns a reference to the initialization expressions for each member.
      */
-    QList<ScriptObjectPointerBoolPair>& defines () { return _defines; }
+    ScriptObjectPointerList& initExprs () { return _initExprs; }
 
 protected:
 
@@ -106,8 +102,8 @@ protected:
     /** The initialization bytecode. */
     Bytecode _initBytecode;
     
-    /** The list of deferred defines. */
-    QList<ScriptObjectPointerBoolPair> _defines;
+    /** The initialization expressions for each member. */
+    ScriptObjectPointerList _initExprs;
     
     /** An optional lambda procedure associated with the scope, containing member values. */
     ScriptObjectPointer _lambdaProc;
