@@ -228,21 +228,6 @@ static ScriptObjectPointer divide (Evaluator* eval, int argc, ScriptObjectPointe
 }
 
 /**
- * Returns #t if argument is false, otherwise returns #f.
- */
-static ScriptObjectPointer notfunc (Evaluator* eval, int argc, ScriptObjectPointer* argv)
-{
-    if (argc != 1) {
-        throw QString("Requires exactly one argument.");
-    }
-    bool value = true;
-    if ((*argv)->type() == ScriptObject::BooleanType) {
-        value = static_cast<Boolean*>(argv->data())->value();
-    }
-    return ScriptObjectPointer(new Boolean(!value));
-}
-
-/**
  * Returns whether all arguments are equal.
  */
 static ScriptObjectPointer equal (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -345,24 +330,53 @@ static ScriptObjectPointer greaterEqual (Evaluator* eval, int argc, ScriptObject
 }
 
 /**
+ * Returns #t if argument is false, otherwise returns #f.
+ */
+static ScriptObjectPointer notfunc (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    bool value = true;
+    if ((*argv)->type() == ScriptObject::BooleanType) {
+        value = static_cast<Boolean*>(argv->data())->value();
+    }
+    return ScriptObjectPointer(new Boolean(!value));
+}
+
+/**
+ * Creates a new list from the arguments.
+ */
+static ScriptObjectPointer list (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    ScriptObjectPointerList contents;
+    for (ScriptObjectPointer* arg = argv, *end = arg + argc; arg != end; arg++) {
+        contents.append(*arg);
+    }
+    return ScriptObjectPointer(new List(contents));
+}
+
+/**
  * Creates the global scope object.
  */
 static Scope createGlobalScope ()
 {
     Scope scope(0, true);
     
-    scope.addMember("+", add);
-    scope.addMember("-", subtract);
-    scope.addMember("*", multiply);
-    scope.addMember("/", divide);
+    scope.addVariable("+", add);
+    scope.addVariable("-", subtract);
+    scope.addVariable("*", multiply);
+    scope.addVariable("/", divide);
     
-    scope.addMember("=", equal);
-    scope.addMember("<", less);
-    scope.addMember(">", greater);
-    scope.addMember("<=", lessEqual);
-    scope.addMember(">=", greaterEqual);
+    scope.addVariable("=", equal);
+    scope.addVariable("<", less);
+    scope.addVariable(">", greater);
+    scope.addVariable("<=", lessEqual);
+    scope.addVariable(">=", greaterEqual);
     
-    scope.addMember("not", notfunc);
+    scope.addVariable("not", notfunc);
+    
+    scope.addVariable("list", list);
     
     return scope;
 }

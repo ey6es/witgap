@@ -82,17 +82,11 @@ enum BytecodeOp {
     /** Pushes the constant at the specified index onto the stack. */
     ConstantOp,
 
-    /** Pushes the argument at the specified index onto the stack. */
-    ArgumentOp,
+    /** Pushes the variable at the specified scope/index onto the stack. */
+    VariableOp,
 
-    /** Pushes the member at the specified scope/index onto the stack. */
-    MemberOp,
-
-    /** Pops a value off the stack and assigns it to the argument at the specified index. */
-    SetArgumentOp,
-
-    /** Pops a value off the stack and assigns it to the member at the specified scope/index. */
-    SetMemberOp,
+    /** Pops a value off the stack and assigns it to the variable at the specified scope/index. */
+    SetVariableOp,
 
     /** Pushes the current operand count and sets the count to zero. */
     ResetOperandCountOp,
@@ -108,9 +102,6 @@ enum BytecodeOp {
 
     /** Creates a function instance. */
     LambdaOp,
-
-    /** Returns from function initialization. */
-    LambdaReturnOp,
 
     /** Pops a value off the stack and discards it. */
     PopOp,
@@ -202,11 +193,8 @@ class Registers
 {
 public:
 
-    /** The index of the current procedure on the stack. */
-    int procedureIdx;
-
-    /** The index of the first argument on the stack. */
-    int argumentIdx;
+    /** The index of the current invocation on the stack. */
+    int invocationIdx;
 
     /** The pointer to the next instruction in the procedure definition. */
     const uchar* instruction;

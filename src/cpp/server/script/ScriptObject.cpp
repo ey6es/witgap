@@ -57,15 +57,10 @@ bool equivalent (const ScriptObjectPointer& p1, const ScriptObjectPointer& p2)
             }
             return true;
         }
-        case ScriptObject::ArgumentType: {
-            Argument* a1 = static_cast<Argument*>(p1.data());
-            Argument* a2 = static_cast<Argument*>(p2.data());
-            return a1->index() == a2->index();
-        }
-        case ScriptObject::MemberType: {
-            Member* m1 = static_cast<Member*>(p1.data());
-            Member* m2 = static_cast<Member*>(p2.data());
-            return m1->scope() == m2->scope() && m1->index() == m2->index();
+        case ScriptObject::VariableType: {
+            Variable* v1 = static_cast<Variable*>(p1.data());
+            Variable* v2 = static_cast<Variable*>(p2.data());
+            return v1->scope() == v2->scope() && v1->index() == v2->index();
         }
         default:
             return p1.data() == p2.data();
@@ -131,38 +126,31 @@ QString List::toString () const
     return string;
 }
 
-Argument::Argument (int index) :
-    _index(index)
-{
-}
-
-Member::Member (int scope, int index) :
+Variable::Variable (int scope, int index) :
     _scope(scope),
     _index(index)
 {
 }
 
-QString Member::toString () const
+QString Variable::toString () const
 {
-    return "{member " + QString::number(_scope) + " " + QString::number(_index) + "}";
+    return "{variable " + QString::number(_scope) + " " + QString::number(_index) + "}";
 }
 
-Lambda::Lambda (int scalarArgumentCount, bool listArgument, int memberCount,
-        const QList<ScriptObjectPointer>& constants, const Bytecode& bytecode, int bodyIdx) :
+Lambda::Lambda (int scalarArgumentCount, bool listArgument, int variableCount,
+        const QList<ScriptObjectPointer>& constants, const Bytecode& bytecode) :
     _scalarArgumentCount(scalarArgumentCount),
     _listArgument(listArgument),
-    _memberCount(memberCount),
+    _variableCount(variableCount),
     _constants(constants),
-    _bytecode(bytecode),
-    _bodyIdx(bodyIdx)
+    _bytecode(bytecode)
 {
 }
 
 Lambda::Lambda () :
     _scalarArgumentCount(0),
     _listArgument(false),
-    _memberCount(0),
-    _bodyIdx(0)
+    _variableCount(0)
 {
 }
 
@@ -190,44 +178,41 @@ LambdaProcedure::LambdaProcedure (
     _lambda(lambda),
     _parent(parent)
 {
-    Lambda* lam = static_cast<Lambda*>(lambda.data());
-    _members.resize(lam->memberCount());
 }
 
-const ScriptObjectPointer& LambdaProcedure::member (int scope, int idx) const
+Invocation::Invocation (const ScriptObjectPointer& procedure, const Registers& registers) :
+    _procedure(procedure),
+    _variables(static_cast<Lambda*>(static_cast<LambdaProcedure*>(
+            procedure.data())->lambda().data())->variableCount(),
+        ScriptObjectPointer(new Unspecified())),
+    _registers(registers)
+{
+}
+
+const ScriptObjectPointer& Invocation::variable (int scope, int idx) const
 {
     if (scope == 0) {
-        return _members.at(idx);
+        return _variables.at(idx);
     }
-    LambdaProcedure* parent = static_cast<LambdaProcedure*>(_parent.data());
-    return parent->member(scope - 1, idx);
+    LambdaProcedure* proc = static_cast<LambdaProcedure*>(_procedure.data());
+    Invocation* parent = static_cast<Invocation*>(proc->parent().data());
+    return parent->variable(scope - 1, idx);
 }
 
-void LambdaProcedure::setMember (int scope, int idx, const ScriptObjectPointer& value)
+void Invocation::setVariable (int scope, int idx, const ScriptObjectPointer& value)
 {
     if (scope == 0) {
-        _members[idx] = value;
+        _variables[idx] = value;
         return;
     }
-    LambdaProcedure* parent = static_cast<LambdaProcedure*>(_parent.data());
-    parent->setMember(scope - 1, idx, value);
+    LambdaProcedure* proc = static_cast<LambdaProcedure*>(_procedure.data());
+    Invocation* parent = static_cast<Invocation*>(proc->parent().data());
+    parent->setVariable(scope - 1, idx, value);
 }
 
 NativeProcedure::NativeProcedure (Function function) :
     _function(function)
 {
-}
-
-Return::Return (const Registers& registers) :
-    _registers(registers)
-{
-}
-
-QString Return::toString () const
-{
-    return "{return " + QString::number(_registers.procedureIdx) + " " +
-        QString::number(_registers.argumentIdx) + " " +
-        QString::number(_registers.operandCount) + "}";
 }
 
 PatternTemplate::PatternTemplate (

@@ -28,14 +28,14 @@ public:
 };
 
 /** A variable mapping (index and repeat group). */
-typedef QPair<int, RepeatGroupPointer> Variable;
+typedef QPair<int, RepeatGroupPointer> VariableMapping;
 
 /**
  * Creates a pattern from the specified expression.
  */
 static PatternPointer createPattern (
     ScriptObjectPointer expr, const QHash<QString, PatternPointer>& literals,
-    QHash<QString, Variable>& variables,
+    QHash<QString, VariableMapping>& variables,
     const RepeatGroupPointer& parentGroup = RepeatGroupPointer())
 {
     switch (expr->type()) {
@@ -53,7 +53,7 @@ static PatternPointer createPattern (
                 throw ScriptError("Duplicate variable.", symbol->position());
             }
             int index = variables.size();
-            variables.insert(name, Variable(index, parentGroup));
+            variables.insert(name, VariableMapping(index, parentGroup));
             return PatternPointer(new VariablePattern(index));
         }
         case ScriptObject::ListType: {
@@ -132,17 +132,16 @@ void maybeAssignGroup (
  * @param ellipseIdents if true, treat ellipses as normal identifiers.
  */
 static TemplatePointer createTemplate (
-    ScriptObjectPointer expr, Scope* scope, const QHash<QString, Variable>& variables,
+    ScriptObjectPointer expr, Scope* scope, const QHash<QString, VariableMapping>& variables,
     bool ellipseIdents, RepeatGroupPointer& repeatGroup)
 {
     switch (expr->type()) {
         case ScriptObject::SymbolType: {
             Symbol* symbol = static_cast<Symbol*>(expr.data());
             const QString& name = symbol->name();
-            QHash<QString, Variable>::const_iterator it = variables.constFind(name);
+            QHash<QString, VariableMapping>::const_iterator it = variables.constFind(name);
             if (it == variables.constEnd()) {
-                ScriptObjectPointer binding = scope->resolve(name);
-                return TemplatePointer(new DatumTemplate(binding.isNull() ? expr : binding));
+                return TemplatePointer(new SymbolTemplate(scope, expr));
             }
             maybeAssignGroup(repeatGroup, it.value().second, symbol->position());
             return TemplatePointer(new VariableTemplate(it.value().first));
@@ -213,7 +212,7 @@ static TemplatePointer createTemplate (
  * Creates a template from the specified expression.
  */
 static TemplatePointer createTemplate (
-    ScriptObjectPointer expr, Scope* scope, const QHash<QString, Variable>& variables)
+    ScriptObjectPointer expr, Scope* scope, const QHash<QString, VariableMapping>& variables)
 {
     RepeatGroupPointer repeatGroup;
     TemplatePointer templ = createTemplate(expr, scope, variables, false, repeatGroup);
@@ -285,7 +284,7 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
                     if (rcontents.size() != 2) {
                         throw ScriptError("Invalid rule.", rlist->position());
                     }
-                    QHash<QString, Variable> variables;
+                    QHash<QString, VariableMapping> variables;
                     PatternPointer pattern = createPattern(rcontents.at(0), literals, variables);
                     patternTemplates.append(PatternTemplate(variables.size(), pattern,
                         createTemplate(rcontents.at(1), scope, variables)));
@@ -295,7 +294,7 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
             } else if (name == "identifier-syntax") {
                 if (csize == 2) {
                     return ScriptObjectPointer(new IdentifierSyntax(
-                        createTemplate(contents.at(1), scope, QHash<QString, Variable>()),
+                        createTemplate(contents.at(1), scope, QHash<QString, VariableMapping>()),
                         PatternTemplate()));
                 }
                 if (csize != 3) {
@@ -312,7 +311,7 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
                     throw ScriptError("Invalid rule.", rlist->position());
                 }
                 TemplatePointer templ = createTemplate(
-                    rcontents.at(1), scope, QHash<QString, Variable>());
+                    rcontents.at(1), scope, QHash<QString, VariableMapping>());
                 ScriptObjectPointer set = contents.at(2);
                 if (set->type() != ScriptObject::ListType) {
                     throw ScriptError("Invalid identifier syntax.", list->position());
@@ -339,7 +338,7 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
                 if (symbol->name() != "set!") {
                     throw ScriptError("Invalid pattern.", plist->position());
                 }
-                QHash<QString, Variable> variables;
+                QHash<QString, VariableMapping> variables;
                 PatternPointer pattern = createPattern(
                     pcontents.at(2), QHash<QString, PatternPointer>(), variables);
                 return ScriptObjectPointer(new IdentifierSyntax(templ, PatternTemplate(
@@ -485,6 +484,19 @@ DatumTemplate::DatumTemplate (const ScriptObjectPointer& datum) :
 ScriptObjectPointer DatumTemplate::generate (QVector<ScriptObjectPointer>& variables) const
 {
     return _datum;
+}
+
+SymbolTemplate::SymbolTemplate (Scope* scope, const ScriptObjectPointer& datum) :
+    _scope(scope),
+    _datum(datum)
+{
+}
+
+ScriptObjectPointer SymbolTemplate::generate (QVector<ScriptObjectPointer>& variables) const
+{
+    Symbol* symbol = static_cast<Symbol*>(_datum.data());
+    ScriptObjectPointer binding = _scope->resolve(symbol->name());
+    return binding.isNull() ? _datum : binding;
 }
 
 VariableTemplate::VariableTemplate (int index) :

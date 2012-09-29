@@ -205,6 +205,32 @@ protected:
 };
 
 /**
+ * A template that emits the binding of a symbol in the template scope.
+ */
+class SymbolTemplate : public Template
+{
+public:
+    
+    /**
+     * Creates a new symbol template.
+     */
+    SymbolTemplate (Scope* scope, const ScriptObjectPointer& datum);
+
+    /**
+     * Generates the contents of the template.
+     */
+    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables) const;
+
+protected:
+    
+    /** The template scope pointer. */
+    Scope* _scope;
+    
+    /** The symbol datum. */
+    ScriptObjectPointer _datum;
+};
+
+/**
  * A template that emits the contents of a pattern variable.
  */
 class VariableTemplate : public Template

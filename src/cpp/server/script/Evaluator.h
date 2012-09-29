@@ -19,53 +19,50 @@ public:
     /**
      * Creates a new scope.
      *
-     * @param withValues if true, create an associated lambda procedure to hold member values.
+     * @param withValues if true, create an associated invocation to hold member values.
      * @param syntactic if true, this is a purely syntactic scope; it will not have an associated
-     * lambda.
+     * invocation.
      */
     Scope (Scope* parent = 0, bool withValues = false, bool syntactic = false);
 
     /**
-     * Returns a reference to the internal lambda procedure.
+     * Returns a pointer to the scope's first non-syntactic ancestor.
      */
-    const ScriptObjectPointer& lambdaProc () const { return _lambdaProc; }
+    Scope* nonSyntacticAncestor ();
 
     /**
-     * Sets the scope's arguments.
+     * Returns a reference to the internal invocation.
      */
-    void setArguments (const QStringList& firstArgs, const QString& restArg);
+    const ScriptObjectPointer& invocation () const { return _invocation; }
 
     /**
-     * Attempts to resolve a symbol name, returning a pointer to an Argument or Member, etc., if
+     * Attempts to resolve a symbol name, returning a pointer to a Variable, etc., if
      * successful.
      */
     ScriptObjectPointer resolve (const QString& name);
 
     /**
-     * Defines a native function in the scope.
+     * Returns the number of variables defined in the scope.
      */
-    ScriptObjectPointer addMember (const QString& name, NativeProcedure::Function function);
+    int variableCount () const { return _variableCount; }
 
     /**
-     * Defines a member in this scope with the supplied name and optional value.
+     * Defines a native function in the scope.
      */
-    ScriptObjectPointer addMember (const QString& name,
+    ScriptObjectPointer addVariable (const QString& name, NativeProcedure::Function function);
+
+    /**
+     * Defines a variable in this scope with the supplied name and optional initialization
+     * expression/value.
+     */
+    ScriptObjectPointer addVariable (const QString& name,
+        const ScriptObjectPointer& initExpr = ScriptObjectPointer(),
         const ScriptObjectPointer& value = ScriptObjectPointer());
 
     /**
      * Defines an arbitrary object in the scope.
      */
-    void define (const QString& name, const ScriptObjectPointer& value);
-
-    /**
-     * Returns the number of members in this scope.
-     */
-    int memberCount () const { return _memberCount; }
-
-    /**
-     * Returns a reference to the scope's list of constants.
-     */
-    QList<ScriptObjectPointer>& constants () { return _constants; }
+    void define (const QString& name, const ScriptObjectPointer& binding);
 
     /**
      * Adds a constant and returns its index.
@@ -73,14 +70,14 @@ public:
     int addConstant (ScriptObjectPointer value);
 
     /**
-     * Returns a reference to the initialization bytecode.
+     * Returns a reference to the list of constants.
      */
-    Bytecode& initBytecode () { return _initBytecode; }
+    ScriptObjectPointerList& constants () { return _constants; }
 
     /**
-     * Returns a reference to the initialization expressions for each member.
+     * Returns a reference to the deferred definitions.
      */
-    ScriptObjectPointerList& initExprs () { return _initExprs; }
+    ScriptObjectPointerList& deferred () { return _deferred; }
 
 protected:
 
@@ -90,23 +87,20 @@ protected:
     /** Whether or not this is a purely syntactic scope. */
     bool _syntactic;
 
-    /** Maps variable names to their Argument/Member/SyntaxRules/IdentifierSyntax objects. */
-    QHash<QString, ScriptObjectPointer> _variables;
+    /** Maps symbol names to their Variable/SyntaxRules/IdentifierSyntax objects. */
+    QHash<QString, ScriptObjectPointer> _bindings;
 
-    /** The number of members defined in this scope. */
-    int _memberCount;
+    /** The number of variables defined in the scope. */
+    int _variableCount;
 
     /** The list of constants. */
-    QList<ScriptObjectPointer> _constants;
+    ScriptObjectPointerList _constants;
 
-    /** The initialization bytecode. */
-    Bytecode _initBytecode;
+    /** The deferred definitions. */
+    ScriptObjectPointerList _deferred;
     
-    /** The initialization expressions for each member. */
-    ScriptObjectPointerList _initExprs;
-    
-    /** An optional lambda procedure associated with the scope, containing member values. */
-    ScriptObjectPointer _lambdaProc;
+    /** An optional invocation associated with the scope, containing variable values. */
+    ScriptObjectPointer _invocation;
 };
 
 /**

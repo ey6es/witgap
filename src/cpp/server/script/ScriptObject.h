@@ -21,8 +21,8 @@ public:
 
     /** The object types. */
     enum Type { SentinelType, BooleanType, IntegerType, FloatType, StringType, SymbolType,
-        ListType, UnspecifiedType, ArgumentType, MemberType, LambdaType, LambdaProcedureType,
-        NativeProcedureType, ReturnType, SyntaxRulesType, IdentifierSyntaxType };
+        ListType, UnspecifiedType, VariableType, LambdaType, LambdaProcedureType,
+        InvocationType, NativeProcedureType, SyntaxRulesType, IdentifierSyntaxType };
 
     /**
      * Destroys the object.
@@ -315,49 +315,16 @@ public:
 };
 
 /**
- * Represents a post-bind argument reference.
+ * Represents a post-bind variable reference.
  */
-class Argument : public ScriptObject
+class Variable : public ScriptObject
 {
 public:
 
     /**
-     * Creates a new argument reference.
+     * Creates a new variable reference.
      */
-    Argument (int index);
-
-    /**
-     * Returns the index of the argument.
-     */
-    int index () const { return _index; }
-
-    /**
-     * Returns the type of the object.
-     */
-    virtual Type type () const { return ArgumentType; }
-
-    /**
-     * Returns a string representation of the object.
-     */
-    virtual QString toString () const { return "{argument " + QString::number(_index) + "}"; }
-
-protected:
-
-    /** The index of the argument. */
-    int _index;
-};
-
-/**
- * Represents a post-bind member reference.
- */
-class Member : public ScriptObject
-{
-public:
-
-    /**
-     * Creates a new member reference.
-     */
-    Member (int scope, int index);
+    Variable (int scope, int index);
 
     /**
      * Returns the scope number (zero is current, one is parent, etc.)
@@ -365,14 +332,14 @@ public:
     int scope () const { return _scope; }
 
     /**
-     * Returns the index of the member.
+     * Returns the index of the variable.
      */
     int index () const { return _index; }
 
     /**
      * Returns the type of the object.
      */
-    virtual Type type () const { return MemberType; }
+    virtual Type type () const { return VariableType; }
 
     /**
      * Returns a string representation of the object.
@@ -384,7 +351,7 @@ protected:
     /** The scope number (zero is current, one is parent, etc.) */
     int _scope;
 
-    /** The index of the member. */
+    /** The index of the variable. */
     int _index;
 };
 
@@ -398,8 +365,8 @@ public:
     /**
      * Creates a new lambda expression.
      */
-    Lambda (int scalarArgumentCount, bool listArgument, int memberCount,
-        const QList<ScriptObjectPointer>& constants, const Bytecode& bytecode, int bodyIdx);
+    Lambda (int scalarArgumentCount, bool listArgument, int variableCount,
+        const QList<ScriptObjectPointer>& constants, const Bytecode& bytecode);
 
     /**
      * Creates a new empty lambda expression.
@@ -417,9 +384,9 @@ public:
     bool listArgument () const { return _listArgument; }
 
     /**
-     * Returns the number of members in the function.
+     * Returns the total number of variables in the function.
      */
-    int memberCount () const { return _memberCount; }
+    int variableCount () const { return _variableCount; }
 
     /**
      * Sets the constants and bytecode.
@@ -443,16 +410,6 @@ public:
     const Bytecode& bytecode () const { return _bytecode; }
 
     /**
-     * Returns a pointer to the initializer bytecode.
-     */
-    const uchar* initializer () const { return _bytecode.data(); }
-
-    /**
-     * Returns a pointer to the body bytecode.
-     */
-    const uchar* body () const { return _bytecode.data() + _bodyIdx; }
-
-    /**
      * Returns the type of the object.
      */
     virtual Type type () const { return LambdaType; }
@@ -470,17 +427,14 @@ protected:
     /** If true, put the rest of the arguments in a list. */
     bool _listArgument;
 
-    /** The number of members. */
-    int _memberCount;
+    /** The total number of variables. */
+    int _variableCount;
 
     /** The function constants. */
     QList<ScriptObjectPointer> _constants;
 
     /** The function bytecode. */
     Bytecode _bytecode;
-
-    /** The index within the bytecode of the function body. */
-    int _bodyIdx;
 };
 
 /**
@@ -502,19 +456,9 @@ public:
     const ScriptObjectPointer& lambda () const { return _lambda; }
 
     /**
-     * Returns a reference to the member with the specified scope and index.
+     * Returns a reference to the parent invocation.
      */
-    const ScriptObjectPointer& member (int scope, int idx) const;
-
-    /**
-     * Sets the value of the member at the specified scope and index.
-     */
-    void setMember (int scope, int idx, const ScriptObjectPointer& value);
-
-    /**
-     * Appends a local member.
-     */
-    void appendMember (const ScriptObjectPointer& value) { _members.append(value); }
+    ScriptObjectPointer& parent () { return _parent; }
 
     /**
      * Returns the type of the object.
@@ -531,11 +475,73 @@ protected:
     /** The definition of the procedure. */
     ScriptObjectPointer _lambda;
 
-    /** The procedure's parent scope. */
+    /** The procedure's parent invocation. */
     ScriptObjectPointer _parent;
+};
 
-    /** The current member values. */
-    QVector<ScriptObjectPointer> _members;
+/**
+ * Represents the invocation of a lambda procedure.
+ */
+class Invocation : public ScriptObject
+{
+public:
+
+    /**
+     * Creates a new invocation.
+     */
+    Invocation (const ScriptObjectPointer& procedure = ScriptObjectPointer(),
+        const Registers& registers = Registers());
+    
+    /**
+     * Returns a reference to the lambda procedure.
+     */
+    const ScriptObjectPointer& procedure () const { return _procedure; }
+    
+    /**
+     * Returns a reference to the registers.
+     */
+    const Registers& registers () const { return _registers; }
+    
+    /**
+     * Returns a reference to the variable with the specified scope and index.
+     */
+    const ScriptObjectPointer& variable (int scope, int idx) const;
+
+    /**
+     * Returns a reference to the variable list.
+     */
+    QVector<ScriptObjectPointer>& variables () { return _variables; }
+
+    /**
+     * Sets the value of the variable at the specified scope and index.
+     */
+    void setVariable (int scope, int idx, const ScriptObjectPointer& value);
+
+    /**
+     * Appends a local variable.
+     */
+    void appendVariable (const ScriptObjectPointer& value) { _variables.append(value); }
+    
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return InvocationType; }    
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const { return "#invocation_" + QString::number((int)this, 16); }
+
+protected:
+    
+    /** The lambda procedure being invoked. */
+    ScriptObjectPointer _procedure;
+    
+    /** The current variable values. */
+    QVector<ScriptObjectPointer> _variables;
+    
+    /** The stored register values. */
+    Registers _registers;
 };
 
 /**
@@ -572,39 +578,6 @@ protected:
 
     /** The function to call. */
     Function _function;
-};
-
-/**
- * Contains the information necessary to return from a procedure call.
- */
-class Return : public ScriptObject
-{
-public:
-
-    /**
-     * Creates a new return.
-     */
-    Return (const Registers& registers);
-
-    /**
-     * Returns a reference to the register values.
-     */
-    const Registers& registers () const { return _registers; }
-
-    /**
-     * Returns the type of the object.
-     */
-    virtual Type type () const { return ReturnType; }
-
-    /**
-     * Returns a string representation of the object.
-     */
-    virtual QString toString () const;
-
-protected:
-
-    /** The stored register values. */
-    Registers _registers;
 };
 
 class Pattern;
