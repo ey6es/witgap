@@ -35,7 +35,7 @@ int Lexer::nextLexeme ()
             continue;
         }
         _position = pos();
-        if (ch == '(' || ch == ')' || ch == '\'') {
+        if (ch == '(' || ch == ')' || ch == '\'' || ch == '`' || ch == ',') {
             _idx++;
             return ch.unicode();
         }

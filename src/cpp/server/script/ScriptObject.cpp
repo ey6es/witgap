@@ -77,10 +77,36 @@ Sentinel::Sentinel (const ScriptPosition& position) :
 {
 }
 
+const ScriptObjectPointer& Boolean::instance (bool value)
+{
+    static ScriptObjectPointer trueInstance(new Boolean(true));
+    static ScriptObjectPointer falseInstance(new Boolean(false));
+    return value ? trueInstance : falseInstance;
+}
+
 Boolean::Boolean (bool value, const ScriptPosition& position) :
     Datum(position),
     _value(value)
 {
+}
+
+/**
+ * Creates the set of shared Integer instances.
+ */
+static ScriptObjectPointer* createSharedIntegerInstances ()
+{
+    ScriptObjectPointer* instances = new ScriptObjectPointer[256];
+    for (int ii = 0; ii < 256; ii++) {
+        instances[ii] = ScriptObjectPointer(new Integer(-128 + ii));
+    }
+    return instances;
+}
+
+ScriptObjectPointer Integer::instance (int value)
+{
+    static ScriptObjectPointer* sharedInstances = createSharedIntegerInstances();
+    return (value >= -128 && value <= +127) ? sharedInstances[value + 128] :
+        ScriptObjectPointer(new Integer(value));
 }
 
 Integer::Integer (int value, const ScriptPosition& position) :
@@ -101,10 +127,33 @@ String::String (const QString& contents, const ScriptPosition& position) :
 {
 }
 
+/**
+ * Creates the map of shared symbol instances.
+ */
+static QHash<QString, ScriptObjectPointer> createSharedSymbolInstances ()
+{
+    QHash<QString, ScriptObjectPointer> instances;
+    instances.insert("lambda", ScriptObjectPointer(new Symbol("lambda")));
+    return instances;
+}
+
+ScriptObjectPointer Symbol::instance (const QString& name)
+{
+    static QHash<QString, ScriptObjectPointer> sharedInstances = createSharedSymbolInstances();
+    ScriptObjectPointer value = sharedInstances.value(name);
+    return value.isNull() ? ScriptObjectPointer(new Symbol(name)) : value;
+}
+
 Symbol::Symbol (const QString& name, const ScriptPosition& position) :
     Datum(position),
     _name(name)
 {
+}
+
+ScriptObjectPointer List::instance (const ScriptObjectPointerList& contents)
+{
+    static ScriptObjectPointer emptyInstance(new List(ScriptObjectPointerList()));
+    return contents.isEmpty() ? emptyInstance : ScriptObjectPointer(new List(contents));
 }
 
 List::List (const ScriptObjectPointerList& contents, const ScriptPosition& position) :
@@ -124,6 +173,12 @@ QString List::toString () const
     }
     string.append(')');
     return string;
+}
+
+const ScriptObjectPointer& Unspecified::instance ()
+{
+    static ScriptObjectPointer instance(new Unspecified());
+    return instance;
 }
 
 Variable::Variable (int scope, int index) :
@@ -184,7 +239,7 @@ Invocation::Invocation (const ScriptObjectPointer& procedure, const Registers& r
     _procedure(procedure),
     _variables(static_cast<Lambda*>(static_cast<LambdaProcedure*>(
             procedure.data())->lambda().data())->variableCount(),
-        ScriptObjectPointer(new Unspecified())),
+        Unspecified::instance()),
     _registers(registers)
 {
 }
@@ -212,6 +267,17 @@ void Invocation::setVariable (int scope, int idx, const ScriptObjectPointer& val
 
 NativeProcedure::NativeProcedure (Function function) :
     _function(function)
+{
+}
+
+CaptureProcedure::CaptureProcedure ()
+{
+}
+
+EscapeProcedure::EscapeProcedure (
+        const QStack<ScriptObjectPointer>& stack, const Registers& registers) :
+    _stack(stack),
+    _registers(registers)
 {
 }
 

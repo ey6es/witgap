@@ -458,7 +458,7 @@ bool ListPattern::matches (
             return false;
         }
         for (int ii = 0; ii < _repeatVariableCount; ii++) {
-            variables[_repeatVariableIdx + ii] = ScriptObjectPointer(new List(lists.at(ii)));
+            variables[_repeatVariableIdx + ii] = List::instance(lists.at(ii));
         }
         for (int ii = 0; ii < postcount && idx < size; ii++, idx++) {
             if (!_postRepeatPatterns.at(ii)->matches(contents.at(idx), scope, variables)) {
@@ -473,7 +473,7 @@ bool ListPattern::matches (
     for (; idx < size; idx++) {
         rest.append(contents.at(idx));
     }
-    return _restPattern->matches(ScriptObjectPointer(new List(rest)), scope, variables);
+    return _restPattern->matches(List::instance(rest), scope, variables);
 }
 
 DatumTemplate::DatumTemplate (const ScriptObjectPointer& datum) :
@@ -575,5 +575,5 @@ ScriptObjectPointer ListTemplate::generate (QVector<ScriptObjectPointer>& variab
             list.append(rest);
         }
     }
-    return ScriptObjectPointer(new List(list));
+    return List::instance(list);
 }

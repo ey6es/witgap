@@ -359,7 +359,7 @@ static void compile (
                                     }
                                     Symbol* symbol = static_cast<Symbol*>(car.data());
                                     ScriptObjectPointerList lcontents;
-                                    lcontents.append(ScriptObjectPointer(new Symbol("lambda")));
+                                    lcontents.append(Symbol::instance("lambda"));
                                     ScriptObjectPointerList ncontents;
                                     for (int ii = 1; ii < acsize; ii++) {
                                         ncontents.append(acontents.at(ii));
@@ -393,7 +393,7 @@ static void compile (
                                     compile(contents.at(2), scope, false, false, false, out);
                                     out.append(SetVariableOp, var->scope(), var->index());
                                     out.append(ConstantOp, scope->addConstant(
-                                        ScriptObjectPointer(new Unspecified())));
+                                        Unspecified::instance()));
                                     maybeAppendPop(top, tailCall, out);
                                     return;
                                 }
@@ -426,7 +426,7 @@ static void compile (
                                             out.append(SetVariableOp, variable->scope(),
                                                 variable->index());
                                             out.append(ConstantOp, scope->addConstant(
-                                                ScriptObjectPointer(new Unspecified())));
+                                                Unspecified::instance()));
                                             maybeAppendPop(top, tailCall, out);
                                             return;
                                         }
@@ -459,7 +459,15 @@ static void compile (
                             compileDeferred(scope, top, out);
                             out.append(ConstantOp, scope->addConstant(contents.at(1)));
                             maybeAppendPop(top, tailCall, out);
-                    
+                        
+                        } else if (name == "quasiquote") {
+                            if (contents.size() != 2) {
+                                throw ScriptError("Invalid expression.", list->position());
+                            }
+                            compileDeferred(scope, top, out);
+                            out.append(ConstantOp, scope->addConstant(contents.at(1)));
+                            maybeAppendPop(top, tailCall, out);
+                            
                         } else if (name == "if") {
                             int csize = contents.size();
                             if (csize != 3 && csize != 4) {
@@ -474,7 +482,7 @@ static void compile (
                                 compile(contents.at(3), scope, false, false, tailCall, elsecode);
                             } else {
                                 elsecode.append(ConstantOp, scope->addConstant(
-                                    ScriptObjectPointer(new Unspecified())));
+                                    Unspecified::instance()));
                             }
                             thencode.append(JumpOp, elsecode.length());
                             out.append(ConditionalJumpOp, thencode.length());
@@ -594,11 +602,12 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                 break;
             
             case ResetOperandCountOp:
-                _stack.push(ScriptObjectPointer(new Integer(_registers.operandCount)));
+                _stack.push(Integer::instance(_registers.operandCount));
                 _registers.operandCount = 0;
                 break;
 
-            case CallOp: {
+            CallOpLabel:
+            case CallOp: {            
                 int pidx = _stack.size() - _registers.operandCount;
                 ScriptObjectPointer sproc = _stack.at(pidx);
                 switch (sproc->type()) {
@@ -617,6 +626,38 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             ocptr->data())->value() + 1;
                         *ocptr = result;
                         _stack.resize(pidx);
+                        break;
+                    }
+                    case ScriptObject::CaptureProcedureType: {
+                        if (_registers.operandCount != 2) {
+                            throwScriptError("Requires exactly one argument.");
+                        }
+                        ScriptObjectPointer pproc = _stack.at(pidx + 1);
+                        int ocidx = pidx - 1;
+                        _registers.operandCount = static_cast<Integer*>(
+                            _stack.at(ocidx).data())->value();
+                        _stack.resize(ocidx);
+                        ScriptObjectPointer eproc(new EscapeProcedure(_stack, _registers));
+                        _stack.push(Integer::instance(_registers.operandCount));
+                        _stack.push(pproc);
+                        _stack.push(eproc);
+                        _registers.operandCount = 2;
+                        goto CallOpLabel;
+                    }
+                    case ScriptObject::EscapeProcedureType: {
+                        if (_registers.operandCount != 2) {
+                            throwScriptError("Requires exactly one argument.");
+                        }
+                        ScriptObjectPointer arg = _stack.at(pidx + 1);
+                        EscapeProcedure* eproc = static_cast<EscapeProcedure*>(sproc.data());
+                        _stack = eproc->stack();
+                        _registers = eproc->registers();
+                        invocation = static_cast<Invocation*>(
+                            _stack.at(_registers.invocationIdx).data());
+                        proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
+                        lambda = static_cast<Lambda*>(proc->lambda().data());
+                        _stack.push(arg);
+                        _registers.operandCount++;
                         break;
                     }
                     case ScriptObject::LambdaProcedureType: {
@@ -645,7 +686,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             for (ScriptObjectPointer* aend = aptr + lsize; aptr != aend; aptr++) {
                                 contents.append(*aptr);
                             }
-                            *vptr = ScriptObjectPointer(new List(contents));
+                            *vptr = List::instance(contents);
                             
                         } else {
                             if (nargs != lambda->scalarArgumentCount()) {
@@ -667,6 +708,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                 }
                 break;
             }
+            TailCallOpLabel:
             case TailCallOp: {
                 int pidx = _stack.size() - _registers.operandCount;
                 ScriptObjectPointer sproc = _stack.at(pidx);
@@ -693,6 +735,41 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         _registers.operandCount++;
                         break;
                     }
+                    case ScriptObject::CaptureProcedureType: {
+                        if (_registers.operandCount != 2) {
+                            throwScriptError("Requires exactly one argument.");
+                        }
+                        ScriptObjectPointer pproc = _stack.at(pidx + 1);
+                        int ridx = _registers.invocationIdx;
+                        _registers = invocation->registers();
+                        invocation = static_cast<Invocation*>(
+                            _stack.at(_registers.invocationIdx).data());
+                        proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
+                        lambda = static_cast<Lambda*>(proc->lambda().data());
+                        _stack.resize(ridx);
+                        ScriptObjectPointer eproc(new EscapeProcedure(_stack, _registers));
+                        _stack.push(Integer::instance(_registers.operandCount));
+                        _stack.push(pproc);
+                        _stack.push(eproc);
+                        _registers.operandCount = 2;
+                        goto CallOpLabel;
+                    }
+                    case ScriptObject::EscapeProcedureType: {
+                        if (_registers.operandCount != 2) {
+                            throwScriptError("Requires exactly one argument.");
+                        }
+                        ScriptObjectPointer arg = _stack.at(pidx + 1);
+                        EscapeProcedure* eproc = static_cast<EscapeProcedure*>(sproc.data());
+                        _stack = eproc->stack();
+                        _registers = eproc->registers();
+                        invocation = static_cast<Invocation*>(
+                            _stack.at(_registers.invocationIdx).data());
+                        proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
+                        lambda = static_cast<Lambda*>(proc->lambda().data());
+                        _stack.push(arg);
+                        _registers.operandCount++;
+                        break;
+                    }
                     case ScriptObject::LambdaProcedureType: {
                         int nargs = _registers.operandCount - 1;
                         ScriptObjectPointer iptr = ScriptObjectPointer(
@@ -715,7 +792,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             for (ScriptObjectPointer* aend = aptr + lsize; aptr != aend; aptr++) {
                                 contents.append(*aptr);
                             }
-                            *vptr = ScriptObjectPointer(new List(contents));
+                            *vptr = List::instance(contents);
                             
                         } else {
                             if (nargs != lambda->scalarArgumentCount()) {
@@ -766,7 +843,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                 return _stack.pop();
                 
             case LambdaExitOp:
-                return ScriptObjectPointer(new Unspecified());
+                return Unspecified::instance();
             
             case JumpOp:
                 _registers.instruction += qFromBigEndian<qint32>(_registers.instruction) + 4;

@@ -22,7 +22,8 @@ public:
     /** The object types. */
     enum Type { SentinelType, BooleanType, IntegerType, FloatType, StringType, SymbolType,
         ListType, UnspecifiedType, VariableType, LambdaType, LambdaProcedureType,
-        InvocationType, NativeProcedureType, SyntaxRulesType, IdentifierSyntaxType };
+        InvocationType, NativeProcedureType, CaptureProcedureType, EscapeProcedureType,
+        SyntaxRulesType, IdentifierSyntaxType };
 
     /**
      * Destroys the object.
@@ -102,6 +103,11 @@ class Boolean : public Datum
 public:
 
     /**
+     * Returns a reference to the shared instance with the specified value.
+     */
+    static const ScriptObjectPointer& instance (bool value);
+
+    /**
      * Creates a new boolean.
      */
     Boolean (bool value, const ScriptPosition& position = ScriptPosition());
@@ -134,6 +140,12 @@ class Integer : public Datum
 {
 public:
 
+    /**
+     * Returns an instance with the specified value.  Values from -128 to +127 are represented as
+     * shared instances.
+     */
+    static ScriptObjectPointer instance (int value);
+    
     /**
      * Creates a new integer.
      */
@@ -234,6 +246,12 @@ class Symbol : public Datum
 public:
 
     /**
+     * Returns an instance with the specified name.  Some symbols are represented as shared
+     * instances.
+     */
+    static ScriptObjectPointer instance (const QString& name);
+
+    /**
      * Creates a new symbol.
      */
     Symbol (const QString& name, const ScriptPosition& position = ScriptPosition());
@@ -270,6 +288,12 @@ class List : public Datum
 public:
 
     /**
+     * Returns an instance with the specified contents.  The empty list is represented as a shared
+     * instance.
+     */
+    static ScriptObjectPointer instance (const ScriptObjectPointerList& contents);
+    
+    /**
      * Creates a new list.
      */
     List (const ScriptObjectPointerList& contents,
@@ -302,6 +326,11 @@ protected:
 class Unspecified : public ScriptObject
 {
 public:
+
+    /**
+     * Returns a reference to the shared instance.
+     */
+    static const ScriptObjectPointer& instance ();
 
     /**
      * Returns the type of the object.
@@ -578,6 +607,70 @@ protected:
 
     /** The function to call. */
     Function _function;
+};
+
+/**
+ * Class for procedures that capture the dynamic environment.
+ */
+class CaptureProcedure : public ScriptObject
+{
+public:
+
+    /**
+     * Creates a new capture procedure.
+     */
+    CaptureProcedure ();
+    
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return CaptureProcedureType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const { return "#capture_proc_" + QString::number((int)this, 16); }
+};
+
+/**
+ * Class for escape procedures, which restore a dynamic environment.
+ */
+class EscapeProcedure : public ScriptObject
+{
+public:
+
+    /**
+     * Creates a new escape procedure.
+     */
+    EscapeProcedure (const QStack<ScriptObjectPointer>& stack, const Registers& registers);
+
+    /**
+     * Returns a reference to the stack to restore.
+     */
+    const QStack<ScriptObjectPointer>& stack () const { return _stack; }
+    
+    /**
+     * Returns a reference to the registers to restore.
+     */
+    const Registers& registers () const { return _registers; }
+    
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return EscapeProcedureType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const { return "#escape_proc_" + QString::number((int)this, 16); }
+    
+protected:
+    
+    /** The stack to restore. */
+    QStack<ScriptObjectPointer> _stack;
+    
+    /** The registers to restore. */
+    Registers _registers;
 };
 
 class Pattern;

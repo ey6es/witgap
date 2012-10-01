@@ -44,6 +44,20 @@ ScriptObjectPointer Parser::parseDatum ()
             contents.append(parseDatum());
             return ScriptObjectPointer(new List(contents, position));
         }
+        case '`': {
+            ScriptPosition position = _lexer.position();
+            QList<ScriptObjectPointer> contents;
+            contents.append(ScriptObjectPointer(new Symbol("quasiquote", position)));
+            contents.append(parseDatum());
+            return ScriptObjectPointer(new List(contents, position));
+        }
+        case ',': {
+            ScriptPosition position = _lexer.position();
+            QList<ScriptObjectPointer> contents;
+            contents.append(ScriptObjectPointer(new Symbol("unquote", position)));
+            contents.append(parseDatum());
+            return ScriptObjectPointer(new List(contents, position));
+        }
         case Lexer::NoLexeme:
             return ScriptObjectPointer();
 
