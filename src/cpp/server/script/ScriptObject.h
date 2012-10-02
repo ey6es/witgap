@@ -294,6 +294,11 @@ public:
     static ScriptObjectPointer instance (const ScriptObjectPointerList& contents);
     
     /**
+     * Returns an instance containing the single specified element.
+     */
+    static ScriptObjectPointer instance (const ScriptObjectPointer& element);
+    
+    /**
      * Creates a new list.
      */
     List (const ScriptObjectPointerList& contents,

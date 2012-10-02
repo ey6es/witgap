@@ -365,6 +365,21 @@ static ScriptObjectPointer notfunc (Evaluator* eval, int argc, ScriptObjectPoint
 }
 
 /**
+ * Checks whether the argument is the empty list.
+ */
+static ScriptObjectPointer null (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::ListType) {
+        return Boolean::instance(false);
+    }
+    List* list = static_cast<List*>(argv->data());
+    return Boolean::instance(list->contents().isEmpty());
+}
+
+/**
  * Creates a new list from the arguments.
  */
 static ScriptObjectPointer list (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -374,6 +389,77 @@ static ScriptObjectPointer list (Evaluator* eval, int argc, ScriptObjectPointer*
         contents.append(*arg);
     }
     return List::instance(contents);
+}
+
+/**
+ * Appends the arguments together.
+ */
+static ScriptObjectPointer append (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc == 0) {
+        return List::instance(ScriptObjectPointerList());
+    }
+    if (argc == 1) {
+        if ((*argv)->type() != ScriptObject::ListType) {
+            throw QString("Invalid argument.");
+        }
+        return *argv;
+    }
+    ScriptObjectPointerList contents;
+    for (ScriptObjectPointer* arg = argv, *end = arg + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::ListType) {
+            throw QString("Invalid argument.");
+        }
+        List* list = static_cast<List*>(arg->data());
+        contents.append(list->contents());
+    } 
+    return List::instance(contents);
+}
+
+/**
+ * Returns the length of a list.
+ */
+static ScriptObjectPointer length (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::ListType) {
+        throw QString("Invalid argument.");
+    }
+    List* list = static_cast<List*>(argv->data());
+    return Integer::instance(list->contents().length());
+}
+
+/**
+ * Reverses a list.
+ */
+static ScriptObjectPointer reverse (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::ListType) {
+        throw QString("Invalid argument.");
+    }
+    List* list = static_cast<List*>(argv->data());
+    const ScriptObjectPointerList& contents = list->contents();
+    ScriptObjectPointerList ncontents;
+    for (int ii = contents.size() - 1; ii >= 0; ii--) {
+        ncontents.append(contents.at(ii));
+    }
+    return List::instance(ncontents);
+}
+
+/**
+ * Determines whether the argument is a list.
+ */
+static ScriptObjectPointer listp (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    return Boolean::instance((*argv)->type() == ScriptObject::ListType);
 }
 
 /**
@@ -458,8 +544,13 @@ static Scope createGlobalScope ()
     
     scope.addVariable("not", notfunc);
     
-    scope.addVariable("list", list);
+    scope.addVariable("null?", null);
+    scope.addVariable("list", ScriptObjectPointer(), listProcedure());
+    scope.addVariable("append", ScriptObjectPointer(), appendProcedure());
+    scope.addVariable("length", length);
+    scope.addVariable("reverse", reverse);
     
+    scope.addVariable("list?", listp);
     scope.addVariable("boolean?", boolean);
     scope.addVariable("symbol?", symbol);
     scope.addVariable("number?", number);
@@ -477,4 +568,16 @@ Scope* globalScope ()
 {
     static Scope global = createGlobalScope();
     return &global;
+}
+
+const ScriptObjectPointer& listProcedure ()
+{
+    static ScriptObjectPointer proc(new NativeProcedure(list));
+    return proc;
+}
+
+const ScriptObjectPointer& appendProcedure ()
+{
+    static ScriptObjectPointer proc(new NativeProcedure(append));
+    return proc;
 }

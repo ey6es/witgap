@@ -156,6 +156,13 @@ ScriptObjectPointer List::instance (const ScriptObjectPointerList& contents)
     return contents.isEmpty() ? emptyInstance : ScriptObjectPointer(new List(contents));
 }
 
+ScriptObjectPointer List::instance (const ScriptObjectPointer& element)
+{
+    ScriptObjectPointerList contents;
+    contents.append(element);
+    return ScriptObjectPointer(new List(contents));
+}
+
 List::List (const ScriptObjectPointerList& contents, const ScriptPosition& position) :
     Datum(position),
     _contents(contents)

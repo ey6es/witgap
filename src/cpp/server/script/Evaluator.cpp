@@ -238,6 +238,58 @@ static void compileLambda (List* list, Scope* scope, Bytecode& out)
     out.associate(list->position());
 }
 
+/**
+ * Compiles a quasiquote form.
+ */
+static void compileQuasiquote (List* list, Scope* scope, Bytecode& out)
+{
+    out.append(ResetOperandCountOp);
+    out.append(ConstantOp, scope->addConstant(appendProcedure()));
+    foreach (const ScriptObjectPointer& element, list->contents()) {
+        if (element->type() != ScriptObject::ListType) {
+            out.append(ConstantOp, scope->addConstant(List::instance(element)));
+            continue;
+        }
+        List* sublist = static_cast<List*>(element.data());
+        const ScriptObjectPointerList& subcontents = sublist->contents();
+        int csize = subcontents.size();
+        if (csize == 0) {
+            out.append(ConstantOp, scope->addConstant(List::instance(element)));
+            continue;
+        }
+        ScriptObjectPointer car = subcontents.at(0);
+        if (car->type() == ScriptObject::SymbolType) {
+            Symbol* symbol = static_cast<Symbol*>(car.data());
+            const QString& name = symbol->name();
+            if (name == "unquote") {
+                if (csize != 2) {
+                    throw ScriptError("Invalid expression.", sublist->position());
+                }
+                out.append(ResetOperandCountOp);
+                out.append(ConstantOp, scope->addConstant(listProcedure()));
+                compile(subcontents.at(1), scope, false, false, false, out);
+                out.append(CallOp);
+                out.associate(sublist->position());
+                continue;
+                
+            } else if (name == "unquote-splicing") {
+                if (csize != 2) {
+                    throw ScriptError("Invalid expression.", sublist->position());
+                }
+                compile(subcontents.at(1), scope, false, false, false, out);
+                continue;
+            }
+        }
+        out.append(ResetOperandCountOp);
+        out.append(ConstantOp, scope->addConstant(listProcedure()));
+        compileQuasiquote(sublist, scope, out);
+        out.append(CallOp);
+        out.associate(sublist->position());
+    }
+    out.append(CallOp);
+    out.associate(list->position());
+}
+
 static void compile (
     ScriptObjectPointer expr, Scope* scope, bool top, bool allowDef, bool tailCall, Bytecode& out)
 {
@@ -465,7 +517,13 @@ static void compile (
                                 throw ScriptError("Invalid expression.", list->position());
                             }
                             compileDeferred(scope, top, out);
-                            out.append(ConstantOp, scope->addConstant(contents.at(1)));
+                            const ScriptObjectPointer& cadr = contents.at(1);
+                            if (cadr->type() != ScriptObject::ListType) {
+                                out.append(ConstantOp, scope->addConstant(cadr));
+                            } else {
+                                List* list = static_cast<List*>(cadr.data());
+                                compileQuasiquote(list, scope, out);
+                            }
                             maybeAppendPop(top, tailCall, out);
                             
                         } else if (name == "if") {
