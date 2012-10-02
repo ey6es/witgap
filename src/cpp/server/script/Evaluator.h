@@ -57,7 +57,7 @@ public:
      */
     ScriptObjectPointer addVariable (const QString& name,
         const ScriptObjectPointer& initExpr = ScriptObjectPointer(),
-        const ScriptObjectPointer& value = ScriptObjectPointer());
+        const ScriptObjectPointer& value = Unspecified::instance());
 
     /**
      * Defines an arbitrary object in the scope.

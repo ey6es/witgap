@@ -2,7 +2,6 @@
 // $Id$
 
 #include <QtDebug>
-#include <QtEndian>
 
 #include "script/Evaluator.h"
 #include "script/Globals.h"
@@ -156,7 +155,7 @@ static void compileDeferred (Scope* scope, bool top, Bytecode& out)
         ScriptObjectPointer expr = deferred.at(ii);
         if (!expr.isNull()) {
             compile(expr, scope, false, false, false, out);
-            out.append(SetVariableOp, 0, ii);
+            out.append(SetVariableOp, 0, scope->variableCount() - nn + ii);
         }
     }
     deferred.clear();
@@ -617,14 +616,14 @@ ScriptObjectPointer Evaluator::evaluate (const QString& expr)
         } else {
             bytecode.append(ExitOp);
         }
-        lambda->setConstantsAndBytecode(_scope.constants(), bytecode);
-        _scope.constants().clear();
+        for (int ii = lambda->constants().size(), nn = _scope.constants().size(); ii < nn; ii++) {
+            lambda->constants().append(_scope.constants().at(ii));
+        }
+        _registers.instructionIdx = lambda->bytecode().length();
+        lambda->bytecode().append(bytecode);
         bytecode.clear();
     
-        _registers.instruction = lambda->bytecode().data();
         result = execute();
-        
-        lambda->clearConstantsAndBytecode();
     }
     return result;
 }
@@ -636,26 +635,29 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
         _stack.at(_registers.invocationIdx).data());
     LambdaProcedure* proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
     Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
+    const Bytecode* bytecode = &lambda->bytecode();
 
     while (maxCycles == 0 || maxCycles-- > 0) {
-        switch (*_registers.instruction++) {
+        switch (bytecode->charAt(_registers.instructionIdx++)) {
             case ConstantOp:
-                _stack.push(lambda->constant(qFromBigEndian<qint32>(_registers.instruction)));
-                _registers.instruction += 4;
+                _stack.push(lambda->constant(bytecode->intAt(_registers.instructionIdx)));
+                _registers.instructionIdx += 4;
                 _registers.operandCount++;
                 break;
 
             case VariableOp:
-                _stack.push(invocation->variable(qFromBigEndian<qint32>(_registers.instruction),
-                    qFromBigEndian<qint32>(_registers.instruction + 4)));
-                _registers.instruction += 8;
+                _stack.push(invocation->variable(
+                    bytecode->intAt(_registers.instructionIdx),
+                    bytecode->intAt(_registers.instructionIdx + 4)));
+                _registers.instructionIdx += 8;
                 _registers.operandCount++;
                 break;
 
             case SetVariableOp: 
-                invocation->setVariable(qFromBigEndian<qint32>(_registers.instruction),
-                    qFromBigEndian<qint32>(_registers.instruction + 4), _stack.pop());
-                _registers.instruction += 8;
+                invocation->setVariable(
+                    bytecode->intAt(_registers.instructionIdx),
+                    bytecode->intAt(_registers.instructionIdx + 4), _stack.pop());
+                _registers.instructionIdx += 8;
                 _registers.operandCount--;
                 break;
             
@@ -714,6 +716,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             _stack.at(_registers.invocationIdx).data());
                         proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
                         lambda = static_cast<Lambda*>(proc->lambda().data());
+                        bytecode = &lambda->bytecode();
                         _stack.push(arg);
                         _registers.operandCount++;
                         break;
@@ -728,7 +731,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             invocation = new Invocation(sproc, _registers));
                         proc = static_cast<LambdaProcedure*>(sproc.data());
                         lambda = static_cast<Lambda*>(proc->lambda().data());
-                        
+                        bytecode = &lambda->bytecode();
                         ScriptObjectPointer* aptr = _stack.data() + pidx + 1;
                         ScriptObjectPointer* vptr = invocation->variables().data();
                         if (lambda->listArgument()) {
@@ -756,7 +759,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         }
                         _stack.resize(pidx);
                         _registers.invocationIdx = ocidx;
-                        _registers.instruction = lambda->bytecode().data();
+                        _registers.instructionIdx = 0;
                         _registers.operandCount = 0;
                         break;
                     }
@@ -788,6 +791,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             sdata[_registers.invocationIdx].data());
                         proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
                         lambda = static_cast<Lambda*>(proc->lambda().data());
+                        bytecode = &lambda->bytecode();
                         sdata[ridx] = result;
                         _stack.resize(ridx + 1);
                         _registers.operandCount++;
@@ -804,6 +808,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             _stack.at(_registers.invocationIdx).data());
                         proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
                         lambda = static_cast<Lambda*>(proc->lambda().data());
+                        bytecode = &lambda->bytecode();
                         _stack.resize(ridx);
                         ScriptObjectPointer eproc(new EscapeProcedure(_stack, _registers));
                         _stack.push(Integer::instance(_registers.operandCount));
@@ -824,6 +829,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             _stack.at(_registers.invocationIdx).data());
                         proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
                         lambda = static_cast<Lambda*>(proc->lambda().data());
+                        bytecode = &lambda->bytecode();
                         _stack.push(arg);
                         _registers.operandCount++;
                         break;
@@ -834,7 +840,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             invocation = new Invocation(sproc, invocation->registers()));
                         proc = static_cast<LambdaProcedure*>(sproc.data());
                         lambda = static_cast<Lambda*>(proc->lambda().data());
-                        
+                        bytecode = &lambda->bytecode();
                         ScriptObjectPointer* aptr = _stack.data() + pidx + 1;
                         ScriptObjectPointer* vptr = invocation->variables().data();
                         if (lambda->listArgument()) {
@@ -862,7 +868,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         }
                         _stack[_registers.invocationIdx] = iptr;
                         _stack.resize(_registers.invocationIdx + 1);
-                        _registers.instruction = lambda->bytecode().data();
+                        _registers.instructionIdx = 0;
                         _registers.operandCount = 0;
                         break;
                     }
@@ -878,14 +884,15 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                 invocation = static_cast<Invocation*>(_stack.at(_registers.invocationIdx).data());
                 proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
                 lambda = static_cast<Lambda*>(proc->lambda().data());
+                bytecode = &lambda->bytecode();
                 _stack[ridx] = _stack.pop();
                 _registers.operandCount++;
                 break;
             }
             case LambdaOp: {
                 ScriptObjectPointer nlambda = lambda->constant(
-                    qFromBigEndian<qint32>(_registers.instruction));
-                _registers.instruction += 4;
+                    bytecode->intAt(_registers.instructionIdx));
+                _registers.instructionIdx += 4;
                 _stack.push(ScriptObjectPointer(new LambdaProcedure(
                     nlambda, _stack.at(_registers.invocationIdx))));
                 _registers.operandCount++;
@@ -904,16 +911,16 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                 return Unspecified::instance();
             
             case JumpOp:
-                _registers.instruction += qFromBigEndian<qint32>(_registers.instruction) + 4;
+                _registers.instructionIdx += bytecode->intAt(_registers.instructionIdx) + 4;
                 break;
             
             case ConditionalJumpOp: {
                 ScriptObjectPointer test = _stack.pop();
                 if (test->type() == ScriptObject::BooleanType &&
                         static_cast<Boolean*>(test.data())->value()) {
-                    _registers.instruction += 4;
+                    _registers.instructionIdx += 4;
                 } else {
-                    _registers.instruction += qFromBigEndian<qint32>(_registers.instruction) + 4;
+                    _registers.instructionIdx += bytecode->intAt(_registers.instructionIdx) + 4;
                 }
                 break;
             }
@@ -932,7 +939,7 @@ void Evaluator::throwScriptError (const QString& message)
         LambdaProcedure* proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
         Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
         
-        positions.append(lambda->bytecode().position(_registers.instruction));
+        positions.append(lambda->bytecode().position(_registers.instructionIdx));
         if (_registers.invocationIdx == 0) {
             break;   
         }

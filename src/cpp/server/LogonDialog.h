@@ -10,6 +10,7 @@
 #include "ui/Window.h"
 
 class Button;
+class CheckBox;
 class Label;
 class PasswordField;
 class Session;
@@ -142,6 +143,9 @@ protected:
 
     /** The status label. */
     StatusLabel* _status;
+
+    /** The "stay logged in" checkbox. */
+    CheckBox* _stayLoggedIn;
 
     /** The create mode toggle button. */
     Button* _toggleCreateMode;

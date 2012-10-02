@@ -89,10 +89,13 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
     connect(_forgotUsername, SIGNAL(pressed()), SLOT(forgotUsername()));
     _forgotPassword = new Button(tr("Forgot Password"));
     connect(_forgotPassword, SIGNAL(pressed()), SLOT(forgotPassword()));
-
+    
     addChild(BoxLayout::createVBox(Qt::AlignCenter, 0,
         BoxLayout::createHBox(Qt::AlignCenter, 2, _cancel, _toggleCreateMode, _logon),
         BoxLayout::createHBox(Qt::AlignCenter, 2, _forgotUsername, _forgotPassword)));
+
+    addChild(BoxLayout::createHBox(Qt::AlignCenter, 2,
+        _stayLoggedIn = new CheckBox(tr("Stay Logged in after Leaving"))));
 
     // force logon if appropriate for the current policy
     RuntimeConfig* config = parent->app()->runtimeConfig();

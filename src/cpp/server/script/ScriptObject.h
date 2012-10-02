@@ -423,25 +423,19 @@ public:
     int variableCount () const { return _variableCount; }
 
     /**
-     * Sets the constants and bytecode.
-     */
-    void setConstantsAndBytecode (
-        const QList<ScriptObjectPointer>& constants, const Bytecode& bytecode);
-
-    /**
-     * Clears out all constants and bytecode.
-     */
-    void clearConstantsAndBytecode ();
-
-    /**
      * Returns a reference to the constant at the specified index.
      */
     const ScriptObjectPointer& constant (int idx) const { return _constants.at(idx); }
 
     /**
+     * Returns a reference to the constants.
+     */
+    ScriptObjectPointerList& constants () { return _constants; }    
+
+    /**
      * Returns a reference to the bytecode.
      */
-    const Bytecode& bytecode () const { return _bytecode; }
+    Bytecode& bytecode () { return _bytecode; }
 
     /**
      * Returns the type of the object.
@@ -465,7 +459,7 @@ protected:
     int _variableCount;
 
     /** The function constants. */
-    QList<ScriptObjectPointer> _constants;
+    ScriptObjectPointerList _constants;
 
     /** The function bytecode. */
     Bytecode _bytecode;

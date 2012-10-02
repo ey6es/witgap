@@ -8,6 +8,7 @@
 #include <QHash>
 #include <QString>
 #include <QVector>
+#include <QtEndian>
 
 /**
  * Contains a position within a script.
@@ -142,15 +143,25 @@ public:
     void clear () { _data.clear(); _positions.clear(); }
     
     /**
-     * Returns a pointer to the bytecode data.
+     * Returns a pointer to the bytecode data at the specified index.
      */
-    const uchar* data () const { return (uchar*)_data.constData(); }
+    const uchar* data (int index) const { return (uchar*)_data.constData() + index; }
+
+    /**
+     * Returns the character at the specified index.
+     */
+    uchar charAt (int index) const { return *data(index); }
+
+    /**
+     * Returns the integer at the specified index.
+     */
+    int intAt (int index) const { return qFromBigEndian<qint32>(data(index)); }
 
     /**
      * Returns the position corresponding to the specified location (or an empty position if
      * none).
      */
-    ScriptPosition position (const uchar* ptr) const { return _positions.value(ptr - data()); }
+    ScriptPosition position (int index) const { return _positions.value(index); }
     
     /**
      * Appends a simple instruction to the data.
@@ -196,8 +207,8 @@ public:
     /** The index of the current invocation on the stack. */
     int invocationIdx;
 
-    /** The pointer to the next instruction in the procedure definition. */
-    const uchar* instruction;
+    /** The index of the next instruction in the procedure definition. */
+    int instructionIdx;
 
     /** The current operand count. */
     int operandCount;

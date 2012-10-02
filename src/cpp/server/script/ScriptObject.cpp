@@ -216,19 +216,6 @@ Lambda::Lambda () :
 {
 }
 
-void Lambda::setConstantsAndBytecode (
-    const QList<ScriptObjectPointer>& constants, const Bytecode& bytecode)
-{
-    _constants = constants;
-    _bytecode = bytecode;
-}
-
-void Lambda::clearConstantsAndBytecode ()
-{
-    _constants.clear();
-    _bytecode.clear();
-}
-
 QString Lambda::toString () const
 {
     return "{lambda " + QString::number(_scalarArgumentCount) + " " +
