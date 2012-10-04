@@ -5,6 +5,7 @@
 #define EVALUATOR
 
 #include <QHash>
+#include <QLinkedList>
 #include <QStringList>
 
 #include "script/ScriptObject.h"
@@ -131,6 +132,16 @@ public:
      */
     ScriptObjectPointer execute (int maxCycles = 0);
 
+    /**
+     * Collects garbage.
+     */
+    void gc ();
+
+    /**
+     * Creates a list instance and adds it to the collectable list.
+     */
+    ScriptObjectPointer listInstance (const ScriptObjectPointerList& contents);
+
 protected:
 
     /**
@@ -149,6 +160,12 @@ protected:
 
     /** The current register values. */
     Registers _registers;
+    
+    /** Weak pointers to the collectable objects we've created. */
+    QLinkedList<WeakScriptObjectPointer> _collectable;
+    
+    /** The last color used for garbage collection. */
+    int _lastColor;
 };
 
 #endif // EVALUATOR

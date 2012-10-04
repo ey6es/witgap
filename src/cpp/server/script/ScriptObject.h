@@ -39,10 +39,25 @@ public:
      * Returns a string representation of the object.
      */
     virtual QString toString () const = 0;
+    
+    /**
+     * Marks the object with the specified color, recursively marking any objects to which
+     * references are held.
+     */
+    virtual void mark (int color);
+    
+    /**
+     * Checks whether the object is marked with the specified color.  If not, all references
+     * are cleared and false is returned.
+     */
+    virtual bool sweep (int color);
 };
 
 /** A reference-counted pointer to a script object. */
 typedef QSharedPointer<ScriptObject> ScriptObjectPointer;
+
+/** A weak pointer to a script object. */
+typedef QWeakPointer<ScriptObject> WeakScriptObjectPointer;
 
 /**
  * Compares two script objects according to their types.
@@ -319,10 +334,25 @@ public:
      */
     virtual QString toString () const;
 
+    /**
+     * Marks the object with the specified color, recursively marking any objects to which
+     * references are held.
+     */
+    virtual void mark (int color);
+    
+    /**
+     * Checks whether the object is marked with the specified color.  If not, all references
+     * are cleared and false is returned.
+     */
+    virtual bool sweep (int color);
+    
 protected:
 
     /** The contents of the list. */
     ScriptObjectPointerList _contents;
+    
+    /** The mark color. */
+    int _color;
 };
 
 /**
@@ -498,6 +528,18 @@ public:
      */
     virtual QString toString () const { return "#lambda_proc_" + QString::number((int)this, 16); }
 
+    /**
+     * Marks the object with the specified color, recursively marking any objects to which
+     * references are held.
+     */
+    virtual void mark (int color);
+    
+    /**
+     * Checks whether the object is marked with the specified color.  If not, all references
+     * are cleared and false is returned.
+     */
+    virtual bool sweep (int color);
+    
 protected:
 
     /** The definition of the procedure. */
@@ -505,6 +547,9 @@ protected:
 
     /** The procedure's parent invocation. */
     ScriptObjectPointer _parent;
+    
+    /** The mark color. */
+    int _color;
 };
 
 /**
@@ -560,6 +605,18 @@ public:
      */
     virtual QString toString () const { return "#invocation_" + QString::number((int)this, 16); }
 
+    /**
+     * Marks the object with the specified color, recursively marking any objects to which
+     * references are held.
+     */
+    virtual void mark (int color);
+    
+    /**
+     * Checks whether the object is marked with the specified color.  If not, all references
+     * are cleared and false is returned.
+     */
+    virtual bool sweep (int color);
+    
 protected:
     
     /** The lambda procedure being invoked. */
@@ -570,6 +627,9 @@ protected:
     
     /** The stored register values. */
     Registers _registers;
+    
+    /** The mark color. */
+    int _color;
 };
 
 /**
@@ -663,6 +723,18 @@ public:
      */
     virtual QString toString () const { return "#escape_proc_" + QString::number((int)this, 16); }
     
+    /**
+     * Marks the object with the specified color, recursively marking any objects to which
+     * references are held.
+     */
+    virtual void mark (int color);
+    
+    /**
+     * Checks whether the object is marked with the specified color.  If not, all references
+     * are cleared and false is returned.
+     */
+    virtual bool sweep (int color);
+    
 protected:
     
     /** The stack to restore. */
@@ -670,6 +742,9 @@ protected:
     
     /** The registers to restore. */
     Registers _registers;
+    
+    /** The mark color. */
+    int _color;
 };
 
 class Pattern;

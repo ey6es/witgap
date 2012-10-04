@@ -365,6 +365,86 @@ static ScriptObjectPointer notfunc (Evaluator* eval, int argc, ScriptObjectPoint
 }
 
 /**
+ * Compares booleans for equality.
+ */
+static ScriptObjectPointer booleansEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc < 2) {
+        throw QString("Requires at least two arguments.");
+    }
+    if ((*argv)->type() != ScriptObject::BooleanType) {
+        throw QString("Invalid argument.");
+    }
+    Boolean* boolean = static_cast<Boolean*>(argv->data());
+    bool value = boolean->value();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::BooleanType) {
+            throw QString("Invalid argument.");
+        }
+        boolean = static_cast<Boolean*>(arg->data());
+        if (boolean->value() != value) {
+            return Boolean::instance(false);
+        }
+    }
+    return Boolean::instance(true);
+}
+
+/**
+ * Converts a symbol to a string.
+ */
+static ScriptObjectPointer symbolToString (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::SymbolType) {
+        throw QString("Invalid argument.");
+    }
+    Symbol* symbol = static_cast<Symbol*>(argv->data());
+    return ScriptObjectPointer(new String(symbol->name()));
+}
+
+/**
+ * Converts a string to a symbol.
+ */
+static ScriptObjectPointer stringToSymbol (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
+    String* string = static_cast<String*>(argv->data());
+    return Symbol::instance(string->contents());
+}
+
+/**
+ * Compares symbols for equality.
+ */
+static ScriptObjectPointer symbolsEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc < 2) {
+        throw QString("Requires at least two arguments.");
+    }
+    if ((*argv)->type() != ScriptObject::SymbolType) {
+        throw QString("Invalid argument.");
+    }
+    Symbol* symbol = static_cast<Symbol*>(argv->data());
+    const QString& name = symbol->name();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::SymbolType) {
+            throw QString("Invalid argument.");
+        }
+        symbol = static_cast<Symbol*>(arg->data());
+        if (symbol->name() != name) {
+            return Boolean::instance(false);
+        }
+    }
+    return Boolean::instance(true);
+}
+
+/**
  * Checks whether the argument is the empty list.
  */
 static ScriptObjectPointer null (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -388,7 +468,7 @@ static ScriptObjectPointer list (Evaluator* eval, int argc, ScriptObjectPointer*
     for (ScriptObjectPointer* arg = argv, *end = arg + argc; arg != end; arg++) {
         contents.append(*arg);
     }
-    return List::instance(contents);
+    return eval->listInstance(contents);
 }
 
 /**
@@ -413,7 +493,7 @@ static ScriptObjectPointer append (Evaluator* eval, int argc, ScriptObjectPointe
         List* list = static_cast<List*>(arg->data());
         contents.append(list->contents());
     } 
-    return List::instance(contents);
+    return eval->listInstance(contents);
 }
 
 /**
@@ -448,7 +528,7 @@ static ScriptObjectPointer reverse (Evaluator* eval, int argc, ScriptObjectPoint
     for (int ii = contents.size() - 1; ii >= 0; ii--) {
         ncontents.append(contents.at(ii));
     }
-    return List::instance(ncontents);
+    return eval->listInstance(ncontents);
 }
 
 /**
@@ -543,6 +623,11 @@ static Scope createGlobalScope ()
     scope.addVariable("zero?", zero);
     
     scope.addVariable("not", notfunc);
+    scope.addVariable("boolean=?", booleansEqual);
+    
+    scope.addVariable("symbol->string", symbolToString);
+    scope.addVariable("string->symbol", stringToSymbol);
+    scope.addVariable("symbol=?", symbolsEqual);
     
     scope.addVariable("null?", null);
     scope.addVariable("list", ScriptObjectPointer(), listProcedure());

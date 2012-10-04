@@ -83,7 +83,8 @@ int Scope::addConstant (ScriptObjectPointer value)
 Evaluator::Evaluator (const QString& source) :
     _source(source),
     _scope(globalScope(), true),
-    _registers()
+    _registers(),
+    _lastColor(0)
 {
     _stack.push(_scope.invocation());
 }
@@ -698,6 +699,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             _stack.at(ocidx).data())->value();
                         _stack.resize(ocidx);
                         ScriptObjectPointer eproc(new EscapeProcedure(_stack, _registers));
+                        _collectable.append(eproc.toWeakRef());
                         _stack.push(Integer::instance(_registers.operandCount));
                         _stack.push(pproc);
                         _stack.push(eproc);
@@ -729,6 +731,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         _registers.operandCount = oc->value();
                         ocref = ScriptObjectPointer(
                             invocation = new Invocation(sproc, _registers));
+                        _collectable.append(ocref.toWeakRef());
                         proc = static_cast<LambdaProcedure*>(sproc.data());
                         lambda = static_cast<Lambda*>(proc->lambda().data());
                         bytecode = &lambda->bytecode();
@@ -747,8 +750,8 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             for (ScriptObjectPointer* aend = aptr + lsize; aptr != aend; aptr++) {
                                 contents.append(*aptr);
                             }
-                            *vptr = List::instance(contents);
-                            
+                            *vptr = listInstance(contents);
+
                         } else {
                             if (nargs != lambda->scalarArgumentCount()) {
                                 throwScriptError("Wrong number of arguments.");
@@ -811,6 +814,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         bytecode = &lambda->bytecode();
                         _stack.resize(ridx);
                         ScriptObjectPointer eproc(new EscapeProcedure(_stack, _registers));
+                        _collectable.append(eproc.toWeakRef());
                         _stack.push(Integer::instance(_registers.operandCount));
                         _stack.push(pproc);
                         _stack.push(eproc);
@@ -838,6 +842,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         int nargs = _registers.operandCount - 1;
                         ScriptObjectPointer iptr = ScriptObjectPointer(
                             invocation = new Invocation(sproc, invocation->registers()));
+                        _collectable.append(iptr.toWeakRef());
                         proc = static_cast<LambdaProcedure*>(sproc.data());
                         lambda = static_cast<Lambda*>(proc->lambda().data());
                         bytecode = &lambda->bytecode();
@@ -856,8 +861,8 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             for (ScriptObjectPointer* aend = aptr + lsize; aptr != aend; aptr++) {
                                 contents.append(*aptr);
                             }
-                            *vptr = List::instance(contents);
-                            
+                            *vptr = listInstance(contents);
+
                         } else {
                             if (nargs != lambda->scalarArgumentCount()) {
                                 throwScriptError("Wrong number of arguments.");
@@ -893,8 +898,10 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                 ScriptObjectPointer nlambda = lambda->constant(
                     bytecode->intAt(_registers.instructionIdx));
                 _registers.instructionIdx += 4;
-                _stack.push(ScriptObjectPointer(new LambdaProcedure(
-                    nlambda, _stack.at(_registers.invocationIdx))));
+                ScriptObjectPointer nproc(new LambdaProcedure(
+                    nlambda, _stack.at(_registers.invocationIdx)));
+                _collectable.append(nproc.toWeakRef());
+                _stack.push(nproc);
                 _registers.operandCount++;
                 break;
             }
@@ -928,6 +935,32 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
     }
 
     return ScriptObjectPointer();
+}
+
+void Evaluator::gc ()
+{
+    // mark everything on the stack with the next color in sequence
+    _lastColor++;
+    foreach (const ScriptObjectPointer& element, _stack) {
+        element->mark(_lastColor);
+    }
+    
+    // delete anything in our list that isn't marked
+    for (QLinkedList<WeakScriptObjectPointer>::iterator it = _collectable.begin();
+            it != _collectable.end(); it++) {
+        ScriptObject* obj = it->data();
+        if (obj == 0 || (!obj->sweep(_lastColor) && it->isNull())) {
+            it = _collectable.erase(it);
+        }
+    }
+}
+
+ScriptObjectPointer Evaluator::listInstance (const ScriptObjectPointerList& contents)
+{
+    ScriptObjectPointer instance = List::instance(contents);
+    if (!contents.isEmpty()) {
+        _collectable.append(instance.toWeakRef());
+    }
 }
 
 void Evaluator::throwScriptError (const QString& message)

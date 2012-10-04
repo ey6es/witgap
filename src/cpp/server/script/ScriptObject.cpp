@@ -9,6 +9,16 @@ ScriptObject::~ScriptObject ()
 {
 }
 
+void ScriptObject::mark (int color)
+{
+    // nothing by default
+}
+
+bool ScriptObject::sweep (int color)
+{
+    return false;
+}
+
 bool equivalent (const ScriptObjectPointer& p1, const ScriptObjectPointer& p2)
 {
     ScriptObject::Type t1 = p1->type();
@@ -165,7 +175,8 @@ ScriptObjectPointer List::instance (const ScriptObjectPointer& element)
 
 List::List (const ScriptObjectPointerList& contents, const ScriptPosition& position) :
     Datum(position),
-    _contents(contents)
+    _contents(contents),
+    _color(0)
 {
 }
 
@@ -180,6 +191,25 @@ QString List::toString () const
     }
     string.append(')');
     return string;
+}
+
+void List::mark (int color)
+{
+    if (_color != color) {
+        _color = color;
+        foreach (const ScriptObjectPointer& element, _contents) {
+            element->mark(color);
+        }
+    }
+}
+
+bool List::sweep (int color)
+{
+    if (_color == color) {
+        return true;
+    }
+    _contents.clear();
+    return false;
 }
 
 const ScriptObjectPointer& Unspecified::instance ()
@@ -225,8 +255,28 @@ QString Lambda::toString () const
 LambdaProcedure::LambdaProcedure (
         const ScriptObjectPointer& lambda, const ScriptObjectPointer& parent) :
     _lambda(lambda),
-    _parent(parent)
+    _parent(parent),
+    _color(0)
 {
+}
+
+void LambdaProcedure::mark (int color)
+{
+    if (_color != color) {
+        _color = color;
+        if (!_parent.isNull()) {
+            _parent->mark(color);
+        }
+    }
+}
+
+bool LambdaProcedure::sweep (int color)
+{
+    if (_color == color) {
+        return true;
+    }
+    _parent.clear();
+    return false;
 }
 
 Invocation::Invocation (const ScriptObjectPointer& procedure, const Registers& registers) :
@@ -234,7 +284,8 @@ Invocation::Invocation (const ScriptObjectPointer& procedure, const Registers& r
     _variables(static_cast<Lambda*>(static_cast<LambdaProcedure*>(
             procedure.data())->lambda().data())->variableCount(),
         Unspecified::instance()),
-    _registers(registers)
+    _registers(registers),
+    _color(0)
 {
 }
 
@@ -259,6 +310,26 @@ void Invocation::setVariable (int scope, int idx, const ScriptObjectPointer& val
     parent->setVariable(scope - 1, idx, value);
 }
 
+void Invocation::mark (int color)
+{
+    if (_color != color) {
+        _color = color;
+        _procedure->mark(color);
+        foreach (const ScriptObjectPointer& element, _variables) {
+            element->mark(color);
+        }
+    }
+}
+
+bool Invocation::sweep (int color)
+{
+    if (_color == color) {
+        return true;
+    }
+    _variables.clear();
+    return false;
+}
+
 NativeProcedure::NativeProcedure (Function function) :
     _function(function)
 {
@@ -271,8 +342,28 @@ CaptureProcedure::CaptureProcedure ()
 EscapeProcedure::EscapeProcedure (
         const QStack<ScriptObjectPointer>& stack, const Registers& registers) :
     _stack(stack),
-    _registers(registers)
+    _registers(registers),
+    _color(0)
 {
+}
+
+void EscapeProcedure::mark (int color)
+{
+    if (_color != color) {
+        _color = color;
+        foreach (const ScriptObjectPointer& element, _stack) {
+            element->mark(color);
+        }
+    }
+}
+
+bool EscapeProcedure::sweep (int color)
+{
+    if (_color == color) {
+        return true;
+    }
+    _stack.clear();
+    return false;
 }
 
 PatternTemplate::PatternTemplate (
