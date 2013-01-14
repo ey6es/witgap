@@ -1,0 +1,54 @@
+
+Things to do, in no particular order:
+
+Invite system:
+- Invite codes with counts, flags (insider, etc.)
+- Text field in invite (e-mail address for personal invites)
+- See how many accounts created
+- Create: generic with N, list of e-mails
+
+Script:
+- Lists rather than (in addition to) vectors
+- Records
+- Record serialization
+
+Multi-line text editing
+
+General mail system:
+- Friend invites, guild invites, standard messages, etc.
+- Item/currency attachments
+
+Items:
+- With counts
+- Generalized data using serialization
+
+Currency:
+- Hard versus soft?
+- Start with soft: credits
+
+Player stats:
+- HP?
+- Level?
+- Skills?
+
+Friends:
+- Invitations with text
+- Notify when logged on/off
+- List, allow removal
+- Limit number (150?)
+
+Clubs:
+- Allow membership in more than one
+- Dues
+- Ranks
+
+Proper instance/scene maintenance (remove after N minutes of disuse)
+
+Scene persistence
+- Manual save?
+- Mark instance as definitive, save definitive instances on exit?
+- Broadcast changes to all instances?
+
+Anonymous users should be users, not just sessions
+
+
