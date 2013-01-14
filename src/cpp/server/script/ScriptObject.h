@@ -526,7 +526,8 @@ public:
     /**
      * Returns a string representation of the object.
      */
-    virtual QString toString () const { return "#lambda_proc_" + QString::number((int)this, 16); }
+    virtual QString toString () const {
+        return "#lambda_proc_" + QString::number((qulonglong)this, 16); }
 
     /**
      * Marks the object with the specified color, recursively marking any objects to which
@@ -603,7 +604,8 @@ public:
     /**
      * Returns a string representation of the object.
      */
-    virtual QString toString () const { return "#invocation_" + QString::number((int)this, 16); }
+    virtual QString toString () const {
+        return "#invocation_" + QString::number((qulonglong)this, 16); }
 
     /**
      * Marks the object with the specified color, recursively marking any objects to which
@@ -660,7 +662,8 @@ public:
     /**
      * Returns a string representation of the object.
      */
-    virtual QString toString () const { return "#native_proc_" + QString::number((int)this, 16); }
+    virtual QString toString () const {
+        return "#native_proc_" + QString::number((qulonglong)this, 16); }
 
 protected:
 
@@ -688,7 +691,8 @@ public:
     /**
      * Returns a string representation of the object.
      */
-    virtual QString toString () const { return "#capture_proc_" + QString::number((int)this, 16); }
+    virtual QString toString () const {
+        return "#capture_proc_" + QString::number((qulonglong)this, 16); }
 };
 
 /**
@@ -721,7 +725,8 @@ public:
     /**
      * Returns a string representation of the object.
      */
-    virtual QString toString () const { return "#escape_proc_" + QString::number((int)this, 16); }
+    virtual QString toString () const {
+        return "#escape_proc_" + QString::number((qulonglong)this, 16); }
     
     /**
      * Marks the object with the specified color, recursively marking any objects to which
@@ -819,7 +824,8 @@ public:
     /**
      * Returns a string representation of the object.
      */
-    virtual QString toString () const { return "#syntax_rules_" + QString::number((int)this, 16); }
+    virtual QString toString () const {
+        return "#syntax_rules_" + QString::number((qulonglong)this, 16); }
     
 protected:
 
@@ -858,7 +864,8 @@ public:
     /**
      * Returns a string representation of the object.
      */
-    virtual QString toString () const { return "#ident_syntax_" + QString::number((int)this, 16); }
+    virtual QString toString () const {
+        return "#ident_syntax_" + QString::number((qulonglong)this, 16); }
 
 protected:
     
