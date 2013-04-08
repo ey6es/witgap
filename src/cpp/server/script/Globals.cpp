@@ -744,6 +744,17 @@ static ScriptObjectPointer number (Evaluator* eval, int argc, ScriptObjectPointe
 }
 
 /**
+ * Determines whether the argument is a character.
+ */
+static ScriptObjectPointer charp (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    return Boolean::instance((*argv)->type() == ScriptObject::CharType);
+}
+
+/**
  * Determines whether the argument is a string.
  */
 static ScriptObjectPointer string (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -843,6 +854,7 @@ static Scope createGlobalScope ()
     scope.addVariable("boolean?", boolean);
     scope.addVariable("symbol?", symbol);
     scope.addVariable("number?", number);
+    scope.addVariable("char?", charp);
     scope.addVariable("string?", string);
     scope.addVariable("procedure?", procedure);
 

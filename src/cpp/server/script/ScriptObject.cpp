@@ -41,6 +41,11 @@ bool equivalent (const ScriptObjectPointer& p1, const ScriptObjectPointer& p2)
             Float* f2 = static_cast<Float*>(p2.data());
             return f1->value() == f2->value();
         }
+        case ScriptObject::CharType: {
+            Char* c1 = static_cast<Char*>(p1.data());
+            Char* c2 = static_cast<Char*>(p2.data());
+            return c1->value() == c2->value();
+        }
         case ScriptObject::StringType: {
             String* s1 = static_cast<String*>(p1.data());
             String* s2 = static_cast<String*>(p2.data());
@@ -158,6 +163,17 @@ Float::Float (float value, const ScriptPosition& position) :
     Datum(position),
     _value(value)
 {
+}
+
+Char::Char (QChar value, const ScriptPosition& position) :
+    Datum(position),
+    _value(value)
+{
+}
+
+QString Char::toString () const
+{
+    return "#\\" + QString(_value);
 }
 
 String::String (const QString& contents, const ScriptPosition& position) :

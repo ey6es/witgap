@@ -109,6 +109,11 @@ int Lexer::nextLexeme ()
                         _idx += 2;
                         return Boolean;
 
+                    case '\\':
+                        _charValue = '#';
+                        _idx += 2;
+                        return Char;
+
                     case '(':
                         _idx += 2;
                         return Vector;

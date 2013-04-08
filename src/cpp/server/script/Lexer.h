@@ -14,8 +14,9 @@ class Lexer
 public:
 
     /** The non-character lexeme types. */
-    enum LexemeType { NoLexeme, Identifier = 0x10000, Boolean, Integer, Float, String, Vector,
-        ByteVector, UnquoteSplicing, Syntax, Quasisyntax, Unsyntax, UnsyntaxSplicing, Comment };
+    enum LexemeType { NoLexeme, Identifier = 0x10000, Boolean, Integer, Float, Char, String,
+        Vector, ByteVector, UnquoteSplicing, Syntax, Quasisyntax, Unsyntax, UnsyntaxSplicing,
+        Comment };
 
     /**
      * Creates a new lexer to analyze the provided expression.
@@ -52,6 +53,11 @@ public:
      * Returns the floating point value of the current lexeme, if applicable.
      */
     float floatValue () const { return _floatValue; }
+
+    /**
+     * Returns the character value of the current lexeme, if applicable.
+     */
+    QChar charValue () const { return _charValue; }
 
 protected:
 
@@ -95,6 +101,9 @@ protected:
 
     /** The floating point value of the current lexeme, if applicable. */
     float _floatValue;
+
+    /** The character value of the current lexeme, if applicable. */
+    QChar _charValue;
 };
 
 #endif // LEXER

@@ -114,6 +114,9 @@ ScriptObjectPointer Parser::parseDatum ()
         case Lexer::Float:
             return ScriptObjectPointer(new Float(_lexer.floatValue(), _lexer.position()));
 
+        case Lexer::Char:
+            return ScriptObjectPointer(new Char(_lexer.charValue(), _lexer.position()));
+
         case Lexer::String:
             return ScriptObjectPointer(new String(_lexer.string(), _lexer.position()));
 

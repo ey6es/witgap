@@ -297,6 +297,7 @@ static void compile (
         case ScriptObject::BooleanType:
         case ScriptObject::IntegerType:
         case ScriptObject::FloatType:
+        case ScriptObject::CharType:
         case ScriptObject::StringType:
         case ScriptObject::VectorType:
         case ScriptObject::ByteVectorType:

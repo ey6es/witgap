@@ -20,10 +20,10 @@ class ScriptObject
 public:
 
     /** The object types. */
-    enum Type { SentinelType, BooleanType, IntegerType, FloatType, StringType, SymbolType,
-        PairType, NullType, ListType, VectorType, ByteVectorType, UnspecifiedType, VariableType, LambdaType,
-        LambdaProcedureType, InvocationType, NativeProcedureType, CaptureProcedureType,
-        EscapeProcedureType, SyntaxRulesType, IdentifierSyntaxType };
+    enum Type { SentinelType, BooleanType, IntegerType, FloatType, CharType, StringType,
+        SymbolType, PairType, NullType, ListType, VectorType, ByteVectorType, UnspecifiedType,
+        VariableType, LambdaType, LambdaProcedureType, InvocationType, NativeProcedureType,
+        CaptureProcedureType, EscapeProcedureType, SyntaxRulesType, IdentifierSyntaxType };
 
     /**
      * Destroys the object.
@@ -218,6 +218,39 @@ protected:
 
     /** The float's value. */
     float _value;
+};
+
+/**
+ * A datum representing a Unicode character.
+ */
+class Char : public Datum
+{
+public:
+
+    /**
+     * Creates a new character.
+     */
+    Char (QChar value, const ScriptPosition& position = ScriptPosition());
+
+    /**
+     * Returns the character value.
+     */
+    QChar value () const { return _value; }
+
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return CharType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const;
+
+protected:
+
+    /** The character value. */
+    QChar _value;
 };
 
 /**
