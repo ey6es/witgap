@@ -95,6 +95,10 @@ ScriptObjectPointer Parser::parseDatum ()
         case Lexer::UnsyntaxSplicing:
             return parseAbbreviation("unsyntax-splicing");
 
+        case Lexer::Comment:
+            parseDatum();
+            return parseDatum();
+
         case Lexer::NoLexeme:
             return ScriptObjectPointer();
 

@@ -15,7 +15,7 @@ public:
 
     /** The non-character lexeme types. */
     enum LexemeType { NoLexeme, Identifier = 0x10000, Boolean, Integer, Float, String, Vector,
-        ByteVector, UnquoteSplicing, Syntax, Quasisyntax, Unsyntax, UnsyntaxSplicing };
+        ByteVector, UnquoteSplicing, Syntax, Quasisyntax, Unsyntax, UnsyntaxSplicing, Comment };
 
     /**
      * Creates a new lexer to analyze the provided expression.

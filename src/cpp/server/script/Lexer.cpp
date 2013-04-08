@@ -35,7 +35,7 @@ int Lexer::nextLexeme ()
             continue;
         }
         _position = pos();
-        if (ch == '(' || ch == ')' || ch == '\'' || ch == '`') {
+        if (ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '\'' || ch == '`') {
             _idx++;
             return ch.unicode();
         }
@@ -135,6 +135,46 @@ int Lexer::nextLexeme ()
                         }
                         _idx += 2;
                         return Unsyntax;
+
+                    case '!':
+                        if (_idx + 5 < nn && _expr.mid(_idx + 2, 4) == "r6rs") {
+                            _idx += 6;
+                            continue;
+                        }
+                        break;
+
+                    case '|': {
+                        int depth = 1;
+                        for (_idx += 2; _idx < nn; _idx++) {
+                            QChar ch = _expr.at(_idx);
+                            switch (ch.unicode()) {
+                                case '\n':
+                                    _line++;
+                                    _lineIdx = _idx + 1;
+                                    break;
+
+                                case '#':
+                                    if (_idx + 1 < nn && _expr.at(_idx + 1) == '|') {
+                                        _idx++;
+                                        depth++;
+                                    }
+                                    break;
+
+                                case '|':
+                                    if (_idx + 1 < nn && _expr.at(_idx + 1) == '#') {
+                                        _idx++;
+                                        if (--depth == 0) {
+                                            goto outerContinue;
+                                        }
+                                    }
+                                    break;
+                            }
+                        }
+                        break;
+                    }
+                    case ';':
+                        _idx += 2;
+                        return Comment;
                 }
             }
         } else if (ch == '+' || ch == '-') {
@@ -159,12 +199,16 @@ int Lexer::nextLexeme ()
         _string = "";
         for (; _idx < nn; _idx++) {
             QChar ch = _expr.at(_idx);
-            if (ch.isSpace() || ch == ';' || ch == '(' || ch == ')') {
+            if (ch.isSpace() || ch == ';' || ch == '#' || ch == '\"' ||
+                    ch == '(' || ch == ')' || ch == '[' || ch == ']') {
                 break;
             }
             _string.append(ch);
         }
         return Identifier;
+
+        // allow nested loops to continue
+        outerContinue: ;
     }
     return NoLexeme;
 }
