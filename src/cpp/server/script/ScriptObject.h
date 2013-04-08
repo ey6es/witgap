@@ -21,7 +21,7 @@ public:
 
     /** The object types. */
     enum Type { SentinelType, BooleanType, IntegerType, FloatType, StringType, SymbolType,
-        ListType, VectorType, ByteVectorType, UnspecifiedType, VariableType, LambdaType,
+        PairType, ListType, VectorType, ByteVectorType, UnspecifiedType, VariableType, LambdaType,
         LambdaProcedureType, InvocationType, NativeProcedureType, CaptureProcedureType,
         EscapeProcedureType, SyntaxRulesType, IdentifierSyntaxType };
 
@@ -290,6 +290,63 @@ protected:
 
     /** The symbol name. */
     QString _name;
+};
+
+/**
+ * A datum containing two other data.
+ */
+class Pair : public Datum
+{
+public:
+
+    /**
+     * Creates a new pair.
+     */
+    Pair (const ScriptObjectPointer& car, const ScriptObjectPointer& cdr,
+        const ScriptPosition& position = ScriptPosition());
+
+    /**
+     * Returns a reference to the value of the car field.
+     */
+    const ScriptObjectPointer& car () const { return _car; }
+
+    /**
+     * Returns a reference to the value of the cdr field.
+     */
+    const ScriptObjectPointer& cdr () const { return _cdr; }
+
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return PairType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const;
+
+    /**
+     * Marks the object with the specified color, recursively marking any objects to which
+     * references are held.
+     */
+    virtual void mark (int color);
+
+    /**
+     * Checks whether the object is marked with the specified color.  If not, all references
+     * are cleared and false is returned.
+     */
+    virtual bool sweep (int color);
+
+protected:
+
+    /** The value of the car field. */
+    ScriptObjectPointer _car;
+
+    /** The value of the cdr field. */
+    ScriptObjectPointer _cdr;
+
+    /** The mark color. */
+    int _color;
 };
 
 /** A list of script pointers. */

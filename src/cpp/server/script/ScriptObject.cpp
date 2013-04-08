@@ -51,6 +51,11 @@ bool equivalent (const ScriptObjectPointer& p1, const ScriptObjectPointer& p2)
             Symbol* s2 = static_cast<Symbol*>(p2.data());
             return s1->name() == s2->name();
         }
+        case ScriptObject::PairType: {
+            Pair* r1 = static_cast<Pair*>(p1.data());
+            Pair* r2 = static_cast<Pair*>(p2.data());
+            return equivalent(r1->car(), r2->car()) && equivalent(r1->cdr(), r2->cdr());
+        }
         case ScriptObject::ListType: {
             List* l1 = static_cast<List*>(p1.data());
             List* l2 = static_cast<List*>(p2.data());
@@ -179,6 +184,44 @@ Symbol::Symbol (const QString& name, const ScriptPosition& position) :
     Datum(position),
     _name(name)
 {
+}
+
+Pair::Pair (const ScriptObjectPointer& car, const ScriptObjectPointer& cdr,
+        const ScriptPosition& position) :
+    Datum(position),
+    _car(car),
+    _cdr(cdr),
+    _color(0)
+{
+}
+
+QString Pair::toString () const
+{
+    QString string("(");
+    string.append(_car->toString());
+    string.append(" . ");
+    string.append(_cdr->toString());
+    string.append(')');
+    return string;
+}
+
+void Pair::mark (int color)
+{
+    if (_color != color) {
+        _color = color;
+        _car->mark(color);
+        _cdr->mark(color);
+    }
+}
+
+bool Pair::sweep (int color)
+{
+    if (_color == color) {
+        return true;
+    }
+    _car.clear();
+    _cdr.clear();
+    return false;
 }
 
 ScriptObjectPointer List::instance (const ScriptObjectPointerList& contents)
