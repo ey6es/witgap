@@ -21,9 +21,9 @@ public:
 
     /** The object types. */
     enum Type { SentinelType, BooleanType, IntegerType, FloatType, StringType, SymbolType,
-        ListType, UnspecifiedType, VariableType, LambdaType, LambdaProcedureType,
-        InvocationType, NativeProcedureType, CaptureProcedureType, EscapeProcedureType,
-        SyntaxRulesType, IdentifierSyntaxType };
+        ListType, VectorType, ByteVectorType, UnspecifiedType, VariableType, LambdaType,
+        LambdaProcedureType, InvocationType, NativeProcedureType, CaptureProcedureType,
+        EscapeProcedureType, SyntaxRulesType, IdentifierSyntaxType };
 
     /**
      * Destroys the object.
@@ -39,13 +39,13 @@ public:
      * Returns a string representation of the object.
      */
     virtual QString toString () const = 0;
-    
+
     /**
      * Marks the object with the specified color, recursively marking any objects to which
      * references are held.
      */
     virtual void mark (int color);
-    
+
     /**
      * Checks whether the object is marked with the specified color.  If not, all references
      * are cleared and false is returned.
@@ -160,7 +160,7 @@ public:
      * shared instances.
      */
     static ScriptObjectPointer instance (int value);
-    
+
     /**
      * Creates a new integer.
      */
@@ -307,12 +307,12 @@ public:
      * instance.
      */
     static ScriptObjectPointer instance (const ScriptObjectPointerList& contents);
-    
+
     /**
      * Returns an instance containing the single specified element.
      */
     static ScriptObjectPointer instance (const ScriptObjectPointer& element);
-    
+
     /**
      * Creates a new list.
      */
@@ -339,20 +339,113 @@ public:
      * references are held.
      */
     virtual void mark (int color);
-    
+
     /**
      * Checks whether the object is marked with the specified color.  If not, all references
      * are cleared and false is returned.
      */
     virtual bool sweep (int color);
-    
+
 protected:
 
     /** The contents of the list. */
     ScriptObjectPointerList _contents;
-    
+
     /** The mark color. */
     int _color;
+};
+
+/**
+ * A datum containing a vector of other data.
+ */
+class Vector : public Datum
+{
+public:
+
+    /**
+     * Returns an instance with the specified contents.  The empty vector is represented as a shared
+     * instance.
+     */
+    static ScriptObjectPointer instance (const ScriptObjectPointerList& contents);
+
+    /**
+     * Returns an instance containing the single specified element.
+     */
+    static ScriptObjectPointer instance (const ScriptObjectPointer& element);
+
+    /**
+     * Creates a new vector.
+     */
+    Vector (const ScriptObjectPointerList& contents,
+        const ScriptPosition& position = ScriptPosition());
+
+    /**
+     * Returns a reference to the vector contents.
+     */
+    const ScriptObjectPointerList& contents () const { return _contents; }
+
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return VectorType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const;
+
+    /**
+     * Marks the object with the specified color, recursively marking any objects to which
+     * references are held.
+     */
+    virtual void mark (int color);
+
+    /**
+     * Checks whether the object is marked with the specified color.  If not, all references
+     * are cleared and false is returned.
+     */
+    virtual bool sweep (int color);
+
+protected:
+
+    /** The contents of the vector. */
+    ScriptObjectPointerList _contents;
+
+    /** The mark color. */
+    int _color;
+};
+
+/**
+ * A datum containing a vector of bytes.
+ */
+class ByteVector : public Datum
+{
+public:
+
+    /**
+     * Creates a new byte vector.
+     */
+    ByteVector (const QByteArray& contents, const ScriptPosition& position = ScriptPosition());
+
+    /**
+     * Returns a reference to the vector contents.
+     */
+    const QByteArray& contents () const { return _contents; }
+
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return ByteVectorType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const;
+
+protected:
+
+    /** The contents of the vector. */
+    QByteArray _contents;
 };
 
 /**
@@ -460,7 +553,7 @@ public:
     /**
      * Returns a reference to the constants.
      */
-    ScriptObjectPointerList& constants () { return _constants; }    
+    ScriptObjectPointerList& constants () { return _constants; }
 
     /**
      * Returns a reference to the bytecode.
@@ -534,13 +627,13 @@ public:
      * references are held.
      */
     virtual void mark (int color);
-    
+
     /**
      * Checks whether the object is marked with the specified color.  If not, all references
      * are cleared and false is returned.
      */
     virtual bool sweep (int color);
-    
+
 protected:
 
     /** The definition of the procedure. */
@@ -548,7 +641,7 @@ protected:
 
     /** The procedure's parent invocation. */
     ScriptObjectPointer _parent;
-    
+
     /** The mark color. */
     int _color;
 };
@@ -565,17 +658,17 @@ public:
      */
     Invocation (const ScriptObjectPointer& procedure = ScriptObjectPointer(),
         const Registers& registers = Registers());
-    
+
     /**
      * Returns a reference to the lambda procedure.
      */
     const ScriptObjectPointer& procedure () const { return _procedure; }
-    
+
     /**
      * Returns a reference to the registers.
      */
     const Registers& registers () const { return _registers; }
-    
+
     /**
      * Returns a reference to the variable with the specified scope and index.
      */
@@ -595,11 +688,11 @@ public:
      * Appends a local variable.
      */
     void appendVariable (const ScriptObjectPointer& value) { _variables.append(value); }
-    
+
     /**
      * Returns the type of the object.
      */
-    virtual Type type () const { return InvocationType; }    
+    virtual Type type () const { return InvocationType; }
 
     /**
      * Returns a string representation of the object.
@@ -612,24 +705,24 @@ public:
      * references are held.
      */
     virtual void mark (int color);
-    
+
     /**
      * Checks whether the object is marked with the specified color.  If not, all references
      * are cleared and false is returned.
      */
     virtual bool sweep (int color);
-    
+
 protected:
-    
+
     /** The lambda procedure being invoked. */
     ScriptObjectPointer _procedure;
-    
+
     /** The current variable values. */
     QVector<ScriptObjectPointer> _variables;
-    
+
     /** The stored register values. */
     Registers _registers;
-    
+
     /** The mark color. */
     int _color;
 };
@@ -648,7 +741,7 @@ public:
      * Creates a new native procedure.
      */
     NativeProcedure (Function function);
-    
+
     /**
      * Returns the native function.
      */
@@ -682,7 +775,7 @@ public:
      * Creates a new capture procedure.
      */
     CaptureProcedure ();
-    
+
     /**
      * Returns the type of the object.
      */
@@ -711,12 +804,12 @@ public:
      * Returns a reference to the stack to restore.
      */
     const QStack<ScriptObjectPointer>& stack () const { return _stack; }
-    
+
     /**
      * Returns a reference to the registers to restore.
      */
     const Registers& registers () const { return _registers; }
-    
+
     /**
      * Returns the type of the object.
      */
@@ -727,27 +820,27 @@ public:
      */
     virtual QString toString () const {
         return "#escape_proc_" + QString::number((qulonglong)this, 16); }
-    
+
     /**
      * Marks the object with the specified color, recursively marking any objects to which
      * references are held.
      */
     virtual void mark (int color);
-    
+
     /**
      * Checks whether the object is marked with the specified color.  If not, all references
      * are cleared and false is returned.
      */
     virtual bool sweep (int color);
-    
+
 protected:
-    
+
     /** The stack to restore. */
     QStack<ScriptObjectPointer> _stack;
-    
+
     /** The registers to restore. */
     Registers _registers;
-    
+
     /** The mark color. */
     int _color;
 };
@@ -774,26 +867,26 @@ public:
      */
     PatternTemplate (
         int variableCount, const PatternPointer& pattern, const TemplatePointer& templ);
-    
+
     /**
      * Creates an empty, invalid pattern template.
      */
     PatternTemplate ();
-    
+
     /**
      * Attempts to match the provided form to our pattern and generate the corresponding
      * template, returning a null pointer if a match couldn't be made.
      */
     ScriptObjectPointer maybeTransform (ScriptObjectPointer form, Scope* scope) const;
-    
+
 protected:
-    
+
     /** The number of variables in the rule. */
     int _variableCount;
-    
+
     /** The pattern to match. */
     PatternPointer _pattern;
-    
+
     /** The template to generate. */
     TemplatePointer _template;
 };
@@ -815,7 +908,7 @@ public:
      * template, returning a null pointer if a match couldn't be made.
      */
     ScriptObjectPointer maybeTransform (ScriptObjectPointer form, Scope* scope) const;
-    
+
     /**
      * Returns the type of the object.
      */
@@ -826,7 +919,7 @@ public:
      */
     virtual QString toString () const {
         return "#syntax_rules_" + QString::number((qulonglong)this, 16); }
-    
+
 protected:
 
     /** The list of pattern/template pairs. */
@@ -855,7 +948,7 @@ public:
      * template, returning a null pointer if a match couldn't be made.
      */
     ScriptObjectPointer maybeTransform (ScriptObjectPointer form, Scope* scope) const;
-    
+
     /**
      * Returns the type of the object.
      */
@@ -868,10 +961,10 @@ public:
         return "#ident_syntax_" + QString::number((qulonglong)this, 16); }
 
 protected:
-    
+
     /** The template to use when referencing the identifier. */
     TemplatePointer _template;
-    
+
     /** The (optional) template to use when setting the identifier. */
     PatternTemplate _setPatternTemplate;
 };

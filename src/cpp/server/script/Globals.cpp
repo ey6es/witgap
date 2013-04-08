@@ -17,7 +17,7 @@ static ScriptObjectPointer add (Evaluator* eval, int argc, ScriptObjectPointer* 
             case ScriptObject::IntegerType:
                 isum += static_cast<Integer*>(arg->data())->value();
                 break;
-                
+
             case ScriptObject::FloatType: { // promote to float
                 float fsum = isum + static_cast<Float*>(arg->data())->value();
                 for (arg++; arg != end; arg++) {
@@ -25,11 +25,11 @@ static ScriptObjectPointer add (Evaluator* eval, int argc, ScriptObjectPointer* 
                         case ScriptObject::IntegerType:
                             fsum += static_cast<Integer*>(arg->data())->value();
                             break;
-                            
+
                         case ScriptObject::FloatType:
                             fsum += static_cast<Float*>(arg->data())->value();
                             break;
-                            
+
                         default:
                             throw QString("Invalid argument.");
                     }
@@ -62,7 +62,7 @@ static ScriptObjectPointer subtract (Evaluator* eval, int argc, ScriptObjectPoin
                     case ScriptObject::IntegerType:
                         isum -= static_cast<Integer*>(arg->data())->value();
                         break;
-                        
+
                     case ScriptObject::FloatType: { // promote to float
                         float fsum = isum - static_cast<Float*>(arg->data())->value();
                         for (arg++; arg != end; arg++) {
@@ -70,11 +70,11 @@ static ScriptObjectPointer subtract (Evaluator* eval, int argc, ScriptObjectPoin
                                 case ScriptObject::IntegerType:
                                     fsum -= static_cast<Integer*>(arg->data())->value();
                                     break;
-                                    
+
                                 case ScriptObject::FloatType:
                                     fsum -= static_cast<Float*>(arg->data())->value();
                                     break;
-                                    
+
                                 default:
                                     throw QString("Invalid argument.");
                             }
@@ -97,16 +97,16 @@ static ScriptObjectPointer subtract (Evaluator* eval, int argc, ScriptObjectPoin
                     case ScriptObject::IntegerType:
                         fsum -= static_cast<Integer*>(arg->data())->value();
                         break;
-                        
+
                     case ScriptObject::FloatType:
                         fsum -= static_cast<Float*>(arg->data())->value();
                         break;
-                        
+
                     default:
                         throw QString("Invalid argument.");
                 }
             }
-            return ScriptObjectPointer(new Float(fsum)); 
+            return ScriptObjectPointer(new Float(fsum));
         }
         default:
             throw QString("Invalid argument.");
@@ -124,7 +124,7 @@ static ScriptObjectPointer multiply (Evaluator* eval, int argc, ScriptObjectPoin
             case ScriptObject::IntegerType:
                 iprod *= static_cast<Integer*>(arg->data())->value();
                 break;
-                
+
             case ScriptObject::FloatType: { // promote to float
                 float fprod = iprod * static_cast<Float*>(arg->data())->value();
                 for (arg++; arg != end; arg++) {
@@ -132,11 +132,11 @@ static ScriptObjectPointer multiply (Evaluator* eval, int argc, ScriptObjectPoin
                         case ScriptObject::IntegerType:
                             fprod *= static_cast<Integer*>(arg->data())->value();
                             break;
-                            
+
                         case ScriptObject::FloatType:
                             fprod *= static_cast<Float*>(arg->data())->value();
                             break;
-                            
+
                         default:
                             throw QString("Invalid argument.");
                     }
@@ -184,11 +184,11 @@ static ScriptObjectPointer divide (Evaluator* eval, int argc, ScriptObjectPointe
                                 case ScriptObject::IntegerType:
                                     fprod /= static_cast<Integer*>(arg->data())->value();
                                     break;
-                                    
+
                                 case ScriptObject::FloatType:
                                     fprod /= static_cast<Float*>(arg->data())->value();
                                     break;
-                                    
+
                                 default:
                                     throw QString("Invalid argument.");
                             }
@@ -211,11 +211,11 @@ static ScriptObjectPointer divide (Evaluator* eval, int argc, ScriptObjectPointe
                     case ScriptObject::IntegerType:
                         fprod /= static_cast<Integer*>(arg->data())->value();
                         break;
-                        
+
                     case ScriptObject::FloatType:
                         fprod /= static_cast<Float*>(arg->data())->value();
                         break;
-                        
+
                     default:
                         throw QString("Invalid argument.");
                 }
@@ -245,13 +245,13 @@ static ScriptObjectPointer equal (Evaluator* eval, int argc, ScriptObjectPointer
                             return Boolean::instance(false);
                         }
                         break;
-                        
+
                     case ScriptObject::FloatType:
                         if (static_cast<Float*>(arg->data())->value() != ival) {
                             return Boolean::instance(false);
                         }
                         break;
-                        
+
                     default:
                         throw QString("Invalid argument.");
                 }
@@ -267,13 +267,13 @@ static ScriptObjectPointer equal (Evaluator* eval, int argc, ScriptObjectPointer
                             return Boolean::instance(false);
                         }
                         break;
-                        
+
                     case ScriptObject::FloatType:
                         if (static_cast<Float*>(arg->data())->value() != fval) {
                             return Boolean::instance(false);
                         }
                         break;
-                        
+
                     default:
                         throw QString("Invalid argument.");
                 }
@@ -340,10 +340,10 @@ static ScriptObjectPointer zero (Evaluator* eval, int argc, ScriptObjectPointer*
     switch ((*argv)->type()) {
         case ScriptObject::IntegerType:
             return Boolean::instance(static_cast<Integer*>(argv->data())->value() == 0);
-            
+
         case ScriptObject::FloatType:
             return Boolean::instance(static_cast<Float*>(argv->data())->value() == 0);
-            
+
         default:
             throw QString("Invalid argument.");
     }
@@ -492,7 +492,7 @@ static ScriptObjectPointer append (Evaluator* eval, int argc, ScriptObjectPointe
         }
         List* list = static_cast<List*>(arg->data());
         contents.append(list->contents());
-    } 
+    }
     return eval->listInstance(contents);
 }
 
@@ -608,44 +608,44 @@ static ScriptObjectPointer procedure (Evaluator* eval, int argc, ScriptObjectPoi
 static Scope createGlobalScope ()
 {
     Scope scope(0, true);
-    
+
     scope.addVariable("+", add);
     scope.addVariable("-", subtract);
     scope.addVariable("*", multiply);
     scope.addVariable("/", divide);
-    
+
     scope.addVariable("=", equal);
     scope.addVariable("<", less);
     scope.addVariable(">", greater);
     scope.addVariable("<=", lessEqual);
     scope.addVariable(">=", greaterEqual);
-    
+
     scope.addVariable("zero?", zero);
-    
+
     scope.addVariable("not", notfunc);
     scope.addVariable("boolean=?", booleansEqual);
-    
+
     scope.addVariable("symbol->string", symbolToString);
     scope.addVariable("string->symbol", stringToSymbol);
     scope.addVariable("symbol=?", symbolsEqual);
-    
+
     scope.addVariable("null?", null);
     scope.addVariable("list", ScriptObjectPointer(), listProcedure());
     scope.addVariable("append", ScriptObjectPointer(), appendProcedure());
     scope.addVariable("length", length);
     scope.addVariable("reverse", reverse);
-    
+
     scope.addVariable("list?", listp);
     scope.addVariable("boolean?", boolean);
     scope.addVariable("symbol?", symbol);
     scope.addVariable("number?", number);
     scope.addVariable("string?", string);
     scope.addVariable("procedure?", procedure);
-    
+
     ScriptObjectPointer callcc(new CaptureProcedure());
     scope.addVariable("call-with-current-continuation", ScriptObjectPointer(), callcc);
     scope.addVariable("call/cc", ScriptObjectPointer(), callcc);
-    
+
     return scope;
 }
 

@@ -34,30 +34,67 @@ ScriptObjectPointer Parser::parseDatum ()
             }
             return ScriptObjectPointer(new List(contents, position));
         }
+        case Lexer::Vector: {
+            ScriptPosition position = _lexer.position();
+            QList<ScriptObjectPointer> contents;
+            ScriptObjectPointer datum;
+            while (!(datum = parseDatum()).isNull() &&
+                    datum->type() != ScriptObject::SentinelType) {
+                contents.append(datum);
+            }
+            if (datum.isNull()) {
+                throw ScriptError("Missing end parenthesis.", position);
+            }
+            return ScriptObjectPointer(new Vector(contents, position));
+        }
+        case Lexer::ByteVector: {
+            ScriptPosition position = _lexer.position();
+            QByteArray contents;
+            ScriptObjectPointer datum;
+            while (!(datum = parseDatum()).isNull() &&
+                    datum->type() != ScriptObject::SentinelType) {
+                ScriptPosition dpos = static_cast<Datum*>(datum.data())->position();
+                if (datum->type() != ScriptObject::IntegerType) {
+                    throw ScriptError("Invalid byte value.", dpos);
+                }
+                int value = static_cast<Integer*>(datum.data())->value();
+                if (value < 0 || value > 255) {
+                    throw ScriptError("Invalid byte value.", dpos);
+                }
+                contents.append(value);
+            }
+            if (datum.isNull()) {
+                throw ScriptError("Missing end parenthesis.", position);
+            }
+            return ScriptObjectPointer(new ByteVector(contents, position));
+        }
         case ')':
             return ScriptObjectPointer(new Sentinel(_lexer.position()));
 
-        case '\'': {
-            ScriptPosition position = _lexer.position();
-            QList<ScriptObjectPointer> contents;
-            contents.append(ScriptObjectPointer(new Symbol("quote", position)));
-            contents.append(parseDatum());
-            return ScriptObjectPointer(new List(contents, position));
-        }
-        case '`': {
-            ScriptPosition position = _lexer.position();
-            QList<ScriptObjectPointer> contents;
-            contents.append(ScriptObjectPointer(new Symbol("quasiquote", position)));
-            contents.append(parseDatum());
-            return ScriptObjectPointer(new List(contents, position));
-        }
-        case ',': {
-            ScriptPosition position = _lexer.position();
-            QList<ScriptObjectPointer> contents;
-            contents.append(ScriptObjectPointer(new Symbol("unquote", position)));
-            contents.append(parseDatum());
-            return ScriptObjectPointer(new List(contents, position));
-        }
+        case '\'':
+            return parseAbbreviation("quote");
+
+        case '`':
+            return parseAbbreviation("quasiquote");
+
+        case ',':
+            return parseAbbreviation("unquote");
+
+        case Lexer::UnquoteSplicing:
+            return parseAbbreviation("unquote-splicing");
+
+        case Lexer::Syntax:
+            return parseAbbreviation("syntax");
+
+        case Lexer::Quasisyntax:
+            return parseAbbreviation("quasisyntax");
+
+        case Lexer::Unsyntax:
+            return parseAbbreviation("unsyntax");
+
+        case Lexer::UnsyntaxSplicing:
+            return parseAbbreviation("unsyntax-splicing");
+
         case Lexer::NoLexeme:
             return ScriptObjectPointer();
 
@@ -79,4 +116,13 @@ ScriptObjectPointer Parser::parseDatum ()
         default:
             throw ScriptError("Unrecognized lexeme.", _lexer.position());
     }
+}
+
+ScriptObjectPointer Parser::parseAbbreviation (const QString& symbol)
+{
+    ScriptPosition position = _lexer.position();
+    QList<ScriptObjectPointer> contents;
+    contents.append(ScriptObjectPointer(new Symbol(symbol, position)));
+    contents.append(parseDatum());
+    return ScriptObjectPointer(new List(contents, position));
 }

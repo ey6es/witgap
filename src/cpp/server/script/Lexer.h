@@ -14,7 +14,8 @@ class Lexer
 public:
 
     /** The non-character lexeme types. */
-    enum LexemeType { NoLexeme, Identifier = 0x10000, Boolean, Integer, Float, String };
+    enum LexemeType { NoLexeme, Identifier = 0x10000, Boolean, Integer, Float, String, Vector,
+        ByteVector, UnquoteSplicing, Syntax, Quasisyntax, Unsyntax, UnsyntaxSplicing };
 
     /**
      * Creates a new lexer to analyze the provided expression.

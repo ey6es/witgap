@@ -33,6 +33,12 @@ protected:
      */
     ScriptObjectPointer parseDatum ();
 
+    /**
+     * Parses the next datum and returns it as the second element in a list starting with the
+     * supplied symbol.  Throws ScriptError if a parse error occurs.
+     */
+    ScriptObjectPointer parseAbbreviation (const QString& symbol);
+
     /** The lexer that breaks the expression up into lexemes. */
     Lexer _lexer;
 };

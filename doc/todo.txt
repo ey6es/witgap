@@ -27,8 +27,9 @@ Currency:
 - Start with soft: credits
 
 Player stats:
-- HP?
+- HP (max/current)
 - Level?
+- Stats (Strength, agility, luck, ...)
 - Skills?
 
 Friends:
@@ -42,6 +43,15 @@ Clubs:
 - Dues
 - Ranks
 
+Billing:
+- Microcurrency packages
+- Other items? (generic system)
+
+Procedural scene generation:
+- Enter at any location
+- Configurable, with layers
+- Allow/store changes/changed blocks
+
 Proper instance/scene maintenance (remove after N minutes of disuse)
 
 Scene persistence
@@ -50,5 +60,3 @@ Scene persistence
 - Broadcast changes to all instances?
 
 Anonymous users should be users, not just sessions
-
-

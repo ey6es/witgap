@@ -79,7 +79,7 @@ int Scope::addConstant (ScriptObjectPointer value)
     _constants.append(value);
     return _constants.size() - 1;
 }
-     
+
 Evaluator::Evaluator (const QString& source) :
     _source(source),
     _scope(globalScope(), true),
@@ -136,7 +136,7 @@ static void compileSyntax (
     }
     for (int ii = 2; ii < csize; ii++) {
         compile(contents.at(ii), &subscope, top, allowDef, tailCall && ii == csize - 1, out);
-    }   
+    }
 }
 
 /**
@@ -231,7 +231,7 @@ static void compileLambda (List* list, Scope* scope, Bytecode& out)
         throw ScriptError("Function has no body.", list->position());
     }
     bytecode.append(ReturnOp);
-    
+
     ScriptObjectPointer lambda(new Lambda(firstArgs, restArg,
         subscope.variableCount(), subscope.constants(), bytecode));
     out.append(LambdaOp, scope->addConstant(lambda));
@@ -271,7 +271,7 @@ static void compileQuasiquote (List* list, Scope* scope, Bytecode& out)
                 out.append(CallOp);
                 out.associate(sublist->position());
                 continue;
-                
+
             } else if (name == "unquote-splicing") {
                 if (csize != 2) {
                     throw ScriptError("Invalid expression.", sublist->position());
@@ -298,11 +298,13 @@ static void compile (
         case ScriptObject::IntegerType:
         case ScriptObject::FloatType:
         case ScriptObject::StringType:
+        case ScriptObject::VectorType:
+        case ScriptObject::ByteVectorType:
             compileDeferred(scope, top, out);
             out.append(ConstantOp, scope->addConstant(expr));
             maybeAppendPop(top, tailCall, out);
             return;
-            
+
         case ScriptObject::VariableType: {
             compileDeferred(scope, top, out);
             Variable* variable = static_cast<Variable*>(expr.data());
@@ -312,7 +314,7 @@ static void compile (
         }
         case ScriptObject::SyntaxRulesType:
             throw ScriptError("Invalid macro use.", ScriptPosition());
-            
+
         case ScriptObject::IdentifierSyntaxType: {
             IdentifierSyntax* syntax = static_cast<IdentifierSyntax*>(expr.data());
             compile(syntax->generate(), scope, top, allowDef, tailCall, out);
@@ -364,13 +366,13 @@ static void compile (
                             Symbol* symbol = static_cast<Symbol*>(cadr.data());
                             scope->define(symbol->name(),
                                 createMacroTransformer(contents.at(2), scope));
-                                
+
                         } else if (name == "let-syntax") {
                             compileSyntax(list, scope, top, tailCall, allowDef, false, out);
-                        
+
                         } else if (name == "letrec-syntax") {
                             compileSyntax(list, scope, top, tailCall, allowDef, true, out);
-                            
+
                         } else if (name == "define") {
                             if (!(allowDef && out.isEmpty())) {
                                 throw ScriptError("Definitions not allowed here.",
@@ -390,7 +392,7 @@ static void compile (
 
                                     } else if (csize == 3) {
                                         scope->addVariable(variable->name(), contents.at(2));
-                                        
+
                                     } else {
                                         throw ScriptError("Invalid definition.", list->position());
                                     }
@@ -427,12 +429,12 @@ static void compile (
                                 }
                                 default:
                                     throw ScriptError("Invalid definition.", list->position());
-                            }           
+                            }
                         } else if (name == "lambda") {
                             compileDeferred(scope, top, out);
                             compileLambda(list, scope, out);
                             maybeAppendPop(top, tailCall, out);
-                            
+
                         } else if (name == "set!") {
                             if (contents.size() != 3) {
                                 throw ScriptError("Invalid expression.", list->position());
@@ -451,7 +453,7 @@ static void compile (
                                 }
                                 case ScriptObject::SyntaxRulesType:
                                     throw ScriptError("Invalid macro use.", list->position());
-                                    
+
                                 case ScriptObject::IdentifierSyntaxType: {
                                     IdentifierSyntax* syntax = static_cast<IdentifierSyntax*>(
                                         variable.data());
@@ -485,7 +487,7 @@ static void compile (
                                         case ScriptObject::SyntaxRulesType:
                                             throw ScriptError("Invalid macro use.",
                                                 list->position());
-                                            
+
                                         case ScriptObject::IdentifierSyntaxType: {
                                             IdentifierSyntax* syntax =
                                                 static_cast<IdentifierSyntax*>(binding.data());
@@ -511,7 +513,7 @@ static void compile (
                             compileDeferred(scope, top, out);
                             out.append(ConstantOp, scope->addConstant(contents.at(1)));
                             maybeAppendPop(top, tailCall, out);
-                        
+
                         } else if (name == "quasiquote") {
                             if (contents.size() != 2) {
                                 throw ScriptError("Invalid expression.", list->position());
@@ -525,7 +527,7 @@ static void compile (
                                 compileQuasiquote(list, scope, out);
                             }
                             maybeAppendPop(top, tailCall, out);
-                            
+
                         } else if (name == "if") {
                             int csize = contents.size();
                             if (csize != 3 && csize != 4) {
@@ -547,7 +549,7 @@ static void compile (
                             out.append(thencode);
                             out.append(elsecode);
                             maybeAppendPop(top, tailCall, out);
-                            
+
                         } else if (name == "begin") {
                             int csize = contents.size();
                             if (top) {
@@ -565,7 +567,7 @@ static void compile (
                                     out.append(PopOp);
                                 }
                                 compile(contents.at(lastIdx), scope, false, false, tailCall, out);
-                            }                
+                            }
                         } else {
                             throw ScriptError("Unresolved symbol.", symbol->position());
                         }
@@ -580,7 +582,7 @@ static void compile (
                                 throw ScriptError("No pattern match.", list->position());
                             }
                             compile(transformed, scope, top, allowDef, tailCall, out);
-                            return;     
+                            return;
                         }
                     }
                 }
@@ -606,14 +608,14 @@ ScriptObjectPointer Evaluator::evaluate (const QString& expr)
     Invocation* invocation = static_cast<Invocation*>(_scope.invocation().data());
     LambdaProcedure* proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
     Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
-    Bytecode bytecode;    
+    Bytecode bytecode;
     while (!(datum = parser.parse()).isNull()) {
         compile(datum, &_scope, false, true, false, bytecode);
-        
+
         if (bytecode.isEmpty()) {
             compileDeferred(&_scope, true, bytecode);
             bytecode.append(LambdaExitOp);
-            
+
         } else {
             bytecode.append(ExitOp);
         }
@@ -623,7 +625,7 @@ ScriptObjectPointer Evaluator::evaluate (const QString& expr)
         _registers.instructionIdx = lambda->bytecode().length();
         lambda->bytecode().append(bytecode);
         bytecode.clear();
-    
+
         result = execute();
     }
     return result;
@@ -654,21 +656,21 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                 _registers.operandCount++;
                 break;
 
-            case SetVariableOp: 
+            case SetVariableOp:
                 invocation->setVariable(
                     bytecode->intAt(_registers.instructionIdx),
                     bytecode->intAt(_registers.instructionIdx + 4), _stack.pop());
                 _registers.instructionIdx += 8;
                 _registers.operandCount--;
                 break;
-            
+
             case ResetOperandCountOp:
                 _stack.push(Integer::instance(_registers.operandCount));
                 _registers.operandCount = 0;
                 break;
 
             CallOpLabel:
-            case CallOp: {            
+            case CallOp: {
                 int pidx = _stack.size() - _registers.operandCount;
                 ScriptObjectPointer sproc = _stack.at(pidx);
                 switch (sproc->type()) {
@@ -679,7 +681,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         try {
                             result = nproc->function()(
                                 this, _registers.operandCount - 1, ocptr + 2);
-                                
+
                         } catch (const QString& message) {
                             throwScriptError(message);
                         }
@@ -784,7 +786,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         try {
                             result = nproc->function()(
                                 this, _registers.operandCount - 1, sdata + pidx + 1);
-                                
+
                         } catch (const QString& message) {
                             throwScriptError(message);
                         }
@@ -909,18 +911,18 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                 _stack.pop();
                 _registers.operandCount--;
                 break;
-                
+
             case ExitOp:
                 _registers.operandCount--;
                 return _stack.pop();
-                
+
             case LambdaExitOp:
                 return Unspecified::instance();
-            
+
             case JumpOp:
                 _registers.instructionIdx += bytecode->intAt(_registers.instructionIdx) + 4;
                 break;
-            
+
             case ConditionalJumpOp: {
                 ScriptObjectPointer test = _stack.pop();
                 if (test->type() == ScriptObject::BooleanType &&
@@ -944,7 +946,7 @@ void Evaluator::gc ()
     foreach (const ScriptObjectPointer& element, _stack) {
         element->mark(_lastColor);
     }
-    
+
     // delete anything in our list that isn't marked
     for (QLinkedList<WeakScriptObjectPointer>::iterator it = _collectable.begin();
             it != _collectable.end(); it++) {
@@ -961,6 +963,7 @@ ScriptObjectPointer Evaluator::listInstance (const ScriptObjectPointerList& cont
     if (!contents.isEmpty()) {
         _collectable.append(instance.toWeakRef());
     }
+    return instance;
 }
 
 void Evaluator::throwScriptError (const QString& message)
@@ -971,17 +974,17 @@ void Evaluator::throwScriptError (const QString& message)
             _stack.at(_registers.invocationIdx).data());
         LambdaProcedure* proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
         Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
-        
+
         positions.append(lambda->bytecode().position(_registers.instructionIdx));
         if (_registers.invocationIdx == 0) {
-            break;   
+            break;
         }
         _registers = invocation->registers();
     }
-    
+
     // clear the stack
     _stack.resize(1);
     _registers.operandCount = 0;
-    
+
     throw ScriptError(message, positions);
 }

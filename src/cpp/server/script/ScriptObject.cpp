@@ -67,6 +67,27 @@ bool equivalent (const ScriptObjectPointer& p1, const ScriptObjectPointer& p2)
             }
             return true;
         }
+        case ScriptObject::VectorType: {
+            Vector* v1 = static_cast<Vector*>(p1.data());
+            Vector* v2 = static_cast<Vector*>(p2.data());
+            const QList<ScriptObjectPointer>& c1 = v1->contents();
+            const QList<ScriptObjectPointer>& c2 = v2->contents();
+            int size = c1.size();
+            if (c2.size() != size) {
+                return false;
+            }
+            for (int ii = 0; ii < size; ii++) {
+                if (!equivalent(c1.at(ii), c2.at(ii))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        case ScriptObject::ByteVectorType: {
+            ByteVector* v1 = static_cast<ByteVector*>(p1.data());
+            ByteVector* v2 = static_cast<ByteVector*>(p2.data());
+            return v1->contents() == v2->contents();
+        }
         case ScriptObject::VariableType: {
             Variable* v1 = static_cast<Variable*>(p1.data());
             Variable* v2 = static_cast<Variable*>(p2.data());
@@ -210,6 +231,77 @@ bool List::sweep (int color)
     }
     _contents.clear();
     return false;
+}
+
+ScriptObjectPointer Vector::instance (const ScriptObjectPointerList& contents)
+{
+    static ScriptObjectPointer emptyInstance(new Vector(ScriptObjectPointerList()));
+    return contents.isEmpty() ? emptyInstance : ScriptObjectPointer(new Vector(contents));
+}
+
+ScriptObjectPointer Vector::instance (const ScriptObjectPointer& element)
+{
+    ScriptObjectPointerList contents;
+    contents.append(element);
+    return ScriptObjectPointer(new Vector(contents));
+}
+
+Vector::Vector (const ScriptObjectPointerList& contents, const ScriptPosition& position) :
+    Datum(position),
+    _contents(contents),
+    _color(0)
+{
+}
+
+QString Vector::toString () const
+{
+    QString string("#(");
+    foreach (const ScriptObjectPointer& datum, _contents) {
+        if (string.length() != 2) {
+            string.append(' ');
+        }
+        string.append(datum->toString());
+    }
+    string.append(')');
+    return string;
+}
+
+void Vector::mark (int color)
+{
+    if (_color != color) {
+        _color = color;
+        foreach (const ScriptObjectPointer& element, _contents) {
+            element->mark(color);
+        }
+    }
+}
+
+bool Vector::sweep (int color)
+{
+    if (_color == color) {
+        return true;
+    }
+    _contents.clear();
+    return false;
+}
+
+ByteVector::ByteVector (const QByteArray& contents, const ScriptPosition& position) :
+    Datum(position),
+    _contents(contents)
+{
+}
+
+QString ByteVector::toString () const
+{
+    QString string("#vu8(");
+    for (int ii = 0, nn = _contents.size(); ii < nn; ii++) {
+        if (ii > 0) {
+            string.append(' ');
+        }
+        string.append(QString::number((unsigned char)_contents.at(ii)));
+    }
+    string.append(')');
+    return string;
 }
 
 const ScriptObjectPointer& Unspecified::instance ()

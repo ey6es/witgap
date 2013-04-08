@@ -35,9 +35,17 @@ int Lexer::nextLexeme ()
             continue;
         }
         _position = pos();
-        if (ch == '(' || ch == ')' || ch == '\'' || ch == '`' || ch == ',') {
+        if (ch == '(' || ch == ')' || ch == '\'' || ch == '`') {
             _idx++;
             return ch.unicode();
+        }
+        if (ch == ',') {
+            _idx++;
+            if (_idx < nn && _expr.at(_idx) == '@') {
+                _idx++;
+                return UnquoteSplicing;
+            }
+            return ',';
         }
         if (ch == '\"') {
             _string = "";
@@ -88,16 +96,45 @@ int Lexer::nextLexeme ()
         }
         if (ch == '#') {
             if (_idx + 1 < nn) {
-                QChar nch = _expr.at(_idx + 1);
-                if (nch == 't' || nch == 'T') {
-                    _boolValue = true;
-                    _idx += 2;
-                    return Boolean;
+                switch (_expr.at(_idx + 1).unicode()) {
+                    case 't':
+                    case 'T':
+                        _boolValue = true;
+                        _idx += 2;
+                        return Boolean;
 
-                } else if (nch == 'f' || nch == 'F') {
-                    _boolValue = false;
-                    _idx += 2;
-                    return Boolean;
+                    case 'f':
+                    case 'F':
+                        _boolValue = false;
+                        _idx += 2;
+                        return Boolean;
+
+                    case '(':
+                        _idx += 2;
+                        return Vector;
+
+                    case 'v':
+                        if (_idx + 4 < nn && _expr.mid(_idx + 2, 3) == "u8(") {
+                            _idx += 5;
+                            return ByteVector;
+                        }
+                        break;
+
+                    case '\'':
+                        _idx += 2;
+                        return Syntax;
+
+                    case '`':
+                        _idx += 2;
+                        return Quasisyntax;
+
+                    case ',':
+                        if (_idx + 2 < nn && _expr.at(_idx + 2) == '@') {
+                            _idx += 3;
+                            return UnsyntaxSplicing;
+                        }
+                        _idx += 2;
+                        return Unsyntax;
                 }
             }
         } else if (ch == '+' || ch == '-') {
