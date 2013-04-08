@@ -21,7 +21,7 @@ public:
 
     /** The object types. */
     enum Type { SentinelType, BooleanType, IntegerType, FloatType, StringType, SymbolType,
-        PairType, ListType, VectorType, ByteVectorType, UnspecifiedType, VariableType, LambdaType,
+        PairType, NullType, ListType, VectorType, ByteVectorType, UnspecifiedType, VariableType, LambdaType,
         LambdaProcedureType, InvocationType, NativeProcedureType, CaptureProcedureType,
         EscapeProcedureType, SyntaxRulesType, IdentifierSyntaxType };
 
@@ -349,6 +349,34 @@ protected:
     int _color;
 };
 
+/**
+ * An empty list.
+ */
+class Null : public Datum
+{
+public:
+
+    /**
+     * Returns a reference to the shared instance.
+     */
+    static const ScriptObjectPointer& instance ();
+
+    /**
+     * Creates a new empty list.
+     */
+    Null (const ScriptPosition& position = ScriptPosition());
+
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return NullType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const { return "()"; }
+};
+
 /** A list of script pointers. */
 typedef QList<ScriptObjectPointer> ScriptObjectPointerList;
 
@@ -439,7 +467,7 @@ public:
     /**
      * Returns a reference to the vector contents.
      */
-    const ScriptObjectPointerList& contents () const { return _contents; }
+    ScriptObjectPointerList& contents () { return _contents; }
 
     /**
      * Returns the type of the object.

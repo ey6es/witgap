@@ -1,6 +1,7 @@
 //
 // $Id$
 
+#include <QCoreApplication>
 #include <QtDebug>
 
 #include "script/Evaluator.h"
@@ -445,18 +446,44 @@ static ScriptObjectPointer symbolsEqual (Evaluator* eval, int argc, ScriptObject
 }
 
 /**
- * Checks whether the argument is the empty list.
+ * Creates a new pair from the arguments.
  */
-static ScriptObjectPointer null (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+static ScriptObjectPointer cons (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    return ScriptObjectPointer(new Pair(argv[0], argv[1]));
+}
+
+/**
+ * Returns the value of the argument's car field.
+ */
+static ScriptObjectPointer car (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
     if (argc != 1) {
         throw QString("Requires exactly one argument.");
     }
-    if ((*argv)->type() != ScriptObject::ListType) {
-        return Boolean::instance(false);
+    if ((*argv)->type() != ScriptObject::PairType) {
+        throw QString("Invalid argument.");
     }
-    List* list = static_cast<List*>(argv->data());
-    return Boolean::instance(list->contents().isEmpty());
+    Pair* pair = static_cast<Pair*>(argv->data());
+    return pair->car();
+}
+
+/**
+ * Returns the value of the argument's cdr field.
+ */
+static ScriptObjectPointer cdr (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::PairType) {
+        throw QString("Invalid argument.");
+    }
+    Pair* pair = static_cast<Pair*>(argv->data());
+    return pair->cdr();
 }
 
 /**
@@ -532,6 +559,135 @@ static ScriptObjectPointer reverse (Evaluator* eval, int argc, ScriptObjectPoint
 }
 
 /**
+ * Creates a new vector.
+ */
+static ScriptObjectPointer makeVector (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    ScriptObjectPointer fill = Unspecified::instance();
+    if (argc == 2) {
+        fill = argv[1];
+
+    } else if (argc != 1) {
+        throw QString("Requires one or two arguments.");
+    }
+    if ((*argv)->type() != ScriptObject::IntegerType) {
+        throw QString("Invalid argument.");
+    }
+    Integer* size = static_cast<Integer*>(argv->data());
+    ScriptObjectPointerList contents;
+    for (int ii = 0, nn = size->value(); ii < nn; ii++) {
+        contents.append(fill);
+    }
+    return Vector::instance(contents);
+}
+
+/**
+ * Creates a new vector from the arguments.
+ */
+static ScriptObjectPointer vector (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    ScriptObjectPointerList contents;
+    for (int ii = 0; ii < argc; ii++) {
+        contents.append(argv[ii]);
+    }
+    return Vector::instance(contents);
+}
+
+/**
+ * Returns the length of a vector.
+ */
+static ScriptObjectPointer vectorLength (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::VectorType) {
+        throw QString("Invalid argument.");
+    }
+    Vector* vector = static_cast<Vector*>(argv->data());
+    return Integer::instance(vector->contents().size());
+}
+
+/**
+ * Returns an element of the vector.
+ */
+static ScriptObjectPointer vectorRef (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    if (argv[0]->type() != ScriptObject::VectorType ||
+            argv[1]->type() != ScriptObject::IntegerType) {
+        throw QString("Invalid argument.");
+    }
+    ScriptObjectPointerList& contents = static_cast<Vector*>(argv[0].data())->contents();
+    int idx = static_cast<Integer*>(argv[1].data())->value();
+    if (idx < 0 || idx >= contents.size()) {
+        throw QString("Invalid index.");
+    }
+    return contents.at(idx);
+}
+
+/**
+ * Sets an element of the vector.
+ */
+static ScriptObjectPointer vectorSet (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 3) {
+        throw QString("Requires exactly three arguments.");
+    }
+    if (argv[0]->type() != ScriptObject::VectorType ||
+            argv[1]->type() != ScriptObject::IntegerType) {
+        throw QString("Invalid argument.");
+    }
+    ScriptObjectPointerList& contents = static_cast<Vector*>(argv[0].data())->contents();
+    int idx = static_cast<Integer*>(argv[1].data())->value();
+    if (idx < 0 || idx >= contents.size()) {
+        throw QString("Invalid index.");
+    }
+    contents.replace(idx, argv[2]);
+    return Unspecified::instance();
+}
+
+/**
+ * Fills the vector.
+ */
+static ScriptObjectPointer vectorFill (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    if ((*argv)->type() != ScriptObject::VectorType) {
+        throw QString("Invalid argument.");
+    }
+    Vector* vector = static_cast<Vector*>(argv->data());
+    qFill(vector->contents(), argv[1]);
+    return Unspecified::instance();
+}
+
+/**
+ * Determines whether the argument is a pair.
+ */
+static ScriptObjectPointer pair (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    return Boolean::instance((*argv)->type() == ScriptObject::PairType);
+}
+
+/**
+ * Determines whether the argument is the empty list.
+ */
+static ScriptObjectPointer null (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    return Boolean::instance((*argv)->type() == ScriptObject::NullType);
+}
+
+/**
  * Determines whether the argument is a list.
  */
 static ScriptObjectPointer listp (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -540,6 +696,17 @@ static ScriptObjectPointer listp (Evaluator* eval, int argc, ScriptObjectPointer
         throw QString("Requires exactly one argument.");
     }
     return Boolean::instance((*argv)->type() == ScriptObject::ListType);
+}
+
+/**
+ * Determines whether the argument is a vector.
+ */
+static ScriptObjectPointer vectorp (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    return Boolean::instance((*argv)->type() == ScriptObject::VectorType);
 }
 
 /**
@@ -603,6 +770,30 @@ static ScriptObjectPointer procedure (Evaluator* eval, int argc, ScriptObjectPoi
 }
 
 /**
+ * Exits the application.
+ */
+static ScriptObjectPointer exit (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    int code = 0;
+    if (argc == 1) {
+        ScriptObject::Type type = (*argv)->type();
+        if (type == ScriptObject::BooleanType) {
+            code = static_cast<Boolean*>(argv->data())->value() ? 0 : 1;
+
+        } else if (type == ScriptObject::IntegerType) {
+            code = static_cast<Integer*>(argv->data())->value();
+
+        } else {
+            throw QString("Expected boolean or integer return value.");
+        }
+    } else if (argc != 0) {
+        throw QString("Requires zero or one arguments.");
+    }
+    QCoreApplication::exit(code);
+    return Unspecified::instance();
+}
+
+/**
  * Creates the global scope object.
  */
 static Scope createGlobalScope ()
@@ -629,13 +820,26 @@ static Scope createGlobalScope ()
     scope.addVariable("string->symbol", stringToSymbol);
     scope.addVariable("symbol=?", symbolsEqual);
 
-    scope.addVariable("null?", null);
+    scope.addVariable("cons", cons);
+    scope.addVariable("car", car);
+    scope.addVariable("cdr", cdr);
+
     scope.addVariable("list", ScriptObjectPointer(), listProcedure());
     scope.addVariable("append", ScriptObjectPointer(), appendProcedure());
     scope.addVariable("length", length);
     scope.addVariable("reverse", reverse);
 
+    scope.addVariable("make-vector", makeVector);
+    scope.addVariable("vector", vector);
+    scope.addVariable("vector-length", vectorLength);
+    scope.addVariable("vector-ref", vectorRef);
+    scope.addVariable("vector-set!", vectorSet);
+    scope.addVariable("vector-fill!", vectorFill);
+
+    scope.addVariable("pair?", pair);
+    scope.addVariable("null?", null);
     scope.addVariable("list?", listp);
+    scope.addVariable("vector?", vectorp);
     scope.addVariable("boolean?", boolean);
     scope.addVariable("symbol?", symbol);
     scope.addVariable("number?", number);
@@ -645,6 +849,8 @@ static Scope createGlobalScope ()
     ScriptObjectPointer callcc(new CaptureProcedure());
     scope.addVariable("call-with-current-continuation", ScriptObjectPointer(), callcc);
     scope.addVariable("call/cc", ScriptObjectPointer(), callcc);
+
+    scope.addVariable("exit", exit);
 
     return scope;
 }

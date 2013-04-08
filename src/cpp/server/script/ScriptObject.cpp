@@ -56,6 +56,9 @@ bool equivalent (const ScriptObjectPointer& p1, const ScriptObjectPointer& p2)
             Pair* r2 = static_cast<Pair*>(p2.data());
             return equivalent(r1->car(), r2->car()) && equivalent(r1->cdr(), r2->cdr());
         }
+        case ScriptObject::NullType:
+            return true;
+
         case ScriptObject::ListType: {
             List* l1 = static_cast<List*>(p1.data());
             List* l2 = static_cast<List*>(p2.data());
@@ -222,6 +225,17 @@ bool Pair::sweep (int color)
     _car.clear();
     _cdr.clear();
     return false;
+}
+
+const ScriptObjectPointer& Null::instance ()
+{
+    static ScriptObjectPointer instance(new Null());
+    return instance;
+}
+
+Null::Null (const ScriptPosition& position) :
+    Datum(position)
+{
 }
 
 ScriptObjectPointer List::instance (const ScriptObjectPointerList& contents)
