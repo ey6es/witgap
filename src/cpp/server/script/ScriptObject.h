@@ -238,6 +238,12 @@ class Char : public Datum
 public:
 
     /**
+     * Returns an instance with the specified value.  Values from 0 to 127 are represented as
+     * shared instances.
+     */
+    static ScriptObjectPointer instance (QChar value);
+
+    /**
      * Creates a new character.
      */
     Char (QChar value, const ScriptPosition& position = ScriptPosition());

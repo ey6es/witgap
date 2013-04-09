@@ -12,6 +12,45 @@ Lexer::Lexer (const QString& expr, const QString& source) :
 {
 }
 
+/**
+ * Checks whether the specified character is a delimiter.
+ */
+static bool isDelimiter (QChar ch)
+{
+    return ch.isSpace() || ch == ';' || ch == '#' || ch == '\"' ||
+        ch == '(' || ch == ')' || ch == '[' || ch == ']';
+}
+
+/**
+ * Creates the named character map.
+ */
+static QHash<QString, QChar> createNamedChars ()
+{
+    QHash<QString, QChar> hash;
+    hash.insert("nul", 0x0);
+    hash.insert("alarm", 0x07);
+    hash.insert("backspace", 0x08);
+    hash.insert("tab", 0x09);
+    hash.insert("linefeed", 0x0A);
+    hash.insert("newline", 0x0A);
+    hash.insert("vtab", 0x0B);
+    hash.insert("page", 0x0C);
+    hash.insert("return", 0x0D);
+    hash.insert("esc", 0x1B);
+    hash.insert("space", 0x20);
+    hash.insert("delete", 0x7F);
+    return hash;
+}
+
+/**
+ * Returns a reference to the named character map.
+ */
+static const QHash<QString, QChar>& namedChars ()
+{
+    static QHash<QString, QChar> namedChars = createNamedChars();
+    return namedChars;
+}
+
 int Lexer::nextLexeme ()
 {
     for (int nn = _expr.length(); _idx < nn; _idx++) {
@@ -110,9 +149,36 @@ int Lexer::nextLexeme ()
                         return Boolean;
 
                     case '\\':
-                        _charValue = '#';
-                        _idx += 2;
-                        return Char;
+                        if (_idx + 2 < nn) {
+                            QString string(_expr.at(_idx + 2));
+                            for (_idx += 3; _idx < nn; _idx++) {
+                                QChar ch = _expr.at(_idx);
+                                if (isDelimiter(ch)) {
+                                    break;
+                                }
+                                string.append(ch);
+                            }
+                            if (string.size() == 1) {
+                                _charValue = string.at(0);
+                                return Char;
+                            }
+                            QHash<QString, QChar>::const_iterator it = namedChars().find(string);
+                            if (it != namedChars().constEnd()) {
+                                _charValue = it.value();
+                                return Char;
+                            }
+                            if (string.at(0) != 'x') {
+                                throw ScriptError("Unknown character.", _position);
+                            }
+                            bool ok;
+                            int value = string.remove(0, 1).toInt(&ok, 16);
+                            if (!ok || value < 0) {
+                                throw ScriptError("Invalid character value.", _position);
+                            }
+                            _charValue = value;
+                            return Char;
+                        }
+                        break;
 
                     case '(':
                         _idx += 2;
@@ -204,8 +270,7 @@ int Lexer::nextLexeme ()
         _string = "";
         for (; _idx < nn; _idx++) {
             QChar ch = _expr.at(_idx);
-            if (ch.isSpace() || ch == ';' || ch == '#' || ch == '\"' ||
-                    ch == '(' || ch == ')' || ch == '[' || ch == ']') {
+            if (isDelimiter(ch)) {
                 break;
             }
             _string.append(ch);

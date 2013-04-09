@@ -166,6 +166,26 @@ Float::Float (float value, const ScriptPosition& position) :
 {
 }
 
+/**
+ * Creates the set of shared Char instances.
+ */
+static ScriptObjectPointer* createSharedCharInstances ()
+{
+    ScriptObjectPointer* instances = new ScriptObjectPointer[128];
+    for (int ii = 0; ii < 128; ii++) {
+        instances[ii] = ScriptObjectPointer(new Char(ii));
+    }
+    return instances;
+}
+
+ScriptObjectPointer Char::instance (QChar value)
+{
+    static ScriptObjectPointer* sharedInstances = createSharedCharInstances();
+    int unicode = value.unicode();
+    return (unicode < 128) ? sharedInstances[unicode] :
+        ScriptObjectPointer(new Char(value));
+}
+
 Char::Char (QChar value, const ScriptPosition& position) :
     Datum(position),
     _value(value)
@@ -174,7 +194,7 @@ Char::Char (QChar value, const ScriptPosition& position) :
 
 QString Char::toString () const
 {
-    return "#\\" + QString(_value);
+    return "#\\x" + QString::number(_value.unicode(), 16);
 }
 
 String::String (const QString& contents, const ScriptPosition& position) :

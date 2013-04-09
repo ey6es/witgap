@@ -391,6 +391,76 @@ static ScriptObjectPointer booleansEqual (Evaluator* eval, int argc, ScriptObjec
 }
 
 /**
+ * Converts a character to an integer.
+ */
+static ScriptObjectPointer charToInteger (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::CharType) {
+        throw QString("Invalid argument.");
+    }
+    Char* ch = static_cast<Char*>(argv->data());
+    return Integer::instance(ch->value().unicode());
+}
+
+/**
+ * Converts an integer to a character.
+ */
+static ScriptObjectPointer integerToChar (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::IntegerType) {
+        throw QString("Invalid argument.");
+    }
+    Integer* integer = static_cast<Integer*>(argv->data());
+    return Char::instance(integer->value());
+}
+
+/**
+ * Checks characters for equality.
+ */
+static ScriptObjectPointer charsEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Checks characters for monotonic increase.
+ */
+static ScriptObjectPointer charsLess (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Checks characters for monotonic decrease.
+ */
+static ScriptObjectPointer charsGreater (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Checks characters for monotonic nondecrease.
+ */
+static ScriptObjectPointer charsLessEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Checks characters for monotonic nonincrease.
+ */
+static ScriptObjectPointer charsGreaterEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
  * Converts a symbol to a string.
  */
 static ScriptObjectPointer symbolToString (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -826,6 +896,14 @@ static Scope createGlobalScope ()
 
     scope.addVariable("not", notfunc);
     scope.addVariable("boolean=?", booleansEqual);
+
+    scope.addVariable("char->integer", charToInteger);
+    scope.addVariable("integer->char", integerToChar);
+    scope.addVariable("char=?", charsEqual);
+    scope.addVariable("char<?", charsLess);
+    scope.addVariable("char>?", charsGreater);
+    scope.addVariable("char<=?", charsLessEqual);
+    scope.addVariable("char>=?", charsGreaterEqual);
 
     scope.addVariable("symbol->string", symbolToString);
     scope.addVariable("string->symbol", stringToSymbol);
