@@ -116,8 +116,9 @@ Datum::Datum (const ScriptPosition& position) :
 {
 }
 
-Sentinel::Sentinel (const ScriptPosition& position) :
-    Datum(position)
+Sentinel::Sentinel (QChar character, const ScriptPosition& position) :
+    Datum(position),
+    _character(character)
 {
 }
 

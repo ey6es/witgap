@@ -20,8 +20,12 @@ ScriptObjectPointer Parser::parse ()
 
 ScriptObjectPointer Parser::parseDatum ()
 {
+    QChar bracket = ']';
     switch (_lexer.nextLexeme()) {
-        case '(': {
+        case '(':
+            bracket = ')';
+
+        case '[': {
             ScriptPosition position = _lexer.position();
             QList<ScriptObjectPointer> contents;
             ScriptObjectPointer datum;
@@ -31,6 +35,10 @@ ScriptObjectPointer Parser::parseDatum ()
             }
             if (datum.isNull()) {
                 throw ScriptError("Missing end parenthesis.", position);
+            }
+            Sentinel* sentinel = static_cast<Sentinel*>(datum.data());
+            if (sentinel->character() != bracket) {
+                throw ScriptError("Expected '" + QString(bracket) + "'.", sentinel->position());
             }
             return ScriptObjectPointer(new List(contents, position));
         }
@@ -44,6 +52,10 @@ ScriptObjectPointer Parser::parseDatum ()
             }
             if (datum.isNull()) {
                 throw ScriptError("Missing end parenthesis.", position);
+            }
+            Sentinel* sentinel = static_cast<Sentinel*>(datum.data());
+            if (sentinel->character() != ')') {
+                throw ScriptError("Expected ')'.", sentinel->position());
             }
             return ScriptObjectPointer(new Vector(contents, position));
         }
@@ -66,10 +78,17 @@ ScriptObjectPointer Parser::parseDatum ()
             if (datum.isNull()) {
                 throw ScriptError("Missing end parenthesis.", position);
             }
+            Sentinel* sentinel = static_cast<Sentinel*>(datum.data());
+            if (sentinel->character() != ')') {
+                throw ScriptError("Expected ')'.", sentinel->position());
+            }
             return ScriptObjectPointer(new ByteVector(contents, position));
         }
         case ')':
-            return ScriptObjectPointer(new Sentinel(_lexer.position()));
+            return ScriptObjectPointer(new Sentinel(')', _lexer.position()));
+
+        case ']':
+            return ScriptObjectPointer(new Sentinel(']', _lexer.position()));
 
         case '\'':
             return parseAbbreviation("quote");

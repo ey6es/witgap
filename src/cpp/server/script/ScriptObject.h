@@ -97,7 +97,12 @@ public:
     /**
      * Creates a new sentinel.
      */
-    Sentinel (const ScriptPosition& position);
+    Sentinel (QChar character, const ScriptPosition& position);
+
+    /**
+     * Returns the bracket character.
+     */
+    QChar character () const { return _character; }
 
     /**
      * Returns the type of the object.
@@ -108,6 +113,11 @@ public:
      * Returns a string representation of the object.
      */
     virtual QString toString () const { return "{sentinel}"; }
+
+protected:
+
+    /** The bracket character. */
+    QChar _character;
 };
 
 /**
