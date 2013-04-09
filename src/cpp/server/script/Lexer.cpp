@@ -118,10 +118,50 @@ int Lexer::nextLexeme ()
                         case '\\':
                             break;
 
+                        case 'a':
+                            ch = '\a';
+                            break;
+
+                        case 'b':
+                            ch = '\b';
+                            break;
+
+                        case 't':
+                            ch = '\t';
+                            break;
+
                         case 'n':
                             ch = '\n';
                             break;
 
+                        case 'v':
+                            ch = '\v';
+                            break;
+
+                        case 'f':
+                            ch = '\f';
+                            break;
+
+                        case 'r':
+                            ch = '\r';
+                            break;
+
+                        case 'x': {
+                            QString string;
+                            for (_idx++; _idx < nn; _idx++) {
+                                QChar ch = _expr.at(_idx);
+                                if (ch == ';') {
+                                    break;
+                                }
+                                string.append(ch);
+                            }
+                            bool ok;
+                            ch = string.toInt(&ok, 16);
+                            if (!ok) {
+                                throw ScriptError("Invalid character code.", pos());
+                            }
+                            break;
+                        }
                         default:
                             throw ScriptError("Unrecognized escape.", pos());
                     }
@@ -171,11 +211,10 @@ int Lexer::nextLexeme ()
                                 throw ScriptError("Unknown character.", _position);
                             }
                             bool ok;
-                            int value = string.remove(0, 1).toInt(&ok, 16);
-                            if (!ok || value < 0) {
+                            _charValue = string.remove(0, 1).toInt(&ok, 16);
+                            if (!ok) {
                                 throw ScriptError("Invalid character value.", _position);
                             }
-                            _charValue = value;
                             return Char;
                         }
                         break;
