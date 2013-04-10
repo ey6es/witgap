@@ -299,6 +299,8 @@ static void compile (
         case ScriptObject::FloatType:
         case ScriptObject::CharType:
         case ScriptObject::StringType:
+        case ScriptObject::PairType:
+        case ScriptObject::NullType:
         case ScriptObject::VectorType:
         case ScriptObject::ByteVectorType:
             compileDeferred(scope, top, out);

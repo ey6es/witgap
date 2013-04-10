@@ -461,6 +461,109 @@ static ScriptObjectPointer charsGreaterEqual (Evaluator* eval, int argc, ScriptO
 }
 
 /**
+ * Makes a new string.
+ */
+static ScriptObjectPointer makeString (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Makes a string out of the arguments.
+ */
+static ScriptObjectPointer string (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Returns the length of a string.
+ */
+static ScriptObjectPointer stringLength (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Returns a character within a string.
+ */
+static ScriptObjectPointer stringRef (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Checks strings for equality.
+ */
+static ScriptObjectPointer stringsEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Checks strings for monotonic increase.
+ */
+static ScriptObjectPointer stringsLess (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Checks strings for monotonic decrease.
+ */
+static ScriptObjectPointer stringsGreater (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Checks strings for monotonic nondecrease.
+ */
+static ScriptObjectPointer stringsLessEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Checks strings for monotonic nonincrease.
+ */
+static ScriptObjectPointer stringsGreaterEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Returns a substring of a string.
+ */
+static ScriptObjectPointer substring (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Appends strings together.
+ */
+static ScriptObjectPointer stringAppend (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Returns a copy of a string.
+ */
+static ScriptObjectPointer stringCopy (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
+    String* string = static_cast<String*>(argv->data());
+    return ScriptObjectPointer(new String(string->contents()));
+}
+
+/**
  * Converts a symbol to a string.
  */
 static ScriptObjectPointer symbolToString (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -827,7 +930,7 @@ static ScriptObjectPointer charp (Evaluator* eval, int argc, ScriptObjectPointer
 /**
  * Determines whether the argument is a string.
  */
-static ScriptObjectPointer string (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+static ScriptObjectPointer stringp (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
     if (argc != 1) {
         throw QString("Requires exactly one argument.");
@@ -905,6 +1008,19 @@ static Scope createGlobalScope ()
     scope.addVariable("char<=?", charsLessEqual);
     scope.addVariable("char>=?", charsGreaterEqual);
 
+    scope.addVariable("make-string", makeString);
+    scope.addVariable("string", string);
+    scope.addVariable("string-length", stringLength);
+    scope.addVariable("string-ref", stringRef);
+    scope.addVariable("string=?", stringsEqual);
+    scope.addVariable("string<?", stringsLess);
+    scope.addVariable("string>?", stringsGreater);
+    scope.addVariable("string<=?", stringsLessEqual);
+    scope.addVariable("string>=?", stringsGreaterEqual);
+    scope.addVariable("substring", substring);
+    scope.addVariable("string-append", stringAppend);
+    scope.addVariable("string-copy", stringCopy);
+
     scope.addVariable("symbol->string", symbolToString);
     scope.addVariable("string->symbol", stringToSymbol);
     scope.addVariable("symbol=?", symbolsEqual);
@@ -933,7 +1049,7 @@ static Scope createGlobalScope ()
     scope.addVariable("symbol?", symbol);
     scope.addVariable("number?", number);
     scope.addVariable("char?", charp);
-    scope.addVariable("string?", string);
+    scope.addVariable("string?", stringp);
     scope.addVariable("procedure?", procedure);
 
     ScriptObjectPointer callcc(new CaptureProcedure());

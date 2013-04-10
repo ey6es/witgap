@@ -360,6 +360,11 @@ public:
     const ScriptObjectPointer& car () const { return _car; }
 
     /**
+     * Sets the value of the cdr field (used in parsing).
+     */
+    void setCdr (const ScriptObjectPointer& cdr) { _cdr = cdr; }
+
+    /**
      * Returns a reference to the value of the cdr field.
      */
     const ScriptObjectPointer& cdr () const { return _cdr; }
