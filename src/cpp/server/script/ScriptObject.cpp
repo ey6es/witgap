@@ -238,9 +238,26 @@ Pair::Pair (const ScriptObjectPointer& car, const ScriptObjectPointer& cdr,
 QString Pair::toString () const
 {
     QString string("(");
-    string.append(_car->toString());
-    string.append(" . ");
-    string.append(_cdr->toString());
+
+    for (const Pair* pair = this;; ) {
+        string.append(pair->car()->toString());
+        switch (pair->cdr()->type()) {
+            case PairType:
+                string.append(' ');
+                pair = static_cast<Pair*>(pair->cdr().data());
+                break;
+
+            case NullType:
+                goto outerBreak;
+
+            default:
+                string.append(" . ");
+                string.append(pair->cdr()->toString());
+                goto outerBreak;
+        }
+    }
+    outerBreak:
+
     string.append(')');
     return string;
 }

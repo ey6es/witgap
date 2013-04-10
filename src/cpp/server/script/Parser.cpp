@@ -184,8 +184,11 @@ ScriptObjectPointer Parser::parseDatum ()
 ScriptObjectPointer Parser::parseAbbreviation (const QString& symbol)
 {
     ScriptPosition position = _lexer.position();
-    QList<ScriptObjectPointer> contents;
-    contents.append(ScriptObjectPointer(new Symbol(symbol, position)));
-    contents.append(parseDatum());
-    return ScriptObjectPointer(new List(contents, position));
+    ScriptObjectPointer datum = parseDatum();
+    Datum* dptr = static_cast<Datum*>(datum.data());
+    return ScriptObjectPointer(new Pair(
+        ScriptObjectPointer(new Symbol(symbol, position)),
+        ScriptObjectPointer(new Pair(datum, ScriptObjectPointer(
+            new Null(dptr->position())), dptr->position())),
+        position));
 }
