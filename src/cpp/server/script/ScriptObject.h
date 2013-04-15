@@ -19,8 +19,8 @@ typedef QSharedPointer<ScriptObject> ScriptObjectPointer;
 /** A weak pointer to a script object. */
 typedef QWeakPointer<ScriptObject> WeakScriptObjectPointer;
 
-/** A list of script pointers. */
-typedef QList<ScriptObjectPointer> ScriptObjectPointerList;
+/** A vector of script pointers. */
+typedef QVector<ScriptObjectPointer> ScriptObjectPointerVector;
 
 /**
  * Base class for script objects.
@@ -65,7 +65,7 @@ public:
      *
      * @param ok if nonzero, a boolean to contain whether or not the object is a list.
      */
-    virtual ScriptObjectPointerList listContents (bool* ok = 0) const;
+    virtual ScriptObjectPointerVector listContents (bool* ok = 0) const;
 
     /**
      * Marks the object with the specified color, recursively marking any objects to which
@@ -410,7 +410,7 @@ public:
      *
      * @param ok if nonzero, a boolean to contain whether or not the object is a list.
      */
-    virtual ScriptObjectPointerList listContents (bool* ok = 0) const;
+    virtual ScriptObjectPointerVector listContents (bool* ok = 0) const;
 
     /**
      * Marks the object with the specified color, recursively marking any objects to which
@@ -473,7 +473,7 @@ public:
      *
      * @param ok if nonzero, a boolean to contain whether or not the object is a list.
      */
-    virtual ScriptObjectPointerList listContents (bool* ok = 0) const;
+    virtual ScriptObjectPointerVector listContents (bool* ok = 0) const;
 };
 
 /**
@@ -487,7 +487,7 @@ public:
      * Returns an instance with the specified contents.  The empty vector is represented as a shared
      * instance.
      */
-    static ScriptObjectPointer instance (const ScriptObjectPointerList& contents);
+    static ScriptObjectPointer instance (const ScriptObjectPointerVector& contents);
 
     /**
      * Returns an instance containing the single specified element.
@@ -497,13 +497,13 @@ public:
     /**
      * Creates a new vector.
      */
-    Vector (const ScriptObjectPointerList& contents,
+    Vector (const ScriptObjectPointerVector& contents,
         const ScriptPosition& position = ScriptPosition());
 
     /**
      * Returns a reference to the vector contents.
      */
-    ScriptObjectPointerList& contents () { return _contents; }
+    ScriptObjectPointerVector& contents () { return _contents; }
 
     /**
      * Returns the type of the object.
@@ -530,7 +530,7 @@ public:
 protected:
 
     /** The contents of the vector. */
-    ScriptObjectPointerList _contents;
+    ScriptObjectPointerVector _contents;
 
     /** The mark color. */
     int _color;
@@ -644,7 +644,7 @@ public:
      * Creates a new lambda expression.
      */
     Lambda (int scalarArgumentCount, bool listArgument, int variableCount,
-        const QList<ScriptObjectPointer>& constants, const Bytecode& bytecode);
+        const ScriptObjectPointerVector& constants, const Bytecode& bytecode);
 
     /**
      * Creates a new empty lambda expression.
@@ -674,7 +674,7 @@ public:
     /**
      * Returns a reference to the constants.
      */
-    ScriptObjectPointerList& constants () { return _constants; }
+    ScriptObjectPointerVector& constants () { return _constants; }
 
     /**
      * Returns a reference to the bytecode.
@@ -703,7 +703,7 @@ protected:
     int _variableCount;
 
     /** The function constants. */
-    ScriptObjectPointerList _constants;
+    ScriptObjectPointerVector _constants;
 
     /** The function bytecode. */
     Bytecode _bytecode;

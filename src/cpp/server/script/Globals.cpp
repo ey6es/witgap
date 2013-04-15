@@ -549,6 +549,22 @@ static ScriptObjectPointer stringAppend (Evaluator* eval, int argc, ScriptObject
 }
 
 /**
+ * Converts a string to a list of characters.
+ */
+static ScriptObjectPointer stringToList (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Converts a list of characters to a string.
+ */
+static ScriptObjectPointer listToString (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
  * Returns a copy of a string.
  */
 static ScriptObjectPointer stringCopy (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -672,7 +688,43 @@ static ScriptObjectPointer list (Evaluator* eval, int argc, ScriptObjectPointer*
  */
 static ScriptObjectPointer append (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc == 0) {
+        throw QString("Requires at least one argument.");
+    }
+    ScriptObjectPointer head, tail;
+    for (ScriptObjectPointer* arg = argv, *end = argv + argc; arg != end; arg++) {
+        for (ScriptObjectPointer rest = *arg;; ) {
+            switch (rest->type()) {
+                case ScriptObject::PairType: {
+                    Pair* pair = static_cast<Pair*>(rest.data());
+                    if (head.isNull()) {
+                        if (arg == end - 1) {
+                            return *arg;
+                        }
+                        head = tail = eval->pairInstance(pair->car());
+
+                    } else {
+                        ScriptObjectPointer ntail = eval->pairInstance(pair->car());
+                        static_cast<Pair*>(tail.data())->setCdr(ntail);
+                        tail = ntail;
+                    }
+                    rest = pair->cdr();
+                    break;
+                }
+                case ScriptObject::NullType:
+                    goto outerBreak;
+
+                default:
+                    throw QString("Invalid argument.");
+            }
+        }
+        outerBreak: ;
+    }
+    if (head.isNull()) {
+        return Null::instance();
+    }
+    static_cast<Pair*>(tail.data())->setCdr(Null::instance());
+    return head;
 }
 
 /**
@@ -695,7 +747,26 @@ static ScriptObjectPointer length (Evaluator* eval, int argc, ScriptObjectPointe
  */
 static ScriptObjectPointer reverse (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    ScriptObjectPointer rest = *argv;
+    ScriptObjectPointer head = Null::instance();
+    for (ScriptObjectPointer rest = *argv;; ) {
+        switch (rest->type()) {
+            case ScriptObject::PairType: {
+                Pair* pair = static_cast<Pair*>(rest.data());
+                head = eval->pairInstance(pair->car(), head);
+                rest = pair->cdr();
+                break;
+            }
+            case ScriptObject::NullType:
+                return head;
+
+            default:
+                throw QString("Invalid argument.");
+        }
+    }
 }
 
 /**
@@ -703,7 +774,34 @@ static ScriptObjectPointer reverse (Evaluator* eval, int argc, ScriptObjectPoint
  */
 static ScriptObjectPointer listTail (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    if (argv[1]->type() != ScriptObject::IntegerType) {
+        throw QString("Invalid argument.");
+    }
+    int index = static_cast<Integer*>(argv[1].data())->value();
+    if (index < 0) {
+        throw QString("Invalid argument.");
+    }
+    for (ScriptObjectPointer rest = *argv;; ) {
+        switch (rest->type()) {
+            case ScriptObject::PairType: {
+                Pair* pair = static_cast<Pair*>(rest.data());
+                if (index-- == 0) {
+                    return rest;
+                }
+                rest = pair->cdr();
+                break;
+            }
+            case ScriptObject::NullType:
+                if (index == 0) {
+                    return rest;
+                }
+            default:
+                throw QString("Invalid argument.");
+        }
+    }
 }
 
 /**
@@ -711,7 +809,30 @@ static ScriptObjectPointer listTail (Evaluator* eval, int argc, ScriptObjectPoin
  */
 static ScriptObjectPointer listRef (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    if (argv[1]->type() != ScriptObject::IntegerType) {
+        throw QString("Invalid argument.");
+    }
+    int index = static_cast<Integer*>(argv[1].data())->value();
+    if (index < 0) {
+        throw QString("Invalid argument.");
+    }
+    for (ScriptObjectPointer rest = *argv;; ) {
+        switch (rest->type()) {
+            case ScriptObject::PairType: {
+                Pair* pair = static_cast<Pair*>(rest.data());
+                if (index-- == 0) {
+                    return pair->car();
+                }
+                rest = pair->cdr();
+                break;
+            }
+            default:
+                throw QString("Invalid argument.");
+        }
+    }
 }
 
 /**
@@ -730,7 +851,7 @@ static ScriptObjectPointer makeVector (Evaluator* eval, int argc, ScriptObjectPo
         throw QString("Invalid argument.");
     }
     Integer* size = static_cast<Integer*>(argv->data());
-    ScriptObjectPointerList contents;
+    ScriptObjectPointerVector contents;
     for (int ii = 0, nn = size->value(); ii < nn; ii++) {
         contents.append(fill);
     }
@@ -742,7 +863,7 @@ static ScriptObjectPointer makeVector (Evaluator* eval, int argc, ScriptObjectPo
  */
 static ScriptObjectPointer vector (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    ScriptObjectPointerList contents;
+    ScriptObjectPointerVector contents;
     for (int ii = 0; ii < argc; ii++) {
         contents.append(argv[ii]);
     }
@@ -776,7 +897,7 @@ static ScriptObjectPointer vectorRef (Evaluator* eval, int argc, ScriptObjectPoi
             argv[1]->type() != ScriptObject::IntegerType) {
         throw QString("Invalid argument.");
     }
-    ScriptObjectPointerList& contents = static_cast<Vector*>(argv[0].data())->contents();
+    ScriptObjectPointerVector& contents = static_cast<Vector*>(argv[0].data())->contents();
     int idx = static_cast<Integer*>(argv[1].data())->value();
     if (idx < 0 || idx >= contents.size()) {
         throw QString("Invalid index.");
@@ -796,13 +917,44 @@ static ScriptObjectPointer vectorSet (Evaluator* eval, int argc, ScriptObjectPoi
             argv[1]->type() != ScriptObject::IntegerType) {
         throw QString("Invalid argument.");
     }
-    ScriptObjectPointerList& contents = static_cast<Vector*>(argv[0].data())->contents();
+    ScriptObjectPointerVector& contents = static_cast<Vector*>(argv[0].data())->contents();
     int idx = static_cast<Integer*>(argv[1].data())->value();
     if (idx < 0 || idx >= contents.size()) {
         throw QString("Invalid index.");
     }
     contents.replace(idx, argv[2]);
     return Unspecified::instance();
+}
+
+/**
+ * Converts a vector to a list.
+ */
+static ScriptObjectPointer vectorToList (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::VectorType) {
+        throw QString("Invalid argument.");
+    }
+    const ScriptObjectPointerVector& contents = static_cast<Vector*>(argv->data())->contents();
+    return eval->listInstance(contents.constData(), contents.size());
+}
+
+/**
+ * Converts a list to a vector.
+ */
+static ScriptObjectPointer listToVector (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    bool ok;
+    ScriptObjectPointerVector contents = (*argv)->listContents(&ok);
+    if (!ok) {
+        throw QString("Invalid argument.");
+    }
+    return eval->vectorInstance(contents);
 }
 
 /**
@@ -819,6 +971,22 @@ static ScriptObjectPointer vectorFill (Evaluator* eval, int argc, ScriptObjectPo
     Vector* vector = static_cast<Vector*>(argv->data());
     qFill(vector->contents(), argv[1]);
     return Unspecified::instance();
+}
+
+/**
+ * Appends the argument vectors together.
+ */
+static ScriptObjectPointer vectorAppend (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    ScriptObjectPointerVector contents;
+    for (ScriptObjectPointer* arg = argv, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::VectorType) {
+            throw QString("Invalid argument.");
+        }
+        Vector* vector = static_cast<Vector*>(arg->data());
+        contents += vector->contents();
+    }
+    return eval->vectorInstance(contents);
 }
 
 /**
@@ -1002,6 +1170,8 @@ static Scope createGlobalScope ()
     scope.addVariable("string>=?", stringsGreaterEqual);
     scope.addVariable("substring", substring);
     scope.addVariable("string-append", stringAppend);
+    scope.addVariable("string->list", stringToList);
+    scope.addVariable("list->string", listToString);
     scope.addVariable("string-copy", stringCopy);
 
     scope.addVariable("symbol->string", symbolToString);
@@ -1020,11 +1190,14 @@ static Scope createGlobalScope ()
     scope.addVariable("list-ref", listRef);
 
     scope.addVariable("make-vector", makeVector);
-    scope.addVariable("vector", vector);
+    scope.addVariable("vector", ScriptObjectPointer(), vectorProcedure());
     scope.addVariable("vector-length", vectorLength);
     scope.addVariable("vector-ref", vectorRef);
     scope.addVariable("vector-set!", vectorSet);
+    scope.addVariable("vector->list", vectorToList);
+    scope.addVariable("list->vector", listToVector);
     scope.addVariable("vector-fill!", vectorFill);
+    scope.addVariable("vector-append", ScriptObjectPointer(), vectorAppendProcedure());
 
     scope.addVariable("pair?", pair);
     scope.addVariable("null?", null);
@@ -1061,5 +1234,17 @@ const ScriptObjectPointer& listProcedure ()
 const ScriptObjectPointer& appendProcedure ()
 {
     static ScriptObjectPointer proc(new NativeProcedure(append));
+    return proc;
+}
+
+const ScriptObjectPointer& vectorProcedure ()
+{
+    static ScriptObjectPointer proc(new NativeProcedure(vector));
+    return proc;
+}
+
+const ScriptObjectPointer& vectorAppendProcedure ()
+{
+    static ScriptObjectPointer proc(new NativeProcedure(vectorAppend));
     return proc;
 }

@@ -73,12 +73,12 @@ public:
     /**
      * Returns a reference to the list of constants.
      */
-    ScriptObjectPointerList& constants () { return _constants; }
+    ScriptObjectPointerVector& constants () { return _constants; }
 
     /**
      * Returns a reference to the deferred definitions.
      */
-    ScriptObjectPointerList& deferred () { return _deferred; }
+    ScriptObjectPointerVector& deferred () { return _deferred; }
 
 protected:
 
@@ -95,10 +95,10 @@ protected:
     int _variableCount;
 
     /** The list of constants. */
-    ScriptObjectPointerList _constants;
+    ScriptObjectPointerVector _constants;
 
     /** The deferred definitions. */
-    ScriptObjectPointerList _deferred;
+    ScriptObjectPointerVector _deferred;
 
     /** An optional invocation associated with the scope, containing variable values. */
     ScriptObjectPointer _invocation;
@@ -140,7 +140,7 @@ public:
     /**
      * Creates a list instance containing the elements in (first, first + count].
      */
-    ScriptObjectPointer listInstance (ScriptObjectPointer* first, int count);
+    ScriptObjectPointer listInstance (const ScriptObjectPointer* first, int count);
 
     /**
      * Creates a pair instance and adds it to the collectable list.
@@ -151,7 +151,7 @@ public:
     /**
      * Creates a vector instance and adds it to the collectable list.
      */
-    ScriptObjectPointer vectorInstance (const ScriptObjectPointerList& contents);
+    ScriptObjectPointer vectorInstance (const ScriptObjectPointerVector& contents);
 
 protected:
 

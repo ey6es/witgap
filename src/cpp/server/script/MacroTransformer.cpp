@@ -58,7 +58,7 @@ static PatternPointer createPattern (
         }
         case ScriptObject::VectorType: {
             Vector* list = static_cast<Vector*>(expr.data());
-            const QList<ScriptObjectPointer>& contents = list->contents();
+            const ScriptObjectPointerVector& contents = list->contents();
             QVector<PatternPointer> preRepeatPatterns;
             PatternPointer repeatPattern;
             RepeatGroupPointer repeatGroup(new RepeatGroup());
@@ -100,7 +100,7 @@ static PatternPointer createPattern (
                 preRepeatPatterns.append(createPattern(
                     contents.at(ii), literals, variables, parentGroup));
             }
-            return PatternPointer(new ListPattern(
+            return PatternPointer(new VectorPattern(
                 preRepeatPatterns, repeatPattern, repeatGroup->variableIdx,
                 repeatGroup->variableCount, postRepeatPatterns, restPattern));
         }
@@ -148,7 +148,7 @@ static TemplatePointer createTemplate (
         }
         case ScriptObject::VectorType: {
             Vector* list = static_cast<Vector*>(expr.data());
-            const QList<ScriptObjectPointer>& contents = list->contents();
+            const ScriptObjectPointerVector& contents = list->contents();
             QVector<Subtemplate> subtemplates;
             TemplatePointer restTemplate;
             for (int ii = 0, nn = contents.size(); ii < nn; ii++) {
@@ -201,7 +201,7 @@ static TemplatePointer createTemplate (
                 subtemplates.append(Subtemplate(
                     repeatVariableIdx, repeatVariableCount, repeatDepth, templ));
             }
-            return TemplatePointer(new ListTemplate(subtemplates, restTemplate));
+            return TemplatePointer(new VectorTemplate(subtemplates, restTemplate));
         }
         default:
             return TemplatePointer(new DatumTemplate(expr));
@@ -243,7 +243,7 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
         }
         case ScriptObject::VectorType: {
             Vector* list = static_cast<Vector*>(expr.data());
-            const QList<ScriptObjectPointer>& contents = list->contents();
+            const ScriptObjectPointerVector& contents = list->contents();
             int csize = contents.size();
             if (csize < 2) {
                 throw ScriptError("Invalid macro transformer.", list->position());
@@ -280,7 +280,7 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
                             static_cast<Datum*>(rule.data())->position());
                     }
                     Vector* rlist = static_cast<Vector*>(rule.data());
-                    const QList<ScriptObjectPointer>& rcontents = rlist->contents();
+                    const ScriptObjectPointerVector& rcontents = rlist->contents();
                     if (rcontents.size() != 2) {
                         throw ScriptError("Invalid rule.", rlist->position());
                     }
@@ -305,7 +305,7 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
                     throw ScriptError("Invalid identifier syntax.", list->position());
                 }
                 Vector* rlist = static_cast<Vector*>(ref.data());
-                const QList<ScriptObjectPointer>& rcontents = rlist->contents();
+                const ScriptObjectPointerVector& rcontents = rlist->contents();
                 if (rcontents.size() != 2 ||
                         rcontents.at(0)->type() != ScriptObject::SymbolType) {
                     throw ScriptError("Invalid rule.", rlist->position());
@@ -317,7 +317,7 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
                     throw ScriptError("Invalid identifier syntax.", list->position());
                 }
                 Vector* slist = static_cast<Vector*>(set.data());
-                const QList<ScriptObjectPointer>& scontents = slist->contents();
+                const ScriptObjectPointerVector& scontents = slist->contents();
                 if (scontents.size() != 2) {
                     throw ScriptError("Invalid rule.", slist->position());
                 }
@@ -326,7 +326,7 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
                     throw ScriptError("Invalid rule.", slist->position());
                 }
                 Vector* plist = static_cast<Vector*>(pat.data());
-                const QList<ScriptObjectPointer>& pcontents = plist->contents();
+                const ScriptObjectPointerVector& pcontents = plist->contents();
                 if (pcontents.size() != 3 || pcontents.at(1)->type() != ScriptObject::SymbolType) {
                     throw ScriptError("Invalid pattern.", plist->position());
                 }
@@ -412,7 +412,7 @@ bool UnboundLiteralPattern::matches (
     return symbol->name() == _name && scope->resolve(_name).isNull();
 }
 
-ListPattern::ListPattern (const QVector<PatternPointer>& preRepeatPatterns,
+VectorPattern::VectorPattern (const QVector<PatternPointer>& preRepeatPatterns,
         const PatternPointer& repeatPattern, int repeatVariableIdx, int repeatVariableCount,
         const QVector<PatternPointer>& postRepeatPatterns, const PatternPointer& restPattern) :
     _preRepeatPatterns(preRepeatPatterns),
@@ -424,14 +424,14 @@ ListPattern::ListPattern (const QVector<PatternPointer>& preRepeatPatterns,
 {
 }
 
-bool ListPattern::matches (
+bool VectorPattern::matches (
     ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const
 {
     if (form->type() != ScriptObject::VectorType) {
         return false;
     }
     Vector* list = static_cast<Vector*>(form.data());
-    const QList<ScriptObjectPointer>& contents = list->contents();
+    const ScriptObjectPointerVector& contents = list->contents();
     int size = contents.size();
     int precount = _preRepeatPatterns.size();
     int postcount = _postRepeatPatterns.size();
@@ -445,7 +445,7 @@ bool ListPattern::matches (
         }
     }
     if (!_repeatPattern.isNull()) {
-        QVector<ScriptObjectPointerList> lists(_repeatVariableCount);
+        QVector<ScriptObjectPointerVector> lists(_repeatVariableCount);
         for (; idx < size; idx++) {
             if (!_repeatPattern->matches(contents.at(idx), scope, variables)) {
                 break;
@@ -469,7 +469,7 @@ bool ListPattern::matches (
     if (_restPattern.isNull()) {
         return idx == size;
     }
-    ScriptObjectPointerList rest;
+    ScriptObjectPointerVector rest;
     for (; idx < size; idx++) {
         rest.append(contents.at(idx));
     }
@@ -524,13 +524,13 @@ Subtemplate::Subtemplate ()
 }
 
 void Subtemplate::generate (
-    QVector<ScriptObjectPointer>& variables, ScriptObjectPointerList& out) const
+    QVector<ScriptObjectPointer>& variables, ScriptObjectPointerVector& out) const
 {
     generate(variables, out, _repeatDepth);
 }
 
 void Subtemplate::generate (
-    QVector<ScriptObjectPointer>& variables, ScriptObjectPointerList& out, int depth) const
+    QVector<ScriptObjectPointer>& variables, ScriptObjectPointerVector& out, int depth) const
 {
     if (depth == 0) {
         out.append(_template->generate(variables));
@@ -562,7 +562,32 @@ ListTemplate::ListTemplate (
 
 ScriptObjectPointer ListTemplate::generate (QVector<ScriptObjectPointer>& variables) const
 {
-    ScriptObjectPointerList list;
+    ScriptObjectPointerVector list;
+    foreach (const Subtemplate& subtemplate, _subtemplates) {
+        subtemplate.generate(variables, list);
+    }
+    if (!_restTemplate.isNull()) {
+        ScriptObjectPointer rest = _restTemplate->generate(variables);
+        if (rest->type() == ScriptObject::VectorType) {
+            Vector* rlist = static_cast<Vector*>(rest.data());
+            list += rlist->contents();
+        } else {
+            list.append(rest);
+        }
+    }
+    return Vector::instance(list);
+}
+
+VectorTemplate::VectorTemplate (
+        const QVector<Subtemplate>& subtemplates, const TemplatePointer& restTemplate) :
+    _subtemplates(subtemplates),
+    _restTemplate(restTemplate)
+{
+}
+
+ScriptObjectPointer VectorTemplate::generate (QVector<ScriptObjectPointer>& variables) const
+{
+    ScriptObjectPointerVector list;
     foreach (const Subtemplate& subtemplate, _subtemplates) {
         subtemplate.generate(variables, list);
     }

@@ -9,12 +9,12 @@ ScriptObject::~ScriptObject ()
 {
 }
 
-ScriptObjectPointerList ScriptObject::listContents (bool* ok) const
+ScriptObjectPointerVector ScriptObject::listContents (bool* ok) const
 {
     if (ok != 0) {
         *ok = false;
     }
-    return ScriptObjectPointerList();
+    return ScriptObjectPointerVector();
 }
 
 void ScriptObject::mark (int color)
@@ -75,8 +75,8 @@ bool equivalent (const ScriptObjectPointer& p1, const ScriptObjectPointer& p2)
         case ScriptObject::VectorType: {
             Vector* v1 = static_cast<Vector*>(p1.data());
             Vector* v2 = static_cast<Vector*>(p2.data());
-            const QList<ScriptObjectPointer>& c1 = v1->contents();
-            const QList<ScriptObjectPointer>& c2 = v2->contents();
+            const ScriptObjectPointerVector& c1 = v1->contents();
+            const ScriptObjectPointerVector& c2 = v2->contents();
             int size = c1.size();
             if (c2.size() != size) {
                 return false;
@@ -273,9 +273,9 @@ int Pair::listLength () const
     }
 }
 
-ScriptObjectPointerList Pair::listContents (bool* ok) const
+ScriptObjectPointerVector Pair::listContents (bool* ok) const
 {
-    ScriptObjectPointerList contents;
+    ScriptObjectPointerVector contents;
     contents.append(_car);
     for (const Pair* pair = this;; ) {
         switch (pair->cdr()->type()) {
@@ -294,7 +294,7 @@ ScriptObjectPointerList Pair::listContents (bool* ok) const
                 if (ok != 0) {
                     *ok = false;
                 }
-                return ScriptObjectPointerList();
+                return ScriptObjectPointerVector();
         }
     }
 }
@@ -329,28 +329,28 @@ Null::Null (const ScriptPosition& position) :
 {
 }
 
-ScriptObjectPointerList Null::listContents (bool* ok) const
+ScriptObjectPointerVector Null::listContents (bool* ok) const
 {
     if (ok != 0) {
         *ok = true;
     }
-    return ScriptObjectPointerList();
+    return ScriptObjectPointerVector();
 }
 
-ScriptObjectPointer Vector::instance (const ScriptObjectPointerList& contents)
+ScriptObjectPointer Vector::instance (const ScriptObjectPointerVector& contents)
 {
-    static ScriptObjectPointer emptyInstance(new Vector(ScriptObjectPointerList()));
+    static ScriptObjectPointer emptyInstance(new Vector(ScriptObjectPointerVector()));
     return contents.isEmpty() ? emptyInstance : ScriptObjectPointer(new Vector(contents));
 }
 
 ScriptObjectPointer Vector::instance (const ScriptObjectPointer& element)
 {
-    ScriptObjectPointerList contents;
+    ScriptObjectPointerVector contents;
     contents.append(element);
     return ScriptObjectPointer(new Vector(contents));
 }
 
-Vector::Vector (const ScriptObjectPointerList& contents, const ScriptPosition& position) :
+Vector::Vector (const ScriptObjectPointerVector& contents, const ScriptPosition& position) :
     Datum(position),
     _contents(contents),
     _color(0)
@@ -426,7 +426,7 @@ QString Variable::toString () const
 }
 
 Lambda::Lambda (int scalarArgumentCount, bool listArgument, int variableCount,
-        const QList<ScriptObjectPointer>& constants, const Bytecode& bytecode) :
+        const ScriptObjectPointerVector& constants, const Bytecode& bytecode) :
     _scalarArgumentCount(scalarArgumentCount),
     _listArgument(listArgument),
     _variableCount(variableCount),

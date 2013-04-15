@@ -81,7 +81,7 @@ ScriptObjectPointer Parser::parseDatum ()
         }
         case Lexer::Vector: {
             ScriptPosition position = _lexer.position();
-            QList<ScriptObjectPointer> contents;
+            ScriptObjectPointerVector contents;
             ScriptObjectPointer datum;
             while (!(datum = parseDatum()).isNull() &&
                     datum->type() != ScriptObject::SentinelType) {

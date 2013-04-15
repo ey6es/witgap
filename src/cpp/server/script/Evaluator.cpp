@@ -198,7 +198,7 @@ static void compileDeferred (Scope* scope, bool top, Bytecode& out)
         return;
     }
     scope = scope->nonSyntacticAncestor();
-    ScriptObjectPointerList& deferred = scope->deferred();
+    ScriptObjectPointerVector& deferred = scope->deferred();
     if (deferred.isEmpty()) {
         return;
     }
@@ -310,9 +310,14 @@ static void compileLambda (Pair* pair, Scope* scope, Bytecode& out)
 }
 
 /**
- * Compiles a quasiquote form.
+ * Compiles a quasiquote vector.
  */
-static void compileQuasiquote (Pair* pair, Scope* scope, Bytecode& out)
+static void compileQuasiquoteVector (Vector* vector, Scope* scope, Bytecode& out);
+
+/**
+ * Compiles a quasiquote pair.
+ */
+static void compileQuasiquotePair (Pair* pair, Scope* scope, Bytecode& out)
 {
     out.append(ResetOperandCountOp);
     out.append(ConstantOp, scope->addConstant(appendProcedure()));
@@ -346,9 +351,19 @@ static void compileQuasiquote (Pair* pair, Scope* scope, Bytecode& out)
                 }
                 out.append(ResetOperandCountOp);
                 out.append(ConstantOp, scope->addConstant(listProcedure()));
-                compileQuasiquote(subpair, scope, out);
+                compileQuasiquotePair(subpair, scope, out);
                 out.append(CallOp);
                 out.associate(subpair->position());
+                break;
+            }
+            case ScriptObject::VectorType: {
+                Vector* vector = static_cast<Vector*>(car.data());
+                out.append(ResetOperandCountOp);
+                out.append(ConstantOp, scope->addConstant(listProcedure()));
+                compileQuasiquoteVector(vector, scope, out);
+                out.append(CallOp);
+                out.associate(vector->position());
+                break;
             }
             default:
                 out.append(ConstantOp, scope->addConstant(ScriptObjectPointer(
@@ -370,8 +385,67 @@ static void compileQuasiquote (Pair* pair, Scope* scope, Bytecode& out)
         }
     }
     outerBreak:
+
     out.append(CallOp);
     out.associate(pair->position());
+}
+
+static void compileQuasiquoteVector (Vector* vector, Scope* scope, Bytecode& out)
+{
+    out.append(ResetOperandCountOp);
+    out.append(ConstantOp, scope->addConstant(vectorAppendProcedure()));
+
+    foreach (const ScriptObjectPointer& element, vector->contents()) {
+        switch (element->type()) {
+            case ScriptObject::PairType: {
+                Pair* subpair = static_cast<Pair*>(element.data());
+                ScriptObjectPointer subcar = subpair->car();
+                if (subcar->type() == ScriptObject::SymbolType) {
+                    Symbol* symbol = static_cast<Symbol*>(subcar.data());
+                    if (symbol->name() == "unquote") {
+                        Pair* subcdr = requirePair(subpair->cdr(),
+                            "Invalid expression.", subpair->position());
+                        requireNull(subcdr->cdr(), "Invalid expression.", subpair->position());
+                        out.append(ResetOperandCountOp);
+                        out.append(ConstantOp, scope->addConstant(vectorProcedure()));
+                        compile(subcdr->car(), scope, false, false, false, out);
+                        out.append(CallOp);
+                        out.associate(subpair->position());
+                        break;
+
+                    } else if (symbol->name() == "unquote-splicing") {
+                        Pair* subcdr = requirePair(subpair->cdr(),
+                            "Invalid expression.", subpair->position());
+                        requireNull(subcdr->cdr(), "Invalid expression.", subpair->position());
+                        compile(subcdr->car(), scope, false, false, false, out);
+                        break;
+                    }
+                }
+                out.append(ResetOperandCountOp);
+                out.append(ConstantOp, scope->addConstant(vectorProcedure()));
+                compileQuasiquotePair(subpair, scope, out);
+                out.append(CallOp);
+                out.associate(subpair->position());
+                break;
+            }
+            case ScriptObject::VectorType: {
+                Vector* vector = static_cast<Vector*>(element.data());
+                out.append(ResetOperandCountOp);
+                out.append(ConstantOp, scope->addConstant(vectorProcedure()));
+                compileQuasiquoteVector(vector, scope, out);
+                out.append(CallOp);
+                out.associate(vector->position());
+                break;
+            }
+            default:
+                out.append(ConstantOp, scope->addConstant(ScriptObjectPointer(
+                    new Vector(ScriptObjectPointerVector(1, element)))));
+                break;
+        }
+    }
+
+    out.append(CallOp);
+    out.associate(vector->position());
 }
 
 static void compile (
@@ -407,6 +481,10 @@ static void compile (
             }
             compile(binding, scope, top, allowDef, tailCall, out);
             return;
+        }
+        case ScriptObject::VectorType: {
+            Vector* vector = static_cast<Vector*>(expr.data());
+            throw ScriptError("Invalid expression.", vector->position());
         }
         case ScriptObject::NullType: {
             Null* null = static_cast<Null*>(expr.data());
@@ -589,11 +667,20 @@ static void compile (
                             requireNull(cdr->cdr(), "Invalid expression.", pair->position());
                             compileDeferred(scope, top, out);
                             ScriptObjectPointer cadr = cdr->car();
-                            if (cadr->type() != ScriptObject::PairType) {
-                                out.append(ConstantOp, scope->addConstant(cadr));
-                            } else {
-                                Pair* pair = static_cast<Pair*>(cadr.data());
-                                compileQuasiquote(pair, scope, out);
+                            switch (cadr->type()) {
+                                case ScriptObject::PairType: {
+                                    Pair* pair = static_cast<Pair*>(cadr.data());
+                                    compileQuasiquotePair(pair, scope, out);
+                                    break;
+                                }
+                                case ScriptObject::VectorType: {
+                                    Vector* vector = static_cast<Vector*>(cadr.data());
+                                    compileQuasiquoteVector(vector, scope, out);
+                                    break;
+                                }
+                                default:
+                                    out.append(ConstantOp, scope->addConstant(cadr));
+                                    break;
                             }
                             maybeAppendPop(top, tailCall, out);
 
@@ -1068,13 +1155,13 @@ void Evaluator::gc ()
     }
 }
 
-ScriptObjectPointer Evaluator::listInstance (ScriptObjectPointer* first, int count)
+ScriptObjectPointer Evaluator::listInstance (const ScriptObjectPointer* first, int count)
 {
     if (count == 0) {
         return Null::instance();
     }
     ScriptObjectPointer head = pairInstance(*first), tail = head;
-    for (ScriptObjectPointer* it = first + 1, *end = first + count; it != end; it++) {
+    for (const ScriptObjectPointer* it = first + 1, *end = first + count; it != end; it++) {
         ScriptObjectPointer pair = pairInstance(*it);
         static_cast<Pair*>(tail.data())->setCdr(pair);
         tail = pair;
@@ -1091,7 +1178,7 @@ ScriptObjectPointer Evaluator::pairInstance (
     return instance;
 }
 
-ScriptObjectPointer Evaluator::vectorInstance (const ScriptObjectPointerList& contents)
+ScriptObjectPointer Evaluator::vectorInstance (const ScriptObjectPointerVector& contents)
 {
     ScriptObjectPointer instance = Vector::instance(contents);
     if (!contents.isEmpty()) {
