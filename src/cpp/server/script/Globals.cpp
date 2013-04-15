@@ -626,7 +626,7 @@ static ScriptObjectPointer cons (Evaluator* eval, int argc, ScriptObjectPointer*
     if (argc != 2) {
         throw QString("Requires exactly two arguments.");
     }
-    return ScriptObjectPointer(new Pair(argv[0], argv[1]));
+    return ScriptObjectPointer(eval->pairInstance(argv[0], argv[1]));
 }
 
 /**
@@ -664,11 +664,7 @@ static ScriptObjectPointer cdr (Evaluator* eval, int argc, ScriptObjectPointer* 
  */
 static ScriptObjectPointer list (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    ScriptObjectPointerList contents;
-    for (ScriptObjectPointer* arg = argv, *end = arg + argc; arg != end; arg++) {
-        contents.append(*arg);
-    }
-    return eval->listInstance(contents);
+    return eval->listInstance(argv, argc);
 }
 
 /**
@@ -676,24 +672,7 @@ static ScriptObjectPointer list (Evaluator* eval, int argc, ScriptObjectPointer*
  */
 static ScriptObjectPointer append (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    if (argc == 0) {
-        return List::instance(ScriptObjectPointerList());
-    }
-    if (argc == 1) {
-        if ((*argv)->type() != ScriptObject::ListType) {
-            throw QString("Invalid argument.");
-        }
-        return *argv;
-    }
-    ScriptObjectPointerList contents;
-    for (ScriptObjectPointer* arg = argv, *end = arg + argc; arg != end; arg++) {
-        if ((*arg)->type() != ScriptObject::ListType) {
-            throw QString("Invalid argument.");
-        }
-        List* list = static_cast<List*>(arg->data());
-        contents.append(list->contents());
-    }
-    return eval->listInstance(contents);
+    return Unspecified::instance();
 }
 
 /**
@@ -704,11 +683,11 @@ static ScriptObjectPointer length (Evaluator* eval, int argc, ScriptObjectPointe
     if (argc != 1) {
         throw QString("Requires exactly one argument.");
     }
-    if ((*argv)->type() != ScriptObject::ListType) {
+    int length = (*argv)->listLength();
+    if (length == -1) {
         throw QString("Invalid argument.");
     }
-    List* list = static_cast<List*>(argv->data());
-    return Integer::instance(list->contents().length());
+    return Integer::instance(length);
 }
 
 /**
@@ -716,19 +695,23 @@ static ScriptObjectPointer length (Evaluator* eval, int argc, ScriptObjectPointe
  */
 static ScriptObjectPointer reverse (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    if (argc != 1) {
-        throw QString("Requires exactly one argument.");
-    }
-    if ((*argv)->type() != ScriptObject::ListType) {
-        throw QString("Invalid argument.");
-    }
-    List* list = static_cast<List*>(argv->data());
-    const ScriptObjectPointerList& contents = list->contents();
-    ScriptObjectPointerList ncontents;
-    for (int ii = contents.size() - 1; ii >= 0; ii--) {
-        ncontents.append(contents.at(ii));
-    }
-    return eval->listInstance(ncontents);
+    return Unspecified::instance();
+}
+
+/**
+ * Returns the tail of the list.
+ */
+static ScriptObjectPointer listTail (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
+}
+
+/**
+ * Returns an element of the list.
+ */
+static ScriptObjectPointer listRef (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    return Unspecified::instance();
 }
 
 /**
@@ -751,7 +734,7 @@ static ScriptObjectPointer makeVector (Evaluator* eval, int argc, ScriptObjectPo
     for (int ii = 0, nn = size->value(); ii < nn; ii++) {
         contents.append(fill);
     }
-    return Vector::instance(contents);
+    return eval->vectorInstance(contents);
 }
 
 /**
@@ -763,7 +746,7 @@ static ScriptObjectPointer vector (Evaluator* eval, int argc, ScriptObjectPointe
     for (int ii = 0; ii < argc; ii++) {
         contents.append(argv[ii]);
     }
-    return Vector::instance(contents);
+    return eval->vectorInstance(contents);
 }
 
 /**
@@ -868,7 +851,7 @@ static ScriptObjectPointer listp (Evaluator* eval, int argc, ScriptObjectPointer
     if (argc != 1) {
         throw QString("Requires exactly one argument.");
     }
-    return Boolean::instance((*argv)->type() == ScriptObject::ListType);
+    return Boolean::instance((*argv)->list());
 }
 
 /**
@@ -1033,6 +1016,8 @@ static Scope createGlobalScope ()
     scope.addVariable("append", ScriptObjectPointer(), appendProcedure());
     scope.addVariable("length", length);
     scope.addVariable("reverse", reverse);
+    scope.addVariable("list-tail", listTail);
+    scope.addVariable("list-ref", listRef);
 
     scope.addVariable("make-vector", makeVector);
     scope.addVariable("vector", vector);

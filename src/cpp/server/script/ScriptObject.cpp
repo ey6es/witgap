@@ -9,6 +9,14 @@ ScriptObject::~ScriptObject ()
 {
 }
 
+ScriptObjectPointerList ScriptObject::listContents (bool* ok) const
+{
+    if (ok != 0) {
+        *ok = false;
+    }
+    return ScriptObjectPointerList();
+}
+
 void ScriptObject::mark (int color)
 {
     // nothing by default
@@ -64,22 +72,6 @@ bool equivalent (const ScriptObjectPointer& p1, const ScriptObjectPointer& p2)
         case ScriptObject::NullType:
             return true;
 
-        case ScriptObject::ListType: {
-            List* l1 = static_cast<List*>(p1.data());
-            List* l2 = static_cast<List*>(p2.data());
-            const QList<ScriptObjectPointer>& c1 = l1->contents();
-            const QList<ScriptObjectPointer>& c2 = l2->contents();
-            int size = c1.size();
-            if (c2.size() != size) {
-                return false;
-            }
-            for (int ii = 0; ii < size; ii++) {
-                if (!equivalent(c1.at(ii), c2.at(ii))) {
-                    return false;
-                }
-            }
-            return true;
-        }
         case ScriptObject::VectorType: {
             Vector* v1 = static_cast<Vector*>(p1.data());
             Vector* v2 = static_cast<Vector*>(p2.data());
@@ -262,6 +254,51 @@ QString Pair::toString () const
     return string;
 }
 
+int Pair::listLength () const
+{
+    int length = 1;
+    for (const Pair* pair = this;; ) {
+        switch (pair->cdr()->type()) {
+            case PairType:
+                length++;
+                pair = static_cast<Pair*>(pair->cdr().data());
+                break;
+
+            case NullType:
+                return length;
+
+            default:
+                return -1;
+        }
+    }
+}
+
+ScriptObjectPointerList Pair::listContents (bool* ok) const
+{
+    ScriptObjectPointerList contents;
+    contents.append(_car);
+    for (const Pair* pair = this;; ) {
+        switch (pair->cdr()->type()) {
+            case PairType:
+                pair = static_cast<Pair*>(pair->cdr().data());
+                contents.append(pair->car());
+                break;
+
+            case NullType:
+                if (ok != 0) {
+                    *ok = true;
+                }
+                return contents;
+
+            default:
+                if (ok != 0) {
+                    *ok = false;
+                }
+                return ScriptObjectPointerList();
+        }
+    }
+}
+
 void Pair::mark (int color)
 {
     if (_color != color) {
@@ -292,56 +329,12 @@ Null::Null (const ScriptPosition& position) :
 {
 }
 
-ScriptObjectPointer List::instance (const ScriptObjectPointerList& contents)
+ScriptObjectPointerList Null::listContents (bool* ok) const
 {
-    static ScriptObjectPointer emptyInstance(new List(ScriptObjectPointerList()));
-    return contents.isEmpty() ? emptyInstance : ScriptObjectPointer(new List(contents));
-}
-
-ScriptObjectPointer List::instance (const ScriptObjectPointer& element)
-{
-    ScriptObjectPointerList contents;
-    contents.append(element);
-    return ScriptObjectPointer(new List(contents));
-}
-
-List::List (const ScriptObjectPointerList& contents, const ScriptPosition& position) :
-    Datum(position),
-    _contents(contents),
-    _color(0)
-{
-}
-
-QString List::toString () const
-{
-    QString string("(");
-    foreach (const ScriptObjectPointer& datum, _contents) {
-        if (string.length() != 1) {
-            string.append(' ');
-        }
-        string.append(datum->toString());
+    if (ok != 0) {
+        *ok = true;
     }
-    string.append(')');
-    return string;
-}
-
-void List::mark (int color)
-{
-    if (_color != color) {
-        _color = color;
-        foreach (const ScriptObjectPointer& element, _contents) {
-            element->mark(color);
-        }
-    }
-}
-
-bool List::sweep (int color)
-{
-    if (_color == color) {
-        return true;
-    }
-    _contents.clear();
-    return false;
+    return ScriptObjectPointerList();
 }
 
 ScriptObjectPointer Vector::instance (const ScriptObjectPointerList& contents)

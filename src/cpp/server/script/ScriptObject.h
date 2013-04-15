@@ -11,6 +11,16 @@
 #include "script/Script.h"
 
 class Evaluator;
+class ScriptObject;
+
+/** A reference-counted pointer to a script object. */
+typedef QSharedPointer<ScriptObject> ScriptObjectPointer;
+
+/** A weak pointer to a script object. */
+typedef QWeakPointer<ScriptObject> WeakScriptObjectPointer;
+
+/** A list of script pointers. */
+typedef QList<ScriptObjectPointer> ScriptObjectPointerList;
 
 /**
  * Base class for script objects.
@@ -21,9 +31,9 @@ public:
 
     /** The object types. */
     enum Type { SentinelType, BooleanType, IntegerType, FloatType, CharType, StringType,
-        SymbolType, PairType, NullType, ListType, VectorType, ByteVectorType, UnspecifiedType,
-        VariableType, LambdaType, LambdaProcedureType, InvocationType, NativeProcedureType,
-        CaptureProcedureType, EscapeProcedureType, SyntaxRulesType, IdentifierSyntaxType };
+        SymbolType, PairType, NullType, VectorType, ByteVectorType, UnspecifiedType, VariableType,
+        LambdaType, LambdaProcedureType, InvocationType, NativeProcedureType, CaptureProcedureType,
+        EscapeProcedureType, SyntaxRulesType, IdentifierSyntaxType };
 
     /**
      * Destroys the object.
@@ -41,6 +51,23 @@ public:
     virtual QString toString () const = 0;
 
     /**
+     * If the object is a list, returns its length; otherwise, returns -1.
+     */
+    virtual int listLength () const { return -1; }
+
+    /**
+     * Checks whether this object represents a list.
+     */
+    bool list () const { return listLength() != -1; }
+
+    /**
+     * If the object is a list, returns its contents.
+     *
+     * @param ok if nonzero, a boolean to contain whether or not the object is a list.
+     */
+    virtual ScriptObjectPointerList listContents (bool* ok = 0) const;
+
+    /**
      * Marks the object with the specified color, recursively marking any objects to which
      * references are held.
      */
@@ -52,12 +79,6 @@ public:
      */
     virtual bool sweep (int color);
 };
-
-/** A reference-counted pointer to a script object. */
-typedef QSharedPointer<ScriptObject> ScriptObjectPointer;
-
-/** A weak pointer to a script object. */
-typedef QWeakPointer<ScriptObject> WeakScriptObjectPointer;
 
 /**
  * Compares two script objects according to their types.
@@ -380,6 +401,18 @@ public:
     virtual QString toString () const;
 
     /**
+     * Returns the length of the list, or -1 if it isn't one.
+     */
+    virtual int listLength () const;
+
+    /**
+     * If the object is a list, returns its contents.
+     *
+     * @param ok if nonzero, a boolean to contain whether or not the object is a list.
+     */
+    virtual ScriptObjectPointerList listContents (bool* ok = 0) const;
+
+    /**
      * Marks the object with the specified color, recursively marking any objects to which
      * references are held.
      */
@@ -429,69 +462,18 @@ public:
      * Returns a string representation of the object.
      */
     virtual QString toString () const { return "()"; }
-};
-
-/** A list of script pointers. */
-typedef QList<ScriptObjectPointer> ScriptObjectPointerList;
-
-/**
- * A datum containing a list of other data.
- */
-class List : public Datum
-{
-public:
 
     /**
-     * Returns an instance with the specified contents.  The empty list is represented as a shared
-     * instance.
+     * Returns the length of the list.
      */
-    static ScriptObjectPointer instance (const ScriptObjectPointerList& contents);
+    virtual int listLength () const { return 0; }
 
     /**
-     * Returns an instance containing the single specified element.
+     * If the object is a list, returns its contents.
+     *
+     * @param ok if nonzero, a boolean to contain whether or not the object is a list.
      */
-    static ScriptObjectPointer instance (const ScriptObjectPointer& element);
-
-    /**
-     * Creates a new list.
-     */
-    List (const ScriptObjectPointerList& contents,
-        const ScriptPosition& position = ScriptPosition());
-
-    /**
-     * Returns a reference to the list contents.
-     */
-    const ScriptObjectPointerList& contents () const { return _contents; }
-
-    /**
-     * Returns the type of the object.
-     */
-    virtual Type type () const { return ListType; }
-
-    /**
-     * Returns a string representation of the object.
-     */
-    virtual QString toString () const;
-
-    /**
-     * Marks the object with the specified color, recursively marking any objects to which
-     * references are held.
-     */
-    virtual void mark (int color);
-
-    /**
-     * Checks whether the object is marked with the specified color.  If not, all references
-     * are cleared and false is returned.
-     */
-    virtual bool sweep (int color);
-
-protected:
-
-    /** The contents of the list. */
-    ScriptObjectPointerList _contents;
-
-    /** The mark color. */
-    int _color;
+    virtual ScriptObjectPointerList listContents (bool* ok = 0) const;
 };
 
 /**

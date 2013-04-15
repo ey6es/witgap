@@ -100,42 +100,92 @@ static void compile (
     ScriptObjectPointer expr, Scope* scope, bool top, bool allowDef, bool tailCall, Bytecode& out);
 
 /**
+ * Throws a ScriptError with the supplied message and position if the given object isn't a Pair;
+ * otherwise, returns the casted pointer.
+ */
+static Pair* requirePair (
+    const ScriptObjectPointer& obj, const QString& message, const ScriptPosition& position)
+{
+    if (obj->type() != ScriptObject::PairType) {
+        throw ScriptError(message, position);
+    }
+    return static_cast<Pair*>(obj.data());
+}
+
+/**
+ * Throws a ScriptError with the supplied message and position if the given object isn't a Symbol;
+ * otherwise, returns the casted pointer.
+ */
+static Symbol* requireSymbol (
+    const ScriptObjectPointer& obj, const QString& message, const ScriptPosition& position)
+{
+    if (obj->type() != ScriptObject::SymbolType) {
+        throw ScriptError(message, position);
+    }
+    return static_cast<Symbol*>(obj.data());
+}
+
+/**
+ * Throws a ScriptError with the supplied message and position if the given object isn't a Null;
+ * otherwise, returns the casted pointer.
+ */
+static Null* requireNull (
+    const ScriptObjectPointer& obj, const QString& message, const ScriptPosition& position)
+{
+    if (obj->type() != ScriptObject::NullType) {
+        throw ScriptError(message, position);
+    }
+    return static_cast<Null*>(obj.data());
+}
+
+/**
  * Compiles a syntax scope.
  */
 static void compileSyntax (
-    List* list, Scope* scope, bool top, bool allowDef, bool tailCall, bool rec, Bytecode& out)
+    Pair* pair, Scope* scope, bool top, bool allowDef, bool tailCall, bool rec, Bytecode& out)
 {
-    const ScriptObjectPointerList& contents = list->contents();
-    int csize = contents.size();
-    if (csize < 2) {
-        throw ScriptError("Invalid syntax scope.", list->position());
-    }
-    ScriptObjectPointer bindings = contents.at(1);
-    if (bindings->type() != ScriptObject::ListType) {
-        throw ScriptError("Invalid syntax bindings.", list->position());
-    }
+    Pair* cdr = requirePair(pair->cdr(), "Invalid syntax scope.", pair->position());
     Scope subscope(scope, false, true);
     Scope* escope = rec ? &subscope : scope;
-    List* blist = static_cast<List*>(bindings.data());
-    foreach (const ScriptObjectPointer& binding, blist->contents()) {
-        if (binding->type() != ScriptObject::ListType) {
-            throw ScriptError("Invalid syntax bindings.", blist->position());
+    for (ScriptObjectPointer bindings = cdr->car();; ) {
+        switch (bindings->type()) {
+            case ScriptObject::NullType:
+                goto outerBreak;
+
+            case ScriptObject::PairType: {
+                Pair* pbindings = static_cast<Pair*>(bindings.data());
+                Pair* bpair = requirePair(pbindings->car(), "Invalid syntax binding.",
+                    pbindings->position());
+                Symbol* symbol = requireSymbol(bpair->car(), "Invalid syntax binding.",
+                    pbindings->position());
+                bpair = requirePair(bpair->cdr(), "Invalid syntax binding.",
+                    pbindings->position());
+                requireNull(bpair->cdr(), "Invalid syntax binding.", pbindings->position());
+                subscope.define(symbol->name(), createMacroTransformer(bpair->car(), escope));
+                bindings = pbindings->cdr();
+                break;
+            }
+            default:
+                throw ScriptError("Invalid syntax bindings.", pair->position());
         }
-        List* bpair = static_cast<List*>(binding.data());
-        const ScriptObjectPointerList& bcontents = bpair->contents();
-        if (bcontents.size() != 2) {
-            throw ScriptError("Invalid syntax binding.", bpair->position());
-        }
-        ScriptObjectPointer car = bcontents.at(0);
-        if (car->type() != ScriptObject::SymbolType) {
-            throw ScriptError("Invalid syntax binding.", bpair->position());
-        }
-        Symbol* symbol = static_cast<Symbol*>(car.data());
-        subscope.define(symbol->name(),
-            createMacroTransformer(bcontents.at(1), escope));
     }
-    for (int ii = 2; ii < csize; ii++) {
-        compile(contents.at(ii), &subscope, top, allowDef, tailCall && ii == csize - 1, out);
+    outerBreak:
+
+    for (ScriptObjectPointer rest = cdr->cdr();; ) {
+        switch (rest->type()) {
+            case ScriptObject::NullType:
+                return;
+
+            case ScriptObject::PairType: {
+                Pair* prest = static_cast<Pair*>(rest.data());
+                compile(prest->car(), &subscope, top, allowDef, tailCall &&
+                    prest->cdr()->type() == ScriptObject::NullType, out);
+                rest = prest->cdr();
+                break;
+            }
+            default:
+                throw ScriptError("Invalid syntax scope.", pair->position());
+        }
     }
 }
 
@@ -175,134 +225,160 @@ static void maybeAppendPop (bool top, bool tailCall, Bytecode& out)
 /**
  * Compiles the body of a lambda/function definition.
  */
-static void compileLambda (List* list, Scope* scope, Bytecode& out)
+static void compileLambda (Pair* pair, Scope* scope, Bytecode& out)
 {
-    const ScriptObjectPointerList& contents = list->contents();
-    int csize = contents.size();
-    if (csize < 3) {
-        throw ScriptError("Invalid lambda.", list->position());
-    }
+    Pair* cdr = requirePair(pair->cdr(), "Invalid lambda.", pair->position());
+    Pair* cddr = requirePair(cdr->cdr(), "Invalid lambda.", pair->position());
     Scope subscope(scope);
     int firstArgs = 0;
     bool restArg = false;
-    ScriptObjectPointer args = contents.at(1);
-    switch (args->type()) {
+
+    ScriptObjectPointer cadr = cdr->car();
+    switch (cadr->type()) {
         case ScriptObject::SymbolType: {
-            Symbol* symbol = static_cast<Symbol*>(args.data());
+            Symbol* symbol = static_cast<Symbol*>(cadr.data());
             subscope.addVariable(symbol->name());
             restArg = true;
             break;
         }
-        case ScriptObject::ListType: {
-            List* alist = static_cast<List*>(args.data());
-            bool rest = false;
-            foreach (ScriptObjectPointer arg, alist->contents()) {
-                if (arg->type() != ScriptObject::SymbolType) {
-                    Datum* datum = static_cast<Datum*>(arg.data());
-                    throw ScriptError("Invalid argument.", datum->position());
-                }
-                Symbol* var = static_cast<Symbol*>(arg.data());
-                if (rest) {
-                    if (var->name() == "." || restArg) {
-                        throw ScriptError("Invalid argument.", var->position());
+        case ScriptObject::NullType:
+            break;
+
+        case ScriptObject::PairType: {
+            for (Pair* rest = static_cast<Pair*>(cadr.data());; ) {
+                Symbol* symbol = requireSymbol(rest->car(), "Invalid argument.", rest->position());
+                subscope.addVariable(symbol->name());
+                firstArgs++;
+
+                ScriptObjectPointer rcdr = rest->cdr();
+                switch (rcdr->type()) {
+                    case ScriptObject::NullType:
+                        goto argsBreak;
+
+                    case ScriptObject::PairType:
+                        rest = static_cast<Pair*>(rcdr.data());
+                        break;
+
+                    case ScriptObject::SymbolType:
+                        symbol = static_cast<Symbol*>(rcdr.data());
+                        subscope.addVariable(symbol->name());
+                        restArg = true;
+                        goto argsBreak;
+
+                    default: {
+                        Datum* datum = static_cast<Datum*>(rcdr.data());
+                        throw ScriptError("Invalid argument.", datum->position());
                     }
-                    subscope.addVariable(var->name());
-                    restArg = true;
-                    continue;
-                }
-                if (var->name() == ".") {
-                    rest = true;
-                } else {
-                    subscope.addVariable(var->name());
-                    firstArgs++;
                 }
             }
+            argsBreak:
             break;
         }
         default:
-            Datum* datum = static_cast<Datum*>(args.data());
-            throw ScriptError("Invalid formals.", datum->position());
+            throw ScriptError("Invalid formals.", pair->position());
     }
+
     Bytecode bytecode;
-    for (int ii = 2; ii < csize; ii++) {
-        compile(contents.at(ii), &subscope, true, true, ii == csize - 1, bytecode);
+    for (Pair* rest = cddr;; ) {
+        ScriptObjectPointer rcdr = rest->cdr();
+        compile(rest->car(), &subscope, true, true,
+            rcdr->type() == ScriptObject::NullType, bytecode);
+
+        switch (rcdr->type()) {
+            case ScriptObject::NullType:
+                goto bodyBreak;
+
+            case ScriptObject::PairType:
+                rest = static_cast<Pair*>(rcdr.data());
+                break;
+
+            default:
+                throw ScriptError("Invalid body.", pair->position());
+        }
     }
+    bodyBreak:
+
     if (bytecode.isEmpty()) {
-        throw ScriptError("Function has no body.", list->position());
+        throw ScriptError("Function has no body.", pair->position());
     }
     bytecode.append(ReturnOp);
 
     ScriptObjectPointer lambda(new Lambda(firstArgs, restArg,
         subscope.variableCount(), subscope.constants(), bytecode));
     out.append(LambdaOp, scope->addConstant(lambda));
-    out.associate(list->position());
+    out.associate(pair->position());
 }
 
 /**
  * Compiles a quasiquote form.
  */
-static void compileQuasiquote (List* list, Scope* scope, Bytecode& out)
+static void compileQuasiquote (Pair* pair, Scope* scope, Bytecode& out)
 {
     out.append(ResetOperandCountOp);
     out.append(ConstantOp, scope->addConstant(appendProcedure()));
-    foreach (const ScriptObjectPointer& element, list->contents()) {
-        if (element->type() != ScriptObject::ListType) {
-            out.append(ConstantOp, scope->addConstant(List::instance(element)));
-            continue;
-        }
-        List* sublist = static_cast<List*>(element.data());
-        const ScriptObjectPointerList& subcontents = sublist->contents();
-        int csize = subcontents.size();
-        if (csize == 0) {
-            out.append(ConstantOp, scope->addConstant(List::instance(element)));
-            continue;
-        }
-        ScriptObjectPointer car = subcontents.at(0);
-        if (car->type() == ScriptObject::SymbolType) {
-            Symbol* symbol = static_cast<Symbol*>(car.data());
-            const QString& name = symbol->name();
-            if (name == "unquote") {
-                if (csize != 2) {
-                    throw ScriptError("Invalid expression.", sublist->position());
+
+    for (Pair* rest = pair;; ) {
+        ScriptObjectPointer car = rest->car();
+        switch (car->type()) {
+            case ScriptObject::PairType: {
+                Pair* subpair = static_cast<Pair*>(car.data());
+                ScriptObjectPointer subcar = subpair->car();
+                if (subcar->type() == ScriptObject::SymbolType) {
+                    Symbol* symbol = static_cast<Symbol*>(subcar.data());
+                    if (symbol->name() == "unquote") {
+                        Pair* subcdr = requirePair(subpair->cdr(),
+                            "Invalid expression.", subpair->position());
+                        requireNull(subcdr->cdr(), "Invalid expression.", subpair->position());
+                        out.append(ResetOperandCountOp);
+                        out.append(ConstantOp, scope->addConstant(listProcedure()));
+                        compile(subcdr->car(), scope, false, false, false, out);
+                        out.append(CallOp);
+                        out.associate(subpair->position());
+                        break;
+
+                    } else if (symbol->name() == "unquote-splicing") {
+                        Pair* subcdr = requirePair(subpair->cdr(),
+                            "Invalid expression.", subpair->position());
+                        requireNull(subcdr->cdr(), "Invalid expression.", subpair->position());
+                        compile(subcdr->car(), scope, false, false, false, out);
+                        break;
+                    }
                 }
                 out.append(ResetOperandCountOp);
                 out.append(ConstantOp, scope->addConstant(listProcedure()));
-                compile(subcontents.at(1), scope, false, false, false, out);
+                compileQuasiquote(subpair, scope, out);
                 out.append(CallOp);
-                out.associate(sublist->position());
-                continue;
-
-            } else if (name == "unquote-splicing") {
-                if (csize != 2) {
-                    throw ScriptError("Invalid expression.", sublist->position());
-                }
-                compile(subcontents.at(1), scope, false, false, false, out);
-                continue;
+                out.associate(subpair->position());
             }
+            default:
+                out.append(ConstantOp, scope->addConstant(ScriptObjectPointer(
+                    new Pair(car, Null::instance()))));
+                break;
         }
-        out.append(ResetOperandCountOp);
-        out.append(ConstantOp, scope->addConstant(listProcedure()));
-        compileQuasiquote(sublist, scope, out);
-        out.append(CallOp);
-        out.associate(sublist->position());
+
+        ScriptObjectPointer cdr = rest->cdr();
+        switch (cdr->type()) {
+            case ScriptObject::NullType:
+                goto outerBreak;
+
+            case ScriptObject::PairType:
+                rest = static_cast<Pair*>(cdr.data());
+                break;
+
+            default:
+                throw ScriptError("Invalid expression.", pair->position());
+        }
     }
+    outerBreak:
     out.append(CallOp);
-    out.associate(list->position());
+    out.associate(pair->position());
 }
 
 static void compile (
     ScriptObjectPointer expr, Scope* scope, bool top, bool allowDef, bool tailCall, Bytecode& out)
 {
     switch (expr->type()) {
-        case ScriptObject::BooleanType:
-        case ScriptObject::IntegerType:
-        case ScriptObject::FloatType:
-        case ScriptObject::CharType:
-        case ScriptObject::StringType:
-        case ScriptObject::PairType:
-        case ScriptObject::NullType:
-        case ScriptObject::VectorType:
-        case ScriptObject::ByteVectorType:
+        default: // datum
             compileDeferred(scope, top, out);
             out.append(ConstantOp, scope->addConstant(expr));
             maybeAppendPop(top, tailCall, out);
@@ -332,19 +408,19 @@ static void compile (
             compile(binding, scope, top, allowDef, tailCall, out);
             return;
         }
-        case ScriptObject::ListType: {
-            List* list = static_cast<List*>(expr.data());
-            const ScriptObjectPointerList& contents = list->contents();
-            if (contents.isEmpty()) {
-                throw ScriptError("Invalid expression.", list->position());
-            }
-            ScriptObjectPointer car = contents.at(0);
+        case ScriptObject::NullType: {
+            Null* null = static_cast<Null*>(expr.data());
+            throw ScriptError("Invalid expression.", null->position());
+        }
+        case ScriptObject::PairType: {
+            Pair* pair = static_cast<Pair*>(expr.data());
+            ScriptObjectPointer car = pair->car();
             switch (car->type()) {
                 case ScriptObject::SyntaxRulesType: {
                     SyntaxRules* syntax = static_cast<SyntaxRules*>(car.data());
                     ScriptObjectPointer transformed = syntax->maybeTransform(expr, scope);
                     if (transformed.isNull()) {
-                        throw ScriptError("No pattern match.", list->position());
+                        throw ScriptError("No pattern match.", pair->position());
                     }
                     compile(transformed, scope, top, allowDef, tailCall, out);
                     return;
@@ -357,97 +433,87 @@ static void compile (
                         if (name == "define-syntax") {
                             if (!(allowDef && out.isEmpty())) {
                                 throw ScriptError("Syntax definitions not allowed here.",
-                                    list->position());
+                                    pair->position());
                             }
-                            if (contents.size() != 3) {
-                                throw ScriptError("Invalid syntax definition.", list->position());
-                            }
-                            ScriptObjectPointer cadr = contents.at(1);
-                            if (cadr->type() != ScriptObject::SymbolType) {
-                                throw ScriptError("Invalid syntax definition.", list->position());
-                            }
-                            Symbol* symbol = static_cast<Symbol*>(cadr.data());
+                            Pair* cdr = requirePair(pair->cdr(),
+                                "Invalid syntax definition.", pair->position());
+                            Symbol* symbol = requireSymbol(cdr->car(),
+                                "Invalid syntax definition.", pair->position());
+                            Pair* cddr = requirePair(cdr->cdr(),
+                                "Invalid syntax definition.", pair->position());
+                            requireNull(cddr->cdr(),
+                                "Invalid syntax definition.", pair->position());
                             scope->define(symbol->name(),
-                                createMacroTransformer(contents.at(2), scope));
+                                createMacroTransformer(cddr->car(), scope));
 
                         } else if (name == "let-syntax") {
-                            compileSyntax(list, scope, top, tailCall, allowDef, false, out);
+                            compileSyntax(pair, scope, top, tailCall, allowDef, false, out);
 
                         } else if (name == "letrec-syntax") {
-                            compileSyntax(list, scope, top, tailCall, allowDef, true, out);
+                            compileSyntax(pair, scope, top, tailCall, allowDef, true, out);
 
                         } else if (name == "define") {
                             if (!(allowDef && out.isEmpty())) {
                                 throw ScriptError("Definitions not allowed here.",
-                                    list->position());
+                                    pair->position());
                             }
-                            int csize = contents.size();
-                            if (csize < 2) {
-                                throw ScriptError("Invalid definition.", list->position());
-                            }
-                            ScriptObjectPointer cadr = contents.at(1);
+                            Pair* cdr = requirePair(pair->cdr(),
+                                "Invalid definition.", pair->position());
+                            ScriptObjectPointer cadr = cdr->car();
                             ScriptObjectPointer member;
                             switch (cadr->type()) {
                                 case ScriptObject::SymbolType: {
                                     Symbol* variable = static_cast<Symbol*>(cadr.data());
-                                    if (csize == 2) {
-                                        scope->addVariable(variable->name());
+                                    ScriptObjectPointer cddr = cdr->cdr();
+                                    switch (cddr->type()) {
+                                        case ScriptObject::NullType:
+                                            scope->addVariable(variable->name());
+                                            break;
 
-                                    } else if (csize == 3) {
-                                        scope->addVariable(variable->name(), contents.at(2));
-
-                                    } else {
-                                        throw ScriptError("Invalid definition.", list->position());
+                                        case ScriptObject::PairType: {
+                                            Pair* pcddr = static_cast<Pair*>(cddr.data());
+                                            requireNull(pcddr->cdr(),
+                                                "Invalid definition.", pair->position());
+                                            scope->addVariable(variable->name(), pcddr->car());
+                                            break;
+                                        }
+                                        default:
+                                            throw ScriptError("Invalid definition.",
+                                                pair->position());
                                     }
                                     break;
                                 }
-                                case ScriptObject::ListType: {
-                                    List* alist = static_cast<List*>(cadr.data());
-                                    const ScriptObjectPointerList& acontents = alist->contents();
-                                    int acsize = acontents.size();
-                                    if (acsize == 0) {
-                                        throw ScriptError("Invalid definition.",
-                                            alist->position());
-                                    }
-                                    ScriptObjectPointer car = acontents.at(0);
-                                    if (car->type() != ScriptObject::SymbolType) {
-                                        throw ScriptError("Invalid definition.",
-                                            alist->position());
-                                    }
-                                    Symbol* symbol = static_cast<Symbol*>(car.data());
-                                    ScriptObjectPointerList lcontents;
-                                    lcontents.append(Symbol::instance("lambda"));
-                                    ScriptObjectPointerList ncontents;
-                                    for (int ii = 1; ii < acsize; ii++) {
-                                        ncontents.append(acontents.at(ii));
-                                    }
-                                    lcontents.append(ScriptObjectPointer(
-                                        new List(ncontents, alist->position())));
-                                    for (int ii = 2; ii < csize; ii++) {
-                                        lcontents.append(contents.at(ii));
-                                    }
-                                    scope->addVariable(symbol->name(), ScriptObjectPointer(
-                                        new List(lcontents, list->position())));
+                                case ScriptObject::PairType: {
+                                    Pair* apair = static_cast<Pair*>(cadr.data());
+                                    Symbol* symbol = requireSymbol(apair->car(),
+                                        "Invalid definition.", apair->position());
+                                    scope->addVariable(symbol->name(), ScriptObjectPointer(new Pair(
+                                        Symbol::instance("lambda"),
+                                        ScriptObjectPointer(new Pair(
+                                            apair->cdr(), cdr->cdr(), cdr->position())),
+                                        pair->position())));
                                     break;
                                 }
                                 default:
-                                    throw ScriptError("Invalid definition.", list->position());
+                                    throw ScriptError("Invalid definition.", pair->position());
                             }
                         } else if (name == "lambda") {
                             compileDeferred(scope, top, out);
-                            compileLambda(list, scope, out);
+                            compileLambda(pair, scope, out);
                             maybeAppendPop(top, tailCall, out);
 
                         } else if (name == "set!") {
-                            if (contents.size() != 3) {
-                                throw ScriptError("Invalid expression.", list->position());
-                            }
-                            ScriptObjectPointer variable = contents.at(1);
-                            switch (variable->type()) {
+                            Pair* cdr = requirePair(pair->cdr(),
+                                "Invalid expression.", pair->position());
+                            Pair* cddr = requirePair(cdr->cdr(),
+                                "Invalid expression.", pair->position());
+                            requireNull(cddr->cdr(), "Invalid expression.", pair->position());
+                            ScriptObjectPointer cadr = cdr->car();
+                            switch (cadr->type()) {
                                 case ScriptObject::VariableType: {
                                     compileDeferred(scope, top, out);
-                                    Variable* var = static_cast<Variable*>(variable.data());
-                                    compile(contents.at(2), scope, false, false, false, out);
+                                    Variable* var = static_cast<Variable*>(cadr.data());
+                                    compile(cddr->car(), scope, false, false, false, out);
                                     out.append(SetVariableOp, var->scope(), var->index());
                                     out.append(ConstantOp, scope->addConstant(
                                         Unspecified::instance()));
@@ -455,21 +521,21 @@ static void compile (
                                     return;
                                 }
                                 case ScriptObject::SyntaxRulesType:
-                                    throw ScriptError("Invalid macro use.", list->position());
+                                    throw ScriptError("Invalid macro use.", pair->position());
 
                                 case ScriptObject::IdentifierSyntaxType: {
                                     IdentifierSyntax* syntax = static_cast<IdentifierSyntax*>(
-                                        variable.data());
+                                        cadr.data());
                                     ScriptObjectPointer transformed = syntax->maybeTransform(
-                                        contents.at(2), scope);
+                                        cddr->car(), scope);
                                     if (transformed.isNull()) {
-                                        throw ScriptError("No pattern match.", list->position());
+                                        throw ScriptError("No pattern match.", pair->position());
                                     }
                                     compile(transformed, scope, top, allowDef, tailCall, out);
                                     return;
                                 }
                                 case ScriptObject::SymbolType: {
-                                    Symbol* var = static_cast<Symbol*>(variable.data());
+                                    Symbol* var = static_cast<Symbol*>(cadr.data());
                                     ScriptObjectPointer binding = scope->resolve(var->name());
                                     if (binding.isNull()) {
                                         throw ScriptError("Unresolved symbol.", var->position());
@@ -477,9 +543,9 @@ static void compile (
                                     switch (binding->type()) {
                                         case ScriptObject::VariableType: {
                                             compileDeferred(scope, top, out);
-                                            Variable* variable = static_cast<Variable*>(binding.data());
-                                            compile(contents.at(2), scope, false,
-                                                false, false, out);
+                                            Variable* variable =
+                                                static_cast<Variable*>(binding.data());
+                                            compile(cddr->car(), scope, false, false, false, out);
                                             out.append(SetVariableOp, variable->scope(),
                                                 variable->index());
                                             out.append(ConstantOp, scope->addConstant(
@@ -489,16 +555,16 @@ static void compile (
                                         }
                                         case ScriptObject::SyntaxRulesType:
                                             throw ScriptError("Invalid macro use.",
-                                                list->position());
+                                                pair->position());
 
                                         case ScriptObject::IdentifierSyntaxType: {
                                             IdentifierSyntax* syntax =
                                                 static_cast<IdentifierSyntax*>(binding.data());
                                             ScriptObjectPointer transformed =
-                                                syntax->maybeTransform(contents.at(2), scope);
+                                                syntax->maybeTransform(cddr->car(), scope);
                                             if (transformed.isNull()) {
                                                 throw ScriptError("No pattern match.",
-                                                    list->position());
+                                                    pair->position());
                                             }
                                             compile(transformed, scope, top,
                                                 allowDef, tailCall, out);
@@ -507,45 +573,57 @@ static void compile (
                                     }
                                 }
                                 default:
-                                    throw ScriptError("Invalid expression.", list->position());
+                                    throw ScriptError("Invalid expression.", pair->position());
                             }
                         } else if (name == "quote") {
-                            if (contents.size() != 2) {
-                                throw ScriptError("Invalid expression.", list->position());
-                            }
+                            Pair* cdr = requirePair(pair->cdr(),
+                                "Invalid expression.", pair->position());
+                            requireNull(cdr->cdr(), "Invalid expression.", pair->position());
                             compileDeferred(scope, top, out);
-                            out.append(ConstantOp, scope->addConstant(contents.at(1)));
+                            out.append(ConstantOp, scope->addConstant(cdr->car()));
                             maybeAppendPop(top, tailCall, out);
 
                         } else if (name == "quasiquote") {
-                            if (contents.size() != 2) {
-                                throw ScriptError("Invalid expression.", list->position());
-                            }
+                            Pair* cdr = requirePair(pair->cdr(),
+                                "Invalid expression.", pair->position());
+                            requireNull(cdr->cdr(), "Invalid expression.", pair->position());
                             compileDeferred(scope, top, out);
-                            const ScriptObjectPointer& cadr = contents.at(1);
-                            if (cadr->type() != ScriptObject::ListType) {
+                            ScriptObjectPointer cadr = cdr->car();
+                            if (cadr->type() != ScriptObject::PairType) {
                                 out.append(ConstantOp, scope->addConstant(cadr));
                             } else {
-                                List* list = static_cast<List*>(cadr.data());
-                                compileQuasiquote(list, scope, out);
+                                Pair* pair = static_cast<Pair*>(cadr.data());
+                                compileQuasiquote(pair, scope, out);
                             }
                             maybeAppendPop(top, tailCall, out);
 
                         } else if (name == "if") {
-                            int csize = contents.size();
-                            if (csize != 3 && csize != 4) {
-                                throw ScriptError("Invalid expression.", list->position());
-                            }
+                            Pair* cdr = requirePair(pair->cdr(),
+                                "Invalid expression.", pair->position());
+                            Pair* cddr = requirePair(cdr->cdr(),
+                                "Invalid expression.", pair->position());
                             compileDeferred(scope, top, out);
-                            compile(contents.at(1), scope, false, false, false, out);
+                            compile(cdr->car(), scope, false, false, false, out);
                             Bytecode thencode;
-                            compile(contents.at(2), scope, false, false, tailCall, thencode);
+                            compile(cddr->car(), scope, false, false, tailCall, thencode);
                             Bytecode elsecode;
-                            if (csize == 4) {
-                                compile(contents.at(3), scope, false, false, tailCall, elsecode);
-                            } else {
-                                elsecode.append(ConstantOp, scope->addConstant(
-                                    Unspecified::instance()));
+                            ScriptObjectPointer cdddr = cddr->cdr();
+                            switch (cdddr->type()) {
+                                case ScriptObject::NullType:
+                                    elsecode.append(ConstantOp, scope->addConstant(
+                                        Unspecified::instance()));
+                                    break;
+
+                                case ScriptObject::PairType: {
+                                    Pair* pcdddr = static_cast<Pair*>(cdddr.data());
+                                    requireNull(pcdddr->cdr(),
+                                        "Invalid expression.", pair->position());
+                                    compile(pcdddr->car(), scope, false,
+                                        false, tailCall, elsecode);
+                                    break;
+                                }
+                                default:
+                                    throw ScriptError("Invalid expression.", pair->position());
                             }
                             thencode.append(JumpOp, elsecode.length());
                             out.append(ConditionalJumpOp, thencode.length());
@@ -554,22 +632,47 @@ static void compile (
                             maybeAppendPop(top, tailCall, out);
 
                         } else if (name == "begin") {
-                            int csize = contents.size();
                             if (top) {
-                                for (int ii = 1; ii < csize; ii++) {
-                                    compile(contents.at(ii), scope, true, allowDef,
-                                        tailCall && ii == csize - 1, out);
+                                ScriptObjectPointer cdr = pair->cdr();
+                                forever {
+                                    switch (cdr->type()) {
+                                        case ScriptObject::NullType:
+                                            return;
+
+                                        case ScriptObject::PairType: {
+                                            Pair* pcdr = static_cast<Pair*>(cdr.data());
+                                            compile(pcdr->car(), scope, true, allowDef,
+                                                tailCall && pcdr->cdr()->type() ==
+                                                    ScriptObject::NullType, out);
+                                            cdr = pcdr->cdr();
+                                            break;
+                                        }
+                                        default:
+                                            throw ScriptError("Invalid expression.",
+                                                pair->position());
+                                    }
                                 }
                             } else {
-                                if (csize == 1) {
-                                    throw ScriptError("Invalid expression.", list->position());
+                                Pair* pcdr = requirePair(pair->cdr(),
+                                    "Invalid expression.", pair->position());
+                                forever {
+                                    ScriptObjectPointer cddr = pcdr->cdr();
+                                    switch (cddr->type()) {
+                                        case ScriptObject::NullType:
+                                            compile(pcdr->car(), scope, false, false, tailCall, out);
+                                            return;
+
+                                        case ScriptObject::PairType:
+                                            compile(pcdr->car(), scope, false, false, false, out);
+                                            out.append(PopOp);
+                                            pcdr = static_cast<Pair*>(cddr.data());
+                                            break;
+
+                                        default:
+                                            throw ScriptError("Invalid expression.",
+                                                pair->position());
+                                    }
                                 }
-                                int lastIdx = csize - 1;
-                                for (int ii = 1; ii < lastIdx; ii++) {
-                                    compile(contents.at(ii), scope, false, false, false, out);
-                                    out.append(PopOp);
-                                }
-                                compile(contents.at(lastIdx), scope, false, false, tailCall, out);
                             }
                         } else {
                             throw ScriptError("Unresolved symbol.", symbol->position());
@@ -582,7 +685,7 @@ static void compile (
                             ScriptObjectPointer transformed =
                                 syntax->maybeTransform(expr, scope);
                             if (transformed.isNull()) {
-                                throw ScriptError("No pattern match.", list->position());
+                                throw ScriptError("No pattern match.", pair->position());
                             }
                             compile(transformed, scope, top, allowDef, tailCall, out);
                             return;
@@ -592,13 +695,26 @@ static void compile (
             }
             compileDeferred(scope, top, out);
             out.append(ResetOperandCountOp);
-            foreach (const ScriptObjectPointer& operand, contents) {
-                compile(operand, scope, false, false, false, out);
+
+            for (Pair* rest = pair;; ) {
+                compile(rest->car(), scope, false, false, false, out);
+
+                ScriptObjectPointer cdr = rest->cdr();
+                switch (cdr->type()) {
+                    case ScriptObject::NullType:
+                        out.append(tailCall ? TailCallOp : CallOp);
+                        out.associate(pair->position());
+                        maybeAppendPop(top, tailCall, out);
+                        return;
+
+                    case ScriptObject::PairType:
+                        rest = static_cast<Pair*>(cdr.data());
+                        break;
+
+                    default:
+                        throw ScriptError("Invalid expression.", pair->position());
+                }
             }
-            out.append(tailCall ? TailCallOp : CallOp);
-            out.associate(list->position());
-            maybeAppendPop(top, tailCall, out);
-            return;
         }
     }
 }
@@ -751,11 +867,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             for (ScriptObjectPointer* aend = aptr + ssize; aptr != aend; aptr++) {
                                 *vptr++ = *aptr;
                             }
-                            ScriptObjectPointerList contents;
-                            for (ScriptObjectPointer* aend = aptr + lsize; aptr != aend; aptr++) {
-                                contents.append(*aptr);
-                            }
-                            *vptr = listInstance(contents);
+                            *vptr = listInstance(aptr, lsize);
 
                         } else {
                             if (nargs != lambda->scalarArgumentCount()) {
@@ -862,11 +974,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                             for (ScriptObjectPointer* aend = aptr + ssize; aptr != aend; aptr++) {
                                 *vptr++ = *aptr;
                             }
-                            ScriptObjectPointerList contents;
-                            for (ScriptObjectPointer* aend = aptr + lsize; aptr != aend; aptr++) {
-                                contents.append(*aptr);
-                            }
-                            *vptr = listInstance(contents);
+                            *vptr = listInstance(aptr, lsize);
 
                         } else {
                             if (nargs != lambda->scalarArgumentCount()) {
@@ -960,9 +1068,32 @@ void Evaluator::gc ()
     }
 }
 
-ScriptObjectPointer Evaluator::listInstance (const ScriptObjectPointerList& contents)
+ScriptObjectPointer Evaluator::listInstance (ScriptObjectPointer* first, int count)
 {
-    ScriptObjectPointer instance = List::instance(contents);
+    if (count == 0) {
+        return Null::instance();
+    }
+    ScriptObjectPointer head = pairInstance(*first), tail = head;
+    for (ScriptObjectPointer* it = first + 1, *end = first + count; it != end; it++) {
+        ScriptObjectPointer pair = pairInstance(*it);
+        static_cast<Pair*>(tail.data())->setCdr(pair);
+        tail = pair;
+    }
+    static_cast<Pair*>(tail.data())->setCdr(Null::instance());
+    return head;
+}
+
+ScriptObjectPointer Evaluator::pairInstance (
+    const ScriptObjectPointer& car, const ScriptObjectPointer& cdr)
+{
+    ScriptObjectPointer instance(new Pair(car, cdr));
+    _collectable.append(instance.toWeakRef());
+    return instance;
+}
+
+ScriptObjectPointer Evaluator::vectorInstance (const ScriptObjectPointerList& contents)
+{
+    ScriptObjectPointer instance = Vector::instance(contents);
     if (!contents.isEmpty()) {
         _collectable.append(instance.toWeakRef());
     }

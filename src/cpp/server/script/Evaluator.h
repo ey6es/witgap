@@ -99,7 +99,7 @@ protected:
 
     /** The deferred definitions. */
     ScriptObjectPointerList _deferred;
-    
+
     /** An optional invocation associated with the scope, containing variable values. */
     ScriptObjectPointer _invocation;
 };
@@ -110,7 +110,7 @@ protected:
 class Evaluator : public QObject
 {
     Q_OBJECT
-    
+
 public:
 
     /**
@@ -138,9 +138,20 @@ public:
     void gc ();
 
     /**
-     * Creates a list instance and adds it to the collectable list.
+     * Creates a list instance containing the elements in (first, first + count].
      */
-    ScriptObjectPointer listInstance (const ScriptObjectPointerList& contents);
+    ScriptObjectPointer listInstance (ScriptObjectPointer* first, int count);
+
+    /**
+     * Creates a pair instance and adds it to the collectable list.
+     */
+    ScriptObjectPointer pairInstance (
+        const ScriptObjectPointer& car, const ScriptObjectPointer& cdr = ScriptObjectPointer());
+
+    /**
+     * Creates a vector instance and adds it to the collectable list.
+     */
+    ScriptObjectPointer vectorInstance (const ScriptObjectPointerList& contents);
 
 protected:
 
@@ -151,7 +162,7 @@ protected:
 
     /** The source of the input. */
     QString _source;
-    
+
     /** The evaluator-level scope. */
     Scope _scope;
 
@@ -160,10 +171,10 @@ protected:
 
     /** The current register values. */
     Registers _registers;
-    
+
     /** Weak pointers to the collectable objects we've created. */
     QLinkedList<WeakScriptObjectPointer> _collectable;
-    
+
     /** The last color used for garbage collection. */
     int _lastColor;
 };
