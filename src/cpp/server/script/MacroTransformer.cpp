@@ -56,6 +56,71 @@ static PatternPointer createPattern (
             variables.insert(name, VariableMapping(index, parentGroup));
             return PatternPointer(new VariablePattern(index));
         }
+        case ScriptObject::PairType: {
+            Pair* pair = static_cast<Pair*>(expr.data());
+            QVector<PatternPointer> preRepeatPatterns;
+            PatternPointer repeatPattern;
+            RepeatGroupPointer repeatGroup(new RepeatGroup());
+            QVector<PatternPointer> postRepeatPatterns;
+            PatternPointer restPattern;
+            for (Pair* rest = pair;; ) {
+                ScriptObjectPointer cdr = rest->cdr();
+                if (cdr->type() == ScriptObject::PairType) {
+                    Pair* pcdr = static_cast<Pair*>(cdr.data());
+                    ScriptObjectPointer cadr = pcdr->car();
+                    if (cadr->type() == ScriptObject::SymbolType) {
+                        Symbol* symbol = static_cast<Symbol*>(cadr.data());
+                        if (symbol->name() == "...") {
+                            repeatGroup->parent = parentGroup;
+                            repeatGroup->variableIdx = variables.size();
+                            repeatPattern = createPattern(
+                                rest->car(), literals, variables, repeatGroup);
+                            repeatGroup->variableCount =
+                                variables.size() - repeatGroup->variableIdx;
+
+                            for (ScriptObjectPointer cddr = pcdr->cdr();; ) {
+                                switch (cddr->type()) {
+                                    case ScriptObject::PairType: {
+                                        Pair* pcddr = static_cast<Pair*>(cddr.data());
+                                        postRepeatPatterns.append(createPattern(
+                                            pcddr->car(), literals, variables, parentGroup));
+                                        cddr = pcddr->cdr();
+                                        break;
+                                    }
+                                    case ScriptObject::NullType:
+                                        goto outerBreak;
+
+                                    default:
+                                        restPattern = createPattern(
+                                            cddr, literals, variables, parentGroup);
+                                        goto outerBreak;
+                                }
+                            }
+                        }
+                    }
+                }
+                preRepeatPatterns.append(createPattern(
+                    rest->car(), literals, variables, parentGroup));
+
+                switch (cdr->type()) {
+                    case ScriptObject::PairType:
+                        rest = static_cast<Pair*>(cdr.data());
+                        break;
+
+                    case ScriptObject::NullType:
+                        goto outerBreak;
+
+                    default:
+                        restPattern = createPattern(cdr, literals, variables, parentGroup);
+                        goto outerBreak;
+                }
+            }
+            outerBreak:
+
+            return PatternPointer(new ListPattern(
+                preRepeatPatterns, repeatPattern, repeatGroup->variableIdx,
+                repeatGroup->variableCount, postRepeatPatterns, restPattern));
+        }
         case ScriptObject::VectorType: {
             Vector* list = static_cast<Vector*>(expr.data());
             const ScriptObjectPointerVector& contents = list->contents();
@@ -63,7 +128,6 @@ static PatternPointer createPattern (
             PatternPointer repeatPattern;
             RepeatGroupPointer repeatGroup(new RepeatGroup());
             QVector<PatternPointer> postRepeatPatterns;
-            PatternPointer restPattern;
             for (int ii = 0, nn = contents.size(); ii < nn; ii++) {
                 if (ii + 1 < nn) {
                     ScriptObjectPointer next = contents.at(ii + 1);
@@ -77,19 +141,6 @@ static PatternPointer createPattern (
                             repeatGroup->variableCount =
                                 variables.size() - repeatGroup->variableIdx;
                             for (ii += 2; ii < nn; ii++) {
-                                ScriptObjectPointer element = contents.at(ii);
-                                if (element->type() == ScriptObject::SymbolType) {
-                                    symbol = static_cast<Symbol*>(element.data());
-                                    if (symbol->name() == ".") {
-                                        if (nn != ii + 2) {
-                                            throw ScriptError("Invalid pattern.",
-                                                list->position());
-                                        }
-                                        restPattern = createPattern(
-                                            contents.at(ii + 1), literals, variables, parentGroup);
-                                        break;
-                                    }
-                                }
                                 postRepeatPatterns.append(createPattern(
                                     contents.at(ii), literals, variables, parentGroup));
                             }
@@ -102,7 +153,7 @@ static PatternPointer createPattern (
             }
             return PatternPointer(new VectorPattern(
                 preRepeatPatterns, repeatPattern, repeatGroup->variableIdx,
-                repeatGroup->variableCount, postRepeatPatterns, restPattern));
+                repeatGroup->variableCount, postRepeatPatterns));
         }
         default:
             return PatternPointer(new ConstantPattern(expr));
@@ -146,24 +197,89 @@ static TemplatePointer createTemplate (
             maybeAssignGroup(repeatGroup, it.value().second, symbol->position());
             return TemplatePointer(new VariableTemplate(it.value().first));
         }
+        case ScriptObject::PairType: {
+            Pair* pair = static_cast<Pair*>(expr.data());
+            ScriptObjectPointer car = pair->car();
+            if (car->type() == ScriptObject::SymbolType) {
+                Symbol* symbol = static_cast<Symbol*>(car.data());
+                if (symbol->name() == "..." && !ellipseIdents) {
+                    Pair* cdr = requirePair(pair->cdr(), "Invalid template.", pair->position());
+                    requireNull(cdr->cdr(), "Invalid template.", pair->position());
+                    return createTemplate(cdr->car(), scope, variables, true, repeatGroup);
+                }
+            }
+            QVector<Subtemplate> subtemplates;
+            TemplatePointer restTemplate;
+
+            for (Pair* rest = pair;; ) {
+                RepeatGroupPointer subRepeatGroup;
+                TemplatePointer templ = createTemplate(
+                    rest->car(), scope, variables, ellipseIdents, subRepeatGroup);
+                int repeatVariableIdx;
+                int repeatVariableCount;
+                int repeatDepth = 0;
+                if (!ellipseIdents) {
+                    forever {
+                        ScriptObjectPointer cdr = rest->cdr();
+                        switch (cdr->type()) {
+                            case ScriptObject::PairType: {
+                                Pair* pcdr = static_cast<Pair*>(cdr.data());
+                                ScriptObjectPointer cadr = pcdr->car();
+                                if (cadr->type() != ScriptObject::SymbolType) {
+                                    goto repeatBreak;
+                                }
+                                Symbol* symbol = static_cast<Symbol*>(cadr.data());
+                                if (symbol->name() != "...") {
+                                    goto repeatBreak;
+                                }
+                                if (subRepeatGroup.isNull()) {
+                                    throw ScriptError("Invalid repeat depth.", symbol->position());
+                                }
+                                repeatVariableIdx = subRepeatGroup->variableIdx;
+                                repeatVariableCount = subRepeatGroup->variableCount;
+                                subRepeatGroup = subRepeatGroup->parent;
+                                repeatDepth++;
+                                rest = pcdr;
+                                break;
+                            }
+                            default:
+                                goto repeatBreak;
+                        }
+                    }
+                    repeatBreak: ;
+                }
+                maybeAssignGroup(repeatGroup, subRepeatGroup, pair->position());
+                subtemplates.append(Subtemplate(
+                    repeatVariableIdx, repeatVariableCount, repeatDepth, templ));
+
+                ScriptObjectPointer cdr = rest->cdr();
+                switch (cdr->type()) {
+                    case ScriptObject::PairType:
+                        rest = static_cast<Pair*>(cdr.data());
+                        break;
+
+                    case ScriptObject::NullType:
+                        goto outerBreak;
+
+                    default:
+                        restTemplate = createTemplate(
+                            cdr, scope, variables, ellipseIdents, repeatGroup);
+                        goto outerBreak;
+                }
+            }
+            outerBreak:
+
+            return TemplatePointer(new ListTemplate(subtemplates, restTemplate));
+        }
         case ScriptObject::VectorType: {
             Vector* list = static_cast<Vector*>(expr.data());
             const ScriptObjectPointerVector& contents = list->contents();
             QVector<Subtemplate> subtemplates;
-            TemplatePointer restTemplate;
             for (int ii = 0, nn = contents.size(); ii < nn; ii++) {
                 ScriptObjectPointer element = contents.at(ii);
                 if (element->type() == ScriptObject::SymbolType) {
                     Symbol* symbol = static_cast<Symbol*>(element.data());
                     const QString& name = symbol->name();
-                    if (name == ".") {
-                        if (nn != ii + 2) {
-                            throw ScriptError("Invalid template.", list->position());
-                        }
-                        restTemplate = createTemplate(contents.at(ii + 1),
-                            scope, variables, ellipseIdents, repeatGroup);
-                        break;
-                    }
                     if (name == "..." && !ellipseIdents) {
                         if (nn != 2) {
                             throw ScriptError("Invalid template.", list->position());
@@ -201,7 +317,7 @@ static TemplatePointer createTemplate (
                 subtemplates.append(Subtemplate(
                     repeatVariableIdx, repeatVariableCount, repeatDepth, templ));
             }
-            return TemplatePointer(new VectorTemplate(subtemplates, restTemplate));
+            return TemplatePointer(new VectorTemplate(subtemplates));
         }
         default:
             return TemplatePointer(new DatumTemplate(expr));
@@ -241,112 +357,116 @@ ScriptObjectPointer createMacroTransformer (ScriptObjectPointer expr, Scope* sco
                     throw ScriptError("Not a macro transformer.", symbol->position());
             }
         }
-        case ScriptObject::VectorType: {
-            Vector* list = static_cast<Vector*>(expr.data());
-            const ScriptObjectPointerVector& contents = list->contents();
-            int csize = contents.size();
-            if (csize < 2) {
-                throw ScriptError("Invalid macro transformer.", list->position());
-            }
-            ScriptObjectPointer car = contents.at(0);
-            if (car->type() != ScriptObject::SymbolType) {
-                throw ScriptError("Invalid macro transformer.", list->position());
-            }
-            Symbol* symbol = static_cast<Symbol*>(car.data());
+        case ScriptObject::PairType: {
+            Pair* pair = static_cast<Pair*>(expr.data());
+            Symbol* symbol = requireSymbol(pair->car(), "Invalid macro transformer.",
+                pair->position());
+            Pair* cdr = requirePair(pair->cdr(), "Invalid macro transformer.", pair->position());
             const QString& name = symbol->name();
             if (name == "syntax-rules") {
-                ScriptObjectPointer cadr = contents.at(1);
-                if (cadr->type() != ScriptObject::VectorType) {
-                    throw ScriptError("Invalid syntax rules.", list->position());
-                }
-                Vector* llist = static_cast<Vector*>(cadr.data());
                 QHash<QString, PatternPointer> literals;
-                foreach (const ScriptObjectPointer& element, llist->contents()) {
-                    if (element->type() != ScriptObject::SymbolType) {
-                        throw ScriptError("Invalid literals.", llist->position());
+                for (ScriptObjectPointer rest = cdr->car();; ) {
+                    switch (rest->type()) {
+                        case ScriptObject::PairType: {
+                            Pair* rpair = static_cast<Pair*>(rest.data());
+                            Symbol* literal = requireSymbol(rpair->car(), "Invalid literal.",
+                                rpair->position());
+                            const QString& lname = literal->name();
+                            ScriptObjectPointer binding = scope->resolve(lname);
+                            literals.insert(lname, PatternPointer(binding.isNull() ?
+                                (Pattern*)new UnboundLiteralPattern(lname) :
+                                (Pattern*)new BoundLiteralPattern(binding)));
+                            rest = rpair->cdr();
+                            break;
+                        }
+                        case ScriptObject::NullType:
+                           goto literalBreak;
+
+                        default:
+                            throw ScriptError("Invalid syntax rules.", pair->position());
                     }
-                    Symbol* literal = static_cast<Symbol*>(element.data());
-                    const QString& lname = literal->name();
-                    ScriptObjectPointer binding = scope->resolve(lname);
-                    literals.insert(lname, PatternPointer(binding.isNull() ?
-                        (Pattern*)new UnboundLiteralPattern(lname) :
-                        (Pattern*)new BoundLiteralPattern(binding)));
                 }
+                literalBreak:
+
                 QVector<PatternTemplate> patternTemplates;
-                for (int ii = 2; ii < csize; ii++) {
-                    ScriptObjectPointer rule = contents.at(ii);
-                    if (rule->type() != ScriptObject::VectorType) {
-                        throw ScriptError("Invalid rule.",
-                            static_cast<Datum*>(rule.data())->position());
+                for (ScriptObjectPointer rest = cdr->cdr();; ) {
+                    switch (rest->type()) {
+                        case ScriptObject::PairType: {
+                            Pair* rpair = static_cast<Pair*>(rest.data());
+                            Pair* rule = requirePair(rpair->car(), "Invalid syntax rule.",
+                                rpair->position());
+                            Pair* rulecdr = requirePair(rule->cdr(), "Invalid syntax rule.",
+                                rpair->position());
+                            requireNull(rulecdr->cdr(), "Invalid syntax rule.", rpair->position());
+
+                            QHash<QString, VariableMapping> variables;
+                            PatternPointer pattern = createPattern(rule->car(), literals, variables);
+                            patternTemplates.append(PatternTemplate(variables.size(), pattern,
+                                createTemplate(rulecdr->car(), scope, variables)));
+                            rest = rpair->cdr();
+                            break;
+                        }
+                        case ScriptObject::NullType:
+                            goto templateBreak;
+
+                        default:
+                            throw ScriptError("Invalid syntax rules.", pair->position());
                     }
-                    Vector* rlist = static_cast<Vector*>(rule.data());
-                    const ScriptObjectPointerVector& rcontents = rlist->contents();
-                    if (rcontents.size() != 2) {
-                        throw ScriptError("Invalid rule.", rlist->position());
-                    }
-                    QHash<QString, VariableMapping> variables;
-                    PatternPointer pattern = createPattern(rcontents.at(0), literals, variables);
-                    patternTemplates.append(PatternTemplate(variables.size(), pattern,
-                        createTemplate(rcontents.at(1), scope, variables)));
                 }
+                templateBreak:
+
                 return ScriptObjectPointer(new SyntaxRules(patternTemplates));
 
             } else if (name == "identifier-syntax") {
-                if (csize == 2) {
-                    return ScriptObjectPointer(new IdentifierSyntax(
-                        createTemplate(contents.at(1), scope, QHash<QString, VariableMapping>()),
-                        PatternTemplate()));
-                }
-                if (csize != 3) {
-                    throw ScriptError("Invalid identifier syntax.", list->position());
-                }
-                ScriptObjectPointer ref = contents.at(1);
-                if (ref->type() != ScriptObject::VectorType) {
-                    throw ScriptError("Invalid identifier syntax.", list->position());
-                }
-                Vector* rlist = static_cast<Vector*>(ref.data());
-                const ScriptObjectPointerVector& rcontents = rlist->contents();
-                if (rcontents.size() != 2 ||
-                        rcontents.at(0)->type() != ScriptObject::SymbolType) {
-                    throw ScriptError("Invalid rule.", rlist->position());
-                }
-                TemplatePointer templ = createTemplate(
-                    rcontents.at(1), scope, QHash<QString, VariableMapping>());
-                ScriptObjectPointer set = contents.at(2);
-                if (set->type() != ScriptObject::VectorType) {
-                    throw ScriptError("Invalid identifier syntax.", list->position());
-                }
-                Vector* slist = static_cast<Vector*>(set.data());
-                const ScriptObjectPointerVector& scontents = slist->contents();
-                if (scontents.size() != 2) {
-                    throw ScriptError("Invalid rule.", slist->position());
-                }
-                ScriptObjectPointer pat = scontents.at(0);
-                if (pat->type() != ScriptObject::VectorType) {
-                    throw ScriptError("Invalid rule.", slist->position());
-                }
-                Vector* plist = static_cast<Vector*>(pat.data());
-                const ScriptObjectPointerVector& pcontents = plist->contents();
-                if (pcontents.size() != 3 || pcontents.at(1)->type() != ScriptObject::SymbolType) {
-                    throw ScriptError("Invalid pattern.", plist->position());
-                }
-                ScriptObjectPointer slit = pcontents.at(0);
-                if (slit->type() != ScriptObject::SymbolType) {
-                    throw ScriptError("Invalid pattern.", plist->position());
-                }
-                Symbol* symbol = static_cast<Symbol*>(slit.data());
-                if (symbol->name() != "set!") {
-                    throw ScriptError("Invalid pattern.", plist->position());
-                }
-                QHash<QString, VariableMapping> variables;
-                PatternPointer pattern = createPattern(
-                    pcontents.at(2), QHash<QString, PatternPointer>(), variables);
-                return ScriptObjectPointer(new IdentifierSyntax(templ, PatternTemplate(
-                    variables.size(), pattern, createTemplate(
-                        scontents.at(1), scope, variables))));
+                ScriptObjectPointer cddr = cdr->cdr();
+                switch (cddr->type()) {
+                    case ScriptObject::NullType:
+                        return ScriptObjectPointer(new IdentifierSyntax(
+                            createTemplate(cdr->car(), scope, QHash<QString, VariableMapping>()),
+                            PatternTemplate()));
 
+                    case ScriptObject::PairType: {
+                        Pair* pcddr = static_cast<Pair*>(cddr.data());
+                        requireNull(pcddr->cdr(), "Invalid identifier syntax.", pair->position());
+                        Pair* cadr = requirePair(cdr->car(), "Invalid identifier syntax.",
+                            pair->position());
+                        requireSymbol(cadr->car(), "Invalid rule.", cadr->position());
+                        Pair* cdadr = requirePair(cadr->cdr(), "Invalid rule.", cadr->position());
+                        requireNull(cdadr->cdr(), "Invalid rule.", cadr->position());
+                        TemplatePointer templ = createTemplate(cdadr->car(), scope,
+                            QHash<QString, VariableMapping>());
+
+                        Pair* caddr = requirePair(pcddr->car(), "Invalid identifier syntax.",
+                            pair->position());
+                        Pair* cdaddr = requirePair(caddr->cdr(), "Invalid rule.",
+                            caddr->position());
+                        requireNull(cdaddr->cdr(), "Invalid rule.", caddr->position());
+                        Pair* caaddr = requirePair(caddr->car(), "Invalid rule.",
+                            caddr->position());
+                        Pair* cdaaddr = requirePair(caaddr->cdr(), "Invalid rule.",
+                            caddr->position());
+                        Pair* cddaaddr = requirePair(cdaaddr->cdr(), "Invalid rule.",
+                            caddr->position());
+                        requireNull(cddaaddr->cdr(), "Invalid rule.", caddr->position());
+                        Symbol* set = requireSymbol(caaddr->car(), "Invalid rule.",
+                            caddr->position());
+                        if (set->name() != "set!") {
+                            throw ScriptError("Invalid rule.", caddr->position());
+                        }
+                        requireSymbol(cdaaddr->car(), "Invalid rule.", caddr->position());
+
+                        QHash<QString, VariableMapping> variables;
+                        PatternPointer pattern = createPattern(
+                            cddaaddr->car(), QHash<QString, PatternPointer>(), variables);
+                        return ScriptObjectPointer(new IdentifierSyntax(templ, PatternTemplate(
+                            variables.size(), pattern, createTemplate(
+                                cdaddr->car(), scope, variables))));
+                    }
+                    default:
+                        throw ScriptError("Invalid identifier syntax.", pair->position());
+                }
             } else {
-                throw ScriptError("Invalid macro transformer.", list->position());
+                throw ScriptError("Invalid macro transformer.", pair->position());
             }
         }
         default:
@@ -360,7 +480,7 @@ ConstantPattern::ConstantPattern (const ScriptObjectPointer& constant) :
 }
 
 bool ConstantPattern::matches (
-    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const
+    ScriptObjectPointer form, Scope* scope, ScriptObjectPointerVector& variables) const
 {
     return equivalent(form, _constant);
 }
@@ -371,7 +491,7 @@ VariablePattern::VariablePattern (int index) :
 }
 
 bool VariablePattern::matches (
-    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const
+    ScriptObjectPointer form, Scope* scope, ScriptObjectPointerVector& variables) const
 {
     if (_index != -1) {
         variables[_index] = form;
@@ -385,7 +505,7 @@ BoundLiteralPattern::BoundLiteralPattern (const ScriptObjectPointer& binding) :
 }
 
 bool BoundLiteralPattern::matches (
-    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const
+    ScriptObjectPointer form, Scope* scope, ScriptObjectPointerVector& variables) const
 {
     if (form->type() == ScriptObject::SymbolType) {
         Symbol* symbol = static_cast<Symbol*>(form.data());
@@ -403,7 +523,7 @@ UnboundLiteralPattern::UnboundLiteralPattern (const QString& name) :
 }
 
 bool UnboundLiteralPattern::matches (
-    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const
+    ScriptObjectPointer form, Scope* scope, ScriptObjectPointerVector& variables) const
 {
     if (form->type() != ScriptObject::SymbolType) {
         return false;
@@ -412,7 +532,7 @@ bool UnboundLiteralPattern::matches (
     return symbol->name() == _name && scope->resolve(_name).isNull();
 }
 
-VectorPattern::VectorPattern (const QVector<PatternPointer>& preRepeatPatterns,
+ListPattern::ListPattern (const QVector<PatternPointer>& preRepeatPatterns,
         const PatternPointer& repeatPattern, int repeatVariableIdx, int repeatVariableCount,
         const QVector<PatternPointer>& postRepeatPatterns, const PatternPointer& restPattern) :
     _preRepeatPatterns(preRepeatPatterns),
@@ -424,8 +544,100 @@ VectorPattern::VectorPattern (const QVector<PatternPointer>& preRepeatPatterns,
 {
 }
 
+bool ListPattern::matches (
+    ScriptObjectPointer form, Scope* scope, ScriptObjectPointerVector& variables) const
+{
+    if (form->type() != ScriptObject::PairType) {
+        return false;
+    }
+    Pair* pair = static_cast<Pair*>(form.data());
+    for (int ii = 0, nn = _preRepeatPatterns.size(); ii < nn; ii++) {
+        if (!_preRepeatPatterns.at(ii)->matches(pair->car(), scope, variables)) {
+            return false;
+        }
+        ScriptObjectPointer cdr = pair->cdr();
+        switch (cdr->type()) {
+            case ScriptObject::PairType:
+                pair = static_cast<Pair*>(cdr.data());
+                break;
+
+            case ScriptObject::NullType:
+                return ii == nn - 1 && _postRepeatPatterns.isEmpty() && _restPattern.isNull();
+
+            default:
+                return ii == nn - 1 && _postRepeatPatterns.isEmpty() && !_restPattern.isNull() &&
+                    _restPattern->matches(cdr, scope, variables);
+        }
+    }
+    if (!_repeatPattern.isNull()) {
+        QVector<ScriptObjectPointerVector> lists(_repeatVariableCount);
+        forever {
+            if (!_repeatPattern->matches(pair->car(), scope, variables)) {
+                break;
+            }
+            for (int ii = 0; ii < _repeatVariableCount; ii++) {
+                lists[ii].append(variables.at(_repeatVariableIdx + ii));
+            }
+
+            ScriptObjectPointer cdr = pair->cdr();
+            switch (cdr->type()) {
+                case ScriptObject::PairType:
+                    pair = static_cast<Pair*>(cdr.data());
+                    break;
+
+                case ScriptObject::NullType:
+                    for (int ii = 0; ii < _repeatVariableCount; ii++) {
+                        variables[_repeatVariableIdx + ii] = Vector::instance(lists.at(ii));
+                    }
+                    return _postRepeatPatterns.isEmpty() && _restPattern.isNull();
+
+                default:
+                    for (int ii = 0; ii < _repeatVariableCount; ii++) {
+                        variables[_repeatVariableIdx + ii] = Vector::instance(lists.at(ii));
+                    }
+                    return _postRepeatPatterns.isEmpty() && !_restPattern.isNull() &&
+                        _restPattern->matches(cdr, scope, variables);
+            }
+        }
+
+        for (int ii = 0; ii < _repeatVariableCount; ii++) {
+            variables[_repeatVariableIdx + ii] = Vector::instance(lists.at(ii));
+        }
+        for (int ii = 0, nn = _postRepeatPatterns.size(); ii < nn; ii++) {
+            if (!_postRepeatPatterns.at(ii)->matches(pair->car(), scope, variables)) {
+                return false;
+            }
+            ScriptObjectPointer cdr = pair->cdr();
+            switch (cdr->type()) {
+                case ScriptObject::PairType:
+                    pair = static_cast<Pair*>(cdr.data());
+                    break;
+
+                case ScriptObject::NullType:
+                    return ii == nn - 1 && _restPattern.isNull();
+
+                default:
+                    return ii == nn - 1 && !_restPattern.isNull() &&
+                        _restPattern->matches(cdr, scope, variables);
+            }
+        }
+    }
+    return false;
+}
+
+VectorPattern::VectorPattern (const QVector<PatternPointer>& preRepeatPatterns,
+        const PatternPointer& repeatPattern, int repeatVariableIdx, int repeatVariableCount,
+        const QVector<PatternPointer>& postRepeatPatterns) :
+    _preRepeatPatterns(preRepeatPatterns),
+    _repeatPattern(repeatPattern),
+    _repeatVariableIdx(repeatVariableIdx),
+    _repeatVariableCount(repeatVariableCount),
+    _postRepeatPatterns(postRepeatPatterns)
+{
+}
+
 bool VectorPattern::matches (
-    ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const
+    ScriptObjectPointer form, Scope* scope, ScriptObjectPointerVector& variables) const
 {
     if (form->type() != ScriptObject::VectorType) {
         return false;
@@ -466,14 +678,7 @@ bool VectorPattern::matches (
             }
         }
     }
-    if (_restPattern.isNull()) {
-        return idx == size;
-    }
-    ScriptObjectPointerVector rest;
-    for (; idx < size; idx++) {
-        rest.append(contents.at(idx));
-    }
-    return _restPattern->matches(Vector::instance(rest), scope, variables);
+    return idx == size;
 }
 
 DatumTemplate::DatumTemplate (const ScriptObjectPointer& datum) :
@@ -481,7 +686,7 @@ DatumTemplate::DatumTemplate (const ScriptObjectPointer& datum) :
 {
 }
 
-ScriptObjectPointer DatumTemplate::generate (QVector<ScriptObjectPointer>& variables) const
+ScriptObjectPointer DatumTemplate::generate (ScriptObjectPointerVector& variables) const
 {
     return _datum;
 }
@@ -492,7 +697,7 @@ SymbolTemplate::SymbolTemplate (Scope* scope, const ScriptObjectPointer& datum) 
 {
 }
 
-ScriptObjectPointer SymbolTemplate::generate (QVector<ScriptObjectPointer>& variables) const
+ScriptObjectPointer SymbolTemplate::generate (ScriptObjectPointerVector& variables) const
 {
     Symbol* symbol = static_cast<Symbol*>(_datum.data());
     ScriptObjectPointer binding = _scope->resolve(symbol->name());
@@ -504,9 +709,35 @@ VariableTemplate::VariableTemplate (int index) :
 {
 }
 
-ScriptObjectPointer VariableTemplate::generate (QVector<ScriptObjectPointer>& variables) const
+ScriptObjectPointer VariableTemplate::generate (ScriptObjectPointerVector& variables) const
 {
     return variables.at(_index);
+}
+
+ScriptObjectPointer ListBuilder::list (const ScriptObjectPointer& rest)
+{
+    if (_head.isNull()) {
+        return rest;
+    }
+    static_cast<Pair*>(_tail.data())->setCdr(rest);
+    return _head;
+}
+
+void ListBuilder::append (const ScriptObjectPointer& element)
+{
+    ScriptObjectPointer ntail(new Pair(element));
+    if (_head.isNull()) {
+        _head = _tail = ntail;
+
+    } else {
+        static_cast<Pair*>(_tail.data())->setCdr(ntail);
+        _tail = ntail;
+    }
+}
+
+void VectorBuilder::append (const ScriptObjectPointer& element)
+{
+    _vector.append(element);
 }
 
 Subtemplate::Subtemplate (
@@ -523,20 +754,19 @@ Subtemplate::Subtemplate ()
 {
 }
 
-void Subtemplate::generate (
-    QVector<ScriptObjectPointer>& variables, ScriptObjectPointerVector& out) const
+void Subtemplate::generate (ScriptObjectPointerVector& variables, ObjectBuilder* builder) const
 {
-    generate(variables, out, _repeatDepth);
+    generate(variables, builder, _repeatDepth);
 }
 
 void Subtemplate::generate (
-    QVector<ScriptObjectPointer>& variables, ScriptObjectPointerVector& out, int depth) const
+    ScriptObjectPointerVector& variables, ObjectBuilder* builder, int depth) const
 {
     if (depth == 0) {
-        out.append(_template->generate(variables));
+        builder->append(_template->generate(variables));
         return;
     }
-    QVector<ScriptObjectPointer> wrapped(_repeatVariableCount);
+    ScriptObjectPointerVector wrapped(_repeatVariableCount);
     for (int ii = 0; ii < _repeatVariableCount; ii++) {
         wrapped[ii] = variables[_repeatVariableIdx + ii];
     }
@@ -546,7 +776,7 @@ void Subtemplate::generate (
             Vector* list = static_cast<Vector*>(wrapped[jj].data());
             variables[_repeatVariableIdx + jj] = list->contents().at(ii);
         }
-        generate(variables, out, depth - 1);
+        generate(variables, builder, depth - 1);
     }
     for (int ii = 0; ii < _repeatVariableCount; ii++) {
         variables[_repeatVariableIdx + ii] = wrapped.at(ii);
@@ -560,45 +790,26 @@ ListTemplate::ListTemplate (
 {
 }
 
-ScriptObjectPointer ListTemplate::generate (QVector<ScriptObjectPointer>& variables) const
+ScriptObjectPointer ListTemplate::generate (ScriptObjectPointerVector& variables) const
 {
-    ScriptObjectPointerVector list;
+    ListBuilder builder;
     foreach (const Subtemplate& subtemplate, _subtemplates) {
-        subtemplate.generate(variables, list);
+        subtemplate.generate(variables, &builder);
     }
-    if (!_restTemplate.isNull()) {
-        ScriptObjectPointer rest = _restTemplate->generate(variables);
-        if (rest->type() == ScriptObject::VectorType) {
-            Vector* rlist = static_cast<Vector*>(rest.data());
-            list += rlist->contents();
-        } else {
-            list.append(rest);
-        }
-    }
-    return Vector::instance(list);
+    return builder.list(_restTemplate.isNull() ?
+        Null::instance() : _restTemplate->generate(variables));
 }
 
-VectorTemplate::VectorTemplate (
-        const QVector<Subtemplate>& subtemplates, const TemplatePointer& restTemplate) :
-    _subtemplates(subtemplates),
-    _restTemplate(restTemplate)
+VectorTemplate::VectorTemplate (const QVector<Subtemplate>& subtemplates) :
+    _subtemplates(subtemplates)
 {
 }
 
-ScriptObjectPointer VectorTemplate::generate (QVector<ScriptObjectPointer>& variables) const
+ScriptObjectPointer VectorTemplate::generate (ScriptObjectPointerVector& variables) const
 {
-    ScriptObjectPointerVector list;
+    VectorBuilder builder;
     foreach (const Subtemplate& subtemplate, _subtemplates) {
-        subtemplate.generate(variables, list);
+        subtemplate.generate(variables, &builder);
     }
-    if (!_restTemplate.isNull()) {
-        ScriptObjectPointer rest = _restTemplate->generate(variables);
-        if (rest->type() == ScriptObject::VectorType) {
-            Vector* rlist = static_cast<Vector*>(rest.data());
-            list += rlist->contents();
-        } else {
-            list.append(rest);
-        }
-    }
-    return Vector::instance(list);
+    return Vector::instance(builder.vector());
 }

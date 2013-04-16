@@ -179,4 +179,25 @@ protected:
     int _lastColor;
 };
 
+/**
+ * Throws a ScriptError with the supplied message and position if the given object isn't a Pair;
+ * otherwise, returns the casted pointer.
+ */
+Pair* requirePair (const ScriptObjectPointer& obj, const QString& message,
+    const ScriptPosition& position);
+
+/**
+ * Throws a ScriptError with the supplied message and position if the given object isn't a Symbol;
+ * otherwise, returns the casted pointer.
+ */
+Symbol* requireSymbol (const ScriptObjectPointer& obj, const QString& message,
+    const ScriptPosition& position);
+
+/**
+ * Throws a ScriptError with the supplied message and position if the given object isn't a Null;
+ * otherwise, returns the casted pointer.
+ */
+Null* requireNull (const ScriptObjectPointer& obj, const QString& message,
+    const ScriptPosition& position);
+
 #endif // EVALUATOR

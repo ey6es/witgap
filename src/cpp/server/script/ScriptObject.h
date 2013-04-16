@@ -372,7 +372,7 @@ public:
     /**
      * Creates a new pair.
      */
-    Pair (const ScriptObjectPointer& car, const ScriptObjectPointer& cdr,
+    Pair (const ScriptObjectPointer& car, const ScriptObjectPointer& cdr = ScriptObjectPointer(),
         const ScriptPosition& position = ScriptPosition());
 
     /**

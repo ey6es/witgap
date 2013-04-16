@@ -100,45 +100,6 @@ static void compile (
     ScriptObjectPointer expr, Scope* scope, bool top, bool allowDef, bool tailCall, Bytecode& out);
 
 /**
- * Throws a ScriptError with the supplied message and position if the given object isn't a Pair;
- * otherwise, returns the casted pointer.
- */
-static Pair* requirePair (
-    const ScriptObjectPointer& obj, const QString& message, const ScriptPosition& position)
-{
-    if (obj->type() != ScriptObject::PairType) {
-        throw ScriptError(message, position);
-    }
-    return static_cast<Pair*>(obj.data());
-}
-
-/**
- * Throws a ScriptError with the supplied message and position if the given object isn't a Symbol;
- * otherwise, returns the casted pointer.
- */
-static Symbol* requireSymbol (
-    const ScriptObjectPointer& obj, const QString& message, const ScriptPosition& position)
-{
-    if (obj->type() != ScriptObject::SymbolType) {
-        throw ScriptError(message, position);
-    }
-    return static_cast<Symbol*>(obj.data());
-}
-
-/**
- * Throws a ScriptError with the supplied message and position if the given object isn't a Null;
- * otherwise, returns the casted pointer.
- */
-static Null* requireNull (
-    const ScriptObjectPointer& obj, const QString& message, const ScriptPosition& position)
-{
-    if (obj->type() != ScriptObject::NullType) {
-        throw ScriptError(message, position);
-    }
-    return static_cast<Null*>(obj.data());
-}
-
-/**
  * Compiles a syntax scope.
  */
 static void compileSyntax (
@@ -1208,4 +1169,31 @@ void Evaluator::throwScriptError (const QString& message)
     _registers.operandCount = 0;
 
     throw ScriptError(message, positions);
+}
+
+Pair* requirePair (const ScriptObjectPointer& obj, const QString& message,
+    const ScriptPosition& position)
+{
+    if (obj->type() != ScriptObject::PairType) {
+        throw ScriptError(message, position);
+    }
+    return static_cast<Pair*>(obj.data());
+}
+
+Symbol* requireSymbol (const ScriptObjectPointer& obj, const QString& message,
+    const ScriptPosition& position)
+{
+    if (obj->type() != ScriptObject::SymbolType) {
+        throw ScriptError(message, position);
+    }
+    return static_cast<Symbol*>(obj.data());
+}
+
+Null* requireNull (const ScriptObjectPointer& obj, const QString& message,
+    const ScriptPosition& position)
+{
+    if (obj->type() != ScriptObject::NullType) {
+        throw ScriptError(message, position);
+    }
+    return static_cast<Null*>(obj.data());
 }

@@ -23,7 +23,7 @@ public:
      * variable list.
      */
     virtual bool matches (
-        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const = 0;
+        ScriptObjectPointer form, Scope* scope, ScriptObjectPointerVector& variables) const = 0;
 };
 
 /**
@@ -43,7 +43,7 @@ public:
      * variable list.
      */
     virtual bool matches (
-        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const;
+        ScriptObjectPointer form, Scope* scope, ScriptObjectPointerVector& variables) const;
 
 protected:
 
@@ -68,7 +68,7 @@ public:
      * variable list.
      */
     virtual bool matches (
-        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const;
+        ScriptObjectPointer form, Scope* scope, ScriptObjectPointerVector& variables) const;
 
 protected:
 
@@ -93,7 +93,7 @@ public:
      * variable list.
      */
     virtual bool matches (
-        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const;
+        ScriptObjectPointer form, Scope* scope, ScriptObjectPointerVector& variables) const;
 
 protected:
 
@@ -118,7 +118,7 @@ public:
      * variable list.
      */
     virtual bool matches (
-        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const;
+        ScriptObjectPointer form, Scope* scope, ScriptObjectPointerVector& variables) const;
 
 protected:
 
@@ -127,16 +127,16 @@ protected:
 };
 
 /**
- * A pattern that matches a vector with various subpatterns.
+ * A pattern that matches a list with various subpatterns.
  */
-class VectorPattern : public Pattern
+class ListPattern : public Pattern
 {
 public:
 
     /**
      * Creates a new vector pattern.
      */
-    VectorPattern (const QVector<PatternPointer>& preRepeatPatterns,
+    ListPattern (const QVector<PatternPointer>& preRepeatPatterns,
         const PatternPointer& repeatPattern, int repeatVariableIdx, int repeatVariableCount,
         const QVector<PatternPointer>& postRepeatPatterns, const PatternPointer& restPattern);
 
@@ -145,7 +145,7 @@ public:
      * variable list.
      */
     virtual bool matches (
-        ScriptObjectPointer form, Scope* scope, QVector<ScriptObjectPointer>& variables) const;
+        ScriptObjectPointer form, Scope* scope, ScriptObjectPointerVector& variables) const;
 
 protected:
 
@@ -169,6 +169,45 @@ protected:
 };
 
 /**
+ * A pattern that matches a vector with various subpatterns.
+ */
+class VectorPattern : public Pattern
+{
+public:
+
+    /**
+     * Creates a new vector pattern.
+     */
+    VectorPattern (const QVector<PatternPointer>& preRepeatPatterns,
+        const PatternPointer& repeatPattern, int repeatVariableIdx, int repeatVariableCount,
+        const QVector<PatternPointer>& postRepeatPatterns);
+
+    /**
+     * Determines whether the provided form matches this pattern.  If so, populates the supplied
+     * variable list.
+     */
+    virtual bool matches (
+        ScriptObjectPointer form, Scope* scope, ScriptObjectPointerVector& variables) const;
+
+protected:
+
+    /** The first patterns (before the repeating pattern). */
+    QVector<PatternPointer> _preRepeatPatterns;
+
+    /** An optional repeating pattern. */
+    PatternPointer _repeatPattern;
+
+    /** The index of the first variable in the repeating pattern. */
+    int _repeatVariableIdx;
+
+    /** The number of variables in the repeating pattern. */
+    int _repeatVariableCount;
+
+    /** The second patterns (after the repeating pattern). */
+    QVector<PatternPointer> _postRepeatPatterns;
+};
+
+/**
  * Base class for templates that generate forms from pattern variables.
  */
 class Template
@@ -178,7 +217,7 @@ public:
     /**
      * Generates the contents of the template.
      */
-    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables) const = 0;
+    virtual ScriptObjectPointer generate (ScriptObjectPointerVector& variables) const = 0;
 };
 
 /**
@@ -196,7 +235,7 @@ public:
     /**
      * Generates the contents of the template.
      */
-    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables) const;
+    virtual ScriptObjectPointer generate (ScriptObjectPointerVector& variables) const;
 
 protected:
 
@@ -219,7 +258,7 @@ public:
     /**
      * Generates the contents of the template.
      */
-    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables) const;
+    virtual ScriptObjectPointer generate (ScriptObjectPointerVector& variables) const;
 
 protected:
 
@@ -245,7 +284,7 @@ public:
     /**
      * Generates the contents of the template.
      */
-    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables) const;
+    virtual ScriptObjectPointer generate (ScriptObjectPointerVector& variables) const;
 
 protected:
 
@@ -254,7 +293,68 @@ protected:
 };
 
 /**
- * A subtemplate within a list template.
+ * A simple interface that allows building a list or vector element-by-element.
+ */
+class ObjectBuilder
+{
+public:
+
+    /**
+     * Appends the provided element.
+     */
+    virtual void append (const ScriptObjectPointer& element) = 0;
+};
+
+/**
+ * Builds a list.
+ */
+class ListBuilder : public ObjectBuilder
+{
+public:
+
+    /**
+     * Returns the constructed list.
+     *
+     * @param rest the rest of the list.
+     */
+    ScriptObjectPointer list (const ScriptObjectPointer& rest);
+
+    /**
+     * Appends the provided element.
+     */
+    virtual void append (const ScriptObjectPointer& element);
+
+protected:
+
+    /** The current head and tail of the list. */
+    ScriptObjectPointer _head, _tail;
+};
+
+/**
+ * Builds a vector
+ */
+class VectorBuilder : public ObjectBuilder
+{
+public:
+
+    /**
+     * Returns a reference to the constructed vector.
+     */
+    const ScriptObjectPointerVector& vector () const { return _vector; }
+
+    /**
+     * Appends the provided element.
+     */
+    virtual void append (const ScriptObjectPointer& element);
+
+protected:
+
+    /** The vector to which we append. */
+    ScriptObjectPointerVector _vector;
+};
+
+/**
+ * A subtemplate within a list or vector template.
  */
 class Subtemplate
 {
@@ -274,15 +374,15 @@ public:
     /**
      * Generates the contents of the subtemplate.
      */
-    void generate (QVector<ScriptObjectPointer>& variables, ScriptObjectPointerVector& out) const;
+    void generate (ScriptObjectPointerVector& variables, ObjectBuilder* builder) const;
 
 protected:
 
     /**
      * Generates the contents of the template.
      */
-    void generate (QVector<ScriptObjectPointer>& variables,
-        ScriptObjectPointerVector& out, int depth) const;
+    void generate (ScriptObjectPointerVector& variables,
+        ObjectBuilder* builder, int depth) const;
 
     /** The start of the variable range to unwrap. */
     int _repeatVariableIdx;
@@ -312,7 +412,7 @@ public:
     /**
      * Generates the contents of the template.
      */
-    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables) const;
+    virtual ScriptObjectPointer generate (ScriptObjectPointerVector& variables) const;
 
 protected:
 
@@ -333,20 +433,17 @@ public:
     /**
      * Creates a new vector template.
      */
-    VectorTemplate (const QVector<Subtemplate>& subtemplates, const TemplatePointer& restTemplate);
+    VectorTemplate (const QVector<Subtemplate>& subtemplates);
 
     /**
      * Generates the contents of the template.
      */
-    virtual ScriptObjectPointer generate (QVector<ScriptObjectPointer>& variables) const;
+    virtual ScriptObjectPointer generate (ScriptObjectPointerVector& variables) const;
 
 protected:
 
     /** The list of subtemplates. */
     QVector<Subtemplate> _subtemplates;
-
-    /** An optional template for the rest of the list. */
-    TemplatePointer _restTemplate;
 };
 
 #endif // MACRO_TRANSFORMER
