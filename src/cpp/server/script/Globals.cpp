@@ -1210,6 +1210,9 @@ static Scope createGlobalScope ()
     scope.addVariable("string?", stringp);
     scope.addVariable("procedure?", procedure);
 
+    ScriptObjectPointer apply(new ApplyProcedure());
+    scope.addVariable("apply", ScriptObjectPointer(), apply);
+
     ScriptObjectPointer callcc(new CaptureProcedure());
     scope.addVariable("call-with-current-continuation", ScriptObjectPointer(), callcc);
     scope.addVariable("call/cc", ScriptObjectPointer(), callcc);

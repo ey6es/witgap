@@ -531,6 +531,10 @@ NativeProcedure::NativeProcedure (Function function) :
 {
 }
 
+ApplyProcedure::ApplyProcedure ()
+{
+}
+
 CaptureProcedure::CaptureProcedure ()
 {
 }

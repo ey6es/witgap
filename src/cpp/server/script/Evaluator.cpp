@@ -858,6 +858,29 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         _stack.resize(pidx);
                         break;
                     }
+                    case ScriptObject::ApplyProcedureType: {
+                        if (_registers.operandCount < 3) {
+                            throwScriptError("Requires at least two arguments.");
+                        }
+                        _stack.remove(pidx);
+                        _registers.operandCount -= 2;
+                        for (ScriptObjectPointer rest = _stack.pop();; ) {
+                            switch (rest->type()) {
+                                case ScriptObject::PairType: {
+                                     Pair* pair = static_cast<Pair*>(rest.data());
+                                     _stack.push(pair->car());
+                                     _registers.operandCount++;
+                                     rest = pair->cdr();
+                                     break;
+                                }
+                                case ScriptObject::NullType:
+                                    goto CallOpLabel;
+
+                                default:
+                                    throwScriptError("Invalid argument.");
+                            }
+                        }
+                    }
                     case ScriptObject::CaptureProcedureType: {
                         if (_registers.operandCount != 2) {
                             throwScriptError("Requires exactly one argument.");
@@ -876,10 +899,8 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         goto CallOpLabel;
                     }
                     case ScriptObject::EscapeProcedureType: {
-                        if (_registers.operandCount != 2) {
-                            throwScriptError("Requires exactly one argument.");
-                        }
-                        ScriptObjectPointer arg = _stack.at(pidx + 1);
+                        ScriptObjectPointerVector args = _stack.mid(pidx + 1,
+                            _registers.operandCount - 1);
                         EscapeProcedure* eproc = static_cast<EscapeProcedure*>(sproc.data());
                         _stack = eproc->stack();
                         _registers = eproc->registers();
@@ -888,8 +909,8 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
                         lambda = static_cast<Lambda*>(proc->lambda().data());
                         bytecode = &lambda->bytecode();
-                        _stack.push(arg);
-                        _registers.operandCount++;
+                        _stack += args;
+                        _registers.operandCount += args.size();
                         break;
                     }
                     case ScriptObject::LambdaProcedureType: {
@@ -965,6 +986,29 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         _registers.operandCount++;
                         break;
                     }
+                    case ScriptObject::ApplyProcedureType: {
+                        if (_registers.operandCount < 3) {
+                            throwScriptError("Requires at least two arguments.");
+                        }
+                        _stack.remove(pidx);
+                        _registers.operandCount -= 2;
+                        for (ScriptObjectPointer rest = _stack.pop();; ) {
+                            switch (rest->type()) {
+                                case ScriptObject::PairType: {
+                                     Pair* pair = static_cast<Pair*>(rest.data());
+                                     _stack.push(pair->car());
+                                     _registers.operandCount++;
+                                     rest = pair->cdr();
+                                     break;
+                                }
+                                case ScriptObject::NullType:
+                                    goto TailCallOpLabel;
+
+                                default:
+                                    throwScriptError("Invalid argument.");
+                            }
+                        }
+                    }
                     case ScriptObject::CaptureProcedureType: {
                         if (_registers.operandCount != 2) {
                             throwScriptError("Requires exactly one argument.");
@@ -987,10 +1031,8 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         goto CallOpLabel;
                     }
                     case ScriptObject::EscapeProcedureType: {
-                        if (_registers.operandCount != 2) {
-                            throwScriptError("Requires exactly one argument.");
-                        }
-                        ScriptObjectPointer arg = _stack.at(pidx + 1);
+                        ScriptObjectPointerVector args = _stack.mid(
+                            pidx + 1, _registers.operandCount - 1);
                         EscapeProcedure* eproc = static_cast<EscapeProcedure*>(sproc.data());
                         _stack = eproc->stack();
                         _registers = eproc->registers();
@@ -999,8 +1041,8 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
                         lambda = static_cast<Lambda*>(proc->lambda().data());
                         bytecode = &lambda->bytecode();
-                        _stack.push(arg);
-                        _registers.operandCount++;
+                        _stack += args;
+                        _registers.operandCount += args.size();
                         break;
                     }
                     case ScriptObject::LambdaProcedureType: {

@@ -32,8 +32,8 @@ public:
     /** The object types. */
     enum Type { SentinelType, BooleanType, IntegerType, FloatType, CharType, StringType,
         SymbolType, PairType, NullType, VectorType, ByteVectorType, UnspecifiedType, VariableType,
-        LambdaType, LambdaProcedureType, InvocationType, NativeProcedureType, CaptureProcedureType,
-        EscapeProcedureType, SyntaxRulesType, IdentifierSyntaxType };
+        LambdaType, LambdaProcedureType, InvocationType, NativeProcedureType, ApplyProcedureType,
+        CaptureProcedureType, EscapeProcedureType, SyntaxRulesType, IdentifierSyntaxType };
 
     /**
      * Destroys the object.
@@ -883,6 +883,30 @@ protected:
 
     /** The function to call. */
     Function _function;
+};
+
+/**
+ * Class for procedures that capture the dynamic environment.
+ */
+class ApplyProcedure : public ScriptObject
+{
+public:
+
+    /**
+     * Creates a new apply procedure.
+     */
+    ApplyProcedure ();
+
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return ApplyProcedureType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const {
+        return "#apply_proc_" + QString::number((qulonglong)this, 16); }
 };
 
 /**
