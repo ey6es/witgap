@@ -27,6 +27,11 @@ public:
     Scope (Scope* parent = 0, bool withValues = false, bool syntactic = false);
 
     /**
+     * Returns the depth of the scope.
+     */
+    int depth () const { return _depth; }
+
+    /**
      * Returns a pointer to the scope's first non-syntactic ancestor.
      */
     Scope* nonSyntacticAncestor ();
@@ -81,6 +86,9 @@ public:
     ScriptObjectPointerVector& deferred () { return _deferred; }
 
 protected:
+
+    /** The depth of the scope. */
+    int _depth;
 
     /** The parent scope, if any. */
     Scope* _parent;

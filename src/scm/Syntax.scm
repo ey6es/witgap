@@ -5,7 +5,7 @@
     (syntax-rules ()
         ((let ((var init) ...) expr ...)
          ((lambda (var ...) expr ...) init ...))
-        
+
         ((let name ((var init) ...) expr ...)
          (letrec ((name (lambda (var ...) expr ...)))
           (name init ...)))
@@ -16,10 +16,10 @@
     (syntax-rules ()
         ((let* () expr ...)
          ((lambda () expr ...)))
-         
+
         ((let* ((var init)) expr ...)
          ((lambda (var) expr ...) init))
-         
+
         ((let* ((v0 i0) (v1 i1) (vn in) ...) expr ...)
          ((lambda (v0) (let* ((v1 i1) (vn in) ...) expr ...)) i0))
     )
@@ -50,7 +50,7 @@
     (syntax-rules ()
         ((let*-values () expr ...)
          ((lambda () expr ...)))
-         
+
         ((let*-values (((formal ...) (_ init ...))) expr ...)
          ((lambda (formal ...) expr ...) init ...))
 
@@ -79,22 +79,29 @@
     (syntax-rules (else =>)
         ((cond (test expr))
          (if test expr))
-         
+
         ((cond (test => expr))
          (if test expr))
-         
+
         ((cond (test expr) (else elsexp))
          (if test expr elsexp))
-         
+
         ((cond (test => expr) (else elsexp))
          (if test expr elsexp))
-         
+
         ((cond (test expr) rest ...)
          (if test expr (cond rest ...)))
-         
+
         ((cond (test => expr) rest ...)
          (if test expr (cond rest ...)))
     )
 )
 
-
+(define-syntax for
+    (syntax-rules ()
+        ((for (idx start end) expr ...)
+          (let loop ((idx start)) (if (not (= idx end)) (begin
+            expr ...
+            (loop (+ idx 1))))))
+    )
+)

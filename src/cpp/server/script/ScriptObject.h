@@ -602,12 +602,12 @@ public:
     /**
      * Creates a new variable reference.
      */
-    Variable (int scope, int index);
+    Variable (int scopeDepth, int index);
 
     /**
-     * Returns the scope number (zero is current, one is parent, etc.)
+     * Returns the scope depth (zero is top, one is next, etc.)
      */
-    int scope () const { return _scope; }
+    int scopeDepth () const { return _scopeDepth; }
 
     /**
      * Returns the index of the variable.
@@ -626,8 +626,8 @@ public:
 
 protected:
 
-    /** The scope number (zero is current, one is parent, etc.) */
-    int _scope;
+    /** The scope depth (zero is top, one is next, etc.) */
+    int _scopeDepth;
 
     /** The index of the variable. */
     int _index;
@@ -792,6 +792,8 @@ public:
 
     /**
      * Returns a reference to the variable with the specified scope and index.
+     *
+     * @param scope the scope number, where zero is this scope, one is the parent, etc.
      */
     const ScriptObjectPointer& variable (int scope, int idx) const;
 
@@ -802,6 +804,8 @@ public:
 
     /**
      * Sets the value of the variable at the specified scope and index.
+     *
+     * @param scope the scope number, where zero is this scope, one is the parent, etc.
      */
     void setVariable (int scope, int idx, const ScriptObjectPointer& value);
 

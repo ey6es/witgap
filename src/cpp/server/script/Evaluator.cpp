@@ -9,6 +9,7 @@
 #include "script/Parser.h"
 
 Scope::Scope (Scope* parent, bool withValues, bool syntactic) :
+    _depth(parent == 0 ? 0 : parent->depth() + (syntactic ? 0 : 1)),
     _parent(parent),
     _syntactic(syntactic),
     _variableCount(0)
@@ -28,19 +29,9 @@ Scope* Scope::nonSyntacticAncestor ()
 
 ScriptObjectPointer Scope::resolve (const QString& name)
 {
-    // first check the local bindings
+    // first check the local bindings, then the parent's
     ScriptObjectPointer binding = _bindings.value(name);
-    if (!binding.isNull() || _parent == 0) {
-        return binding;
-    }
-
-    // try the parent, if any
-    binding = _parent->resolve(name);
-    if (binding.isNull() || _syntactic || binding->type() != ScriptObject::VariableType) {
-        return binding;
-    }
-    Variable* variable = static_cast<Variable*>(binding.data());
-    return ScriptObjectPointer(new Variable(variable->scope() + 1, variable->index()));
+    return (!binding.isNull() || _parent == 0) ? binding : _parent->resolve(name);
 }
 
 ScriptObjectPointer Scope::addVariable (const QString& name, NativeProcedure::Function function)
@@ -56,7 +47,7 @@ ScriptObjectPointer Scope::addVariable (
         return _parent->addVariable(name, initExpr, value);
     }
     int idx = _variableCount++;
-    ScriptObjectPointer variable(new Variable(0, idx));
+    ScriptObjectPointer variable(new Variable(_depth, idx));
     define(name, variable);
     _deferred.append(initExpr);
     if (!_invocation.isNull()) {
@@ -422,7 +413,7 @@ static void compile (
         case ScriptObject::VariableType: {
             compileDeferred(scope, top, out);
             Variable* variable = static_cast<Variable*>(expr.data());
-            out.append(VariableOp, variable->scope(), variable->index());
+            out.append(VariableOp, scope->depth() - variable->scopeDepth(), variable->index());
             maybeAppendPop(top, tailCall, out);
             return;
         }
@@ -553,7 +544,8 @@ static void compile (
                                     compileDeferred(scope, top, out);
                                     Variable* var = static_cast<Variable*>(cadr.data());
                                     compile(cddr->car(), scope, false, false, false, out);
-                                    out.append(SetVariableOp, var->scope(), var->index());
+                                    out.append(SetVariableOp,
+                                        scope->depth() - var->scopeDepth(), var->index());
                                     out.append(ConstantOp, scope->addConstant(
                                         Unspecified::instance()));
                                     maybeAppendPop(top, tailCall, out);
@@ -585,7 +577,8 @@ static void compile (
                                             Variable* variable =
                                                 static_cast<Variable*>(binding.data());
                                             compile(cddr->car(), scope, false, false, false, out);
-                                            out.append(SetVariableOp, variable->scope(),
+                                            out.append(SetVariableOp,
+                                                scope->depth() - variable->scopeDepth(),
                                                 variable->index());
                                             out.append(ConstantOp, scope->addConstant(
                                                 Unspecified::instance()));

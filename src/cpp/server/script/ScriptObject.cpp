@@ -96,7 +96,7 @@ bool equivalent (const ScriptObjectPointer& p1, const ScriptObjectPointer& p2)
         case ScriptObject::VariableType: {
             Variable* v1 = static_cast<Variable*>(p1.data());
             Variable* v2 = static_cast<Variable*>(p2.data());
-            return v1->scope() == v2->scope() && v1->index() == v2->index();
+            return v1->scopeDepth() == v2->scopeDepth() && v1->index() == v2->index();
         }
         default:
             return p1.data() == p2.data();
@@ -414,15 +414,15 @@ const ScriptObjectPointer& Unspecified::instance ()
     return instance;
 }
 
-Variable::Variable (int scope, int index) :
-    _scope(scope),
+Variable::Variable (int scopeDepth, int index) :
+    _scopeDepth(scopeDepth),
     _index(index)
 {
 }
 
 QString Variable::toString () const
 {
-    return "{variable " + QString::number(_scope) + " " + QString::number(_index) + "}";
+    return "{variable " + QString::number(_scopeDepth) + " " + QString::number(_index) + "}";
 }
 
 Lambda::Lambda (int scalarArgumentCount, bool listArgument, int variableCount,
