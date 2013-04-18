@@ -562,9 +562,17 @@ bool ListPattern::matches (
                 break;
 
             case ScriptObject::NullType:
+                for (int jj = 0; jj < _repeatVariableCount; jj++) {
+                    variables[_repeatVariableIdx + jj] =
+                        Vector::instance(ScriptObjectPointerVector());
+                }
                 return ii == nn - 1 && _postRepeatPatterns.isEmpty() && _restPattern.isNull();
 
             default:
+                for (int jj = 0; jj < _repeatVariableCount; jj++) {
+                    variables[_repeatVariableIdx + jj] =
+                        Vector::instance(ScriptObjectPointerVector());
+                }
                 return ii == nn - 1 && _postRepeatPatterns.isEmpty() && !_restPattern.isNull() &&
                     _restPattern->matches(cdr, scope, variables);
         }
@@ -770,6 +778,7 @@ void Subtemplate::generate (
     for (int ii = 0; ii < _repeatVariableCount; ii++) {
         wrapped[ii] = variables[_repeatVariableIdx + ii];
     }
+
     int count = static_cast<Vector*>(wrapped[0].data())->contents().size();
     for (int ii = 0; ii < count; ii++) {
         for (int jj = 0; jj < _repeatVariableCount; jj++) {

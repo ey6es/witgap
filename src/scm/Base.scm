@@ -7,6 +7,29 @@
     )
 )
 
+(define (cars lists)
+    (if (null? lists) '()
+        (cons (car (car lists)) (cars (cdr lists))))
+)
+
+(define (cdrs lists)
+    (if (null? lists) '()
+        (cons (cdr (car lists)) (cdrs (cdr lists))))
+)
+
+(define (map proc firstList . restLists)
+    (if (null? firstList) '()
+        (cons (apply proc (cons (car firstList) (cars restLists)))
+            (apply map (cons proc (cons (cdr firstList) (cdrs restLists))))))
+)
+
+(define (for-each proc firstList . restLists)
+    (if (not (null? firstList)) (begin
+        (apply proc (cons (car firstList) (cars restLists)))
+        (apply for-each (cons proc (cons (cdr firstList) (cdrs restLists))))
+    ))
+)
+
 (define (vector-refs vectors k)
     (if (null? vectors) '()
         (cons (vector-ref (car vectors) k) (vector-refs (cdr vectors) k))
@@ -17,15 +40,14 @@
     (define len (vector-length firstVector))
     (define vectors (cons firstVector restVectors))
     (define mapped (make-vector len))
-    (for (idx 0 len)
+    (do ((idx 0 (+ idx 1))) ((= idx len) mapped)
         (vector-set! mapped idx
             (apply proc (vector-refs vectors idx))))
-    mapped
 )
 
 (define (vector-for-each proc firstVector . restVectors)
     (define len (vector-length firstVector))
     (define vectors (cons firstVector restVectors))
-    (for (idx 0 len)
+    (do ((idx 0 (+ idx 1))) ((= idx len))
         (apply proc (vector-refs vectors idx)))
 )

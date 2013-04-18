@@ -1105,6 +1105,20 @@ static ScriptObjectPointer procedure (Evaluator* eval, int argc, ScriptObjectPoi
 }
 
 /**
+ * Prints the arguments as debug output.
+ */
+static ScriptObjectPointer debug (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    {
+        QDebug debug(QtDebugMsg);
+        for (ScriptObjectPointer* arg = argv, *end = argv + argc; arg != end; arg++) {
+            debug << (*arg)->toString();
+        }
+    }
+    return Unspecified::instance();
+}
+
+/**
  * Exits the application.
  */
 static ScriptObjectPointer exit (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -1217,6 +1231,7 @@ static Scope createGlobalScope ()
     scope.addVariable("call-with-current-continuation", ScriptObjectPointer(), callcc);
     scope.addVariable("call/cc", ScriptObjectPointer(), callcc);
 
+    scope.addVariable("debug", debug);
     scope.addVariable("exit", exit);
 
     return scope;

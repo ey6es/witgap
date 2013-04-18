@@ -97,11 +97,28 @@
     )
 )
 
-(define-syntax for
+(define-syntax when
     (syntax-rules ()
-        ((for (idx start end) expr ...)
-          (let loop ((idx start)) (if (not (= idx end)) (begin
-            expr ...
-            (loop (+ idx 1))))))
+        ((when test firstExpr restExpr ...)
+         (if test (begin firstExpr restExpr ...)))
+    )
+)
+
+(define-syntax unless
+    (syntax-rules ()
+        ((unless test firstExpr restExpr ...)
+         (if (not test) (begin firstExpr restExpr ...)))
+    )
+)
+
+(define-syntax do
+    (syntax-rules ()
+        ((do ((var init step) ...)
+            (test expr ...)
+            command ...)
+         (let loop ((var init) ...)
+            (if test (begin #f expr ...) (begin
+                command ...
+                (loop step ...)))))
     )
 )
