@@ -305,7 +305,7 @@ public:
     /**
      * Returns a reference to the string's contents.
      */
-    const QString& contents () const { return _contents; }
+    QString& contents () { return _contents; }
 
     /**
      * Returns the type of the object.

@@ -7,6 +7,11 @@
     )
 )
 
+(define (caar ll) (car (car ll)))
+(define (cdar ll) (cdr (car ll)))
+(define (cadr ll) (car (cdr ll)))
+(define (cddr ll) (cdr (cdr ll)))
+
 (define (cars lists)
     (if (null? lists) '()
         (cons (car (car lists)) (cars (cdr lists))))

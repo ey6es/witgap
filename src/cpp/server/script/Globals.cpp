@@ -425,7 +425,22 @@ static ScriptObjectPointer integerToChar (Evaluator* eval, int argc, ScriptObjec
  */
 static ScriptObjectPointer charsEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc < 2) {
+        throw QString("Requires at least two arguments.");
+    }
+    if ((*argv)->type() != ScriptObject::CharType) {
+        throw QString("Invalid argument.");
+    }
+    QChar ch = static_cast<Char*>(argv->data())->value();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::CharType) {
+            throw QString("Invalid argument.");
+        }
+        if (static_cast<Char*>(arg->data())->value() != ch) {
+            return Boolean::instance(false);
+        }
+    }
+    return Boolean::instance(true);
 }
 
 /**
@@ -433,7 +448,24 @@ static ScriptObjectPointer charsEqual (Evaluator* eval, int argc, ScriptObjectPo
  */
 static ScriptObjectPointer charsLess (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc < 2) {
+        return Boolean::instance(true);
+    }
+    if ((*argv)->type() != ScriptObject::CharType) {
+        throw QString("Invalid argument.");
+    }
+    QChar ch = static_cast<Char*>(argv->data())->value();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::CharType) {
+            throw QString("Invalid argument.");
+        }
+        QChar nch = static_cast<Char*>(arg->data())->value();
+        if (ch >= nch) {
+            return Boolean::instance(false);
+        }
+        ch = nch;
+    }
+    return Boolean::instance(true);
 }
 
 /**
@@ -441,7 +473,24 @@ static ScriptObjectPointer charsLess (Evaluator* eval, int argc, ScriptObjectPoi
  */
 static ScriptObjectPointer charsGreater (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc < 2) {
+        return Boolean::instance(true);
+    }
+    if ((*argv)->type() != ScriptObject::CharType) {
+        throw QString("Invalid argument.");
+    }
+    QChar ch = static_cast<Char*>(argv->data())->value();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::CharType) {
+            throw QString("Invalid argument.");
+        }
+        QChar nch = static_cast<Char*>(arg->data())->value();
+        if (ch <= nch) {
+            return Boolean::instance(false);
+        }
+        ch = nch;
+    }
+    return Boolean::instance(true);
 }
 
 /**
@@ -449,7 +498,24 @@ static ScriptObjectPointer charsGreater (Evaluator* eval, int argc, ScriptObject
  */
 static ScriptObjectPointer charsLessEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc < 2) {
+        return Boolean::instance(true);
+    }
+    if ((*argv)->type() != ScriptObject::CharType) {
+        throw QString("Invalid argument.");
+    }
+    QChar ch = static_cast<Char*>(argv->data())->value();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::CharType) {
+            throw QString("Invalid argument.");
+        }
+        QChar nch = static_cast<Char*>(arg->data())->value();
+        if (ch > nch) {
+            return Boolean::instance(false);
+        }
+        ch = nch;
+    }
+    return Boolean::instance(true);
 }
 
 /**
@@ -457,7 +523,24 @@ static ScriptObjectPointer charsLessEqual (Evaluator* eval, int argc, ScriptObje
  */
 static ScriptObjectPointer charsGreaterEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc < 2) {
+        return Boolean::instance(true);
+    }
+    if ((*argv)->type() != ScriptObject::CharType) {
+        throw QString("Invalid argument.");
+    }
+    QChar ch = static_cast<Char*>(argv->data())->value();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::CharType) {
+            throw QString("Invalid argument.");
+        }
+        QChar nch = static_cast<Char*>(arg->data())->value();
+        if (ch < nch) {
+            return Boolean::instance(false);
+        }
+        ch = nch;
+    }
+    return Boolean::instance(true);
 }
 
 /**
@@ -465,7 +548,21 @@ static ScriptObjectPointer charsGreaterEqual (Evaluator* eval, int argc, ScriptO
  */
 static ScriptObjectPointer makeString (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    QChar fill;
+    if (argc == 2) {
+        if (argv[1]->type() != ScriptObject::CharType) {
+            throw QString("Invalid argument.");
+        }
+        fill = static_cast<Char*>(argv[1].data())->value();
+
+    } else if (argc != 1) {
+        throw QString("Requires one or two arguments.");
+    }
+    if ((*argv)->type() != ScriptObject::IntegerType) {
+        throw QString("Invalid argument.");
+    }
+    Integer* size = static_cast<Integer*>(argv->data());
+    return ScriptObjectPointer(new String(QString(size->value(), fill)));
 }
 
 /**
@@ -473,7 +570,14 @@ static ScriptObjectPointer makeString (Evaluator* eval, int argc, ScriptObjectPo
  */
 static ScriptObjectPointer string (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    QString contents;
+    for (ScriptObjectPointer* arg = argv, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::CharType) {
+            throw QString("Invalid argument.");
+        }
+        contents.append(static_cast<Char*>(arg->data())->value());
+    }
+    return ScriptObjectPointer(new String(contents));
 }
 
 /**
@@ -481,7 +585,14 @@ static ScriptObjectPointer string (Evaluator* eval, int argc, ScriptObjectPointe
  */
 static ScriptObjectPointer stringLength (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
+    String* string = static_cast<String*>(argv->data());
+    return Integer::instance(string->contents().size());
 }
 
 /**
@@ -489,6 +600,41 @@ static ScriptObjectPointer stringLength (Evaluator* eval, int argc, ScriptObject
  */
 static ScriptObjectPointer stringRef (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    if (argv[0]->type() != ScriptObject::StringType ||
+            argv[1]->type() != ScriptObject::IntegerType) {
+        throw QString("Invalid argument.");
+    }
+    const QString& contents = static_cast<String*>(argv[0].data())->contents();
+    int idx = static_cast<Integer*>(argv[1].data())->value();
+    if (idx < 0 || idx >= contents.size()) {
+        throw QString("Invalid index.");
+    }
+    return ScriptObjectPointer(new Char(contents.at(idx)));
+}
+
+/**
+ * Sets a character within a string.
+ */
+static ScriptObjectPointer stringSet (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 3) {
+        throw QString("Requires exactly three arguments.");
+    }
+    if (argv[0]->type() != ScriptObject::StringType ||
+            argv[1]->type() != ScriptObject::IntegerType ||
+            argv[2]->type() != ScriptObject::CharType) {
+        throw QString("Invalid argument.");
+    }
+    QString& contents = static_cast<String*>(argv[0].data())->contents();
+    int idx = static_cast<Integer*>(argv[1].data())->value();
+    if (idx < 0 || idx >= contents.size()) {
+        throw QString("Invalid index.");
+    }
+    Char* ch = static_cast<Char*>(argv[2].data());
+    contents[idx] = ch->value();
     return Unspecified::instance();
 }
 
@@ -497,7 +643,22 @@ static ScriptObjectPointer stringRef (Evaluator* eval, int argc, ScriptObjectPoi
  */
 static ScriptObjectPointer stringsEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc < 2) {
+        throw QString("Requires at least two arguments.");
+    }
+    if ((*argv)->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
+    QString& string = static_cast<String*>(argv->data())->contents();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::StringType) {
+            throw QString("Invalid argument.");
+        }
+        if (static_cast<String*>(arg->data())->contents() != string) {
+            return Boolean::instance(false);
+        }
+    }
+    return Boolean::instance(true);
 }
 
 /**
@@ -505,7 +666,24 @@ static ScriptObjectPointer stringsEqual (Evaluator* eval, int argc, ScriptObject
  */
 static ScriptObjectPointer stringsLess (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc < 2) {
+        return Boolean::instance(true);
+    }
+    if ((*argv)->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
+    QString string = static_cast<String*>(argv->data())->contents();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::StringType) {
+            throw QString("Invalid argument.");
+        }
+        const QString& nstring = static_cast<String*>(arg->data())->contents();
+        if (string >= nstring) {
+            return Boolean::instance(false);
+        }
+        string = nstring;
+    }
+    return Boolean::instance(true);
 }
 
 /**
@@ -513,7 +691,18 @@ static ScriptObjectPointer stringsLess (Evaluator* eval, int argc, ScriptObjectP
  */
 static ScriptObjectPointer stringsGreater (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    QString string = static_cast<String*>(argv->data())->contents();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::StringType) {
+            throw QString("Invalid argument.");
+        }
+        const QString& nstring = static_cast<String*>(arg->data())->contents();
+        if (string <= nstring) {
+            return Boolean::instance(false);
+        }
+        string = nstring;
+    }
+    return Boolean::instance(true);
 }
 
 /**
@@ -521,7 +710,18 @@ static ScriptObjectPointer stringsGreater (Evaluator* eval, int argc, ScriptObje
  */
 static ScriptObjectPointer stringsLessEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    QString string = static_cast<String*>(argv->data())->contents();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::StringType) {
+            throw QString("Invalid argument.");
+        }
+        const QString& nstring = static_cast<String*>(arg->data())->contents();
+        if (string > nstring) {
+            return Boolean::instance(false);
+        }
+        string = nstring;
+    }
+    return Boolean::instance(true);
 }
 
 /**
@@ -529,7 +729,18 @@ static ScriptObjectPointer stringsLessEqual (Evaluator* eval, int argc, ScriptOb
  */
 static ScriptObjectPointer stringsGreaterEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    QString string = static_cast<String*>(argv->data())->contents();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::StringType) {
+            throw QString("Invalid argument.");
+        }
+        const QString& nstring = static_cast<String*>(arg->data())->contents();
+        if (string < nstring) {
+            return Boolean::instance(false);
+        }
+        string = nstring;
+    }
+    return Boolean::instance(true);
 }
 
 /**
@@ -537,7 +748,21 @@ static ScriptObjectPointer stringsGreaterEqual (Evaluator* eval, int argc, Scrip
  */
 static ScriptObjectPointer substring (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc != 3) {
+        throw QString("Requires exactly three arguments.");
+    }
+    if (argv[0]->type() != ScriptObject::StringType ||
+            argv[1]->type() != ScriptObject::IntegerType ||
+            argv[2]->type() != ScriptObject::IntegerType) {
+        throw QString("Invalid argument.");
+    }
+    const QString& string = static_cast<String*>(argv[0].data())->contents();
+    int start = static_cast<Integer*>(argv[1].data())->value();
+    int end = static_cast<Integer*>(argv[2].data())->value();
+    if (start < 0 || end < start || end > string.size()) {
+        throw QString("Invalid argument.");
+    }
+    return ScriptObjectPointer(new String(string.mid(start, end - start)));
 }
 
 /**
@@ -545,7 +770,14 @@ static ScriptObjectPointer substring (Evaluator* eval, int argc, ScriptObjectPoi
  */
 static ScriptObjectPointer stringAppend (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    QString result;
+    for (ScriptObjectPointer* arg = argv, *end = argv + argc; arg != end; arg++) {
+        if ((*arg)->type() != ScriptObject::StringType) {
+            throw QString("Invalid argument.");
+        }
+        result.append(static_cast<String*>(arg->data())->contents());
+    }
+    return ScriptObjectPointer(new String(result));
 }
 
 /**
@@ -553,7 +785,29 @@ static ScriptObjectPointer stringAppend (Evaluator* eval, int argc, ScriptObject
  */
 static ScriptObjectPointer stringToList (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
+    const QString& string = static_cast<String*>(argv->data())->contents();
+    ScriptObjectPointer head, tail;
+    for (int ii = 0, nn = string.length(); ii < nn; ii++) {
+        ScriptObjectPointer ntail(new Pair(
+            ScriptObjectPointer(new Char(string.at(ii)))));
+        if (head.isNull()) {
+            head = tail = ntail;
+        } else {
+            static_cast<Pair*>(tail.data())->setCdr(ntail);
+            tail = ntail;
+        }
+    }
+    if (head.isNull()) {
+        return Null::instance();
+    }
+    static_cast<Pair*>(tail.data())->setCdr(Null::instance());
+    return head;
 }
 
 /**
@@ -561,7 +815,32 @@ static ScriptObjectPointer stringToList (Evaluator* eval, int argc, ScriptObject
  */
 static ScriptObjectPointer listToString (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    return Unspecified::instance();
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    QString contents;
+    for (ScriptObjectPointer rest = *argv;; ) {
+        switch (rest->type()) {
+            case ScriptObject::PairType: {
+                Pair* pair = static_cast<Pair*>(rest.data());
+                ScriptObjectPointer car = pair->car();
+                if (car->type() != ScriptObject::CharType) {
+                    throw QString("Invalid argument.");
+                }
+                contents.append(static_cast<Char*>(car.data())->value());
+                rest = pair->cdr();
+                break;
+            }
+            case ScriptObject::NullType:
+                goto outerBreak;
+
+            default:
+                throw QString("Invalid argument.");
+        }
+    }
+    outerBreak:
+
+    return ScriptObjectPointer(new String(contents));
 }
 
 /**
@@ -1177,6 +1456,7 @@ static Scope createGlobalScope ()
     scope.addVariable("string", string);
     scope.addVariable("string-length", stringLength);
     scope.addVariable("string-ref", stringRef);
+    scope.addVariable("string-set!", stringSet);
     scope.addVariable("string=?", stringsEqual);
     scope.addVariable("string<?", stringsLess);
     scope.addVariable("string>?", stringsGreater);
