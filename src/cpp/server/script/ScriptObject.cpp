@@ -152,10 +152,122 @@ Integer::Integer (int value, const ScriptPosition& position) :
 {
 }
 
+bool Integer::lessThan (const ScriptObjectPointer& other) const
+{
+    switch (other->type()) {
+        case ScriptObject::IntegerType:
+            return _value < static_cast<Integer*>(other.data())->value();
+
+        case ScriptObject::FloatType:
+            return _value < static_cast<Float*>(other.data())->value();
+
+        default:
+            return false;
+    }
+}
+
+bool Integer::greaterThan (const ScriptObjectPointer& other) const
+{
+    switch (other->type()) {
+        case ScriptObject::IntegerType:
+            return _value > static_cast<Integer*>(other.data())->value();
+
+        case ScriptObject::FloatType:
+            return _value > static_cast<Float*>(other.data())->value();
+
+        default:
+            return false;
+    }
+}
+
+bool Integer::lessEquals (const ScriptObjectPointer& other) const
+{
+    switch (other->type()) {
+        case ScriptObject::IntegerType:
+            return _value <= static_cast<Integer*>(other.data())->value();
+
+        case ScriptObject::FloatType:
+            return _value <= static_cast<Float*>(other.data())->value();
+
+        default:
+            return false;
+    }
+}
+
+bool Integer::greaterEquals (const ScriptObjectPointer& other) const
+{
+    switch (other->type()) {
+        case ScriptObject::IntegerType:
+            return _value >= static_cast<Integer*>(other.data())->value();
+
+        case ScriptObject::FloatType:
+            return _value >= static_cast<Float*>(other.data())->value();
+
+        default:
+            return false;
+    }
+}
+
 Float::Float (float value, const ScriptPosition& position) :
     Datum(position),
     _value(value)
 {
+}
+
+bool Float::lessThan (const ScriptObjectPointer& other) const
+{
+    switch (other->type()) {
+        case ScriptObject::IntegerType:
+            return _value < static_cast<Integer*>(other.data())->value();
+
+        case ScriptObject::FloatType:
+            return _value < static_cast<Float*>(other.data())->value();
+
+        default:
+            return false;
+    }
+}
+
+bool Float::greaterThan (const ScriptObjectPointer& other) const
+{
+    switch (other->type()) {
+        case ScriptObject::IntegerType:
+            return _value > static_cast<Integer*>(other.data())->value();
+
+        case ScriptObject::FloatType:
+            return _value > static_cast<Float*>(other.data())->value();
+
+        default:
+            return false;
+    }
+}
+
+bool Float::lessEquals (const ScriptObjectPointer& other) const
+{
+    switch (other->type()) {
+        case ScriptObject::IntegerType:
+            return _value <= static_cast<Integer*>(other.data())->value();
+
+        case ScriptObject::FloatType:
+            return _value <= static_cast<Float*>(other.data())->value();
+
+        default:
+            return false;
+    }
+}
+
+bool Float::greaterEquals (const ScriptObjectPointer& other) const
+{
+    switch (other->type()) {
+        case ScriptObject::IntegerType:
+            return _value >= static_cast<Integer*>(other.data())->value();
+
+        case ScriptObject::FloatType:
+            return _value >= static_cast<Float*>(other.data())->value();
+
+        default:
+            return false;
+    }
 }
 
 /**

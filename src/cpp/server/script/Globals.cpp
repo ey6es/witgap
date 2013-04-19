@@ -291,10 +291,23 @@ static ScriptObjectPointer equal (Evaluator* eval, int argc, ScriptObjectPointer
  */
 static ScriptObjectPointer less (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    if (argc == 0) {
+    if (argc < 2) {
         return Boolean::instance(true);
     }
-    return Boolean::instance(false);
+    if (!(*argv)->isNumber()) {
+        throw QString("Invalid argument.");
+    }
+    ScriptObject* number = argv->data();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if (!(*arg)->isNumber()) {
+            throw QString("Invalid argument.");
+        }
+        if (number->greaterEquals(*arg)) {
+            return Boolean::instance(false);
+        }
+        number = arg->data();
+    }
+    return Boolean::instance(true);
 }
 
 /**
@@ -302,10 +315,23 @@ static ScriptObjectPointer less (Evaluator* eval, int argc, ScriptObjectPointer*
  */
 static ScriptObjectPointer greater (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    if (argc == 0) {
+    if (argc < 2) {
         return Boolean::instance(true);
     }
-    return Boolean::instance(false);
+    if (!(*argv)->isNumber()) {
+        throw QString("Invalid argument.");
+    }
+    ScriptObject* number = argv->data();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if (!(*arg)->isNumber()) {
+            throw QString("Invalid argument.");
+        }
+        if (number->lessEquals(*arg)) {
+            return Boolean::instance(false);
+        }
+        number = arg->data();
+    }
+    return Boolean::instance(true);
 }
 
 /**
@@ -313,10 +339,23 @@ static ScriptObjectPointer greater (Evaluator* eval, int argc, ScriptObjectPoint
  */
 static ScriptObjectPointer lessEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    if (argc == 0) {
+    if (argc < 2) {
         return Boolean::instance(true);
     }
-    return Boolean::instance(false);
+    if (!(*argv)->isNumber()) {
+        throw QString("Invalid argument.");
+    }
+    ScriptObject* number = argv->data();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if (!(*arg)->isNumber()) {
+            throw QString("Invalid argument.");
+        }
+        if (number->greaterThan(*arg)) {
+            return Boolean::instance(false);
+        }
+        number = arg->data();
+    }
+    return Boolean::instance(true);
 }
 
 /**
@@ -324,10 +363,23 @@ static ScriptObjectPointer lessEqual (Evaluator* eval, int argc, ScriptObjectPoi
  */
 static ScriptObjectPointer greaterEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    if (argc == 0) {
+    if (argc < 2) {
         return Boolean::instance(true);
     }
-    return Boolean::instance(false);
+    if (!(*argv)->isNumber()) {
+        throw QString("Invalid argument.");
+    }
+    ScriptObject* number = argv->data();
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if (!(*arg)->isNumber()) {
+            throw QString("Invalid argument.");
+        }
+        if (number->lessThan(*arg)) {
+            return Boolean::instance(false);
+        }
+        number = arg->data();
+    }
+    return Boolean::instance(true);
 }
 
 /**

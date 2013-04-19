@@ -46,6 +46,31 @@ public:
     virtual Type type () const = 0;
 
     /**
+     * Checks whether this object is a number.
+     */
+    virtual bool isNumber () const { return false; }
+
+    /**
+     * Checks whether this is less than another object.
+     */
+    virtual bool lessThan (const ScriptObjectPointer& other) const { return false; }
+
+    /**
+     * Checks whether this is greater than another object.
+     */
+    virtual bool greaterThan (const ScriptObjectPointer& other) const { return false; }
+
+    /**
+     * Checks whether this is less than or equal to another object.
+     */
+    virtual bool lessEquals (const ScriptObjectPointer& other) const { return false; }
+
+    /**
+     * Checks whether this is greater than or equal to another object.
+     */
+    virtual bool greaterEquals (const ScriptObjectPointer& other) const { return false; }
+
+    /**
      * Returns a string representation of the object.
      */
     virtual QString toString () const = 0;
@@ -208,6 +233,31 @@ public:
     virtual Type type () const { return IntegerType; }
 
     /**
+     * Checks whether this object is a number.
+     */
+    virtual bool isNumber () const { return true; }
+
+    /**
+     * Checks whether this is less than another object.
+     */
+    virtual bool lessThan (const ScriptObjectPointer& other) const;
+
+    /**
+     * Checks whether this is greater than another object.
+     */
+    virtual bool greaterThan (const ScriptObjectPointer& other) const;
+
+    /**
+     * Checks whether this is less than or equal to another object.
+     */
+    virtual bool lessEquals (const ScriptObjectPointer& other) const;
+
+    /**
+     * Checks whether this is greater than or equal to another object.
+     */
+    virtual bool greaterEquals (const ScriptObjectPointer& other) const;
+
+    /**
      * Returns a string representation of the object.
      */
     virtual QString toString () const { return QString::number(_value); }
@@ -239,6 +289,31 @@ public:
      * Returns the type of the object.
      */
     virtual Type type () const { return FloatType; }
+
+    /**
+     * Checks whether this object is a number.
+     */
+    virtual bool isNumber () const { return true; }
+
+    /**
+     * Checks whether this is less than another object.
+     */
+    virtual bool lessThan (const ScriptObjectPointer& other) const;
+
+    /**
+     * Checks whether this is greater than another object.
+     */
+    virtual bool greaterThan (const ScriptObjectPointer& other) const;
+
+    /**
+     * Checks whether this is less than or equal to another object.
+     */
+    virtual bool lessEquals (const ScriptObjectPointer& other) const;
+
+    /**
+     * Checks whether this is greater than or equal to another object.
+     */
+    virtual bool greaterEquals (const ScriptObjectPointer& other) const;
 
     /**
      * Returns a string representation of the object.
