@@ -52,6 +52,7 @@ void ChatWindow::display (const QString& speaker, const QString& message, SpeakM
 
         case TellMode:
             format = tr("%1 tells you, \"%2\"");
+            _lastSender = speaker;
             break;
     }
     display(format.arg(speaker, message));
@@ -114,13 +115,16 @@ void ChatWindow::clear ()
     removeAllChildren();
 }
 
-ChatEntryWindow::ChatEntryWindow (Session* parent) :
-    Window(parent, 1)
+ChatEntryWindow::ChatEntryWindow (Session* parent, const QStringList& history) :
+    Window(parent, 1),
+    _history(history),
+    _historyIdx(-1)
 {
     setLayout(new BoxLayout(Qt::Horizontal, BoxLayout::HStretch));
 
     addChild(_label = new Label(tr("Say:")), BoxLayout::Fixed);
     addChild(_field = new TextField());
+    connect(_field, SIGNAL(textChanged()), SLOT(maybeExitHistory()));
     connect(_field, SIGNAL(enterPressed()), SLOT(maybeSubmit()));
 
     setVisible(false);
@@ -128,7 +132,7 @@ ChatEntryWindow::ChatEntryWindow (Session* parent) :
     _commands = getChatCommands(parent->app(), parent->locale());
 }
 
-QPair<QString, ChatCommand*> ChatEntryWindow::getCommand (const QString& cmd) const
+QPair<QString, ChatCommand*> ChatEntryWindow::getCommand (const QString& cmd)
 {
     Session* session = this->session();
     QVarLengthArray<CommandMap::const_iterator, 4> matches;
@@ -170,16 +174,57 @@ QPair<QString, ChatCommand*> ChatEntryWindow::getCommand (const QString& cmd) co
     return QPair<QString, ChatCommand*>();
 }
 
+/** The maximum size of the command history. */
+const int maxHistorySize = 10;
+
+void ChatEntryWindow::addToHistory (const QString& cmd)
+{
+    int idx = _history.indexOf(cmd);
+    if (idx != -1) {
+        _history.move(idx, _history.size() - 1);
+    } else {
+        _history.append(cmd);
+        if (_history.size() > maxHistorySize) {
+            _history.removeFirst();
+        }
+    }
+}
+
+void ChatEntryWindow::setMode (const QString& label, const QString& prefix, bool matchParentheses)
+{
+    _label->setText(label);
+    _prefix = prefix;
+    _field->setMatchParentheses(matchParentheses);
+}
+
+void ChatEntryWindow::clearMode ()
+{
+    setMode(tr("Say:"), "");
+}
+
 void ChatEntryWindow::setVisible (bool visible)
 {
     if (_visible != visible) {
         Window::setVisible(visible);
 
-        // request focus for the text field when made visible
         if (visible) {
+            // request focus for the text field when shown
             _field->requestFocus();
+            
+        } else {
+            // exit the history and revert mode when hidden
+            if (_historyIdx != -1) {
+                _field->setText(_stored);
+                _historyIdx = -1;
+            }
+            clearMode();
         }
     }
+}
+
+void ChatEntryWindow::maybeExitHistory ()
+{
+    _historyIdx = -1;
 }
 
 void ChatEntryWindow::maybeSubmit ()
@@ -190,10 +235,15 @@ void ChatEntryWindow::maybeSubmit ()
         setVisible(false);
         return;
     }
+    _historyIdx = -1;
+    
     Session* session = this->session();
     if (text.at(0) != '/') {
-        session->say(text);
-        return;
+        if (_prefix.isEmpty()) {
+            session->say(text);
+            return;
+        }
+        text = _prefix + " " + text;
     }
     // process as command or command prefix
     QString cmd, args;
@@ -216,12 +266,41 @@ void ChatEntryWindow::maybeSubmit ()
 
 void ChatEntryWindow::keyPressEvent (QKeyEvent* e)
 {
-    // hide on escape
     Qt::KeyboardModifiers modifiers = e->modifiers();
-    if (e->key() == Qt::Key_Escape &&
-            (modifiers == Qt::ShiftModifier || modifiers == Qt::NoModifier)) {
-        setVisible(false);
-    } else {
+    if (modifiers != Qt::ShiftModifier && modifiers != Qt::NoModifier) {
         Window::keyPressEvent(e);
+        return;
+    }
+    switch (e->key()) {
+        case Qt::Key_Up:
+            if (_historyIdx == -1) {
+                if (!_history.isEmpty()) {
+                    _stored = _field->text();
+                    _field->setText(_history.at(_historyIdx = _history.size() - 1));
+                }
+            } else if (_historyIdx > 0) {
+                _field->setText(_history.at(--_historyIdx));
+            }
+            break;
+            
+        case Qt::Key_Down:
+            if (_historyIdx != -1) {
+                if (_historyIdx == _history.size() - 1) {
+                    _field->setText(_stored);
+                    _historyIdx = -1;
+                    
+                } else {
+                    _field->setText(_history.at(++_historyIdx));
+                }
+            }
+            break;
+            
+        case Qt::Key_Escape:
+            setVisible(false);
+            break;
+        
+        default:
+            Window::keyPressEvent(e);
+            break;   
     }
 }

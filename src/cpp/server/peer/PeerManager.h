@@ -589,7 +589,7 @@ DECLARE_STREAMABLE_METATYPE(InstanceInfo)
 
 inline bool operator< (const InstanceInfoPointer& p1, const InstanceInfoPointer& p2)
 {
-    return (p1->open < p2->open) || (p1->open == p2->open && p1->id < p2->id);
+    return compare(p1->open, p2->open, p1->region, p2->region, p1->id, p2->id) == -1;
 }
 
 /**

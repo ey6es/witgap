@@ -4,6 +4,7 @@
 #ifndef CALLBACK
 #define CALLBACK
 
+#include <QCoreApplication>
 #include <QMetaMethod>
 #include <QObject>
 #include <QReadWriteLock>
@@ -385,6 +386,11 @@ public:
      */
     T* local ();
 
+    /**
+     * Prefetches the copy for the specified thread.
+     */
+    void prefetch (QThread* thread);
+
 protected:
 
     /** A pointer to the original object. */
@@ -399,6 +405,36 @@ template<class T> inline T* SynchronizedStorage<T>::local ()
         new ObjectSynchronizer(_original, data, true);
     }
     return data;
+}
+
+/**
+ * Supports prefetching a synchronized storage object for a specific thread.
+ */
+template<class T> class SynchronizedStoragePrefetcher : public QObject
+{
+public:
+    
+    /**
+     * Creates a new prefetcher.
+     */
+    SynchronizedStoragePrefetcher (SynchronizedStorage<T>* storage) : _storage(storage) { }
+
+    /**
+     * Handles a custom event.
+     */
+    virtual void customEvent (QEvent* event) { _storage->local(); deleteLater(); }
+    
+protected:
+    
+    /** The storage that we prefetch. */
+    SynchronizedStorage<T>* _storage;
+};
+
+template<class T> inline void SynchronizedStorage<T>::prefetch (QThread* thread)
+{
+    SynchronizedStoragePrefetcher<T>* prefetcher = new SynchronizedStoragePrefetcher<T>(this);
+    prefetcher->moveToThread(thread);
+    QCoreApplication::postEvent(prefetcher, new QEvent(QEvent::User));
 }
 
 #endif // CALLBACK

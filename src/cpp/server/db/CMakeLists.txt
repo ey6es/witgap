@@ -1,6 +1,6 @@
-set(HEADERS DatabaseThread.h PeerRepository.h PropertyRepository.h
+set(HEADERS ActorRepository.h DatabaseThread.h PeerRepository.h PropertyRepository.h
     SceneRepository.h SessionRepository.h UserRepository.h)
-set(SOURCES DatabaseThread.cpp PeerRepository.cpp PropertyRepository.cpp
+set(SOURCES ActorRepository.cpp DatabaseThread.cpp PeerRepository.cpp PropertyRepository.cpp
     SceneRepository.cpp SessionRepository.cpp UserRepository.cpp)
 set(MTC_HEADERS SceneRepository.h SessionRepository.h UserRepository.h)
 

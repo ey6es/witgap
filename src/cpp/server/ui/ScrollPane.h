@@ -83,7 +83,7 @@ public:
      * @param from the component to search from, or 0 to start from the beginning/end.
      * @return whether or not focus was successfully transferred.
      */
-    virtual bool transferFocus (Component* from, Direction dir);
+    virtual Component* transferFocus (Component* from, Direction dir);
 
     /**
      * Dirties the entire component.

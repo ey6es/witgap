@@ -37,7 +37,7 @@ public:
     /**
      * Attempts to transfer focus in the specified direction.
      */
-    virtual bool transferFocus (
+    virtual Component* transferFocus (
         Container* container, Component* from, Component::Direction dir) const;
 
 private:

@@ -77,6 +77,11 @@ public:
     RuntimeConfig* runtimeConfig (bool original = false) { return _runtimeConfig->get(original); }
 
     /**
+     * Prefetches the runtime configuration for the specified thread.
+     */
+    void prefetchRuntimeConfig (QThread* thread) { _runtimeConfig->prefetch(thread); }
+
+    /**
      * Returns a pointer to the connection manager.
      */
     ConnectionManager* connectionManager () const { return _connectionManager; }

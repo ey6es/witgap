@@ -10,6 +10,7 @@
 #include "actor/Pawn.h"
 #include "chat/ChatWindow.h"
 #include "net/Session.h"
+#include "scene/Legend.h"
 #include "scene/SceneView.h"
 #include "scene/Scene.h"
 #include "scene/Zone.h"
@@ -26,6 +27,7 @@ MainWindow::MainWindow (Session* parent) :
     setLayout(new BorderLayout());
 
     addChild(_sceneView = new SceneView(parent), BorderLayout::Center);
+    addChild(_legend = new Legend(parent), BorderLayout::East);
 }
 
 void MainWindow::updateTitle ()

@@ -107,7 +107,7 @@ Component* ScrollPane::componentAt (QPoint pos, QPoint* relative)
     return Component::componentAt(pos, relative);
 }
 
-bool ScrollPane::transferFocus (Component* from, Direction dir)
+Component* ScrollPane::transferFocus (Component* from, Direction dir)
 {
     if (_component == 0) {
         return Component::transferFocus(from, dir);

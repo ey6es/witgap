@@ -78,6 +78,8 @@ Evaluator::Evaluator (const QString& source) :
     _lastColor(0)
 {
     _stack.push(_scope.invocation());
+
+    connect(&_timer, SIGNAL(timeout()), SLOT(continueExecuting()));
 }
 
 /**
@@ -760,35 +762,28 @@ static void compile (
     }
 }
 
-ScriptObjectPointer Evaluator::evaluate (const QString& expr)
+ScriptObjectPointer Evaluator::evaluateUntilExit (const QString& expr)
 {
-    Parser parser(expr, _source);
-    ScriptObjectPointer datum;
-    ScriptObjectPointer result;
-    Invocation* invocation = static_cast<Invocation*>(_scope.invocation().data());
-    LambdaProcedure* proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
-    Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
-    Bytecode bytecode;
-    while (!(datum = parser.parse()).isNull()) {
-        compile(datum, &_scope, false, true, false, bytecode);
+    compileForEvaluation(expr);
+    return execute(0);
+}
 
-        if (bytecode.isEmpty()) {
-            compileDeferred(&_scope, true, bytecode);
-            bytecode.append(LambdaExitOp);
+void Evaluator::evaluate (const QString& expr, int maxCyclesPerSlice)
+{
+    compileForEvaluation(expr);
 
-        } else {
-            bytecode.append(ExitOp);
-        }
-        for (int ii = lambda->constants().size(), nn = _scope.constants().size(); ii < nn; ii++) {
-            lambda->constants().append(_scope.constants().at(ii));
-        }
-        _registers.instructionIdx = lambda->bytecode().length();
-        lambda->bytecode().append(bytecode);
-        bytecode.clear();
-
-        result = execute();
+    ScriptObjectPointer result = execute(maxCyclesPerSlice);
+    if (!result.isNull()) {
+        emit exited(result);
+        return;
     }
-    return result;
+    _maxCyclesPerSlice = maxCyclesPerSlice;
+    _timer.start(0);
+}
+
+void Evaluator::interrupt ()
+{
+    _timer.stop();
 }
 
 ScriptObjectPointer Evaluator::execute (int maxCycles)
@@ -1181,6 +1176,44 @@ ScriptObjectPointer Evaluator::vectorInstance (const ScriptObjectPointerVector& 
         _collectable.append(instance.toWeakRef());
     }
     return instance;
+}
+
+void Evaluator::continueExecuting ()
+{
+    ScriptObjectPointer result = execute(_maxCyclesPerSlice);
+    if (!result.isNull()) {
+        _timer.stop();
+        emit exited(result);
+    }
+}
+
+void Evaluator::compileForEvaluation (const QString& expr)
+{
+    Invocation* invocation = static_cast<Invocation*>(_scope.invocation().data());
+    LambdaProcedure* proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
+    Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
+    _registers.instructionIdx = lambda->bytecode().length();
+
+    Bytecode bytecode;
+    bool result = false;
+    Parser parser(expr, _source);
+    ScriptObjectPointer datum;
+    while (!(datum = parser.parse()).isNull()) {
+        if (result) {
+            lambda->bytecode().append(PopOp);
+        }
+        compile(datum, &_scope, false, true, false, bytecode);
+
+        if (!(result = !bytecode.isEmpty())) {
+            compileDeferred(&_scope, true, bytecode);
+        }
+        for (int ii = lambda->constants().size(), nn = _scope.constants().size(); ii < nn; ii++) {
+            lambda->constants().append(_scope.constants().at(ii));
+        }
+        lambda->bytecode().append(bytecode);
+        bytecode.clear();
+    }
+    lambda->bytecode().append(result ? ExitOp : LambdaExitOp);
 }
 
 void Evaluator::throwScriptError (const QString& message)

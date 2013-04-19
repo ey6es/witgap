@@ -138,6 +138,11 @@ public:
     void decrementCryptoCount ();
 
     /**
+     * Returns a pointer to the main window.
+     */
+    MainWindow* mainWindow () const { return _mainWindow; }
+
+    /**
      * Returns a pointer to the chat window.
      */
     ChatWindow* chatWindow () const { return _chatWindow; }
@@ -210,7 +215,7 @@ public:
     /**
      * Notes that the specified user has logged on.
      */
-    void loggedOn (const UserRecord& user);
+    void loggedOn (const UserRecord& user, bool stayLoggedIn);
 
     /**
      * Logs off the current user.
@@ -253,6 +258,11 @@ public:
     void summonPlayer (const QString& name);
 
     /**
+     * Spawns an actor.
+     */
+    void spawnActor (const QString& prefix);
+
+    /**
      * Closes the session, instructing it to reconnect to the specified host and port offset.
      */
     Q_INVOKABLE void reconnect (const QString& host, quint16 portOffset);
@@ -271,6 +281,16 @@ public:
      * Attempts to send a tell to the named recipient.
      */
     void tell (const QString& recipient, const QString& message);
+
+    /**
+     * Attempts to mute the named user.
+     */
+    void mute (const QString& username);
+    
+    /**
+     * Attempts to unmute the named user.
+     */
+    void unmute (const QString& username);
 
     /**
      * Submits a bug report with the supplied description.
@@ -379,7 +399,12 @@ protected slots:
     void dispatchKeyReleased (int key, QChar ch, bool numpad);
 
     /**
-     * Closes the session.
+     * Shuts down the session.
+     */
+    void shutdown ();
+
+    /**
+     * Closes the session (either because the user closed the window or we're being transferred).
      */
     void close ();
 
@@ -440,6 +465,11 @@ protected:
      */
     Q_INVOKABLE void continueMovingToZone (
         quint32 sceneId, const QVariant& portal, const QString& peer, quint64 instanceId);
+
+    /**
+     * Continues the process of spawning an actor.
+     */
+    Q_INVOKABLE void continueSpawningActor (const ResourceDescriptorList& actors);
 
     /**
      * Leaves the current scene, if any.
@@ -578,6 +608,12 @@ public:
 
     /** The portal at which to enter the scene. */
     STREAM QVariant portal;
+    
+    /** The chat history. */
+    STREAM QStringList chatHistory;
+    
+    /** The chat command history. */
+    STREAM QStringList chatCommandHistory;
 };
 
 DECLARE_STREAMABLE_METATYPE(SessionTransfer)

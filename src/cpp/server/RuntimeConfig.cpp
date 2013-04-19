@@ -7,7 +7,7 @@
 #include "db/PropertyRepository.h"
 
 RuntimeConfig::RuntimeConfig (ServerApp* app) :
-    _logonPolicy(AdminsOnly),
+    _logonPolicy(Everyone),
     _introZone(0),
     _introScene(0)
 {

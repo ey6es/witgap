@@ -15,11 +15,11 @@ Layout::Layout ()
 {
 }
 
-bool Layout::transferFocus (
+Component* Layout::transferFocus (
     Container* container, Component* from, Component::Direction dir) const
 {
     // default behavior just translates right/down to forward and left/up to backward
-    container->transferFocus(from, (dir == Component::Right || dir == Component::Down) ?
+    return container->transferFocus(from, (dir == Component::Right || dir == Component::Down) ?
         Component::Forward : Component::Backward);
 }
 

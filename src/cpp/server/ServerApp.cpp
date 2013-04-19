@@ -312,7 +312,8 @@ ServerApp::ServerApp (int& argc, char** argv) :
         return;
     }
     try {
-        ScriptObjectPointer result = Evaluator(sscript).evaluate(QTextStream(&file).readAll());
+        ScriptObjectPointer result = Evaluator(sscript).evaluateUntilExit(
+            QTextStream(&file).readAll());
         if (!result.isNull()) {
             qDebug() << "Startup script returned: " << result->toString();
         }

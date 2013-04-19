@@ -6,6 +6,7 @@
 
 #include <QThread>
 
+class ActorRepository;
 class PeerRepository;
 class PropertyRepository;
 class RuntimeConfig;
@@ -32,6 +33,11 @@ public:
      * Returns a pointer to the database thread's synchronized copy of the runtime config.
      */
     RuntimeConfig* runtimeConfig () const { return _runtimeConfig; }
+
+    /**
+     * Returns a pointer to the actor repository.
+     */
+    ActorRepository* actorRepository () const { return _actorRepository; }
 
     /**
      * Returns a pointer to the peer repository.
@@ -91,6 +97,9 @@ protected:
 
     /** Our synchronized copy of the runtime config. */
     RuntimeConfig* _runtimeConfig;
+
+    /** The actor repository. */
+    ActorRepository* _actorRepository;
 
     /** The peer repository. */
     PeerRepository* _peerRepository;

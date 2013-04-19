@@ -6,6 +6,7 @@
 
 #include <QList>
 #include <QObject>
+#include <QPair>
 
 #include "actor/Actor.h"
 #include "chat/ChatWindow.h"
@@ -27,12 +28,12 @@ class Scene : public QObject
 public:
 
     /**
-     * Represents a directly renderable block of the scene.
+     * Template for the various block types.
      */
-    class Block : public QIntVector
+    template<class T, int E> class GenericBlock : public QVector<T>
     {
     public:
-
+        
         /** The width/height of each block as a power of two. */
         static const int LgSize = 5;
 
@@ -41,12 +42,12 @@ public:
 
         /** The mask for coordinates. */
         static const int Mask = Size - 1;
-
+        
         /**
-         * Creates an empty scene block.
+         * Creates an empty block.
          */
-        Block ();
-
+        GenericBlock () : QVector<T>(Size*Size, E), _filled(0) { }
+        
         /**
          * Sets the number of non-empty locations in the block.
          */
@@ -56,17 +57,53 @@ public:
          * Returns the number of non-empty locations in the block.
          */
         int filled () const { return _filled; }
-
+    
         /**
-         * Sets the character at the specified position.
+         * Sets the value at the specified position, returning the old value.
          */
-        void set (const QPoint& pos, int character);
-
+        T set (const QPoint& pos, T nvalue)
+        {
+            T& value = (*this)[(pos.y() & Mask) << LgSize | pos.x() & Mask];
+            T ovalue = value;
+            value = nvalue;
+            _filled += (ovalue == E) - (nvalue == E);
+            return ovalue;
+        }
+        
+        /**
+         * Sets the bits in the specified value.
+         */
+        void setFlags (const QPoint& pos, T flags)
+        {
+            T& value = (*this)[(pos.y() & Mask) << LgSize | pos.x() & Mask];
+            if (value == 0 && flags != 0) {
+                _filled++;
+            }
+            value |= flags;
+        }
+        
+        /**
+         * Returns the value at the specified position.
+         */
+        T get (const QPoint& pos) const
+        {
+            return this->at((pos.y() & Mask) << LgSize | pos.x() & Mask);
+        }
+        
     protected:
 
         /** The number of non-empty locations in the block. */
         int _filled;
     };
+
+    /** Represents a directly renderable block of the scene. */
+    typedef GenericBlock<int, ' '> Block;
+
+    /** Represents a block of label pointers. */
+    typedef GenericBlock<LabelPointer, 0> LabelBlock;
+
+    /** Represents a block of flag pointers. */
+    typedef GenericBlock<int, 0> FlagBlock;
 
     /**
      * Creates a new scene.
@@ -82,6 +119,21 @@ public:
      * Returns a reference to the scene block map.
      */
     const QHash<QPoint, Block>& blocks () const { return _blocks; }
+
+    /**
+     * Returns a reference to the label map.
+     */
+    const QHash<QPoint, LabelBlock>& labels () const { return _labels; }
+
+    /**
+     * Returns a reference to the collision flag map.
+     */
+    const QHash<QPoint, FlagBlock>& collisionFlags () const { return _collisionFlags; }
+
+    /**
+     * Returns the collision flags at the specified point.
+     */
+    int collisionFlags (const QPoint& pos) const;
 
     /**
      * Checks whether the specified session can edit the scene.
@@ -134,21 +186,26 @@ public:
     /**
      * Removes the specified actor's visual representation from the scene contents.  This is done
      * when the actor is destroyed, and just before the actor is moved.
+     *
+     * @param npos the position to which the actor will be moving, or zero for none.
      */
-    void removeSpatial (Actor* actor) { removeSpatial(actor, actor->character()); };
+    void removeSpatial (Actor* actor, const QPoint* npos = 0) {
+        removeSpatial(actor, actor->character(), npos); };
 
     /**
      * Removes the specified actor's visual representation from the scene contents.  This is done
      * when the actor is destroyed, and just before the actor is moved.
+     *
+     * @param npos the position to which the actor will be moving, or zero for none.
      */
-    void removeSpatial (Actor* actor, int character);
+    void removeSpatial (Actor* actor, int character, const QPoint* npos = 0);
 
     /**
-     * Notes that an actor's character has changed.
+     * Notes that an actor's character or label has changed.
      *
      * @param ocharacter the previous character.
      */
-    void characterChanged (Actor* actor, int ochar);
+    void characterLabelChanged (Actor* actor, int ochar);
 
     /**
      * Adds a scene view to the map.  This is done when the session is added, and just after the
@@ -161,6 +218,13 @@ public:
      * before the view is moved/resized.
      */
     void removeSpatial (SceneView* view);
+
+    /**
+     * Attempts to find a path from the given start point to the specified end.  Returns an empty
+     * path on failure.
+     */
+    QVector<QPoint> findPath (
+        const QPoint& start, const QPoint& end, int collisionMask, int maxLength) const;
 
     /**
      * Sends a message to all views intersecting the specified location.
@@ -183,19 +247,20 @@ public slots:
     void flush ();
 
 protected:
+    
+    /** A list of scene views. */
+    typedef QList<SceneView*> SceneViewList;
+
+    /**
+     * Updates the collision flags at the specified position from the actor list.
+     */
+    void updateCollisionFlags (const QPoint& pos, Actor* actor);
 
     /**
      * Sets a character in the scene blocks.
      */
-    void setInBlocks (const QPoint& pos, int character);
-
-    /**
-     * Dirties a single location in all views that can see it.
-     */
-    void dirty (const QPoint& pos);
-
-    /** A list of scene views. */
-    typedef QList<SceneView*> SceneViewList;
+    void setInBlocks (const QPoint& pos, int character,
+        LabelPointer label = 0, const QPoint* npos = 0);
 
     /** The application object. */
     ServerApp* _app;
@@ -205,6 +270,12 @@ protected:
 
     /** The current set of scene blocks. */
     QHash<QPoint, Block> _blocks;
+
+    /** The label blocks. */
+    QHash<QPoint, LabelBlock> _labels;
+
+    /** The collision flag blocks. */
+    QHash<QPoint, FlagBlock> _collisionFlags;
 
     /** Maps locations to linked lists of actors. */
     QHash<QPoint, Actor*> _actors;

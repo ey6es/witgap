@@ -6,6 +6,7 @@
 
 #include "ui/Window.h"
 
+class Legend;
 class SceneView;
 
 /**
@@ -21,6 +22,16 @@ public:
      * Initializes the window.
      */
     MainWindow (Session* parent);
+
+    /**
+     * Returns a pointer to the scene view.
+     */
+    SceneView* sceneView () const { return _sceneView; }
+
+    /**
+     * Returns a pointer to the legend.
+     */
+    Legend* legend () const { return _legend; }
 
 public slots:
 
@@ -43,6 +54,9 @@ protected:
 
     /** The scene view. */
     SceneView* _sceneView;
+    
+    /** The legend. */
+    Legend* _legend;
 };
 
 #endif // MAIN_WINDOW

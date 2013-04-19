@@ -18,6 +18,7 @@
 #include "ServerApp.h"
 #include "SettingsDialog.h"
 #include "actor/Pawn.h"
+#include "db/ActorRepository.h"
 #include "db/DatabaseThread.h"
 #include "db/SceneRepository.h"
 #include "net/ConnectionManager.h"
@@ -73,10 +74,10 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
 
     // and the chat windows
     _chatWindow = new ChatWindow(this);
-    _chatEntryWindow = new ChatEntryWindow(this);
+    _chatEntryWindow = new ChatEntryWindow(this, transfer.chatCommandHistory);
 
     // start the disconnect timer
-    connect(_closeTimer, SIGNAL(timeout()), SLOT(close()));
+    connect(_closeTimer, SIGNAL(timeout()), SLOT(shutdown()));
     _closeTimer->start(DisconnectTimeout);
 
     // install the connection, if available
@@ -286,16 +287,19 @@ void Session::showInputDialog (
     window->center();
 }
 
-void Session::loggedOn (const UserRecord& user)
+void Session::loggedOn (const UserRecord& user, bool stayLoggedIn)
 {
     qDebug() << "Logged on." << _record.id << user.name;
 
     _user = user;
 
     if (_connection) {
-        // set the username cookie on the client
+        // set the username/stay logged in cookies on the client
         Connection::setCookieMetaMethod().invoke(_connection.data(),
             Q_ARG(const QString&, "username"), Q_ARG(const QString&, user.name));
+        Connection::setCookieMetaMethod().invoke(_connection.data(),
+            Q_ARG(const QString&, "stay_logged_in"),
+            Q_ARG(const QString&, stayLoggedIn ? "true" : "false"));
     }
 
     // set the user id and name/avatar in the session record
@@ -303,6 +307,7 @@ void Session::loggedOn (const UserRecord& user)
     QString oname = _record.name;
     _record.name = user.name;
     _record.avatar = user.avatar;
+    _record.stayLoggedIn = stayLoggedIn;
     QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "updateSession",
         Q_ARG(const SessionRecord&, _record));
 
@@ -396,6 +401,14 @@ void Session::summonPlayer (const QString& name)
             _this, "maybeSummoned(QString,bool)", Q_ARG(const QString&, name))));
 }
 
+void Session::spawnActor (const QString& prefix)
+{
+    // look up the prefix in the database
+    QMetaObject::invokeMethod(_app->databaseThread()->actorRepository(), "findActors",
+        Q_ARG(const QString&, prefix), Q_ARG(quint32, 0), Q_ARG(const Callback&,
+            Callback(_this, "continueSpawningActor(ResourceDescriptorList)")));
+}
+
 void Session::reconnect (const QString& host, quint16 portOffset)
 {
     if (_connection) {
@@ -448,6 +461,14 @@ void Session::tell (const QString& recipient, const QString& message)
             Q_ARG(const QString&, message))));
 }
 
+void Session::mute (const QString& username)
+{
+}
+
+void Session::unmute (const QString& username)
+{
+}
+
 void Session::submitBugReport (const QString& description)
 {
     qDebug() << "Submitting bug report." << who() << description;
@@ -466,7 +487,7 @@ void Session::openUrl (const QUrl& url)
 void Session::runScript (const QByteArray& script)
 {
     try {
-        ScriptObjectPointer result = Evaluator().evaluate(script);
+        ScriptObjectPointer result = Evaluator().evaluateUntilExit(script);
         if (!result.isNull()) {
             _chatWindow->display(result->toString());
         }
@@ -515,7 +536,12 @@ bool Session::event (QEvent* e)
 
 void Session::showLogonDialog ()
 {
-    new LogonDialog(this, _connection ? _connection->cookies().value("username", "") : "");
+    if (_connection) {
+        new LogonDialog(this, _connection->cookies().value("username"),
+            _connection->cookies().value("stay_logged_in") == "true");
+    } else {
+        new LogonDialog(this, "", false);
+    }
 }
 
 void Session::showLogoffDialog ()
@@ -689,6 +715,17 @@ void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
             _activeWindow : _activeWindow->focus()), &event);
 }
 
+void Session::shutdown ()
+{   
+    close();
+    
+    // if requested, log off
+    if (_record.userId != 0 && !_record.stayLoggedIn) {
+        QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "logoffSession",
+            Q_ARG(quint64, _record.id), Q_ARG(const Callback&, Callback()));
+    }    
+}
+
 void Session::close ()
 {
     leaveScene();
@@ -717,7 +754,7 @@ void Session::setConnection (const SharedConnectionPointer& connection)
 
     _displaySize = conn->displaySize();
     _region = conn->region();
-    connect(conn, SIGNAL(windowClosed()), SLOT(close()));
+    connect(conn, SIGNAL(windowClosed()), SLOT(shutdown()));
     connect(conn, SIGNAL(mousePressed(int,int)), SLOT(dispatchMousePressed(int,int)));
     connect(conn, SIGNAL(mouseReleased(int,int)), SLOT(dispatchMouseReleased(int,int)));
     connect(conn, SIGNAL(keyPressed(int,QChar,bool)),
@@ -763,7 +800,7 @@ void Session::passwordResetMaybeValidated (const QVariant& result)
     }
     UserRecord urec = qVariantValue<UserRecord>(result);
     qDebug() << "Activated password reset request." << urec.name << urec.email;
-    loggedOn(urec);
+    loggedOn(urec, false);
 
     // open the settings dialog in order to change the password
     new SettingsDialog(this);
@@ -865,6 +902,7 @@ void Session::continueMovingToZone (
         transfer.instanceId = instanceId;
         transfer.sceneId = sceneId;
         transfer.portal = portal;
+        transfer.chatCommandHistory = _chatEntryWindow->history();
         _app->peerManager()->invoke(peer, _app->connectionManager(),
             "transferSession(SessionTransfer)", Q_ARG(const SessionTransfer&, transfer));
         return;
@@ -878,6 +916,16 @@ void Session::continueMovingToZone (
     // continue the process in the instance thread
     QMetaObject::invokeMethod(this, "continueMovingToZone", Q_ARG(QObject*, instance),
         Q_ARG(quint32, sceneId), Q_ARG(const QVariant&, portal));
+}
+
+void Session::continueSpawningActor (const ResourceDescriptorList& actors)
+{
+    if (actors.isEmpty()) {
+        _chatWindow->display(tr("No such actor."));
+        return;
+    }
+    // pick one at random
+    // spawnActor(actors.at(qrand() % actors.size()).id);
 }
 
 void Session::leaveZone ()

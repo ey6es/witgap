@@ -31,8 +31,9 @@ public:
      * Initializes the dialog.
      *
      * @param username the username cookie, if any.
+     * @param stayLoggedIn the stay logged in cookie.
      */
-    LogonDialog (Session* parent, const QString& username);
+    LogonDialog (Session* parent, const QString& username, bool stayLoggedIn);
 
 protected slots:
 

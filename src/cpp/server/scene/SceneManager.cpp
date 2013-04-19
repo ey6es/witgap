@@ -38,6 +38,7 @@ Instance* SceneManager::instance (quint64 id) const
 void SceneManager::startThreads ()
 {
     foreach (QThread* thread, _threads) {
+        _app->prefetchRuntimeConfig(thread);
         thread->start();
     }
 }

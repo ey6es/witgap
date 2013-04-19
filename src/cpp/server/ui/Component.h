@@ -63,7 +63,7 @@ public:
     /**
      * Returns a pointer to the session that owns the component.
      */
-    Session* session () const;
+    Session* session ();
 
     /**
      * Sets the component's bounds in its parent coordinate system.
@@ -194,9 +194,9 @@ public:
      * direction.
      *
      * @param from the component to search from, or 0 to start from the beginning/end.
-     * @return whether or not focus was successfully transferred.
+     * @return a pointer to the component that received focus, or 0 for none.
      */
-    virtual bool transferFocus (Component* from, Direction dir);
+    virtual Component* transferFocus (Component* from, Direction dir);
 
     /**
      * Handles an event.
@@ -339,6 +339,9 @@ protected:
 
     /** Whether or not the component is visible. */
     bool _visible;
+    
+    /** The cached session. */
+    Session* _session;
 };
 
 /**
@@ -433,9 +436,9 @@ public:
      * direction.
      *
      * @param from the component to search from, or 0 to start from the beginning/end.
-     * @return whether or not focus was successfully transferred.
+     * @return a pointer to the component that received focus, or 0 for none.
      */
-    virtual bool transferFocus (Component* from, Direction dir);
+    virtual Component* transferFocus (Component* from, Direction dir);
 
 protected:
 

@@ -21,7 +21,7 @@
 // translate through the session
 #define tr(...) this->session()->translator()->translate("LogonDialog", __VA_ARGS__)
 
-LogonDialog::LogonDialog (Session* parent, const QString& username) :
+LogonDialog::LogonDialog (Session* parent, const QString& username, bool stayLoggedIn) :
     EncryptedWindow(parent, parent->highestWindowLayer(), true, true),
     _logonBlocked(false)
 {
@@ -95,7 +95,7 @@ LogonDialog::LogonDialog (Session* parent, const QString& username) :
         BoxLayout::createHBox(Qt::AlignCenter, 2, _forgotUsername, _forgotPassword)));
 
     addChild(BoxLayout::createHBox(Qt::AlignCenter, 2,
-        _stayLoggedIn = new CheckBox(tr("Stay Logged in after Leaving"))));
+        _stayLoggedIn = new CheckBox(tr("Stay Logged in after Leaving"), stayLoggedIn)));
 
     // force logon if appropriate for the current policy
     RuntimeConfig* config = parent->app()->runtimeConfig();
@@ -200,7 +200,7 @@ void LogonDialog::userMaybeInserted (const UserRecord& user)
     } else {
         qDebug() << "Account created." << user.id << user.name << user.dateOfBirth << user.email;
 
-        session()->loggedOn(user);
+        session()->loggedOn(user, _stayLoggedIn->selected());
         deleteLater();
     }
 }
@@ -223,7 +223,7 @@ void LogonDialog::logonMaybeValidated (const QVariant& result)
             flashStatus(tr("The server is currently closed.  Please try again later."));
             return;
         default:
-            session()->loggedOn(qVariantValue<UserRecord>(result));
+            session()->loggedOn(qVariantValue<UserRecord>(result), _stayLoggedIn->selected());
             deleteLater();
             return;
     }

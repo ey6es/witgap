@@ -8,6 +8,7 @@
 #include <QSqlError>
 
 #include "ServerApp.h"
+#include "db/ActorRepository.h"
 #include "db/DatabaseThread.h"
 #include "db/PeerRepository.h"
 #include "db/PropertyRepository.h"
@@ -26,6 +27,7 @@ DatabaseThread::DatabaseThread (ServerApp* app) :
     _username(app->config().value("database_username").toString()),
     _password(app->config().value("database_password").toString()),
     _connectOptions(app->config().value("database_connect_options").toString()),
+    _actorRepository(new ActorRepository()),
     _peerRepository(new PeerRepository()),
     _propertyRepository(new PropertyRepository(app)),
     _sceneRepository(new SceneRepository()),
@@ -33,6 +35,7 @@ DatabaseThread::DatabaseThread (ServerApp* app) :
     _userRepository(new UserRepository(app))
 {
     // move the repositories to this thread
+    _actorRepository->moveToThread(this);
     _peerRepository->moveToThread(this);
     _propertyRepository->moveToThread(this);
     _sceneRepository->moveToThread(this);
@@ -61,6 +64,7 @@ void DatabaseThread::run ()
         db.setConnectOptions(_connectOptions);
         if (db.open()) {
             // initialize repositories
+            _actorRepository->init();
             _peerRepository->init();
             _propertyRepository->init();
             _sceneRepository->init();

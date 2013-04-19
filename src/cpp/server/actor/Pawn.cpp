@@ -9,7 +9,7 @@
 #include "scene/Scene.h"
 
 Pawn::Pawn (Scene* scene, Session* session, const QPoint& position) :
-    Actor(scene, session->record().avatar.unicode(), position, session->record().name),
+    Actor(scene, session->record().avatar.unicode(), session->record().name, position, 2, 1, 3),
     _session(session),
     _cursor(false)
 {
@@ -58,19 +58,19 @@ void Pawn::keyPressEvent (QKeyEvent* e)
             break;
 
         case Qt::Key_Left:
-            setPosition(QPoint(_position.x() - 1, _position.y()));
+            move(QPoint(_position.x() - 1, _position.y()));
             break;
 
         case Qt::Key_Right:
-            setPosition(QPoint(_position.x() + 1, _position.y()));
+            move(QPoint(_position.x() + 1, _position.y()));
             break;
 
         case Qt::Key_Up:
-            setPosition(QPoint(_position.x(), _position.y() - 1));
+            move(QPoint(_position.x(), _position.y() - 1));
             break;
 
         case Qt::Key_Down:
-            setPosition(QPoint(_position.x(), _position.y() + 1));
+            move(QPoint(_position.x(), _position.y() + 1));
             break;
 
         default:

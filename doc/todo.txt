@@ -8,7 +8,6 @@ Invite system:
 - Create: generic with N, list of e-mails
 
 Script:
-- Lists rather than (in addition to) vectors
 - Records
 - Record serialization
 
@@ -46,6 +45,7 @@ Clubs:
 Billing:
 - Microcurrency packages
 - Other items? (generic system)
+- Paypal, Authorize.net (?)
 
 Procedural scene generation:
 - Enter at any location
@@ -60,3 +60,6 @@ Scene persistence
 - Broadcast changes to all instances?
 
 Anonymous users should be users, not just sessions
+- Create user on first connection
+-- Logon: delete user
+-- Create account: convert user

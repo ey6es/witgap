@@ -7,6 +7,7 @@
 #include <QHash>
 #include <QLinkedList>
 #include <QStringList>
+#include <QTimer>
 
 #include "script/ScriptObject.h"
 
@@ -127,10 +128,20 @@ public:
     Evaluator (const QString& source = QString());
 
     /**
-     * Parses and evaluates an expression, returning the result.  Throws ScriptError if an error
-     * occurs.
+     * Parses and evaluates an expression synchronously, returning the result.  Throws ScriptError
+     * if an error occurs.
      */
-    ScriptObjectPointer evaluate (const QString& expr);
+    ScriptObjectPointer evaluateUntilExit (const QString& expr);
+
+    /**
+     * Parses and evaluates an expression asynchronously.  Throws ScriptError if an error occurs.
+     */
+    void evaluate (const QString& expr, int maxCyclesPerSlice = 100);
+
+    /**
+     * Interrupts the current execution.
+     */
+    void interrupt ();
 
     /**
      * Runs the evaluator for a fixed number of cycles, or until a result is returned.
@@ -161,7 +172,27 @@ public:
      */
     ScriptObjectPointer vectorInstance (const ScriptObjectPointerVector& contents);
 
+signals:
+
+    /**
+     * Fired when the script exits.
+     */
+    void exited (const ScriptObjectPointer& result);
+
+protected slots:
+
+    /**
+     * Continues the current thread of execution.
+     */
+    void continueExecuting ();
+
 protected:
+
+    /**
+     * Compiles the supplied expression in preparation for evaluation.  Throws ScriptError if an
+     * error occurs.
+     */
+    void compileForEvaluation (const QString& expr);
 
     /**
      * Throws a script error with the supplied message.
@@ -185,6 +216,12 @@ protected:
 
     /** The last color used for garbage collection. */
     int _lastColor;
+
+    /** The timer used for execution. */
+    QTimer _timer;
+
+    /** The maximum number of cycles to execute in each time slice. */
+    int _maxCyclesPerSlice;
 };
 
 /**

@@ -22,7 +22,8 @@ Component::Component (QObject* parent) :
     _valid(false),
     _focused(false),
     _enabled(true),
-    _visible(true)
+    _visible(true),
+    _session(0)
 {
     // connect slots
     connect(this, SIGNAL(boundsChanged()), SLOT(invalidate()));
@@ -46,12 +47,15 @@ Window* Component::window ()
     return 0;
 }
 
-Session* Component::session () const
+Session* Component::session ()
 {
+    if (_session != 0) {
+        return _session;
+    }
     for (QObject* obj = parent(); obj != 0; obj = obj->parent()) {
         Session* session = qobject_cast<Session*>(obj);
         if (session != 0) {
-            return session;
+            return _session = session;
         }
     }
     return 0;
@@ -169,7 +173,7 @@ void Component::setVisible (bool visible)
 {
     if (_visible != visible) {
         _visible = visible;
-        invalidate();
+        invalidateParent();
     }
 }
 
@@ -207,7 +211,7 @@ Component* Component::componentAt (QPoint pos, QPoint* relative)
     return this;
 }
 
-bool Component::transferFocus (Component* from, Direction dir)
+Component* Component::transferFocus (Component* from, Direction dir)
 {
     if (from == this) {
         Component* container = qobject_cast<Component*>(parent());
@@ -215,9 +219,9 @@ bool Component::transferFocus (Component* from, Direction dir)
     }
     if (acceptsFocus()) {
         window()->setFocus(this);
-        return true;
+        return this;
     }
-    return false;
+    return 0;
 }
 
 bool Component::event (QEvent* e)
@@ -399,8 +403,10 @@ void Component::keyPressEvent (QKeyEvent* e)
     if (_focused) {
         Direction dir = getDirection(e);
         if (dir != NoDirection) {
-            transferFocus(this, dir);
-            return;
+            Component* focus = transferFocus(this, dir);
+            if (focus != 0 && focus != this) {
+                return;
+            }
         }
     }
     e->ignore(); // pass up to parent
@@ -530,23 +536,25 @@ Component* Container::componentAt (QPoint pos, QPoint* relative)
     return Component::componentAt(pos, relative);
 }
 
-bool Container::transferFocus (Component* from, Direction dir)
+Component* Container::transferFocus (Component* from, Direction dir)
 {
     if (!(_enabled && _visible)) {
-        return false;
+        return 0;
     }
     if (dir == Forward) {
         int ii = (from == 0) ? 0 : _children.indexOf(from) + 1;
         for (int nn = _children.length(); ii < nn; ii++) {
-            if (_children[ii]->transferFocus(0, dir)) {
-                return true;
+            Component* focus = _children.at(ii)->transferFocus(0, dir);
+            if (focus != 0) {
+                return focus;
             }
         }
     } else if (dir == Backward) {
         int ii = (from == 0) ? _children.length() - 1 : _children.indexOf(from) - 1;
         for (; ii >= 0; ii--) {
-            if (_children[ii]->transferFocus(0, dir)) {
-                return true;
+            Component* focus = _children.at(ii)->transferFocus(0, dir);
+            if (focus != 0) {
+                return focus;
             }
         }
     } else {
@@ -556,7 +564,7 @@ bool Container::transferFocus (Component* from, Direction dir)
         }
         return transferFocus(from, (dir == Right || dir == Down) ? Forward : Backward);
     }
-    return from != 0 && Component::transferFocus(this, dir);
+    return (from == 0) ? 0 : Component::transferFocus(this, dir);
 }
 
 QSize Container::computePreferredSize (int whint, int hhint) const

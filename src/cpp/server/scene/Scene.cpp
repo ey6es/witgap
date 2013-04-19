@@ -1,30 +1,23 @@
 //
 // $Id$
 
+#include <queue>
+
 #include <QMetaObject>
 #include <QtDebug>
 
+#include "MainWindow.h"
 #include "Protocol.h"
 #include "ServerApp.h"
 #include "actor/Pawn.h"
 #include "db/DatabaseThread.h"
 #include "net/Session.h"
+#include "scene/Legend.h"
 #include "scene/Scene.h"
 #include "scene/SceneManager.h"
 #include "scene/SceneView.h"
 
-Scene::Block::Block () :
-    QIntVector(Size*Size, ' '),
-    _filled(0)
-{
-}
-
-void Scene::Block::set (const QPoint& pos, int character)
-{
-    int& value = (*this)[(pos.y() & Mask) << LgSize | pos.x() & Mask];
-    _filled += (value == ' ') - (character == ' ');
-    value = character;
-}
+using namespace std;
 
 Scene::Scene (ServerApp* app, const SceneRecord& record) :
     _app(app),
@@ -85,6 +78,18 @@ Scene::Scene (ServerApp* app, const SceneRecord& record) :
             }
         }
     }
+    
+    new Actor(this, '@', "Column", QPoint(0, 1), 1, 2, 0);
+}
+
+int Scene::collisionFlags (const QPoint& pos) const
+{
+    QPoint key(pos.x() >> Scene::Block::LgSize, pos.y() >> Scene::Block::LgSize);
+    QHash<QPoint, FlagBlock>::const_iterator it = _collisionFlags.constFind(key);
+    if (it == _collisionFlags.constEnd()) {
+        return 0;
+    }
+    return (it == _collisionFlags.constEnd()) ? 0 : it->get(pos);
 }
 
 bool Scene::canEdit (Session* session) const
@@ -164,60 +169,88 @@ void Scene::deleted ()
 
 void Scene::addSpatial (Actor* actor)
 {
-    // ignore invisible actors
+    const QPoint& pos = actor->position();
+    int flags = actor->collisionFlags();
+    if (flags != 0) {
+        QPoint key(pos.x() >> Block::LgSize, pos.y() >> Block::LgSize);
+        FlagBlock& block = _collisionFlags[key];
+        block.setFlags(pos, flags);
+    }
+    
+    // add to actor list
+    Actor*& aref = _actors[pos];
     int character = actor->character();
     if (character == ' ') {
+        // add invisible actors to the end of the list
+        if (aref == 0) {
+            aref = actor;
+
+        } else {
+            Actor* ptr = aref;
+            while (ptr->next() != 0) {
+                ptr = ptr->next();
+            }
+            ptr->setNext(actor);
+        }
         return;
     }
-
-    // add to actor list
-    const QPoint& pos = actor->position();
-    Actor*& aref = _actors[pos];
     if (aref != 0) {
         actor->setNext(aref);
     }
     aref = actor;
 
     // set in block and dirty
-    setInBlocks(pos, character);
+    setInBlocks(pos, character, actor->labelPointer());
 }
 
-void Scene::removeSpatial (Actor* actor, int character)
+void Scene::removeSpatial (Actor* actor, int character, const QPoint* npos)
 {
-    // ignore invisible actors
-    if (character == ' ') {
-        return;
-    }
-
     // remove from actor list
     const QPoint& pos = actor->position();
     Actor*& aref = _actors[pos];
     if (aref != actor) {
         // actor is not on top, so no need to update block
-        Actor* pactor = aref;
-        while (pactor->next() != actor) {
-            pactor = pactor->next();
+        Actor* ptr = aref;
+        while (ptr->next() != actor) {
+            ptr = ptr->next();
         }
-        pactor->setNext(actor->next());
+        ptr->setNext(actor->next());
         actor->setNext(0);
+        if (actor->collisionFlags() != 0) {
+            updateCollisionFlags(pos, aref);
+        }
         return;
     }
     Actor* next = actor->next();
     int nchar;
+    LabelPointer nlabel;
     if (next == 0) {
         _actors.remove(pos);
         nchar = _record.get(pos);
+        nlabel = 0;
+        
     } else {
         aref = next;
         actor->setNext(0);
-        nchar = next->character();
+        if ((nchar = next->character()) == ' ') {
+            nchar = _record.get(pos);
+            nlabel = 0;
+            
+        } else {
+            nlabel = next->labelPointer();
+        }
     }
 
     // update block and dirty
-    setInBlocks(pos, nchar);
+    setInBlocks(pos, nchar, nlabel, npos);
+    
+    // update the collision flags if appropriate
+    if (actor->collisionFlags() != 0) {
+        updateCollisionFlags(pos, next);
+    }
 }
 
-void Scene::characterChanged (Actor* actor, int ochar)
+void Scene::characterLabelChanged (Actor* actor, int ochar)
 {
     // handle transitions between visible and invisible
     int nchar = actor->character();
@@ -234,7 +267,7 @@ void Scene::characterChanged (Actor* actor, int ochar)
     const QPoint& pos = actor->position();
     Actor* pactor = _actors.value(pos);
     if (pactor == actor) {
-        setInBlocks(pos, nchar);
+        setInBlocks(pos, nchar, actor->labelPointer());
     }
 }
 
@@ -273,6 +306,97 @@ void Scene::removeSpatial (SceneView* view)
     }
 }
 
+/**
+ * Contains all the information associated with a node.
+ */
+class Node
+{
+public:
+
+    /** Whether or not the node is in the closed set. */
+    unsigned int closed : 1;
+    
+    /** Whether or not the node is in the open set. */
+    unsigned int open : 1;
+    
+    /** The distance from the source node. */
+    unsigned int gScore : 14;
+    
+    /** The combined distance and heuristic estimate. */
+    unsigned int fScore : 14;
+    
+    /** The direction from which we traveled. */
+    unsigned int cameFrom : 2;
+};
+
+/**
+ * Functor to compare two nodes by their scores.
+ */
+class NodeScoreGreater
+{
+public:
+
+    /**
+     * Creates a new node comparer.
+     */
+    NodeScoreGreater (const QHash<QPoint, Node>* nodes) : _nodes(nodes) { }
+
+    /**
+     * Returns whether or not the score of the first point is greater than that of the second.
+     */
+    bool operator() (const QPoint& p1, const QPoint& p2)
+    {
+        return _nodes->value(p1).fScore > _nodes->value(p2).fScore;
+    }
+
+protected:
+    
+    /** The map from point to node. */
+    const QHash<QPoint, Node>* _nodes;
+};
+
+QVector<QPoint> Scene::findPath (
+    const QPoint& start, const QPoint& end, int collisionMask, int maxLength) const
+{
+    QHash<QPoint, Node> nodes;
+    NodeScoreGreater compare(&nodes);
+    priority_queue<QPoint, QVector<QPoint>, NodeScoreGreater> open(compare);
+    
+    Node first = { false, true, 0, (start - end).manhattanLength() };
+    nodes.insert(start, first);
+    open.push(start);
+    
+    while (!open.empty()) {
+        QPoint current = open.top();
+        if (current == end) {
+            QVector<QPoint> path;
+            while (current != start) {
+                path.append(current);
+                
+            }
+            return path;
+        }
+        open.pop();
+        Node& cnode = nodes[current];
+        cnode.closed = true;
+        int ngscore = cnode.gScore + 1;
+        
+        for (int ii = 0; ii < 4; ii++) {
+            QPoint neighbor;
+            Node& nnode = nodes[neighbor];
+            if (nnode.closed) {
+                continue;
+            }
+            if (!nnode.open || ngscore < nnode.gScore) {
+                
+            }
+            
+        }
+    }
+    
+    return QVector<QPoint>();
+}
+
 void Scene::say (
     const QPoint& pos, const QString& speaker, const QString& message, ChatWindow::SpeakMode mode)
 {
@@ -304,27 +428,51 @@ void Scene::flush ()
     }
 }
 
-void Scene::setInBlocks (const QPoint& pos, int character)
+void Scene::updateCollisionFlags (const QPoint& pos, Actor* actor)
+{
+    int flags = 0;
+    for (; actor != 0; actor = actor->next()) {
+        flags |= actor->collisionFlags();
+    }
+    QPoint key(pos.x() >> Block::LgSize, pos.y() >> Block::LgSize);
+    FlagBlock& block = _collisionFlags[key];
+    block.set(pos, flags);
+    if (block.filled() == 0) {
+        _collisionFlags.remove(key);
+    }
+}
+
+void Scene::setInBlocks (const QPoint& pos, int character, LabelPointer label, const QPoint* npos)
 {
     QPoint key(pos.x() >> Block::LgSize, pos.y() >> Block::LgSize);
     Block& block = _blocks[key];
-    block.set(pos, character);
+    int ochar = block.set(pos, character);
     if (block.filled() == 0) {
         _blocks.remove(key);
     }
-    dirty(pos);
-}
-
-void Scene::dirty (const QPoint& pos)
-{
+    LabelBlock& lblock = _labels[key];
+    LabelPointer olabel = lblock.set(pos, label);
+    if (lblock.filled() == 0) {
+        _labels.remove(key);
+    }
+    if (ochar == character && olabel == label) {
+        return;
+    }
     QPoint vkey(pos.x() >> LgViewBlockSize, pos.y() >> LgViewBlockSize);
     QHash<QPoint, SceneViewList>::const_iterator it = _views.constFind(vkey);
     if (it != _views.constEnd()) {
         foreach (SceneView* view, *it) {
             const QRect& vbounds = view->worldBounds();
             if (vbounds.contains(pos)) {
-                static_cast<Component*>(view)->dirty(QRect(pos - vbounds.topLeft(), QSize(1, 1)));
+                if (ochar != character) {
+                    static_cast<Component*>(view)->dirty(QRect(pos - vbounds.topLeft(),
+                        QSize(1, 1)));
+                }
+                if (olabel != label) {
+                    view->session()->mainWindow()->legend()->labelChanged(olabel, label, npos);
+                }
             }
         }
     }
 }
+

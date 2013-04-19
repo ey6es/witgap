@@ -168,6 +168,31 @@ void Callback::invoke (
     }
 }
 
+/**
+ * Creates a default-constructed instance of the identified type.
+ */
+void* createDefault (int type)
+{
+    switch (type) {
+        case QMetaType::Bool: return new bool();
+        case QMetaType::Int: return new int();
+        case QMetaType::UInt: return new unsigned int();
+        case QMetaType::Double: return new double();
+        case QMetaType::VoidStar: return new void*();
+        case QMetaType::Long: return new long();
+        case QMetaType::LongLong: return new long long();
+        case QMetaType::Short: return new short();
+        case QMetaType::Char: return new char();
+        case QMetaType::ULong: return new unsigned long();
+        case QMetaType::ULongLong: return new unsigned long long();
+        case QMetaType::UShort: return new unsigned short();
+        case QMetaType::UChar: return new unsigned char();
+        case QMetaType::Float: return new float();
+        case QMetaType::QObjectStar: return new QObject*();
+        default: return QMetaType::construct(type);
+    }
+}
+
 void Callback::invokeWithDefaults () const
 {
     int types[10];
@@ -176,7 +201,7 @@ void Callback::invokeWithDefaults () const
     for (int ii = 0, idx = _args.size(), nn = ptypes.size(); idx < nn; ii++, idx++) {
         const char* typeName = ptypes.at(idx).constData();
         types[ii] = QMetaType::type(typeName);
-        nargs[ii] = QGenericArgument(typeName, QMetaType::construct(types[ii]));
+        nargs[ii] = QGenericArgument(typeName, createDefault(types[ii]));
     }
     invoke(nargs[0], nargs[1], nargs[2], nargs[3], nargs[4],
         nargs[5], nargs[6], nargs[7], nargs[8], nargs[9]);

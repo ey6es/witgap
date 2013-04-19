@@ -254,6 +254,39 @@ const ResourceDescriptor NoResource = { 0 };
 typedef QList<ResourceDescriptor> ResourceDescriptorList;
 
 /**
+ * Templated comparison functions to compare sets of values.
+ */
+template<class T> inline int compare (T v1, T v2)
+{
+    return (v1 < v2) ? -1 : (v1 == v2 ? 0 : +1);
+}
+
+template<> inline int compare<const QString&> (const QString& v1, const QString& v2)
+{
+    return QString::compare(v1, v2);
+}
+
+template<class T1, class T2> inline int compare (T1 v1, T1 v2, T2 v3, T2 v4)
+{
+    int result = compare(v1, v2);
+    return (result == 0) ? compare(v3, v4) : result;
+}
+
+template<class T1, class T2, class T3> inline int compare (
+    T1 v1, T1 v2, T2 v3, T2 v4, T3 v5, T3 v6)
+{
+    int result = compare(v1, v2);
+    return (result == 0) ? compare(v3, v4, v5, v6) : result;
+}
+
+template<class T1, class T2, class T3, class T4> inline int compare (
+    T1 v1, T1 v2, T2 v3, T2 v4, T3 v5, T3 v6, T4 v7, T4 v8)
+{
+    int result = compare(v1, v2);
+    return (result == 0) ? compare(v3, v4, v5, v6, v7, v8) : result;
+}
+
+/**
  * Hash function for points.
  */
 inline uint qHash (const QPoint& point) { return point.x()*31 + point.y(); }

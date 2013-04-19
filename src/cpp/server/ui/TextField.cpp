@@ -426,28 +426,30 @@ bool TextField::maybeShowMatch (int idx)
 {
     const QString& text = _document->text();
     QChar ch = text.at(idx);
-    if (ch == '(') {
+    if (ch == '(' || ch == '[') {
+        QChar open = ch, close = (ch == '(') ? ')' : ']';
         int depth = 1;
         for (int ii = idx + 1, nn = text.length(); ii < nn; ii++) {
             QChar ch = text.at(ii);
-            if (ch == '(') {
+            if (ch == open) {
                 depth++;
 
-            } else if (ch == ')' && --depth == 0) {
+            } else if (ch == close && --depth == 0) {
                 showMatch(ii);
                 break;
             }
         }
         return true;
 
-    } else if (ch == ')') {
+    } else if (ch == ')' || ch == ']') {
+        QChar open = (ch == ')') ? '(' : '[', close = ch;
         int depth = 1;
         for (int ii = idx - 1; ii >= 0; ii--) {
             QChar ch = text.at(ii);
-            if (ch == ')') {
+            if (ch == close) {
                 depth++;
 
-            } else if (ch == '(' && --depth == 0) {
+            } else if (ch == open && --depth == 0) {
                 showMatch(ii);
                 break;
             }

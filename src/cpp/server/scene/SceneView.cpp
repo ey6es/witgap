@@ -13,11 +13,6 @@ SceneView::SceneView (Session* session) :
 {
     connect(session, SIGNAL(didEnterScene(Scene*)), SLOT(handleDidEnterScene(Scene*)));
     connect(session, SIGNAL(willLeaveScene(Scene*)), SLOT(handleWillLeaveScene(Scene*)));
-
-    Scene* scene = session->scene();
-    if (scene != 0) {
-        scene->addSpatial(this);
-    }
 }
 
 SceneView::~SceneView ()
@@ -34,6 +29,7 @@ SceneView::~SceneView ()
 void SceneView::setWorldBounds (const QRect& bounds)
 {
     if (_worldBounds != bounds) {
+        QRect oldBounds = _worldBounds;
         Scene* scene = session()->scene();
         if (scene == 0) {
             _worldBounds = bounds;
@@ -53,6 +49,7 @@ void SceneView::setWorldBounds (const QRect& bounds)
             _worldBounds = bounds;
             scene->addSpatial(this);
         }
+        emit worldBoundsChanged(oldBounds);
     }
 }
 

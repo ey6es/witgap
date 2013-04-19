@@ -44,6 +44,13 @@ public:
      */
     virtual void dirty () { Component::dirty(); _scrollAmount = QPoint(0, 0); }
 
+signals:
+
+    /**
+     * Fired when the bounds of the world have changed.
+     */
+    void worldBoundsChanged (const QRect& oldBounds);
+
 public slots:
 
     /**

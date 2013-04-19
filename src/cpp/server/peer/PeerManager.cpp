@@ -1,6 +1,8 @@
 //
 // $Id$
 
+#include <limits>
+
 #include <QFile>
 #include <QMetaObject>
 #include <QSslCipher>
@@ -21,6 +23,8 @@
 #include "peer/PeerProtocol.h"
 #include "scene/SceneManager.h"
 #include "scene/Zone.h"
+
+using namespace std;
 
 void PeerManager::appendArguments (ArgumentDescriptorList* args)
 {
@@ -240,19 +244,41 @@ void PeerManager::getSessionInfo (const QString& name, const Callback& callback)
 void PeerManager::reserveInstancePlace (
     quint64 sessionId, const QString& region, quint32 zoneId, const Callback& callback)
 {
-    // first look for an existing instance with an open space
+    // first look for an existing instance in the desired region with an open space
     InstanceInfoPointerMap map = _zoneInstances.value(zoneId);
     if (!map.isEmpty()) {
+        InstanceInfoPointerMap::const_iterator first;
         InstanceInfoPointerMap::const_iterator last = map.constEnd() - 1;
-        qint32 open = last.key()->open;
-        if (open > 0) {
+        int count = 0;
+        if (region.isEmpty()) {
             // find the first instance with the same number of open slots
-            InstanceInfoPointerMap::const_iterator first = last;
-            int count = 1;
-            while (first != map.constBegin() && (first - 1).key()->open == open) {
-                first--;
-                count++;
+            qint32 open = last.key()->open;
+            if (open > 0) {
+                first = last;
+                count = 1;
+                while (first != map.constBegin() && (first - 1).key()->open == open) {
+                    first--;
+                    count++;
+                }
             }
+        } else {
+            // find the last instance in the desired region
+            while (last != map.constBegin() && last.key()->region != region) {
+                last--;
+            }
+            // then the first instance with the same region and number of open slots
+            qint32 open = last.key()->open;
+            if (open > 0 && last.key()->region == region) {
+                first = last;
+                count = 1;
+                while (first != map.constBegin() && (first - 1).key()->open == open &&
+                        (first - 1).key()->region == region) {
+                    first--;
+                    count++;
+                }
+            }
+        }
+        if (count > 0) {
             // pick an instance randomly from the range
             const InstanceInfoPointer& ptr = (first + qrand() % count).key();
             invoke(ptr->peer, _app->sceneManager(),
@@ -268,15 +294,27 @@ void PeerManager::reserveInstancePlace (
         }
     }
 
-    // if there isn't one, find the peer with the lowest load and create one there
-    int lowestLoad = localLoad();
-    QString lowestName = _record.name;
+    // if there isn't one, find the peer in the region with the lowest load and create one there
+    int lowestLoad = numeric_limits<int>::max();
+    QString lowestName;
+    if (region.isEmpty() || _record.region == region) {
+        lowestLoad = localLoad();
+        lowestName = _record.name;
+    }
     foreach (PeerConnection* connection, _connections) {
+        if (!region.isEmpty() && connection->region() != region) {
+            continue;
+        }
         int load = connection->load();
         if (load < lowestLoad) {
             lowestLoad = load;
             lowestName = connection->name();
         }
+    }
+    // if that failed, retry with no region
+    if (lowestName.isEmpty()) {
+        reserveInstancePlace(sessionId, QString(), zoneId, callback);
+        return;
     }
     invoke(lowestName, _app->sceneManager(), "createInstance(quint64,quint32,Callback)",
         Q_ARG(quint64, sessionId), Q_ARG(quint32, zoneId), Q_ARG(const Callback&,

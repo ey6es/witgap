@@ -25,10 +25,12 @@ QMargins CharBorder::margins () const
 
 void CharBorder::draw (DrawContext* ctx, int x, int y, int width, int height) const
 {
-    ctx->fillRect(x, y, width, 1, _character);
-    ctx->fillRect(x + width - 1, y + 1, 1, height - 2, _character);
-    ctx->fillRect(x, y + height - 1, width, 1, _character);
-    ctx->fillRect(x, y + 1, 1, height - 2, _character);
+    ctx->fillRect(x, y, width, _margins.top(), _character);
+    ctx->fillRect(x + width - _margins.right(), y + _margins.top(), _margins.right(),
+        height - _margins.top() - _margins.bottom(), _character);
+    ctx->fillRect(x, y + height - _margins.bottom(), width, _margins.bottom(), _character);
+    ctx->fillRect(x, y + _margins.top(), _margins.left(),
+        height - _margins.top() - _margins.bottom(), _character);
 }
 
 FrameBorder::FrameBorder (int n, int ne, int e, int se, int s, int sw, int w, int nw) :
@@ -38,22 +40,43 @@ FrameBorder::FrameBorder (int n, int ne, int e, int se, int s, int sw, int w, in
 
 QMargins FrameBorder::margins () const
 {
-    return QMargins(1, 1, 1, 1);
+    return QMargins(
+        (_nw == -1 && _w == -1 && _sw == -1) ? 0 : 1,
+        (_nw == -1 && _n == -1 && _ne == -1) ? 0 : 1,
+        (_ne == -1 && _e == -1 && _se == -1) ? 0 : 1,
+        (_sw == -1 && _s == -1 && _se == -1) ? 0 : 1);
 }
 
 void FrameBorder::draw (DrawContext* ctx, int x, int y, int width, int height) const
 {
+    QMargins margins = this->margins();
     int right = x + width - 1;
     int bottom = y + height - 1;
 
-    ctx->fillRect(x + 1, y, width - 2, 1, _n);
-    ctx->drawChar(right, y, _ne);
-    ctx->fillRect(right, y + 1, 1, height - 2, _e);
-    ctx->drawChar(right, bottom, _se);
-    ctx->fillRect(x + 1, bottom, width - 2, 1, _s);
-    ctx->drawChar(x, bottom, _sw);
-    ctx->fillRect(x, y + 1, 1, height - 2, _w);
-    ctx->drawChar(x, y, _nw);
+    if (_n != -1) {
+        ctx->fillRect(x + margins.left(), y, width - margins.left() - margins.right(), 1, _n);
+    }
+    if (_ne != -1) {
+        ctx->drawChar(right, y, _ne);
+    }
+    if (_e != -1) {
+        ctx->fillRect(right, y + margins.top(), 1, height - margins.top() - margins.bottom(), _e);
+    }
+    if (_se != -1) {
+        ctx->drawChar(right, bottom, _se);
+    }
+    if (_s != -1) {
+        ctx->fillRect(x + margins.left(), bottom, width - margins.left() - margins.right(), 1, _s);
+    }
+    if (_sw != -1) {
+        ctx->drawChar(x, bottom, _sw);
+    }
+    if (_w != -1) {
+        ctx->fillRect(x, y + margins.top(), 1, height - margins.top() - margins.bottom(), _w);
+    }
+    if (_nw != -1) {
+        ctx->drawChar(x, y, _nw);
+    }
 }
 
 TitledBorder::TitledBorder (

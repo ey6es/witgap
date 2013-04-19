@@ -106,6 +106,9 @@ public:
 
     /** The last online time. */
     STREAM QDateTime lastOnline;
+    
+    /** Whether or not to stay logged in after closing. */
+    STREAM bool stayLoggedIn;
 };
 
 DECLARE_STREAMABLE_METATYPE(SessionRecord)

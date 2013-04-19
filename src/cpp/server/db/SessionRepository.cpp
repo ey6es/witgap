@@ -54,6 +54,7 @@ void SessionRepository::init ()
                 "AVATAR smallint unsigned not null,"
                 "USER_ID int unsigned not null default 0,"
                 "LAST_ONLINE datetime not null,"
+                "STAY_LOGGED_IN boolean not null,"
                 "index (LAST_ONLINE),"
                 "index (USER_ID),"
                 "index (NAME))");
@@ -91,13 +92,14 @@ void SessionRepository::validateToken (
         query.exec();
         if (query.numRowsAffected() > 0) { // valid; return what we were passed
             // look up the user record
-            query.prepare("select NAME, AVATAR, USER_ID from SESSIONS where ID = ?");
+            query.prepare("select NAME, AVATAR, USER_ID, STAY_LOGGED_IN from "
+                "SESSIONS where ID = ?");
             query.addBindValue(id);
             query.exec();
             query.next();
             SessionRecord srec = {
                 id, token, query.value(0).toString(), QChar(query.value(1).toUInt()),
-                query.value(2).toUInt(), now };
+                query.value(2).toUInt(), now, query.value(3).toBool() };
             UserRecord urec = (srec.userId == 0) ? NoUser :
                 _app->databaseThread()->userRepository()->loadUser(srec.userId);
             if (urec.id != 0) {
@@ -135,10 +137,12 @@ void SessionRepository::validateToken (
 void SessionRepository::updateSession (const SessionRecord& session)
 {
     QSqlQuery query;
-    query.prepare("update SESSIONS set USER_ID = ?, NAME = ?, AVATAR = ? where ID = ?");
+    query.prepare("update SESSIONS set USER_ID = ?, NAME = ?, AVATAR = ?, "
+        "STAY_LOGGED_IN = ? where ID = ?");
     query.addBindValue(session.userId);
     query.addBindValue(session.name);
     query.addBindValue(session.avatar.unicode());
+    query.addBindValue(session.stayLoggedIn);
     query.addBindValue(session.id);
     query.exec();
 }
