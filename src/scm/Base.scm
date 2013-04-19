@@ -56,3 +56,16 @@
     (do ((idx 0 (+ idx 1))) ((= idx len))
         (apply proc (vector-refs vectors idx)))
 )
+
+(define (string-refs strings k)
+    (if (null? strings) '()
+        (cons (string-ref (car strings) k) (string-refs (cdr strings) k))
+    )
+)
+
+(define (string-for-each proc firstString . restStrings)
+    (define len (string-length firstString))
+    (define strings (cons firstString restStrings))
+    (do ((idx 0 (+ idx 1))) ((= idx len))
+        (apply proc (string-refs strings idx)))
+)

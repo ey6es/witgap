@@ -233,8 +233,8 @@ static ScriptObjectPointer divide (Evaluator* eval, int argc, ScriptObjectPointe
  */
 static ScriptObjectPointer equal (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
-    if (argc == 0) {
-        return Boolean::instance(true);
+    if (argc < 2) {
+        throw QString("Requires at least two arguments.");
     }
     switch ((*argv)->type()) {
         case ScriptObject::IntegerType: {
@@ -292,7 +292,7 @@ static ScriptObjectPointer equal (Evaluator* eval, int argc, ScriptObjectPointer
 static ScriptObjectPointer less (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
     if (argc < 2) {
-        return Boolean::instance(true);
+        throw QString("Requires at least two arguments.");
     }
     if (!(*argv)->isNumber()) {
         throw QString("Invalid argument.");
@@ -316,7 +316,7 @@ static ScriptObjectPointer less (Evaluator* eval, int argc, ScriptObjectPointer*
 static ScriptObjectPointer greater (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
     if (argc < 2) {
-        return Boolean::instance(true);
+        throw QString("Requires at least two arguments.");
     }
     if (!(*argv)->isNumber()) {
         throw QString("Invalid argument.");
@@ -340,7 +340,7 @@ static ScriptObjectPointer greater (Evaluator* eval, int argc, ScriptObjectPoint
 static ScriptObjectPointer lessEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
     if (argc < 2) {
-        return Boolean::instance(true);
+        throw QString("Requires at least two arguments.");
     }
     if (!(*argv)->isNumber()) {
         throw QString("Invalid argument.");
@@ -364,7 +364,7 @@ static ScriptObjectPointer lessEqual (Evaluator* eval, int argc, ScriptObjectPoi
 static ScriptObjectPointer greaterEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
     if (argc < 2) {
-        return Boolean::instance(true);
+        throw QString("Requires at least two arguments.");
     }
     if (!(*argv)->isNumber()) {
         throw QString("Invalid argument.");
@@ -501,7 +501,7 @@ static ScriptObjectPointer charsEqual (Evaluator* eval, int argc, ScriptObjectPo
 static ScriptObjectPointer charsLess (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
     if (argc < 2) {
-        return Boolean::instance(true);
+        throw QString("Requires at least two arguments.");
     }
     if ((*argv)->type() != ScriptObject::CharType) {
         throw QString("Invalid argument.");
@@ -526,7 +526,7 @@ static ScriptObjectPointer charsLess (Evaluator* eval, int argc, ScriptObjectPoi
 static ScriptObjectPointer charsGreater (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
     if (argc < 2) {
-        return Boolean::instance(true);
+        throw QString("Requires at least two arguments.");
     }
     if ((*argv)->type() != ScriptObject::CharType) {
         throw QString("Invalid argument.");
@@ -551,7 +551,7 @@ static ScriptObjectPointer charsGreater (Evaluator* eval, int argc, ScriptObject
 static ScriptObjectPointer charsLessEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
     if (argc < 2) {
-        return Boolean::instance(true);
+        throw QString("Requires at least two arguments.");
     }
     if ((*argv)->type() != ScriptObject::CharType) {
         throw QString("Invalid argument.");
@@ -576,7 +576,7 @@ static ScriptObjectPointer charsLessEqual (Evaluator* eval, int argc, ScriptObje
 static ScriptObjectPointer charsGreaterEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
     if (argc < 2) {
-        return Boolean::instance(true);
+        throw QString("Requires at least two arguments.");
     }
     if ((*argv)->type() != ScriptObject::CharType) {
         throw QString("Invalid argument.");
@@ -691,6 +691,23 @@ static ScriptObjectPointer stringSet (Evaluator* eval, int argc, ScriptObjectPoi
 }
 
 /**
+ * Fills a string with some character.
+ */
+static ScriptObjectPointer stringFill (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    if (argv[0]->type() != ScriptObject::StringType ||
+            argv[1]->type() != ScriptObject::CharType) {
+        throw QString("Invalid argument.");
+    }
+    QChar ch = static_cast<Char*>(argv[1].data())->value();
+    static_cast<String*>(argv[0].data())->contents().fill(ch);
+    return Unspecified::instance();
+}
+
+/**
  * Checks strings for equality.
  */
 static ScriptObjectPointer stringsEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -719,7 +736,7 @@ static ScriptObjectPointer stringsEqual (Evaluator* eval, int argc, ScriptObject
 static ScriptObjectPointer stringsLess (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
     if (argc < 2) {
-        return Boolean::instance(true);
+        throw QString("Requires at least two arguments.");
     }
     if ((*argv)->type() != ScriptObject::StringType) {
         throw QString("Invalid argument.");
@@ -743,6 +760,12 @@ static ScriptObjectPointer stringsLess (Evaluator* eval, int argc, ScriptObjectP
  */
 static ScriptObjectPointer stringsGreater (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
+    if (argc < 2) {
+        throw QString("Requires at least two arguments.");
+    }
+    if ((*argv)->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
     QString string = static_cast<String*>(argv->data())->contents();
     for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
         if ((*arg)->type() != ScriptObject::StringType) {
@@ -762,6 +785,12 @@ static ScriptObjectPointer stringsGreater (Evaluator* eval, int argc, ScriptObje
  */
 static ScriptObjectPointer stringsLessEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
+    if (argc < 2) {
+        throw QString("Requires at least two arguments.");
+    }
+    if ((*argv)->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
     QString string = static_cast<String*>(argv->data())->contents();
     for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
         if ((*arg)->type() != ScriptObject::StringType) {
@@ -781,6 +810,12 @@ static ScriptObjectPointer stringsLessEqual (Evaluator* eval, int argc, ScriptOb
  */
 static ScriptObjectPointer stringsGreaterEqual (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
+    if (argc < 2) {
+        throw QString("Requires at least two arguments.");
+    }
+    if ((*argv)->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
     QString string = static_cast<String*>(argv->data())->contents();
     for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
         if ((*arg)->type() != ScriptObject::StringType) {
@@ -1004,6 +1039,38 @@ static ScriptObjectPointer cdr (Evaluator* eval, int argc, ScriptObjectPointer* 
     }
     Pair* pair = static_cast<Pair*>(argv->data());
     return pair->cdr();
+}
+
+/**
+ * Sets a pair's car field.
+ */
+static ScriptObjectPointer setCar (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    if ((*argv)->type() != ScriptObject::PairType) {
+        throw QString("Invalid argument.");
+    }
+    Pair* pair = static_cast<Pair*>(argv->data());
+    pair->setCar(argv[1]);
+    return Unspecified::instance();
+}
+
+/**
+ * Sets a pair's cdr field.
+ */
+static ScriptObjectPointer setCdr (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    if ((*argv)->type() != ScriptObject::PairType) {
+        throw QString("Invalid argument.");
+    }
+    Pair* pair = static_cast<Pair*>(argv->data());
+    pair->setCdr(argv[1]);
+    return Unspecified::instance();
 }
 
 /**
@@ -1509,6 +1576,7 @@ static Scope createGlobalScope ()
     scope.addVariable("string-length", stringLength);
     scope.addVariable("string-ref", stringRef);
     scope.addVariable("string-set!", stringSet);
+    scope.addVariable("string-fill!", stringFill);
     scope.addVariable("string=?", stringsEqual);
     scope.addVariable("string<?", stringsLess);
     scope.addVariable("string>?", stringsGreater);
@@ -1527,6 +1595,8 @@ static Scope createGlobalScope ()
     scope.addVariable("cons", cons);
     scope.addVariable("car", car);
     scope.addVariable("cdr", cdr);
+    scope.addVariable("set-car!", setCar);
+    scope.addVariable("set-cdr!", setCdr);
 
     scope.addVariable("list", ScriptObjectPointer(), listProcedure());
     scope.addVariable("append", ScriptObjectPointer(), appendProcedure());

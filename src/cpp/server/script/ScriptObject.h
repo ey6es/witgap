@@ -451,6 +451,11 @@ public:
         const ScriptPosition& position = ScriptPosition());
 
     /**
+     * Sets the value of the car field.
+     */
+    void setCar (const ScriptObjectPointer& car) { _car = car; }
+
+    /**
      * Returns a reference to the value of the car field.
      */
     const ScriptObjectPointer& car () const { return _car; }
