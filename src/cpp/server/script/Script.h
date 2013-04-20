@@ -24,6 +24,11 @@ public:
         int idx = 0, int line = 0, int lineIdx = 0);
 
     /**
+     * Checks whether the position is valid.
+     */
+    bool isValid () const { return !_expr.isNull(); }
+
+    /**
      * Returns a string representation of the position.
      */
     QString toString (bool compact = false) const;
@@ -106,16 +111,16 @@ enum BytecodeOp {
 
     /** Pops a value off the stack and discards it. */
     PopOp,
-    
+
     /** Returns from the current execution cycle with the value on the stack as a result. */
     ExitOp,
-    
+
     /** Returns from the current execution cycle with Unspecified as a result. */
     LambdaExitOp,
-    
+
     /** Jumps to the specified offset. */
     JumpOp,
-    
+
     /** Pops a value off the stack; if it's false, jumps to the specified offset. */
     ConditionalJumpOp
 };
@@ -126,7 +131,7 @@ enum BytecodeOp {
 class Bytecode
 {
 public:
-    
+
     /**
      * Returns the length of the bytecode.
      */
@@ -141,7 +146,7 @@ public:
      * Clears the bytecode data.
      */
     void clear () { _data.clear(); _positions.clear(); }
-    
+
     /**
      * Returns a pointer to the bytecode data at the specified index.
      */
@@ -162,7 +167,7 @@ public:
      * none).
      */
     ScriptPosition position (int index) const { return _positions.value(index); }
-    
+
     /**
      * Appends a simple instruction to the data.
      */
@@ -189,10 +194,10 @@ public:
     void associate (const ScriptPosition& pos) { _positions.insert(_data.size(), pos); }
 
 protected:
-    
+
     /** The bytecode data. */
     QByteArray _data;
-    
+
     /** Maps bytecode indices to positions. */
     QHash<int, ScriptPosition> _positions;
 };

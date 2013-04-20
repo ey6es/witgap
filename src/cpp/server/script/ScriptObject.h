@@ -127,6 +127,11 @@ public:
      */
     const ScriptPosition& position () const { return _position; }
 
+    /**
+     * Checks whether this datum can be changed.
+     */
+    bool isMutable () const { return !_position.isValid(); }
+
 protected:
 
     /** The datum's position in the script. */

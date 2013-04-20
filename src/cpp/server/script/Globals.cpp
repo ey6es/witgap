@@ -455,6 +455,85 @@ static ScriptObjectPointer zero (Evaluator* eval, int argc, ScriptObjectPointer*
 }
 
 /**
+ * Checks whether the argument is zero.
+ */
+static ScriptObjectPointer numberToString (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc == 0) {
+        throw QString("Requires at least one argument.");
+    }
+
+    int radix = 10;
+    int precision = 6;
+    switch (argc) {
+        case 3:
+            if (argv[2]->type() != ScriptObject::IntegerType) {
+                throw QString("Invalid argument.");
+            }
+            precision = static_cast<Integer*>(argv[2].data())->value();
+
+        case 2:
+            if (argv[1]->type() != ScriptObject::IntegerType) {
+            }
+            radix = static_cast<Integer*>(argv[1].data())->value();
+
+        case 1:
+            break;
+
+        default:
+            throw QString("Requires one, two, or three arguments.");
+    }
+    switch (argv[0]->type()) {
+        case ScriptObject::IntegerType:
+            return ScriptObjectPointer(new String(QString::number(
+                static_cast<Integer*>(argv[0].data())->value(), radix)));
+            break;
+
+        case ScriptObject::FloatType:
+            return ScriptObjectPointer(new String(QString::number(
+                static_cast<Float*>(argv[0].data())->value(), 'g', precision)));
+            break;
+
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Checks whether the argument is zero.
+ */
+static ScriptObjectPointer stringToNumber (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    int radix = 10;
+    switch (argc) {
+        case 2:
+            if (argv[1]->type() != ScriptObject::IntegerType) {
+                throw QString("Invalid argument.");
+            }
+            radix = static_cast<Integer*>(argv[1].data())->value();
+
+        case 1:
+            break;
+
+        default:
+            throw QString("Requires one or two arguments.");
+    }
+    if (argv[0]->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
+    QString& string = static_cast<String*>(argv[0].data())->contents();
+    bool ok;
+    if (!string.contains('.') || radix != 10) {
+        int value = string.toInt(&ok, radix);
+        return ok ? Integer::instance(value) : Boolean::instance(false);
+
+    } else {
+        float value = string.toDouble(&ok);
+        return ok ? ScriptObjectPointer(new Float(value)) : Boolean::instance(false);
+    }
+}
+
+/**
  * Returns #t if argument is false, otherwise returns #f.
  */
 static ScriptObjectPointer notfunc (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -732,7 +811,11 @@ static ScriptObjectPointer stringSet (Evaluator* eval, int argc, ScriptObjectPoi
             argv[2]->type() != ScriptObject::CharType) {
         throw QString("Invalid argument.");
     }
-    QString& contents = static_cast<String*>(argv[0].data())->contents();
+    String* string = static_cast<String*>(argv[0].data());
+    if (!string->isMutable()) {
+        throw QString("Invalid argument.");
+    }
+    QString& contents = string->contents();
     int idx = static_cast<Integer*>(argv[1].data())->value();
     if (idx < 0 || idx >= contents.size()) {
         throw QString("Invalid index.");
@@ -754,8 +837,12 @@ static ScriptObjectPointer stringFill (Evaluator* eval, int argc, ScriptObjectPo
             argv[1]->type() != ScriptObject::CharType) {
         throw QString("Invalid argument.");
     }
+    String* string = static_cast<String*>(argv[0].data());
+    if (!string->isMutable()) {
+        throw QString("Invalid argument.");
+    }
     QChar ch = static_cast<Char*>(argv[1].data())->value();
-    static_cast<String*>(argv[0].data())->contents().fill(ch);
+    string->contents().fill(ch);
     return Unspecified::instance();
 }
 
@@ -1105,6 +1192,9 @@ static ScriptObjectPointer setCar (Evaluator* eval, int argc, ScriptObjectPointe
         throw QString("Invalid argument.");
     }
     Pair* pair = static_cast<Pair*>(argv->data());
+    if (!pair->isMutable()) {
+        throw QString("Invalid argument.");
+    }
     pair->setCar(argv[1]);
     return Unspecified::instance();
 }
@@ -1121,6 +1211,9 @@ static ScriptObjectPointer setCdr (Evaluator* eval, int argc, ScriptObjectPointe
         throw QString("Invalid argument.");
     }
     Pair* pair = static_cast<Pair*>(argv->data());
+    if (!pair->isMutable()) {
+        throw QString("Invalid argument.");
+    }
     pair->setCdr(argv[1]);
     return Unspecified::instance();
 }
@@ -1367,7 +1460,11 @@ static ScriptObjectPointer vectorSet (Evaluator* eval, int argc, ScriptObjectPoi
             argv[1]->type() != ScriptObject::IntegerType) {
         throw QString("Invalid argument.");
     }
-    ScriptObjectPointerVector& contents = static_cast<Vector*>(argv[0].data())->contents();
+    Vector* vector = static_cast<Vector*>(argv[0].data());
+    if (!vector->isMutable()) {
+        throw QString("Invalid argument.");
+    }
+    ScriptObjectPointerVector& contents = vector->contents();
     int idx = static_cast<Integer*>(argv[1].data())->value();
     if (idx < 0 || idx >= contents.size()) {
         throw QString("Invalid index.");
@@ -1419,6 +1516,9 @@ static ScriptObjectPointer vectorFill (Evaluator* eval, int argc, ScriptObjectPo
         throw QString("Invalid argument.");
     }
     Vector* vector = static_cast<Vector*>(argv->data());
+    if (!vector->isMutable()) {
+        throw QString("Invalid argument.");
+    }
     qFill(vector->contents(), argv[1]);
     return Unspecified::instance();
 }
@@ -1615,6 +1715,9 @@ static Scope createGlobalScope ()
     scope.addVariable(">=", greaterEqual);
 
     scope.addVariable("zero?", zero);
+
+    scope.addVariable("number->string", numberToString);
+    scope.addVariable("string->number", stringToNumber);
 
     scope.addVariable("not", notfunc);
     scope.addVariable("boolean=?", booleansEqual);
