@@ -75,7 +75,8 @@ Evaluator::Evaluator (const QString& source) :
     _source(source),
     _scope(globalScope(), true),
     _registers(),
-    _lastColor(0)
+    _lastColor(0),
+    _sleeping(false)
 {
     _stack.push(_scope.invocation());
 
@@ -765,20 +766,20 @@ static void compile (
 ScriptObjectPointer Evaluator::evaluateUntilExit (const QString& expr)
 {
     compileForEvaluation(expr);
-    return execute(0);
+    return execute(_maxCyclesPerSlice = 0);
 }
 
 void Evaluator::evaluate (const QString& expr, int maxCyclesPerSlice)
 {
     compileForEvaluation(expr);
 
-    ScriptObjectPointer result = execute(maxCyclesPerSlice);
+    ScriptObjectPointer result = execute(_maxCyclesPerSlice = maxCyclesPerSlice);
     if (!result.isNull()) {
         emit exited(result);
-        return;
+
+    } else if (!_sleeping) {
+        _timer.start(0);
     }
-    _maxCyclesPerSlice = maxCyclesPerSlice;
-    _timer.start(0);
 }
 
 void Evaluator::interrupt ()
@@ -839,6 +840,13 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
 
                         } catch (const QString& message) {
                             throwScriptError(message);
+                        }
+                        if (result.isNull()) {
+                            _sleeping = true;
+                            _registers.operandCount = static_cast<Integer*>(
+                                ocptr->data())->value();
+                            _stack.resize(pidx - 1);
+                            return ScriptObjectPointer();
                         }
                         _registers.operandCount = static_cast<Integer*>(
                             ocptr->data())->value() + 1;
@@ -964,6 +972,11 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
                         }
                         int ridx = _registers.invocationIdx;
                         _registers = invocation->registers();
+                        if (result.isNull()) {
+                            _sleeping = true;
+                            _stack.resize(ridx);
+                            return ScriptObjectPointer();
+                        }
                         invocation = static_cast<Invocation*>(
                             sdata[_registers.invocationIdx].data());
                         proc = static_cast<LambdaProcedure*>(invocation->procedure().data());
@@ -1178,12 +1191,30 @@ ScriptObjectPointer Evaluator::vectorInstance (const ScriptObjectPointerVector& 
     return instance;
 }
 
+void Evaluator::wakeUp (const ScriptObjectPointer& returnValue)
+{
+    _sleeping = false;
+    _stack.push(returnValue);
+    _registers.operandCount++;
+
+    ScriptObjectPointer result = execute(_maxCyclesPerSlice);
+    if (!result.isNull()) {
+        emit exited(result);
+
+    } else if (!_sleeping) {
+        _timer.start(0);
+    }
+}
+
 void Evaluator::continueExecuting ()
 {
     ScriptObjectPointer result = execute(_maxCyclesPerSlice);
     if (!result.isNull()) {
         _timer.stop();
         emit exited(result);
+
+    } else if (_sleeping) {
+        _timer.stop();
     }
 }
 

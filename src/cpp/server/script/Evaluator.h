@@ -128,6 +128,11 @@ public:
     Evaluator (const QString& source = QString());
 
     /**
+     * Returns the maximum number of cycles being executed in each time slice.
+     */
+    int maxCyclesPerSlice () const { return _maxCyclesPerSlice; }
+
+    /**
      * Parses and evaluates an expression synchronously, returning the result.  Throws ScriptError
      * if an error occurs.
      */
@@ -179,6 +184,13 @@ signals:
      */
     void exited (const ScriptObjectPointer& result);
 
+public slots:
+
+    /**
+     * Wakes up the evaluator.
+     */
+    void wakeUp (const ScriptObjectPointer& returnValue = Unspecified::instance());
+
 protected slots:
 
     /**
@@ -222,6 +234,9 @@ protected:
 
     /** The maximum number of cycles to execute in each time slice. */
     int _maxCyclesPerSlice;
+
+    /** Whether or not the evaluator is sleeping. */
+    bool _sleeping;
 };
 
 /**

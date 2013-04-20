@@ -2,6 +2,8 @@
 // $Id$
 
 #include <QCoreApplication>
+#include <QMutex>
+#include <QWaitCondition>
 #include <QtDebug>
 
 #include "script/Evaluator.h"
@@ -1715,6 +1717,33 @@ static ScriptObjectPointer debug (Evaluator* eval, int argc, ScriptObjectPointer
 }
 
 /**
+ * Continues execution after some number of milliseconds have elapsed.
+ */
+static ScriptObjectPointer sleep (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::IntegerType) {
+        throw QString("Invalid argument.");
+    }
+    int value = static_cast<Integer*>(argv->data())->value();
+    if (value < 0) {
+        throw QString("Invalid argument.");
+    }
+    if (eval->maxCyclesPerSlice() == 0) {
+        QMutex mutex;
+        mutex.lock();
+        QWaitCondition().wait(&mutex, value);
+        return Unspecified::instance();
+
+    } else {
+        QTimer::singleShot(value, eval, SLOT(wakeUp()));
+        return ScriptObjectPointer();
+    }
+}
+
+/**
  * Exits the application.
  */
 static ScriptObjectPointer exit (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -1842,6 +1871,7 @@ static Scope createGlobalScope ()
     scope.addVariable("call/cc", ScriptObjectPointer(), callcc);
 
     scope.addVariable("debug", debug);
+    scope.addVariable("sleep", sleep);
     scope.addVariable("exit", exit);
 
     return scope;
