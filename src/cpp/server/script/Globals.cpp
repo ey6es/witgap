@@ -10,6 +10,58 @@
 /**
  * Adds numbers together, returns the result.
  */
+static ScriptObjectPointer eqv (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    ScriptObject::Type t1 = argv[0]->type();
+    if (t1 != argv[1]->type()) {
+        return Boolean::instance(false);
+    }
+    switch (t1) {
+        case ScriptObject::BooleanType:
+            return Boolean::instance(static_cast<Boolean*>(argv[0].data())->value() ==
+                static_cast<Boolean*>(argv[1].data())->value());
+
+        case ScriptObject::SymbolType:
+            return Boolean::instance(static_cast<Symbol*>(argv[0].data())->name() ==
+                static_cast<Symbol*>(argv[1].data())->name());
+
+        case ScriptObject::CharType:
+            return Boolean::instance(static_cast<Char*>(argv[0].data())->value() ==
+                static_cast<Char*>(argv[1].data())->value());
+
+        case ScriptObject::IntegerType:
+            return Boolean::instance(static_cast<Integer*>(argv[0].data())->value() ==
+                static_cast<Integer*>(argv[1].data())->value());
+
+        case ScriptObject::FloatType:
+            return Boolean::instance(static_cast<Float*>(argv[0].data())->value() ==
+                static_cast<Float*>(argv[1].data())->value());
+
+        case ScriptObject::NullType:
+            return Boolean::instance(true);
+
+        default:
+            return Boolean::instance(argv[0].data() == argv[1].data());
+    }
+}
+
+/**
+ * Checks whether the arguments are equal.
+ */
+static ScriptObjectPointer equal (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    return Boolean::instance(equivalent(argv[0], argv[1]));
+}
+
+/**
+ * Adds numbers together, returns the result.
+ */
 static ScriptObjectPointer add (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
     int isum = 0;
@@ -231,7 +283,7 @@ static ScriptObjectPointer divide (Evaluator* eval, int argc, ScriptObjectPointe
 /**
  * Returns whether all arguments are equal.
  */
-static ScriptObjectPointer equal (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+static ScriptObjectPointer equals (Evaluator* eval, int argc, ScriptObjectPointer* argv)
 {
     if (argc < 2) {
         throw QString("Requires at least two arguments.");
@@ -1547,12 +1599,16 @@ static Scope createGlobalScope ()
 {
     Scope scope(0, true);
 
+    scope.addVariable("eqv?", eqv);
+    scope.addVariable("eq?", eqv);
+    scope.addVariable("equal?", equal);
+
     scope.addVariable("+", add);
     scope.addVariable("-", subtract);
     scope.addVariable("*", multiply);
     scope.addVariable("/", divide);
 
-    scope.addVariable("=", equal);
+    scope.addVariable("=", equals);
     scope.addVariable("<", less);
     scope.addVariable(">", greater);
     scope.addVariable("<=", lessEqual);
