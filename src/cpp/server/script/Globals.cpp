@@ -435,6 +435,52 @@ static ScriptObjectPointer greaterEqual (Evaluator* eval, int argc, ScriptObject
 }
 
 /**
+ * Returns the maximum of the arguments.
+ */
+static ScriptObjectPointer max (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc == 0) {
+        throw QString("Requires at least one argument.");
+    }
+    if (!(*argv)->isNumber()) {
+        throw QString("Invalid argument.");
+    }
+    ScriptObjectPointer number = *argv;
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if (!(*arg)->isNumber()) {
+            throw QString("Invalid argument.");
+        }
+        if ((*arg)->greaterThan(number)) {
+            number = *arg;
+        }
+    }
+    return number;
+}
+
+/**
+ * Returns the minimum of the arguments.
+ */
+static ScriptObjectPointer min (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc == 0) {
+        throw QString("Requires at least one argument.");
+    }
+    if (!(*argv)->isNumber()) {
+        throw QString("Invalid argument.");
+    }
+    ScriptObjectPointer number = *argv;
+    for (ScriptObjectPointer* arg = argv + 1, *end = argv + argc; arg != end; arg++) {
+        if (!(*arg)->isNumber()) {
+            throw QString("Invalid argument.");
+        }
+        if ((*arg)->lessThan(number)) {
+            number = *arg;
+        }
+    }
+    return number;
+}
+
+/**
  * Checks whether the argument is zero.
  */
 static ScriptObjectPointer zero (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -1713,6 +1759,9 @@ static Scope createGlobalScope ()
     scope.addVariable(">", greater);
     scope.addVariable("<=", lessEqual);
     scope.addVariable(">=", greaterEqual);
+
+    scope.addVariable("max", max);
+    scope.addVariable("min", min);
 
     scope.addVariable("zero?", zero);
 
