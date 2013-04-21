@@ -125,7 +125,7 @@ public:
     /**
      * Creates a new evaluator.
      */
-    Evaluator (const QString& source = QString());
+    Evaluator (const QString& source = QString(), QObject* parent = 0);
 
     /**
      * Returns the maximum number of cycles being executed in each time slice.
@@ -139,7 +139,7 @@ public:
     ScriptObjectPointer evaluateUntilExit (const QString& expr);
 
     /**
-     * Parses and evaluates an expression asynchronously.  Throws ScriptError if an error occurs.
+     * Parses and evaluates an expression asynchronously.
      */
     void evaluate (const QString& expr, int maxCyclesPerSlice = 100);
 
@@ -183,6 +183,11 @@ signals:
      * Fired when the script exits.
      */
     void exited (const ScriptObjectPointer& result);
+
+    /**
+     * Fired when the script encounters an error.
+     */
+    void threwError (const ScriptError& error);
 
 public slots:
 

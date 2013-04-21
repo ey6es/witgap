@@ -13,6 +13,7 @@
 
 #include "RuntimeConfig.h"
 #include "peer/PeerManager.h"
+#include "script/ScriptObject.h"
 
 class QByteArray;
 class QTimer;
@@ -129,6 +130,16 @@ public:
     Q_INVOKABLE void cancelReboot ();
 
 protected slots:
+
+    /**
+     * Handles the value returned by a script.
+     */
+    void scriptExited (const ScriptObjectPointer& result);
+
+    /**
+     * Handles an error thrown by a script.
+     */
+    void scriptThrewError (const ScriptError& error);
 
     /**
      * Handles idle processing.

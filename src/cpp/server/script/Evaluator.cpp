@@ -71,7 +71,8 @@ int Scope::addConstant (ScriptObjectPointer value)
     return _constants.size() - 1;
 }
 
-Evaluator::Evaluator (const QString& source) :
+Evaluator::Evaluator (const QString& source, QObject* parent) :
+    QObject(parent),
     _source(source),
     _scope(globalScope(), true),
     _registers(),
@@ -771,9 +772,15 @@ ScriptObjectPointer Evaluator::evaluateUntilExit (const QString& expr)
 
 void Evaluator::evaluate (const QString& expr, int maxCyclesPerSlice)
 {
-    compileForEvaluation(expr);
+    ScriptObjectPointer result;
+    try {
+        compileForEvaluation(expr);
+        result = execute(_maxCyclesPerSlice = maxCyclesPerSlice);
 
-    ScriptObjectPointer result = execute(_maxCyclesPerSlice = maxCyclesPerSlice);
+    } catch (const ScriptError& error) {
+        emit threwError(error);
+        return;
+    }
     if (!result.isNull()) {
         emit exited(result);
 
@@ -1197,7 +1204,14 @@ void Evaluator::wakeUp (const ScriptObjectPointer& returnValue)
     _stack.push(returnValue);
     _registers.operandCount++;
 
-    ScriptObjectPointer result = execute(_maxCyclesPerSlice);
+    ScriptObjectPointer result;
+    try {
+        result = execute(_maxCyclesPerSlice);
+
+    } catch (const ScriptError& error) {
+        emit threwError(error);
+        return;
+    }
     if (!result.isNull()) {
         emit exited(result);
 
@@ -1208,7 +1222,15 @@ void Evaluator::wakeUp (const ScriptObjectPointer& returnValue)
 
 void Evaluator::continueExecuting ()
 {
-    ScriptObjectPointer result = execute(_maxCyclesPerSlice);
+    ScriptObjectPointer result;
+    try {
+        result = execute(_maxCyclesPerSlice);
+
+    } catch (const ScriptError& error) {
+        _timer.stop();
+        emit threwError(error);
+        return;
+    }
     if (!result.isNull()) {
         _timer.stop();
         emit exited(result);

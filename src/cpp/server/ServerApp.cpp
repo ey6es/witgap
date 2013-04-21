@@ -137,7 +137,7 @@ static ArgumentDescriptorList createArgumentDescriptors ()
     args.append("config_file", "The path of the configuration file.",
         QVariant(), QVariant::String);
     args.append("port_offset", "The offset of the server ports.", 0, QVariant::UInt);
-    args.append("startup_script", "The path of a script to execute on startup.", QString(),
+    args.append("script", "The path of a script to evaluate on startup.", QString(),
         QVariant::String);
 
     // add descriptors for arguments required by other modules
@@ -301,25 +301,20 @@ ServerApp::ServerApp (int& argc, char** argv) :
     // note startup
     qDebug() << "Server initialized.";
 
-    // run our startup script, if any
-    QString sscript = _args.value("startup_script").toString();
-    if (sscript.isEmpty()) {
+    // start our script, if any
+    QString script = _args.value("script").toString();
+    if (script.isEmpty()) {
         return;
     }
-    QFile file(sscript);
+    QFile file(script);
     if (!file.open(QIODevice::ReadOnly)) {
-        qWarning() << "Couldn't open startup script." << sscript << file.errorString();
+        qWarning() << "Couldn't open startup script." << script << file.errorString();
         return;
     }
-    try {
-        ScriptObjectPointer result = Evaluator(sscript).evaluateUntilExit(
-            QTextStream(&file).readAll());
-        if (!result.isNull()) {
-            qDebug() << "Startup script returned: " << result->toString();
-        }
-    } catch (const ScriptError& error) {
-        qWarning() << error.toString();
-    }
+    Evaluator* eval = new Evaluator(script, this);
+    connect(eval, SIGNAL(exited(ScriptObjectPointer)), SLOT(scriptExited(ScriptObjectPointer)));
+    connect(eval, SIGNAL(threwError(ScriptError)), SLOT(scriptThrewError(ScriptError)));
+    eval->evaluate(QTextStream(&file).readAll());
 }
 
 QString ServerApp::translationLocale (const QString& locale) const
@@ -371,6 +366,18 @@ void ServerApp::scheduleReboot (quint32 minutes, const QString& message)
 void ServerApp::cancelReboot ()
 {
     _rebootTimer->stop();
+}
+
+void ServerApp::scriptExited (const ScriptObjectPointer& result)
+{
+    qDebug() << "Script returned: " << result->toString();
+    sender()->deleteLater();
+}
+
+void ServerApp::scriptThrewError (const ScriptError& error)
+{
+    qWarning() << error.toString();
+    sender()->deleteLater();
 }
 
 void ServerApp::idle ()
