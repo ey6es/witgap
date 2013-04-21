@@ -1,6 +1,8 @@
 //
 // $Id$
 
+#include <cmath>
+
 #include <QCoreApplication>
 #include <QMutex>
 #include <QWaitCondition>
@@ -283,6 +285,432 @@ static ScriptObjectPointer divide (Evaluator* eval, int argc, ScriptObjectPointe
 }
 
 /**
+ * Returns the remainder of the arguments.
+ */
+static ScriptObjectPointer mod (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    switch (argv[0]->type()) {
+        case ScriptObject::IntegerType: {
+            int v0 = static_cast<Integer*>(argv[0].data())->value();
+            switch (argv[1]->type()) {
+                case ScriptObject::IntegerType: {
+                    int v1 = static_cast<Integer*>(argv[1].data())->value();
+                    return Integer::instance(v0 % v1);
+                }
+                case ScriptObject::FloatType: {
+                    float v1 = static_cast<Float*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(fmod(v0, v1)));
+                }
+                default:
+                    throw QString("Invalid argument.");
+            }
+        }
+        case ScriptObject::FloatType: {
+            float v0 = static_cast<Float*>(argv[0].data())->value();
+            switch (argv[1]->type()) {
+                case ScriptObject::IntegerType: {
+                    int v1 = static_cast<Integer*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(fmod(v0, v1)));
+                }
+                case ScriptObject::FloatType: {
+                    float v1 = static_cast<Float*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(fmod(v0, v1)));
+                }
+                default:
+                    throw QString("Invalid argument.");
+            }
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Returns the floor of the argument.
+ */
+static ScriptObjectPointer floorf (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType:
+            return *argv;
+
+        case ScriptObject::FloatType: {
+            float value = static_cast<Float*>(argv->data())->value();
+            return Integer::instance(floor(value));
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Returns the ceiling of the argument.
+ */
+static ScriptObjectPointer ceiling (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType:
+            return *argv;
+
+        case ScriptObject::FloatType: {
+            float value = static_cast<Float*>(argv->data())->value();
+            return Integer::instance(ceil(value));
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Returns the truncation of the argument.
+ */
+static ScriptObjectPointer truncate (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType:
+            return *argv;
+
+        case ScriptObject::FloatType: {
+            float value = static_cast<Float*>(argv->data())->value();
+            return Integer::instance(value);
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Rounds the argument to the nearest integer.
+ */
+static ScriptObjectPointer round (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType:
+            return *argv;
+
+        case ScriptObject::FloatType: {
+            float value = static_cast<Float*>(argv->data())->value();
+            return Integer::instance(qRound(value));
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Computes the exponential of the argument.
+ */
+static ScriptObjectPointer expf (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType: {
+            int value = static_cast<Integer*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(exp(value)));
+        }
+        case ScriptObject::FloatType: {
+            float value = static_cast<Float*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(exp(value)));
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Computes the log of the argument.
+ */
+static ScriptObjectPointer logf (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1 && argc != 2) {
+        throw QString("Requires one or two arguments.");
+    }
+    switch (argv[0]->type()) {
+        case ScriptObject::IntegerType: {
+            int v0 = static_cast<Integer*>(argv[0].data())->value();
+            if (argc == 1) {
+                return ScriptObjectPointer(new Float(log(v0)));
+            }
+            switch (argv[1]->type()) {
+                case ScriptObject::IntegerType: {
+                    int v1 = static_cast<Integer*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(log(v0) / log(v1)));
+                }
+                case ScriptObject::FloatType: {
+                    float v1 = static_cast<Float*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(log(v0) / log(v1)));
+                }
+                default:
+                    throw QString("Invalid argument.");
+            }
+        }
+        case ScriptObject::FloatType: {
+            float v0 = static_cast<Float*>(argv[0].data())->value();
+            if (argc == 1) {
+                return ScriptObjectPointer(new Float(log(v0)));
+            }
+            switch (argv[1]->type()) {
+                case ScriptObject::IntegerType: {
+                    int v1 = static_cast<Integer*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(log(v0) / log(v1)));
+                }
+                case ScriptObject::FloatType: {
+                    float v1 = static_cast<Float*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(log(v0) / log(v1)));
+                }
+                default:
+                    throw QString("Invalid argument.");
+            }
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Computes the sine of the argument.
+ */
+static ScriptObjectPointer sinf (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType: {
+            int value = static_cast<Integer*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(sin(value)));
+        }
+        case ScriptObject::FloatType: {
+            float value = static_cast<Float*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(sin(value)));
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Computes the cosine of the argument.
+ */
+static ScriptObjectPointer cosf (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType: {
+            int value = static_cast<Integer*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(cos(value)));
+        }
+        case ScriptObject::FloatType: {
+            float value = static_cast<Float*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(cos(value)));
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Computes the tangent of the argument.
+ */
+static ScriptObjectPointer tanf (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType: {
+            int value = static_cast<Integer*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(tan(value)));
+        }
+        case ScriptObject::FloatType: {
+            float value = static_cast<Float*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(tan(value)));
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Computes the asin of the argument.
+ */
+static ScriptObjectPointer asinf (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType: {
+            int value = static_cast<Integer*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(asin(value)));
+        }
+        case ScriptObject::FloatType: {
+            float value = static_cast<Float*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(asin(value)));
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Computes the acos of the argument.
+ */
+static ScriptObjectPointer acosf (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType: {
+            int value = static_cast<Integer*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(acos(value)));
+        }
+        case ScriptObject::FloatType: {
+            float value = static_cast<Float*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(acos(value)));
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Computes the atan of the argument.
+ */
+static ScriptObjectPointer atanf (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1 && argc != 2) {
+        throw QString("Requires one or two arguments.");
+    }
+    switch (argv[0]->type()) {
+        case ScriptObject::IntegerType: {
+            int v0 = static_cast<Integer*>(argv[0].data())->value();
+            if (argc == 1) {
+                return ScriptObjectPointer(new Float(atan(v0)));
+            }
+            switch (argv[1]->type()) {
+                case ScriptObject::IntegerType: {
+                    int v1 = static_cast<Integer*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(atan2(v0, v1)));
+                }
+                case ScriptObject::FloatType: {
+                    float v1 = static_cast<Float*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(atan2(v0, v1)));
+                }
+                default:
+                    throw QString("Invalid argument.");
+            }
+        }
+        case ScriptObject::FloatType: {
+            float v0 = static_cast<Float*>(argv[0].data())->value();
+            if (argc == 1) {
+                return ScriptObjectPointer(new Float(atan(v0)));
+            }
+            switch (argv[1]->type()) {
+                case ScriptObject::IntegerType: {
+                    int v1 = static_cast<Integer*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(atan2(v0, v1)));
+                }
+                case ScriptObject::FloatType: {
+                    float v1 = static_cast<Float*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(atan2(v0, v1)));
+                }
+                default:
+                    throw QString("Invalid argument.");
+            }
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Calculates the square root of the argument.
+ */
+static ScriptObjectPointer sqrtf (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType: {
+            int value = static_cast<Integer*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(sqrt(value)));
+        }
+        case ScriptObject::FloatType: {
+            float value = static_cast<Float*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(sqrt(value)));
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Calculates the first argument to the power of the second.
+ */
+static ScriptObjectPointer expt (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    switch (argv[0]->type()) {
+        case ScriptObject::IntegerType: {
+            int v0 = static_cast<Integer*>(argv[0].data())->value();
+            switch (argv[1]->type()) {
+                case ScriptObject::IntegerType: {
+                    int v1 = static_cast<Integer*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(pow(v0, v1)));
+                }
+                case ScriptObject::FloatType: {
+                    float v1 = static_cast<Float*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(pow(v0, v1)));
+                }
+                default:
+                    throw QString("Invalid argument.");
+            }
+        }
+        case ScriptObject::FloatType: {
+            float v0 = static_cast<Float*>(argv[0].data())->value();
+            switch (argv[1]->type()) {
+                case ScriptObject::IntegerType: {
+                    int v1 = static_cast<Integer*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(pow(v0, v1)));
+                }
+                case ScriptObject::FloatType: {
+                    float v1 = static_cast<Float*>(argv[1].data())->value();
+                    return ScriptObjectPointer(new Float(pow(v0, v1)));
+                }
+                default:
+                    throw QString("Invalid argument.");
+            }
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
  * Returns whether all arguments are equal.
  */
 static ScriptObjectPointer equals (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -483,6 +911,28 @@ static ScriptObjectPointer min (Evaluator* eval, int argc, ScriptObjectPointer* 
 }
 
 /**
+ * Returns the absolute value of the argument.
+ */
+static ScriptObjectPointer abs (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType: {
+            int value = static_cast<Integer*>(argv->data())->value();
+            return Integer::instance(qAbs(value));
+        }
+        case ScriptObject::FloatType: {
+            float value = static_cast<Float*>(argv->data())->value();
+            return ScriptObjectPointer(new Float(qAbs(value)));
+        }
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
  * Checks whether the argument is zero.
  */
 static ScriptObjectPointer zero (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -496,6 +946,46 @@ static ScriptObjectPointer zero (Evaluator* eval, int argc, ScriptObjectPointer*
 
         case ScriptObject::FloatType:
             return Boolean::instance(static_cast<Float*>(argv->data())->value() == 0);
+
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Checks whether the argument is positive.
+ */
+static ScriptObjectPointer positive (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType:
+            return Boolean::instance(static_cast<Integer*>(argv->data())->value() > 0);
+
+        case ScriptObject::FloatType:
+            return Boolean::instance(static_cast<Float*>(argv->data())->value() > 0);
+
+        default:
+            throw QString("Invalid argument.");
+    }
+}
+
+/**
+ * Checks whether the argument is negative.
+ */
+static ScriptObjectPointer negative (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    switch ((*argv)->type()) {
+        case ScriptObject::IntegerType:
+            return Boolean::instance(static_cast<Integer*>(argv->data())->value() < 0);
+
+        case ScriptObject::FloatType:
+            return Boolean::instance(static_cast<Float*>(argv->data())->value() < 0);
 
         default:
             throw QString("Invalid argument.");
@@ -1661,8 +2151,18 @@ static ScriptObjectPointer number (Evaluator* eval, int argc, ScriptObjectPointe
     if (argc != 1) {
         throw QString("Requires exactly one argument.");
     }
-    ScriptObject::Type type = (*argv)->type();
-    return Boolean::instance(type == ScriptObject::IntegerType || type == ScriptObject::FloatType);
+    return Boolean::instance((*argv)->isNumber());
+}
+
+/**
+ * Determines whether the argument is an integer.
+ */
+static ScriptObjectPointer integer (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    return Boolean::instance((*argv)->type() == ScriptObject::IntegerType);
 }
 
 /**
@@ -1782,6 +2282,23 @@ static Scope createGlobalScope ()
     scope.addVariable("-", subtract);
     scope.addVariable("*", multiply);
     scope.addVariable("/", divide);
+    scope.addVariable("mod", mod);
+    scope.addVariable("floor", floorf);
+    scope.addVariable("ceiling", ceiling);
+    scope.addVariable("truncate", truncate);
+    scope.addVariable("round", round);
+
+    scope.addVariable("exp", expf);
+    scope.addVariable("log", logf);
+    scope.addVariable("sin", sinf);
+    scope.addVariable("cos", cosf);
+    scope.addVariable("tan", tanf);
+    scope.addVariable("asin", asinf);
+    scope.addVariable("acos", acosf);
+    scope.addVariable("atan", atanf);
+
+    scope.addVariable("sqrt", sqrtf);
+    scope.addVariable("expt", expt);
 
     scope.addVariable("=", equals);
     scope.addVariable("<", less);
@@ -1791,8 +2308,11 @@ static Scope createGlobalScope ()
 
     scope.addVariable("max", max);
     scope.addVariable("min", min);
+    scope.addVariable("abs", abs);
 
     scope.addVariable("zero?", zero);
+    scope.addVariable("positive?", positive);
+    scope.addVariable("negative?", negative);
 
     scope.addVariable("number->string", numberToString);
     scope.addVariable("string->number", stringToNumber);
@@ -1859,6 +2379,7 @@ static Scope createGlobalScope ()
     scope.addVariable("boolean?", boolean);
     scope.addVariable("symbol?", symbol);
     scope.addVariable("number?", number);
+    scope.addVariable("integer?", integer);
     scope.addVariable("char?", charp);
     scope.addVariable("string?", stringp);
     scope.addVariable("procedure?", procedure);
