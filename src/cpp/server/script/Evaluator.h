@@ -124,8 +124,28 @@ public:
 
     /**
      * Creates a new evaluator.
+     *
+     * @param input the input device, or 0 to use stdin.
+     * @param output the output device, or 0 to use stdout.
+     * @param error the error device, or 0 to use stderr.
      */
-    Evaluator (const QString& source = QString(), QObject* parent = 0);
+    Evaluator (const QString& source = QString(), QIODevice* input = 0,
+        QIODevice* output = 0, QIODevice* error = 0, QObject* parent = 0);
+
+    /**
+     * Returns a reference to the evaluator's standard input port.
+     */
+    const ScriptObjectPointer& standardInputPort () const { return _standardInputPort; }
+
+    /**
+     * Returns a reference to the evaluator's standard output port.
+     */
+    const ScriptObjectPointer& standardOutputPort () const { return _standardOutputPort; }
+
+    /**
+     * Returns a reference to the evaluator's standard error port.
+     */
+    const ScriptObjectPointer& standardErrorPort () const { return _standardErrorPort; }
 
     /**
      * Returns the maximum number of cycles being executed in each time slice.
@@ -192,6 +212,12 @@ signals:
 public slots:
 
     /**
+     * If the sender (an IODevice) is ready to read a line, disconnects and wakes the evaluator up
+     * with it.
+     */
+    void maybeReadLine ();
+
+    /**
      * Wakes up the evaluator.
      */
     void wakeUp (const ScriptObjectPointer& returnValue = Unspecified::instance());
@@ -242,6 +268,15 @@ protected:
 
     /** Whether or not the evaluator is sleeping. */
     bool _sleeping;
+
+    /** The evaluator's standard input port. */
+    ScriptObjectPointer _standardInputPort;
+
+    /** The evaluator's standard output port. */
+    ScriptObjectPointer _standardOutputPort;
+
+    /** The evaluator's standard error port. */
+    ScriptObjectPointer _standardErrorPort;
 };
 
 /**

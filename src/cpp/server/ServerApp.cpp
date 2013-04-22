@@ -311,7 +311,7 @@ ServerApp::ServerApp (int& argc, char** argv) :
         qWarning() << "Couldn't open startup script." << script << file.errorString();
         return;
     }
-    Evaluator* eval = new Evaluator(script, this);
+    Evaluator* eval = new Evaluator(script, 0, 0, 0, this);
     connect(eval, SIGNAL(exited(ScriptObjectPointer)), SLOT(scriptExited(ScriptObjectPointer)));
     connect(eval, SIGNAL(threwError(ScriptError)), SLOT(scriptThrewError(ScriptError)));
     eval->evaluate(QTextStream(&file).readAll());

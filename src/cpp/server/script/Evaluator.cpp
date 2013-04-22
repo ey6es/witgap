@@ -1,6 +1,7 @@
 //
 // $Id$
 
+#include <QFile>
 #include <QtDebug>
 
 #include "script/Evaluator.h"
@@ -71,7 +72,8 @@ int Scope::addConstant (ScriptObjectPointer value)
     return _constants.size() - 1;
 }
 
-Evaluator::Evaluator (const QString& source, QObject* parent) :
+Evaluator::Evaluator (const QString& source, QIODevice* input,
+        QIODevice* output, QIODevice* error, QObject* parent) :
     QObject(parent),
     _source(source),
     _scope(globalScope(), true),
@@ -82,6 +84,33 @@ Evaluator::Evaluator (const QString& source, QObject* parent) :
     _stack.push(_scope.invocation());
 
     connect(&_timer, SIGNAL(timeout()), SLOT(continueExecuting()));
+
+    if (input != 0) {
+        _standardInputPort = ScriptObjectPointer(new WrappedObject(input));
+
+    } else {
+        QFile* input = new QFile(this);
+        input->open(stdin, QIODevice::ReadOnly | QIODevice::Text);
+        _standardInputPort = ScriptObjectPointer(new WrappedObject(input, true));
+    }
+
+    if (output != 0) {
+        _standardOutputPort = ScriptObjectPointer(new WrappedObject(output));
+
+    } else {
+        QFile* output = new QFile(this);
+        output->open(stdout, QIODevice::WriteOnly | QIODevice::Text);
+        _standardOutputPort = ScriptObjectPointer(new WrappedObject(output, true));
+    }
+
+    if (error != 0) {
+        _standardErrorPort = ScriptObjectPointer(new WrappedObject(error));
+
+    } else {
+        QFile* error = new QFile(this);
+        error->open(stderr, QIODevice::WriteOnly | QIODevice::Text);
+        _standardErrorPort = ScriptObjectPointer(new WrappedObject(error, true));
+    }
 }
 
 /**
@@ -1196,6 +1225,15 @@ ScriptObjectPointer Evaluator::vectorInstance (const ScriptObjectPointerVector& 
         _collectable.append(instance.toWeakRef());
     }
     return instance;
+}
+
+void Evaluator::maybeReadLine ()
+{
+    QIODevice* device = static_cast<QIODevice*>(sender());
+    if (device->canReadLine()) {
+        device->disconnect(this);
+        wakeUp(ScriptObjectPointer(new String(device->readLine())));
+    }
 }
 
 void Evaluator::wakeUp (const ScriptObjectPointer& returnValue)

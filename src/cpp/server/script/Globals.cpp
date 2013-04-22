@@ -2473,6 +2473,80 @@ static ScriptObjectPointer invokeMethod (Evaluator* eval, int argc, ScriptObject
 }
 
 /**
+ * Returns the evaluator's standard input port.
+ */
+static ScriptObjectPointer standardInputPort (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 0) {
+        throw QString("Takes no arguments.");
+    }
+    return eval->standardInputPort();
+}
+
+/**
+ * Returns the evaluator's standard output port.
+ */
+static ScriptObjectPointer standardOutputPort (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 0) {
+        throw QString("Takes no arguments.");
+    }
+    return eval->standardOutputPort();
+}
+
+/**
+ * Returns the evaluator's standard error port.
+ */
+static ScriptObjectPointer standardErrorPort (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 0) {
+        throw QString("Takes no arguments.");
+    }
+    return eval->standardErrorPort();
+}
+
+/**
+ * Writes a character to a port.
+ */
+static ScriptObjectPointer putChar (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    if (argv[0]->type() != ScriptObject::WrappedObjectType ||
+            argv[1]->type() != ScriptObject::CharType) {
+        throw QString("Invalid argument.");
+    }
+    QObject* object = static_cast<WrappedObject*>(argv[0].data())->object();
+    QIODevice* device = qobject_cast<QIODevice*>(object);
+    if (device == 0 || !device->isWritable()) {
+        throw QString("Invalid argument.");
+    }
+    QTextStream(device) << static_cast<Char*>(argv[1].data())->value();
+    return Unspecified::instance();
+}
+
+/**
+ * Reads a line of input from a port.
+ */
+static ScriptObjectPointer getLine (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    QObject* object = static_cast<WrappedObject*>(argv[0].data())->object();
+    QIODevice* device = qobject_cast<QIODevice*>(object);
+    if (device == 0 || !device->isReadable()) {
+        throw QString("Invalid argument.");
+    }
+    if (device->canReadLine()) {
+        return ScriptObjectPointer(new String(device->readLine()));
+    }
+    eval->connect(device, SIGNAL(readyRead()), SLOT(maybeReadLine()));
+    return ScriptObjectPointer();
+}
+
+/**
  * Creates the global scope object.
  */
 static Scope createGlobalScope ()
@@ -2606,6 +2680,12 @@ static Scope createGlobalScope ()
     scope.addVariable("property", property);
     scope.addVariable("set-property!", setProperty);
     scope.addVariable("invoke-method", invokeMethod);
+
+    scope.addVariable("standard-input-port", standardInputPort);
+    scope.addVariable("standard-output-port", standardOutputPort);
+    scope.addVariable("standard-error-port", standardErrorPort);
+    scope.addVariable("put-char", putChar);
+    scope.addVariable("get-line", getLine);
 
     return scope;
 }
