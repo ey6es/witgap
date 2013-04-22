@@ -10,6 +10,8 @@ Invite system:
 Script:
 - Records
 - Record serialization
+- Hashtables
+- Ports
 
 Multi-line text editing
 
@@ -38,7 +40,7 @@ Friends:
 - Limit number (150?)
 
 Clubs:
-- Allow membership in more than one
+- Allow membership in more than one (?)
 - Dues
 - Ranks
 

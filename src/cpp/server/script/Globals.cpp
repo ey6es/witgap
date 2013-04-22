@@ -47,6 +47,10 @@ static ScriptObjectPointer eqv (Evaluator* eval, int argc, ScriptObjectPointer* 
         case ScriptObject::NullType:
             return Boolean::instance(true);
 
+        case ScriptObject::WrappedObjectType:
+            return Boolean::instance(static_cast<WrappedObject*>(argv[0].data())->object() ==
+                static_cast<WrappedObject*>(argv[1].data())->object());
+
         default:
             return Boolean::instance(argv[0].data() == argv[1].data());
     }
@@ -2268,6 +2272,207 @@ static ScriptObjectPointer exit (Evaluator* eval, int argc, ScriptObjectPointer*
 }
 
 /**
+ * Returns a wrapped pointer to the evaluator.
+ */
+static ScriptObjectPointer evaluator (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 0) {
+        throw QString("Takes no arguments.");
+    }
+    return ScriptObjectPointer(new WrappedObject(eval));
+}
+
+/**
+ * Returns a wrapped pointer to the parent of the argument, or null.
+ */
+static ScriptObjectPointer parent (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::WrappedObjectType) {
+        throw QString("Invalid argument.");
+    }
+    QObject* object = static_cast<WrappedObject*>(argv->data())->object()->parent();
+    return object == 0 ? Null::instance() : ScriptObjectPointer(new WrappedObject(object));
+}
+
+/**
+ * Returns a list of the children of the argument.
+ */
+static ScriptObjectPointer children (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::WrappedObjectType) {
+        throw QString("Invalid argument.");
+    }
+    const QObjectList& children = static_cast<WrappedObject*>(argv->data())->object()->children();
+    ScriptObjectPointer head, tail;
+    foreach (QObject* child, children) {
+        ScriptObjectPointer ntail = eval->pairInstance(ScriptObjectPointer(new WrappedObject(child)));
+        if (head.isNull()) {
+            head = tail = ntail;
+
+        } else {
+            static_cast<Pair*>(tail.data())->setCdr(ntail);
+            tail = ntail;
+        }
+    }
+    if (head.isNull()) {
+        return Null::instance();
+    }
+    static_cast<Pair*>(tail.data())->setCdr(Null::instance());
+    return head;
+}
+
+/**
+ * Converts a variant value to a script object.
+ */
+static ScriptObjectPointer variantToScriptObject (Evaluator* eval, const QVariant& variant)
+{
+    switch (variant.userType()) {
+        case QVariant::Bool:
+            return Boolean::instance(variant.toBool());
+
+        case QVariant::ByteArray:
+            return ScriptObjectPointer(new ByteVector(variant.toByteArray()));
+
+        case QVariant::Char:
+            return Char::instance(variant.toChar());
+
+        case QVariant::Double:
+        case QMetaType::Float:
+            return ScriptObjectPointer(new Float(variant.toDouble()));
+
+        case QVariant::Int:
+        case QVariant::UInt:
+        case QVariant::LongLong:
+        case QVariant::ULongLong:
+            return Integer::instance(variant.toInt());
+
+        case QVariant::List:
+        case QVariant::StringList: {
+            ScriptObjectPointerVector contents;
+            foreach (const QVariant& variant, variant.toList()) {
+                contents.append(variantToScriptObject(eval, variant));
+            }
+            return eval->vectorInstance(contents);
+        }
+        case QVariant::String:
+            return ScriptObjectPointer(new String(variant.toString()));
+
+        case QMetaType::QObjectStar:
+            return ScriptObjectPointer(new WrappedObject(variant.value<QObject*>()));
+
+        default:
+            return Null::instance();
+    }
+}
+
+/**
+ * Retrieves a property of a wrapped object.
+ */
+static ScriptObjectPointer property (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    if (argv[0]->type() != ScriptObject::WrappedObjectType ||
+            argv[1]->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
+    QObject* object = static_cast<WrappedObject*>(argv[0].data())->object();
+    const QString& name = static_cast<String*>(argv[1].data())->contents();
+    return variantToScriptObject(eval, object->property(name.toAscii()));
+}
+
+/**
+ * Converts a script object to a variant.
+ */
+static QVariant scriptObjectToVariant (const ScriptObjectPointer& object)
+{
+    switch (object->type()) {
+        case ScriptObject::BooleanType:
+            return QVariant(static_cast<Boolean*>(object.data())->value());
+
+        case ScriptObject::ByteVectorType:
+            return QVariant(static_cast<ByteVector*>(object.data())->contents());
+
+        case ScriptObject::CharType:
+            return QVariant(static_cast<Char*>(object.data())->value());
+
+        case ScriptObject::FloatType:
+            return QVariant(static_cast<Float*>(object.data())->value());
+
+        case ScriptObject::IntegerType:
+            return QVariant(static_cast<Integer*>(object.data())->value());
+
+        case ScriptObject::VectorType: {
+            QVariantList list;
+            const ScriptObjectPointerVector& contents =
+                static_cast<Vector*>(object.data())->contents();
+            for (int ii = 0, nn = contents.size(); ii < nn; ii++) {
+                list.append(scriptObjectToVariant(contents.at(ii)));
+            }
+            return QVariant(list);
+        }
+        case ScriptObject::StringType:
+            return QVariant(static_cast<String*>(object.data())->contents());
+
+        case ScriptObject::WrappedObjectType:
+            return QVariant::fromValue(static_cast<WrappedObject*>(object.data())->object());
+
+        default:
+            return QVariant();
+    }
+}
+
+/**
+ * Sets a property of a wrapped object.
+ */
+static ScriptObjectPointer setProperty (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 3) {
+        throw QString("Requires exactly three arguments.");
+    }
+    if (argv[0]->type() != ScriptObject::WrappedObjectType ||
+            argv[1]->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
+    QObject* object = static_cast<WrappedObject*>(argv[0].data())->object();
+    const QString& name = static_cast<String*>(argv[1].data())->contents();
+    return Boolean::instance(object->setProperty(name.toAscii(), scriptObjectToVariant(argv[2])));
+}
+
+/**
+ * Invokes a method of a wrapped object.
+ */
+static ScriptObjectPointer invokeMethod (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc < 2) {
+        throw QString("Requires at least two arguments.");
+    }
+    if (argv[0]->type() != ScriptObject::WrappedObjectType ||
+            argv[1]->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
+    QObject* object = static_cast<WrappedObject*>(argv[0].data())->object();
+    const QString& name = static_cast<String*>(argv[1].data())->contents();
+    QVariantList variants;
+    QGenericArgument args[10];
+    int idx = 0;
+    for (ScriptObjectPointer* arg = argv + 2, *end = argv + argc; arg != end; arg++) {
+        variants.append(scriptObjectToVariant(*arg));
+        const QVariant& variant = variants.at(idx);
+        args[idx++] = QGenericArgument(variant.typeName(), variant.constData());
+    }
+    return Boolean::instance(QMetaObject::invokeMethod(object, name.toAscii(),
+        args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9]));
+}
+
+/**
  * Creates the global scope object.
  */
 static Scope createGlobalScope ()
@@ -2394,6 +2599,13 @@ static Scope createGlobalScope ()
     scope.addVariable("debug", debug);
     scope.addVariable("sleep", sleep);
     scope.addVariable("exit", exit);
+
+    scope.addVariable("evaluator", evaluator);
+    scope.addVariable("parent", parent);
+    scope.addVariable("children", children);
+    scope.addVariable("property", property);
+    scope.addVariable("set-property!", setProperty);
+    scope.addVariable("invoke-method", invokeMethod);
 
     return scope;
 }

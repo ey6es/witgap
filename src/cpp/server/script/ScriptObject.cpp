@@ -98,6 +98,11 @@ bool equivalent (const ScriptObjectPointer& p1, const ScriptObjectPointer& p2)
             Variable* v2 = static_cast<Variable*>(p2.data());
             return v1->scopeDepth() == v2->scopeDepth() && v1->index() == v2->index();
         }
+        case ScriptObject::WrappedObjectType: {
+            WrappedObject* o1 = static_cast<WrappedObject*>(p1.data());
+            WrappedObject* o2 = static_cast<WrappedObject*>(p2.data());
+            return o1->object() == o2->object();
+        }
         default:
             return p1.data() == p2.data();
     }
@@ -676,6 +681,19 @@ bool EscapeProcedure::sweep (int color)
     }
     _stack.clear();
     return false;
+}
+
+WrappedObject::WrappedObject (QObject* object, bool owned) :
+    _object(object),
+    _owned(owned)
+{
+}
+
+WrappedObject::~WrappedObject ()
+{
+    if (_owned) {
+        delete _object;
+    }
 }
 
 PatternTemplate::PatternTemplate (

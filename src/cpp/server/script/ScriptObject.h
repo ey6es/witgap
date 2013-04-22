@@ -33,7 +33,8 @@ public:
     enum Type { SentinelType, BooleanType, IntegerType, FloatType, CharType, StringType,
         SymbolType, PairType, NullType, VectorType, ByteVectorType, UnspecifiedType, VariableType,
         LambdaType, LambdaProcedureType, InvocationType, NativeProcedureType, ApplyProcedureType,
-        CaptureProcedureType, EscapeProcedureType, SyntaxRulesType, IdentifierSyntaxType };
+        CaptureProcedureType, EscapeProcedureType, WrappedObjectType, SyntaxRulesType,
+        IdentifierSyntaxType };
 
     /**
      * Destroys the object.
@@ -1077,6 +1078,48 @@ protected:
 
     /** The mark color. */
     int _color;
+};
+
+/**
+ * A wrapped pointer to a QObject.
+ */
+class WrappedObject : public ScriptObject
+{
+public:
+
+    /**
+     * Creates a new wrapped object.
+     */
+    WrappedObject (QObject* object, bool owned = false);
+
+    /**
+     * Destroys the wrapped object.
+     */
+    virtual ~WrappedObject ();
+
+    /**
+     * Return a pointer to the wrapped object.
+     */
+    QObject* object () const { return _object; }
+
+    /**
+     * Returns the type of the object.
+     */
+    virtual Type type () const { return WrappedObjectType; }
+
+    /**
+     * Returns a string representation of the object.
+     */
+    virtual QString toString () const {
+        return "#object_" + QString::number((qulonglong)this, 16); }
+
+protected:
+
+    /** The wrapped object. */
+    QObject* _object;
+
+    /** Whether or not the object is script-owned (whether or not to delete it on destroy). */
+    bool _owned;
 };
 
 class Pattern;
