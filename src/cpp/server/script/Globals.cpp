@@ -2574,6 +2574,26 @@ static ScriptObjectPointer putString (Evaluator* eval, int argc, ScriptObjectPoi
 }
 
 /**
+ * Writes a datum to a port.
+ */
+static ScriptObjectPointer putDatum (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 2) {
+        throw QString("Requires exactly two arguments.");
+    }
+    if (argv[0]->type() != ScriptObject::WrappedObjectType) {
+        throw QString("Invalid argument.");
+    }
+    QObject* object = static_cast<WrappedObject*>(argv[0].data())->object();
+    QIODevice* device = qobject_cast<QIODevice*>(object);
+    if (device == 0 || !device->isWritable()) {
+        throw QString("Invalid argument.");
+    }
+    QTextStream(device) << argv[1]->toString();
+    return Unspecified::instance();
+}
+
+/**
  * Reads a line of input from a port.
  */
 static ScriptObjectPointer getLine (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -2603,8 +2623,9 @@ static Scope createGlobalScope ()
 {
     Scope scope(0, true);
 
-    scope.addVariable("eqv?", eqv);
-    scope.addVariable("eq?", eqv);
+    ScriptObjectPointer eq(new NativeProcedure(eqv));
+    scope.addVariable("eqv?", ScriptObjectPointer(), eq);
+    scope.addVariable("eq?", ScriptObjectPointer(), eq);
     scope.addVariable("equal?", equal);
 
     scope.addVariable("+", add);
@@ -2731,11 +2752,21 @@ static Scope createGlobalScope ()
     scope.addVariable("set-property!", setProperty);
     scope.addVariable("invoke-method", invokeMethod);
 
-    scope.addVariable("standard-input-port", standardInputPort);
-    scope.addVariable("standard-output-port", standardOutputPort);
-    scope.addVariable("standard-error-port", standardErrorPort);
+    ScriptObjectPointer standardInput(new NativeProcedure(standardInputPort));
+    scope.addVariable("standard-input-port", ScriptObjectPointer(), standardInput);
+    scope.addVariable("current-input-port", ScriptObjectPointer(), standardInput);
+
+    ScriptObjectPointer standardOutput(new NativeProcedure(standardOutputPort));
+    scope.addVariable("standard-output-port", ScriptObjectPointer(), standardOutput);
+    scope.addVariable("current-output-port", ScriptObjectPointer(), standardOutput);
+
+    ScriptObjectPointer standardError(new NativeProcedure(standardErrorPort));
+    scope.addVariable("standard-error-port", ScriptObjectPointer(), standardError);
+    scope.addVariable("current-error-port", ScriptObjectPointer(), standardOutput);
+
     scope.addVariable("put-char", putChar);
     scope.addVariable("put-string", putString);
+    scope.addVariable("put-datum", putDatum);
     scope.addVariable("get-line", getLine);
 
     return scope;
