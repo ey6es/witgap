@@ -26,7 +26,6 @@
 #include "scene/Scene.h"
 #include "scene/SceneManager.h"
 #include "scene/Zone.h"
-#include "script/Evaluator.h"
 #include "ui/Border.h"
 #include "ui/Button.h"
 #include "ui/Label.h"
@@ -53,6 +52,7 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
     _record(record),
     _lastWindowId(0),
     _cryptoCount(0),
+    _evaluator(0),
     _mousePressed(false),
     _moused(0),
     _activeWindow(0),
@@ -132,6 +132,19 @@ int Session::highestWindowLayer () const
         highest = qMax(highest, window->layer());
     }
     return highest;
+}
+
+Evaluator* Session::evaluator ()
+{
+    if (_evaluator == 0) {
+        _evaluator = new Evaluator(QString(), _chatEntryWindow->device(),
+            _chatWindow->device(), _chatWindow->device(), this);
+        connect(_evaluator, SIGNAL(exited(ScriptObjectPointer)),
+            SLOT(evaluatorExited(ScriptObjectPointer)));
+        connect(_evaluator, SIGNAL(threwError(ScriptError)),
+            SLOT(evaluatorThrewError(ScriptError)));
+    }
+    return _evaluator;
 }
 
 void Session::setActiveWindow (Window* window)
@@ -486,14 +499,7 @@ void Session::openUrl (const QUrl& url)
 
 void Session::runScript (const QByteArray& script)
 {
-    try {
-        ScriptObjectPointer result = Evaluator().evaluateUntilExit(script);
-        if (!result.isNull()) {
-            _chatWindow->display(result->toString());
-        }
-    } catch (const ScriptError& error) {
-        _chatWindow->display(error.toString());
-    }
+    evaluator()->evaluate(script);
 }
 
 void Session::windowCreated (Window* window)
@@ -716,14 +722,14 @@ void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
 }
 
 void Session::shutdown ()
-{   
+{
     close();
-    
+
     // if requested, log off
     if (_record.userId != 0 && !_record.stayLoggedIn) {
         QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "logoffSession",
             Q_ARG(quint64, _record.id), Q_ARG(const Callback&, Callback()));
-    }    
+    }
 }
 
 void Session::close ()
@@ -739,6 +745,16 @@ void Session::close ()
         Q_ARG(quint64, _record.id), Q_ARG(const QString&, _info.peer));
 
     qDebug() << "Session closed." << _record.id << _record.name;
+}
+
+void Session::evaluatorExited (const ScriptObjectPointer& result)
+{
+    _chatWindow->display(result->toString());
+}
+
+void Session::evaluatorThrewError (const ScriptError& error)
+{
+    _chatWindow->display(error.toString());
 }
 
 void Session::setConnection (const SharedConnectionPointer& connection)

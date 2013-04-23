@@ -563,15 +563,11 @@ public:
         session->chatEntryWindow()->addToHistory("/" + cmd + " ");
         if (args.isEmpty()) {
             session->chatEntryWindow()->setMode(tr("Eval:"), "/" + cmd, true);
-            return "";
-        }
-        try {
-            ScriptObjectPointer result = Evaluator().evaluateUntilExit(args);
-            return result.isNull() ? "" : result->toString();
 
-        } catch (const ScriptError& e) {
-            return e.toString();
+        } else {
+            session->evaluator()->evaluate(args);
         }
+        return "";
     }
 };
 

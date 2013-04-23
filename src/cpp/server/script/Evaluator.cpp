@@ -795,12 +795,15 @@ static void compile (
 
 ScriptObjectPointer Evaluator::evaluateUntilExit (const QString& expr)
 {
+    interrupt();
     compileForEvaluation(expr);
     return execute(_maxCyclesPerSlice = 0);
 }
 
 void Evaluator::evaluate (const QString& expr, int maxCyclesPerSlice)
 {
+    interrupt();
+
     ScriptObjectPointer result;
     try {
         compileForEvaluation(expr);
@@ -821,6 +824,10 @@ void Evaluator::evaluate (const QString& expr, int maxCyclesPerSlice)
 void Evaluator::interrupt ()
 {
     _timer.stop();
+    _sleeping = false;
+    _stack.resize(1);
+    _registers.invocationIdx = 0;
+    _registers.operandCount = 0;
 }
 
 ScriptObjectPointer Evaluator::execute (int maxCycles)

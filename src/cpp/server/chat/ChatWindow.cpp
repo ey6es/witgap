@@ -23,8 +23,49 @@
 // register our types with the metatype system
 int speakModeType = qRegisterMetaType<ChatWindow::SpeakMode>("ChatWindow::SpeakMode");
 
+/**
+ * A device that allows writing to the chat window.
+ */
+class ChatWindowDevice : public QIODevice
+{
+public:
+
+    /**
+     * Creates a new chat window device.
+     */
+    ChatWindowDevice (ChatWindow* window);
+
+protected:
+
+    /**
+     * Attempts to read data from the device.
+     */
+    virtual qint64 readData (char* data, qint64 maxSize);
+
+    /**
+     * Attempts to write data to the device.
+     */
+    virtual qint64 writeData (const char* data, qint64 maxSize);
+};
+
+ChatWindowDevice::ChatWindowDevice (ChatWindow* window) :
+    QIODevice(window)
+{
+}
+
+qint64 ChatWindowDevice::readData (char* data, qint64 maxSize)
+{
+    return -1;
+}
+
+qint64 ChatWindowDevice::writeData (const char* data, qint64 maxSize)
+{
+    return 0;
+}
+
 ChatWindow::ChatWindow (Session* parent) :
-    Window(parent, 1)
+    Window(parent, 1),
+    _device(new ChatWindowDevice(this))
 {
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignBottom, 0));
     setBackground(0);
@@ -115,8 +156,49 @@ void ChatWindow::clear ()
     removeAllChildren();
 }
 
+/**
+ * A device that allows reading from the chat entry window.
+ */
+class ChatEntryWindowDevice : public QIODevice
+{
+public:
+
+    /**
+     * Creates a new chat entry window device.
+     */
+    ChatEntryWindowDevice (ChatEntryWindow* window);
+
+protected:
+
+    /**
+     * Attempts to read data from the device.
+     */
+    virtual qint64 readData (char* data, qint64 maxSize);
+
+    /**
+     * Attempts to write data to the device.
+     */
+    virtual qint64 writeData (const char* data, qint64 maxSize);
+};
+
+ChatEntryWindowDevice::ChatEntryWindowDevice (ChatEntryWindow* window) :
+    QIODevice(window)
+{
+}
+
+qint64 ChatEntryWindowDevice::readData (char* data, qint64 maxSize)
+{
+    return 0;
+}
+
+qint64 ChatEntryWindowDevice::writeData (const char* data, qint64 maxSize)
+{
+    return -1;
+}
+
 ChatEntryWindow::ChatEntryWindow (Session* parent, const QStringList& history) :
     Window(parent, 1),
+    _device(new ChatEntryWindowDevice(this)),
     _history(history),
     _historyIdx(-1)
 {
@@ -210,7 +292,7 @@ void ChatEntryWindow::setVisible (bool visible)
         if (visible) {
             // request focus for the text field when shown
             _field->requestFocus();
-            
+
         } else {
             // exit the history and revert mode when hidden
             if (_historyIdx != -1) {
@@ -236,7 +318,7 @@ void ChatEntryWindow::maybeSubmit ()
         return;
     }
     _historyIdx = -1;
-    
+
     Session* session = this->session();
     if (text.at(0) != '/') {
         if (_prefix.isEmpty()) {
@@ -282,25 +364,25 @@ void ChatEntryWindow::keyPressEvent (QKeyEvent* e)
                 _field->setText(_history.at(--_historyIdx));
             }
             break;
-            
+
         case Qt::Key_Down:
             if (_historyIdx != -1) {
                 if (_historyIdx == _history.size() - 1) {
                     _field->setText(_stored);
                     _historyIdx = -1;
-                    
+
                 } else {
                     _field->setText(_history.at(++_historyIdx));
                 }
             }
             break;
-            
+
         case Qt::Key_Escape:
             setVisible(false);
             break;
-        
+
         default:
             Window::keyPressEvent(e);
-            break;   
+            break;
     }
 }

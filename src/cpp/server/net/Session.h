@@ -13,6 +13,7 @@
 #include "db/UserRepository.h"
 #include "net/Connection.h"
 #include "peer/PeerManager.h"
+#include "script/Evaluator.h"
 #include "ui/TextField.h"
 #include "util/Callback.h"
 #include "util/General.h"
@@ -153,6 +154,11 @@ public:
     ChatEntryWindow* chatEntryWindow () const { return _chatEntryWindow; }
 
     /**
+     * Returns a pointer to the script evaluator, creating it if necessary.
+     */
+    Evaluator* evaluator ();
+
+    /**
      * Sets the active window.
      */
     void setActiveWindow (Window* window);
@@ -286,7 +292,7 @@ public:
      * Attempts to mute the named user.
      */
     void mute (const QString& username);
-    
+
     /**
      * Attempts to unmute the named user.
      */
@@ -417,6 +423,16 @@ protected slots:
      * Moves to the described scene.
      */
     void moveToScene (const ResourceDescriptor& desc) { moveToScene(desc.id); }
+
+    /**
+     * Handles a result returned from the evaluator.
+     */
+    void evaluatorExited (const ScriptObjectPointer& result);
+
+    /**
+     * Handles an error thrown by the evaluator.
+     */
+    void evaluatorThrewError (const ScriptError& error);
 
 protected:
 
@@ -554,6 +570,9 @@ protected:
     /** The chat entry window. */
     ChatEntryWindow* _chatEntryWindow;
 
+    /** A lazily created script evaluator. */
+    Evaluator* _evaluator;
+
     /** The current set of key modifiers. */
     Qt::KeyboardModifiers _modifiers;
 
@@ -608,10 +627,10 @@ public:
 
     /** The portal at which to enter the scene. */
     STREAM QVariant portal;
-    
+
     /** The chat history. */
     STREAM QStringList chatHistory;
-    
+
     /** The chat command history. */
     STREAM QStringList chatCommandHistory;
 };

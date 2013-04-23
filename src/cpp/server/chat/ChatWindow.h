@@ -34,6 +34,11 @@ public:
     ChatWindow (Session* parent);
 
     /**
+     * Returns a pointer to the window's IO device, which may be used to write to the window.
+     */
+    QIODevice* device () const { return _device; }
+
+    /**
      * Returns a reference to the name of the last speaker from whom a tell was received.
      */
     const QString& lastSender () const { return _lastSender; }
@@ -60,7 +65,10 @@ public:
     void clear ();
 
 protected:
-    
+
+    /** The window's IO device. */
+    QIODevice* _device;
+
     /** The name of the last person from whom a tell was received. */
     QString _lastSender;
 };
@@ -78,6 +86,11 @@ public:
      * Initializes the window.
      */
     ChatEntryWindow (Session* parent, const QStringList& history);
+
+    /**
+     * Returns a pointer to the window's IO device, which may be used to read from the window.
+     */
+    QIODevice* device () const { return _device; }
 
     /**
      * Returns the command name and handler for the specified command (or command prefix), or
@@ -135,6 +148,9 @@ protected:
      */
     virtual void keyPressEvent (QKeyEvent* e);
 
+    /** The window's IO device. */
+    QIODevice* _device;
+
     /** The entry label. */
     Label* _label;
 
@@ -143,16 +159,16 @@ protected:
 
     /** Maps command aliases to handlers. */
     QMap<QString, ChatCommand*> _commands;
-    
+
     /** The command history. */
     QStringList _history;
-    
+
     /** The current index in the command history, or -1 if not in the history. */
     int _historyIdx;
-    
+
     /** The command stored when browsing the history. */
     QString _stored;
-    
+
     /** The mode prefix. */
     QString _prefix;
 };
