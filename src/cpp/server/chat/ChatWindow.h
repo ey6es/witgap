@@ -125,6 +125,11 @@ public:
     void clearMode ();
 
     /**
+     * Provides a line of input to the running script.
+     */
+    void provideInput (const QString& line);
+
+    /**
      * Renders the window visible or invisible.
      */
     virtual void setVisible (bool visible);

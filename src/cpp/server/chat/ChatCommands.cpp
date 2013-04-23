@@ -599,6 +599,35 @@ public:
 };
 
 /**
+ * Handles the /input command.
+ */
+class InputCommand : public AdminChatCommand
+{
+    Q_DECLARE_TR_FUNCTIONS(ChatCommands)
+
+public:
+
+    virtual QString aliases (QTranslator* translator) { return tr("input"); }
+
+    virtual QString usage (QTranslator* translator, const QString& cmd) {
+        return tr("Usage: /%1 line\n"
+            "  Provides input to script/switches to input mode.").arg(cmd);
+    }
+
+    virtual QString handle (Session* session, QTranslator* translator,
+            const QString& cmd, const QString& args) {
+        session->chatEntryWindow()->addToHistory("/" + cmd + " ");
+        if (args.isEmpty()) {
+            session->chatEntryWindow()->setMode(tr("Input:"), "/" + cmd, false);
+
+        } else {
+            session->chatEntryWindow()->provideInput(args);
+        }
+        return "";
+    }
+};
+
+/**
  * Creates the map from language codes to command maps.
  */
 static QHash<QString, CommandMap> createCommandMapMap (ServerApp* app)
@@ -608,7 +637,7 @@ static QHash<QString, CommandMap> createCommandMapMap (ServerApp* app)
         new EmoteCommand(), new ShoutCommand(), new TellCommand(), new RespondCommand(),
         new MuteCommand(), new UnmuteCommand(), new BroadcastCommand(), new RebootCommand(),
         new SGoCommand(), new ZGoCommand(), new PGoCommand(), new SummonCommand(),
-        new SpawnCommand(), new EvalCommand(), new UploadCommand() };
+        new SpawnCommand(), new EvalCommand(), new UploadCommand(), new InputCommand() };
 
     QHash<QString, CommandMap> map;
     for (int ii = 0; ii < sizeof(handlers) / sizeof(ChatCommand*); ii++) {

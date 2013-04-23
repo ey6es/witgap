@@ -2534,6 +2534,46 @@ static ScriptObjectPointer putChar (Evaluator* eval, int argc, ScriptObjectPoint
 }
 
 /**
+ * Writes a string to a port.
+ */
+static ScriptObjectPointer putString (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    int start = 0, count = -1;
+    switch (argc) {
+        case 4:
+            if (argv[3]->type() != ScriptObject::IntegerType) {
+                throw QString("Invalid argument.");
+            }
+            count = static_cast<Integer*>(argv[3].data())->value();
+
+        case 3:
+            if (argv[2]->type() != ScriptObject::IntegerType) {
+                throw QString("Invalid argument.");
+            }
+            start = static_cast<Integer*>(argv[2].data())->value();
+
+        case 2:
+            break;
+
+        default:
+            throw QString("Requires two, three, or four arguments.");
+    }
+    if (argv[0]->type() != ScriptObject::WrappedObjectType ||
+            argv[1]->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
+    QObject* object = static_cast<WrappedObject*>(argv[0].data())->object();
+    QIODevice* device = qobject_cast<QIODevice*>(object);
+    const QString& contents = static_cast<String*>(argv[1].data())->contents();
+    if (device == 0 || !device->isWritable() || start < 0 || start > contents.size() ||
+            (count != -1 && (start + count < 0 || start + count > contents.size()))) {
+        throw QString("Invalid argument.");
+    }
+    QTextStream(device) << contents.mid(start, count);
+    return Unspecified::instance();
+}
+
+/**
  * Reads a line of input from a port.
  */
 static ScriptObjectPointer getLine (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -2547,7 +2587,9 @@ static ScriptObjectPointer getLine (Evaluator* eval, int argc, ScriptObjectPoint
         throw QString("Invalid argument.");
     }
     if (device->canReadLine()) {
-        return ScriptObjectPointer(new String(device->readLine()));
+        QByteArray line = device->readLine();
+        line.chop(1); // remove trailing newline
+        return ScriptObjectPointer(new String(line));
     }
     eval->setWaker(device);
     eval->connect(device, SIGNAL(readyRead()), SLOT(maybeReadLine()));
@@ -2693,6 +2735,7 @@ static Scope createGlobalScope ()
     scope.addVariable("standard-output-port", standardOutputPort);
     scope.addVariable("standard-error-port", standardErrorPort);
     scope.addVariable("put-char", putChar);
+    scope.addVariable("put-string", putString);
     scope.addVariable("get-line", getLine);
 
     return scope;

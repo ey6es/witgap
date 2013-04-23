@@ -46,11 +46,15 @@ protected:
      * Attempts to write data to the device.
      */
     virtual qint64 writeData (const char* data, qint64 maxSize);
+
+    /** Buffered data. */
+    QByteArray _buffer;
 };
 
 ChatWindowDevice::ChatWindowDevice (ChatWindow* window) :
     QIODevice(window)
 {
+    setOpenMode(WriteOnly);
 }
 
 qint64 ChatWindowDevice::readData (char* data, qint64 maxSize)
@@ -60,7 +64,14 @@ qint64 ChatWindowDevice::readData (char* data, qint64 maxSize)
 
 qint64 ChatWindowDevice::writeData (const char* data, qint64 maxSize)
 {
-    return 0;
+    _buffer.append(data, maxSize);
+    int idx = _buffer.lastIndexOf('\n');
+    if (idx != -1) {
+        _buffer[idx] = 0x0;
+        static_cast<ChatWindow*>(parent())->display(_buffer.constData());
+        _buffer.remove(0, idx + 1);
+    }
+    return maxSize;
 }
 
 ChatWindow::ChatWindow (Session* parent) :
@@ -168,6 +179,21 @@ public:
      */
     ChatEntryWindowDevice (ChatEntryWindow* window);
 
+    /**
+     * Returns a pointer to the session.
+     */
+    Session* session () const { return static_cast<ChatEntryWindow*>(parent())->session(); }
+
+    /**
+     * Adds a line of input to the buffer.
+     */
+    void appendToBuffer (const QByteArray& data) { _buffer.append(data); emit readyRead(); }
+
+    /**
+     * Checks whether we can read a line of input.
+     */
+    virtual bool canReadLine () const;
+
 protected:
 
     /**
@@ -176,19 +202,50 @@ protected:
     virtual qint64 readData (char* data, qint64 maxSize);
 
     /**
+     * Attepts to read an entire line of data.
+     */
+    virtual qint64 readLineData (char* data, qint64 maxSize);
+
+    /**
      * Attempts to write data to the device.
      */
     virtual qint64 writeData (const char* data, qint64 maxSize);
+
+    /** Buffered data remaining to be read. */
+    QByteArray _buffer;
 };
 
 ChatEntryWindowDevice::ChatEntryWindowDevice (ChatEntryWindow* window) :
     QIODevice(window)
 {
+    setOpenMode(ReadOnly);
+}
+
+bool ChatEntryWindowDevice::canReadLine () const
+{
+    if (!_buffer.isEmpty() || QIODevice::canReadLine()) {
+        return true;
+    }
+    // it's a little hacky, but expressing interest in reading a line basically means
+    // we want to switch to input mode
+    ChatEntryWindow* window = static_cast<ChatEntryWindow*>(parent());
+    window->setVisible(true);
+    window->setMode(tr("Input:"), "/input", false);
+    return false;
 }
 
 qint64 ChatEntryWindowDevice::readData (char* data, qint64 maxSize)
 {
-    return 0;
+    int size = qMin((int)maxSize, _buffer.size());
+    qCopy(_buffer.constData(), _buffer.constData() + size, data);
+    _buffer.remove(0, size);
+    return size;
+}
+
+qint64 ChatEntryWindowDevice::readLineData (char* data, qint64 maxSize)
+{
+    qint64 idx = _buffer.indexOf('\n');
+    return (idx == -1) ? 0 : readData(data, qMin(maxSize, idx + 1));
 }
 
 qint64 ChatEntryWindowDevice::writeData (const char* data, qint64 maxSize)
@@ -282,6 +339,11 @@ void ChatEntryWindow::setMode (const QString& label, const QString& prefix, bool
 void ChatEntryWindow::clearMode ()
 {
     setMode(tr("Say:"), "");
+}
+
+void ChatEntryWindow::provideInput (const QString& line)
+{
+    static_cast<ChatEntryWindowDevice*>(_device)->appendToBuffer(line.toAscii() += '\n');
 }
 
 void ChatEntryWindow::setVisible (bool visible)

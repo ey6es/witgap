@@ -1247,7 +1247,9 @@ void Evaluator::maybeReadLine ()
 {
     QIODevice* device = static_cast<QIODevice*>(sender());
     if (device->canReadLine()) {
-        wakeUp(ScriptObjectPointer(new String(device->readLine())));
+        QByteArray line = device->readLine();
+        line.chop(1); // remove trailing newline
+        wakeUp(ScriptObjectPointer(new String(line)));
     }
 }
 
