@@ -2235,14 +2235,21 @@ static ScriptObjectPointer sleep (Evaluator* eval, int argc, ScriptObjectPointer
     if (value < 0) {
         throw QString("Invalid argument.");
     }
-    if (eval->maxCyclesPerSlice() == 0) {
+    if (eval->maxCyclesPerSlice() == -1) {
         QMutex mutex;
         mutex.lock();
         QWaitCondition().wait(&mutex, value);
         return Unspecified::instance();
 
     } else {
-        QTimer::singleShot(value, eval, SLOT(wakeUp()));
+        QTimer* timer = new QTimer(eval);
+        eval->connect(timer, SIGNAL(timeout()), SLOT(wakeUp()));
+        timer->connect(timer, SIGNAL(timeout()), SLOT(deleteLater()));
+        timer->connect(eval, SIGNAL(canceled()), SLOT(deleteLater()));
+        timer->setSingleShot(true);
+        timer->start(value);
+
+        eval->setWaker(timer);
         return ScriptObjectPointer();
     }
 }
@@ -2542,6 +2549,7 @@ static ScriptObjectPointer getLine (Evaluator* eval, int argc, ScriptObjectPoint
     if (device->canReadLine()) {
         return ScriptObjectPointer(new String(device->readLine()));
     }
+    eval->setWaker(device);
     eval->connect(device, SIGNAL(readyRead()), SLOT(maybeReadLine()));
     return ScriptObjectPointer();
 }

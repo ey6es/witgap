@@ -79,7 +79,8 @@ Evaluator::Evaluator (const QString& source, QIODevice* input,
     _scope(globalScope(), true),
     _registers(),
     _lastColor(0),
-    _sleeping(false)
+    _sleeping(false),
+    _waker(0)
 {
     _stack.push(_scope.invocation());
 
@@ -795,14 +796,14 @@ static void compile (
 
 ScriptObjectPointer Evaluator::evaluateUntilExit (const QString& expr)
 {
-    interrupt();
+    cancel();
     compileForEvaluation(expr);
-    return execute(_maxCyclesPerSlice = 0);
+    return execute(_maxCyclesPerSlice = -1);
 }
 
 void Evaluator::evaluate (const QString& expr, int maxCyclesPerSlice)
 {
-    interrupt();
+    cancel();
 
     ScriptObjectPointer result;
     try {
@@ -821,13 +822,21 @@ void Evaluator::evaluate (const QString& expr, int maxCyclesPerSlice)
     }
 }
 
-void Evaluator::interrupt ()
+void Evaluator::cancel ()
 {
+    if (!_timer.isActive() && !_sleeping) {
+        return;
+    }
     _timer.stop();
     _sleeping = false;
+    if (_waker != 0) {
+        _waker->disconnect(this);
+        _waker = 0;
+    }
     _stack.resize(1);
     _registers.invocationIdx = 0;
     _registers.operandCount = 0;
+    emit canceled();
 }
 
 ScriptObjectPointer Evaluator::execute (int maxCycles)
@@ -839,7 +848,7 @@ ScriptObjectPointer Evaluator::execute (int maxCycles)
     Lambda* lambda = static_cast<Lambda*>(proc->lambda().data());
     const Bytecode* bytecode = &lambda->bytecode();
 
-    while (maxCycles == 0 || maxCycles-- > 0) {
+    while (maxCycles == -1 || maxCycles-- > 0) {
         switch (bytecode->charAt(_registers.instructionIdx++)) {
             case ConstantOp:
                 _stack.push(lambda->constant(bytecode->intAt(_registers.instructionIdx)));
@@ -1238,7 +1247,6 @@ void Evaluator::maybeReadLine ()
 {
     QIODevice* device = static_cast<QIODevice*>(sender());
     if (device->canReadLine()) {
-        device->disconnect(this);
         wakeUp(ScriptObjectPointer(new String(device->readLine())));
     }
 }
@@ -1246,6 +1254,10 @@ void Evaluator::maybeReadLine ()
 void Evaluator::wakeUp (const ScriptObjectPointer& returnValue)
 {
     _sleeping = false;
+    if (_waker != 0) {
+        _waker->disconnect(this);
+        _waker = 0;
+    }
     _stack.push(returnValue);
     _registers.operandCount++;
 

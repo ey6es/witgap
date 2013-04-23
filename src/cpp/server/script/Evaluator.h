@@ -164,22 +164,27 @@ public:
     void evaluate (const QString& expr, int maxCyclesPerSlice = 100);
 
     /**
-     * Interrupts the current execution.
+     * Cancels the current evaluation (if any).
      */
-    void interrupt ();
+    void cancel ();
 
     /**
      * Runs the evaluator for a fixed number of cycles, or until a result is returned.
      *
-     * @param maxCycles the maximum number of cycles to execute, or zero for unlimited.
+     * @param maxCycles the maximum number of cycles to execute, or -1 for unlimited.
      * @return the result of the computation, or a null pointer if still working.
      */
-    ScriptObjectPointer execute (int maxCycles = 0);
+    ScriptObjectPointer execute (int maxCycles = -1);
 
     /**
      * Collects garbage.
      */
     void gc ();
+
+    /**
+     * Sets the object responsible for waking us.
+     */
+    void setWaker (QObject* waker) { _waker = waker; }
 
     /**
      * Creates a list instance containing the elements in (first, first + count].
@@ -198,6 +203,11 @@ public:
     ScriptObjectPointer vectorInstance (const ScriptObjectPointerVector& contents);
 
 signals:
+
+    /**
+     * Fired when the script is canceled.
+     */
+    void canceled ();
 
     /**
      * Fired when the script exits.
@@ -268,6 +278,9 @@ protected:
 
     /** Whether or not the evaluator is sleeping. */
     bool _sleeping;
+
+    /** The object responsible for waking us, if known. */
+    QObject* _waker;
 
     /** The evaluator's standard input port. */
     ScriptObjectPointer _standardInputPort;
