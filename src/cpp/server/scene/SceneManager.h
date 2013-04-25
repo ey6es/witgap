@@ -59,19 +59,19 @@ public:
      * Creates a new instance of the identified zone for the identified session.  The callback will
      * receive the instance id.
      */
-    Q_INVOKABLE void createInstance (quint64 sessionId, quint32 zoneId, const Callback& callback);
+    Q_INVOKABLE void createInstance (quint64 userId, quint32 zoneId, const Callback& callback);
 
     /**
      * Attempts to reserve a place in the identified instance for the identified session.  The
      * callback will receive a bool indicating success or failure.
      */
     Q_INVOKABLE void reserveInstancePlace (
-        quint64 sessionId, quint64 instanceId, const Callback& callback);
+        quint64 userId, quint64 instanceId, const Callback& callback);
 
     /**
      * Cancels an instance place reservation that we've decided we no longer need.
      */
-    Q_INVOKABLE void cancelInstancePlaceReservation (quint64 sessionId, quint64 instanceId);
+    Q_INVOKABLE void cancelInstancePlaceReservation (quint64 userId, quint64 instanceId);
 
     /**
      * Attempts to resolve a zone.  The callback will receive a QObject*, either the resolved zone
@@ -130,7 +130,7 @@ protected:
      * Continues the process of creating an instance, having resolved the zone.
      */
     Q_INVOKABLE void continueCreatingInstance (
-        quint64 sessionId, const Callback& callback, QObject* zobj);
+        quint64 userId, const Callback& callback, QObject* zobj);
 
     /** The application object. */
     ServerApp* _app;

@@ -28,7 +28,7 @@ void SceneRepository::init ()
                 "ID int unsigned not null auto_increment primary key,"
                 "NAME varchar(255) not null,"
                 "NAME_LOWER varchar(255) not null,"
-                "CREATOR_ID int unsigned not null,"
+                "CREATOR_ID bigint unsigned not null,"
                 "CREATED datetime not null,"
                 "SCROLL_WIDTH smallint unsigned not null,"
                 "SCROLL_HEIGHT smallint unsigned not null,"
@@ -55,7 +55,7 @@ void SceneRepository::init ()
                 "ID int unsigned not null auto_increment primary key,"
                 "NAME varchar(255) not null,"
                 "NAME_LOWER varchar(255) not null,"
-                "CREATOR_ID int unsigned not null,"
+                "CREATOR_ID bigint unsigned not null,"
                 "CREATED datetime not null,"
                 "MAX_POPULATION smallint unsigned not null,"
                 "DEFAULT_SCENE_ID int unsigned not null,"
@@ -65,7 +65,7 @@ void SceneRepository::init ()
 }
 
 void SceneRepository::insertScene (
-    const QString& name, quint32 creatorId, const Callback& callback)
+    const QString& name, quint64 creatorId, const Callback& callback)
 {
     QSqlQuery query;
     query.prepare("insert into SCENES (NAME, NAME_LOWER, CREATOR_ID, CREATED, SCROLL_WIDTH, "
@@ -95,7 +95,7 @@ void SceneRepository::loadScene (quint32 id, const Callback& callback)
         return;
     }
     SceneRecord scene = {
-        id, query.value(0).toString(), query.value(1).toUInt(), query.value(2).toString(),
+        id, query.value(0).toString(), query.value(1).toULongLong(), query.value(2).toString(),
         query.value(3).toDateTime(), query.value(4).toUInt(), query.value(5).toUInt() };
 
     query.prepare("select X, Y, DATA from SCENE_BLOCKS where SCENE_ID = ?");
@@ -131,7 +131,7 @@ static QString likePattern (const QString& prefix)
 }
 
 void SceneRepository::findScenes (
-    const QString& prefix, quint32 creatorId, const Callback& callback)
+    const QString& prefix, quint64 creatorId, const Callback& callback)
 {
     QSqlQuery query;
     QString pattern = likePattern(prefix);
@@ -150,7 +150,7 @@ void SceneRepository::findScenes (
     ResourceDescriptorList descs;
     while (query.next()) {
         ResourceDescriptor desc = { query.value(0).toUInt(), query.value(1).toString(),
-            query.value(2).toUInt(), query.value(3).toString(), query.value(4).toDateTime() };
+            query.value(2).toULongLong(), query.value(3).toString(), query.value(4).toDateTime() };
         descs.append(desc);
     }
     callback.invoke(Q_ARG(const ResourceDescriptorList&, descs));
@@ -218,7 +218,7 @@ void SceneRepository::deleteScene (quint32 id, const Callback& callback)
     callback.invoke();
 }
 
-void SceneRepository::insertZone (const QString& name, quint32 creatorId, const Callback& callback)
+void SceneRepository::insertZone (const QString& name, quint64 creatorId, const Callback& callback)
 {
     QSqlQuery query;
     query.prepare("insert into ZONES (NAME, NAME_LOWER, CREATOR_ID, CREATED, MAX_POPULATION) "
@@ -248,7 +248,7 @@ void SceneRepository::loadZone (quint32 id, const Callback& callback)
         return;
     }
     ZoneRecord zone = {
-        id, query.value(0).toString(), query.value(1).toUInt(), query.value(2).toString(),
+        id, query.value(0).toString(), query.value(1).toULongLong(), query.value(2).toString(),
         query.value(3).toDateTime(), query.value(4).toUInt(), query.value(5).toUInt() };
     callback.invoke(Q_ARG(const ZoneRecord&, zone));
 }
@@ -264,7 +264,7 @@ void SceneRepository::loadZoneName (quint32 id, const Callback& callback)
 }
 
 void SceneRepository::findZones (
-    const QString& prefix, quint32 creatorId, const Callback& callback)
+    const QString& prefix, quint64 creatorId, const Callback& callback)
 {
     QSqlQuery query;
     QString pattern = likePattern(prefix);
@@ -283,7 +283,7 @@ void SceneRepository::findZones (
     ResourceDescriptorList zones;
     while (query.next()) {
         ResourceDescriptor zone = { query.value(0).toUInt(), query.value(1).toString(),
-            query.value(2).toUInt(), query.value(3).toString(), query.value(4).toDateTime() };
+            query.value(2).toULongLong(), query.value(3).toString(), query.value(4).toDateTime() };
         zones.append(zone);
     }
     callback.invoke(Q_ARG(const ResourceDescriptorList&, zones));

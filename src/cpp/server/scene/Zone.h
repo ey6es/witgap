@@ -50,10 +50,10 @@ public:
     const QHash<quint32, Instance*>& instances () const { return _instances; }
 
     /**
-     * Creates a new instance of this zone for the identified session.  The callback will
+     * Creates a new instance of this zone for the identified user.  The callback will
      * receive the instance id.
      */
-    void createInstance (quint64 sessionId, const Callback& callback);
+    void createInstance (quint64 userId, const Callback& callback);
 
     /**
      * Notes that the zone record has been updated in the database.
@@ -71,7 +71,7 @@ protected:
      * Continues the process of creating a new instance.
      */
     Q_INVOKABLE void continueCreatingInstance (
-        quint64 sessionId, const Callback& callback, quint64 instanceId);
+        quint64 userId, const Callback& callback, quint64 instanceId);
 
     /** The application object. */
     ServerApp* _app;
@@ -131,12 +131,12 @@ public:
      * Attempts to reserve a place in this instance for the identified session.  The callback will
      * receive a bool indicating success or failure.
      */
-    Q_INVOKABLE void reservePlace (quint64 sessionId, const Callback& callback);
+    Q_INVOKABLE void reservePlace (quint64 userId, const Callback& callback);
 
     /**
      * Cancels a place reservation.
      */
-    Q_INVOKABLE void cancelPlaceReservation (quint64 sessionId);
+    Q_INVOKABLE void cancelPlaceReservation (quint64 userId);
 
     /**
      * Adds a session to the instance.

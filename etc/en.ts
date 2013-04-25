@@ -17,211 +17,327 @@
 <context>
     <name>ChatCommands</name>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="45"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="47"/>
         <source>help ?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="48"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="50"/>
         <source>Usage: /%1 [command]
   Lists commands or displays usage.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="66"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="69"/>
         <source>Available commands: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="83"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="86"/>
         <source>clear</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="86"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="89"/>
         <source>Usage: /%1
   Clears the chat display.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="106"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="110"/>
         <source>bug</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="109"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="113"/>
         <source>Usage: /%1 description
   Submits a bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="119"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="124"/>
         <source>Report submitted.  Thanks!</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="132"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="137"/>
         <source>say</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="135"/>
-        <source>Usage: /%1 message
-  Speaks a message aloud.</source>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="140"/>
+        <source>Usage: /%1 [message]
+  Speaks a message aloud/switches to say mode.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="158"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="165"/>
         <source>emote me</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="161"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="168"/>
         <source>Usage: /%1 message
   Displays an emote.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="184"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="192"/>
         <source>shout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="187"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="195"/>
         <source>Usage: /%1 message
   Shouts a message.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="210"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="219"/>
         <source>tell</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="213"/>
-        <source>Usage: /%1 username message
-  Sends a message to a single user.</source>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="222"/>
+        <source>Usage: /%1 username [message]
+  Sends a message to a single user/switches to tell mode.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="225"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="236"/>
+        <source>Tell %1:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="242"/>
         <source>Talking to yourself is a sign of insanity.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="241"/>
-        <source>broadcast</source>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="259"/>
+        <source>respond</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="244"/>
-        <source>Usage: /%1 message
-  Broadcasts a message to everyone.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="267"/>
-        <source>reboot</source>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="262"/>
+        <source>Usage: /%1 [message]
+  Responds to the last tell/switches to respond mode.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="270"/>
+        <source>Respond:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="275"/>
+        <source>You have not received a tell.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="291"/>
+        <source>mute</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="294"/>
+        <source>Usage: /%1 username
+  Hides all messages from the user.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="318"/>
+        <source>unmute</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="321"/>
+        <source>Usage: /%1 username
+  Removes the user from your mute list.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="345"/>
+        <source>broadcast</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="348"/>
+        <source>Usage: /%1 [message]
+  Broadcasts a message to everyone/switches to broadcast mode.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="356"/>
+        <source>Broadcast:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="373"/>
+        <source>reboot</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="376"/>
         <source>Usage: /%1 minutes [message]
   Schedules or cancels a system reboot.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="278"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="385"/>
         <source>Reboot canceled.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="308"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="415"/>
         <source>sgo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="311"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="418"/>
         <source>Usage: /%1 scene name
   Moves to the named scene.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="334"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="442"/>
         <source>zgo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="337"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="445"/>
         <source>Usage: /%1 zone name
   Moves to the named zone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="360"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="469"/>
         <source>pgo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="363"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="472"/>
         <source>Usage: /%1 player name
   Moves to the named player.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="386"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="498"/>
         <source>summon</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="389"/>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="501"/>
         <source>Usage: /%1 player name
   Moves the named player to you.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="527"/>
+        <source>spawn</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="530"/>
+        <source>Usage: /%1 actor name
+  Spawns an actor.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="554"/>
+        <source>eval</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="557"/>
+        <source>Usage: /%1 [expression]
+  Evaluates the expression/switches to eval mode.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="565"/>
+        <source>Eval:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="583"/>
+        <source>upload</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="586"/>
+        <source>Usage: /%1
+  Accepts a script upload to execute.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="610"/>
+        <source>input</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="613"/>
+        <source>Usage: /%1 line
+  Provides input to script/switches to input mode.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatCommands.cpp" line="621"/>
+        <source>Input:</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>ChatEntryWindow</name>
     <message>
-        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="122"/>
+        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="264"/>
+        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="341"/>
         <source>Say:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="151"/>
+        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="294"/>
         <source>Unknown command &apos;%1&apos;.  Try &apos;/help&apos;.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="168"/>
+        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="311"/>
         <source>Ambiguous command.  Did you mean &apos;%1&apos;?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ChatEntryWindowDevice</name>
+    <message>
+        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="233"/>
+        <source>Input:</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>ChatWindow</name>
     <message>
-        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="38"/>
+        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="90"/>
         <source>%1 says, &quot;%2&quot;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="42"/>
+        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="94"/>
         <source>%1 %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="46"/>
+        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="98"/>
         <source>%1 shouts, &quot;%2&quot;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="50"/>
+        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="102"/>
         <source>%1 broadcasts, &quot;%2&quot;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="54"/>
+        <location filename="../src/cpp/server/chat/ChatWindow.cpp" line="106"/>
         <source>%1 tells you, &quot;%2&quot;</source>
         <translation type="unfinished"></translation>
     </message>
@@ -367,42 +483,47 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="87"/>
-        <source>Cancel</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="89"/>
-        <source>Delete</source>
+        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="85"/>
+        <source>Insider:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="90"/>
+        <source>Cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="92"/>
+        <source>Delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="93"/>
         <source>Apply</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="91"/>
+        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="94"/>
         <source>OK</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="137"/>
+        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="140"/>
         <source>Are you sure you want to delete this user?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="166"/>
+        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="170"/>
         <source>No user exists with that name.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="210"/>
+        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="215"/>
         <source>User updated.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="212"/>
+        <location filename="../src/cpp/server/admin/EditUserDialog.cpp" line="217"/>
         <source>The requested name was not available.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -456,7 +577,7 @@
     </message>
     <message>
         <location filename="../src/cpp/server/LogonDialog.cpp" line="84"/>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="312"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="319"/>
         <source>Logon</source>
         <translation type="unfinished"></translation>
     </message>
@@ -471,113 +592,118 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="138"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="98"/>
+        <source>Stay Logged in after Leaving</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="142"/>
         <source>The passwords you entered do not match.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="148"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="152"/>
         <source>Sorry, you must be at least 13 to create an account.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="176"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="183"/>
         <source>Enter your email address.  If we have it on record, we&apos;ll send a message with the associated username.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="184"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="191"/>
         <source>Enter your username.  If it has an email on record, we&apos;ll send a message with a link allowing you to reset your password.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="193"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="205"/>
         <source>Sorry, that account name is already taken.  Please choose another.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="209"/>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="266"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="216"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="273"/>
         <source>No account exists with that username.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="213"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="220"/>
         <source>The password you have entered is incorrect.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="217"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="224"/>
         <source>Your account has been banned from the game.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="220"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="227"/>
         <source>The server is currently closed.  Please try again later.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="243"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="250"/>
         <source>Sorry, that email was not in our database.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="249"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="256"/>
         <source>Witgap username reminder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="250"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="257"/>
         <source>Your username is %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="270"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="277"/>
         <source>There is no email address associated with that account.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="286"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="293"/>
         <source>Witgap password reset</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="287"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="294"/>
         <source>To reset your password, visit %1?resetId=%2&amp;resetToken=%3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="295"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="302"/>
         <source>Email sent.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="298"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="305"/>
         <source>Sorry, we experienced an error sending the email.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="305"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="312"/>
         <source>Enter desired account details.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="306"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="313"/>
         <source>I Have an Account</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="307"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="314"/>
         <source>Create</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="310"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="317"/>
         <source>Enter account details.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/LogonDialog.cpp" line="311"/>
+        <location filename="../src/cpp/server/LogonDialog.cpp" line="318"/>
         <source>Create New Account</source>
         <translation type="unfinished"></translation>
     </message>
@@ -585,22 +711,22 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../src/cpp/server/MainWindow.cpp" line="36"/>
+        <location filename="../src/cpp/server/MainWindow.cpp" line="38"/>
         <source>%1 (guest)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/MainWindow.cpp" line="42"/>
+        <location filename="../src/cpp/server/MainWindow.cpp" line="44"/>
         <source>, %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/MainWindow.cpp" line="44"/>
-        <source> in %1%2</source>
+        <location filename="../src/cpp/server/MainWindow.cpp" line="46"/>
+        <source> in %1 %2%3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/MainWindow.cpp" line="46"/>
+        <location filename="../src/cpp/server/MainWindow.cpp" line="49"/>
         <source>{ %1%2 }</source>
         <translation type="unfinished"></translation>
     </message>
@@ -644,57 +770,67 @@
 <context>
     <name>ScenePropertiesDialog</name>
     <message>
-        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="38"/>
+        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="40"/>
         <source>ID:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="41"/>
+        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="43"/>
         <source>Creator:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="44"/>
+        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="46"/>
         <source>Created:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="50"/>
+        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="52"/>
         <source>Name:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="54"/>
+        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="56"/>
         <source>Scroll Width:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="59"/>
+        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="61"/>
         <source>Scroll Height:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="64"/>
+        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="68"/>
+        <source>Import</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="70"/>
+        <source>Export</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="74"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="66"/>
+        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="76"/>
         <source>Delete</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="68"/>
+        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="78"/>
         <source>Apply</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="69"/>
+        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="79"/>
         <source>OK</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="90"/>
+        <location filename="../src/cpp/server/scene/ScenePropertiesDialog.cpp" line="117"/>
         <source>Are you sure you want to delete this scene?</source>
         <translation type="unfinished"></translation>
     </message>
@@ -702,12 +838,12 @@
 <context>
     <name>ServerApp</name>
     <message>
-        <location filename="../src/cpp/server/ServerApp.cpp" line="368"/>
+        <location filename="../src/cpp/server/ServerApp.cpp" line="403"/>
         <source>The server will now reboot!</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/ServerApp.cpp" line="372"/>
+        <location filename="../src/cpp/server/ServerApp.cpp" line="407"/>
         <source>The server will be rebooted in %1 minutes.%2</source>
         <translation type="unfinished"></translation>
     </message>
@@ -715,66 +851,78 @@
 <context>
     <name>Session</name>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="203"/>
-        <location filename="../src/cpp/server/net/Session.cpp" line="219"/>
-        <location filename="../src/cpp/server/net/Session.cpp" line="266"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="226"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="242"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="289"/>
         <source>OK</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="216"/>
-        <location filename="../src/cpp/server/net/Session.cpp" line="263"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="239"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="286"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="327"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="340"/>
         <source>Not in an instance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="453"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="509"/>
         <source>Please enter a brief bug description.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="470"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="531"/>
         <source>Are you sure you want to log off?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="491"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="552"/>
         <source>Untitled Scene</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="499"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="560"/>
         <source>Untitled Zone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="736"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="812"/>
         <source>No such scene.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="746"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="822"/>
         <source>Failed to resolve scene.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="773"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="859"/>
         <source>No such zone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="834"/>
-        <source>You tell %1, &quot;%2&quot;</source>
+        <location filename="../src/cpp/server/net/Session.cpp" line="869"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="954"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="960"/>
+        <source>There is no one online named %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="835"/>
-        <source>There is no one online named %1.</source>
+        <location filename="../src/cpp/server/net/Session.cpp" line="873"/>
+        <source>%1 is not in an instance.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/net/Session.cpp" line="909"/>
+        <source>No such actor.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/net/Session.cpp" line="953"/>
+        <source>You tell %1, &quot;%2&quot;</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -829,52 +977,57 @@
 <context>
     <name>ZonePropertiesDialog</name>
     <message>
-        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="40"/>
+        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="41"/>
         <source>ID:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="43"/>
+        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="44"/>
         <source>Creator:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="46"/>
+        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="47"/>
         <source>Created:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="52"/>
+        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="53"/>
         <source>Name:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="56"/>
+        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="57"/>
         <source>Max. Population:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="61"/>
-        <source>Cancel</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="63"/>
-        <source>Delete</source>
+        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="62"/>
+        <source>Default Scene:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="65"/>
+        <source>Cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="67"/>
+        <source>Delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="69"/>
         <source>Apply</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="66"/>
+        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="70"/>
         <source>OK</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="93"/>
+        <location filename="../src/cpp/server/scene/ZonePropertiesDialog.cpp" line="97"/>
         <source>Are you sure you want to delete this zone?</source>
         <translation type="unfinished"></translation>
     </message>

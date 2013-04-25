@@ -18,7 +18,6 @@
 
 class ServerApp;
 class Session;
-class SessionRecord;
 class SessionTransfer;
 class TranslationKey;
 class UserRecord;
@@ -93,9 +92,10 @@ public:
         const QString& name, const QString& summoner, const Callback& callback);
 
     /**
-     * Notifies the manager that a session's name has changed (because of logon/logoff).
+     * Notifies the manager that a session's id and/or name has changed.
      */
-    Q_INVOKABLE void sessionNameChanged (const QString& oldName, const QString& newName);
+    Q_INVOKABLE void sessionChanged (
+        quint64 oldId, quint64 newId, const QString& oldName, const QString& newName);
 
     /**
      * Notifies the manager that a session has been closed.
@@ -126,8 +126,7 @@ protected:
      * Callback for validated tokens.
      */
     Q_INVOKABLE void tokenValidated (
-        const SharedConnectionPointer& connptr, const SessionRecord& record,
-        const UserRecord& user);
+        const SharedConnectionPointer& connptr, const UserRecord& user);
 
     /** The server application. */
     ServerApp* _app;
@@ -138,10 +137,10 @@ protected:
     /** The GeoIP database. */
     GeoIP* _geoIp;
 
-    /** The set of active sessions, mapped by session id. */
+    /** The set of active sessions, mapped by user id. */
     QHash<quint64, Session*> _sessions;
 
-    /** Sessions mapped by name. */
+    /** Sessions mapped by user name. */
     QHash<QString, Session*> _names;
 
     /** Synchronized pointer for callbacks. */

@@ -47,7 +47,7 @@ SettingsDialog::SettingsDialog (Session* parent) :
 
     icont->addChild(new Label(tr("Avatar:")));
     icont->addChild(_avatar = new TextField(20, new RegExpDocument(
-        AvatarExp, parent->record().avatar, 1)));
+        AvatarExp, parent->user().avatar, 1)));
     connect(_avatar, SIGNAL(textChanged()), SLOT(updateApply()));
 
     // if there's no user, hide the first three lines

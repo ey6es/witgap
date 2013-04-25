@@ -33,8 +33,8 @@ MainWindow::MainWindow (Session* parent) :
 void MainWindow::updateTitle ()
 {
     Session* session = this->session();
-    QString name = session->record().name;
-    if (session->user().id == 0) {
+    QString name = session->user().name;
+    if (!session->loggedOn()) {
         name = tr("%1 (guest)").arg(name);
     }
     QString location;

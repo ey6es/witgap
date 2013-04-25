@@ -11,7 +11,7 @@
 #include "ServerApp.h"
 #include "chat/ChatWindow.h"
 #include "db/DatabaseThread.h"
-#include "db/SessionRepository.h"
+#include "db/UserRepository.h"
 #include "http/HttpConnection.h"
 #include "net/ConnectionManager.h"
 #include "net/Session.h"
@@ -67,14 +67,14 @@ ConnectionManager::~ConnectionManager ()
 void ConnectionManager::connectionEstablished (Connection* connection)
 {
     // see if we already have a session with the provided id
-    quint32 sessionId = connection->cookies().value("sessionId", "0").toULongLong(0, 16);
+    quint64 userId = connection->cookies().value("userId", "0").toULongLong(0, 16);
     QByteArray sessionToken = QByteArray::fromHex(
         connection->cookies().value("sessionToken", "00000000000000000000000000000000").toAscii());
-    SessionInfoPointer ptr = _app->peerManager()->sessions().value(sessionId);
-    if (ptr) {
+    SessionInfoPointer ptr = _app->peerManager()->sessions().value(userId);
+    if (ptr && !ptr->connected) {
         if (ptr->peer == _app->peerManager()->record().name) {
             // it's on this peer; try to set the connection directly
-            QMetaObject::invokeMethod(_sessions.value(sessionId), "maybeSetConnection",
+            QMetaObject::invokeMethod(_sessions.value(userId), "maybeSetConnection",
                 Q_ARG(const SharedConnectionPointer&, connection->pointer()),
                 Q_ARG(const QByteArray&, sessionToken), Q_ARG(const Callback&, Callback(_this,
                     "connectionMaybeSet(SharedConnectionPointer,bool)",
@@ -89,22 +89,21 @@ void ConnectionManager::connectionEstablished (Connection* connection)
     }
 
     // otherwise, go to the database to validate the token or generate a new one
-    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "validateToken",
-        Q_ARG(quint64, sessionId), Q_ARG(const QByteArray&, sessionToken),
+    QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "validateSessionToken",
+        Q_ARG(quint64, userId), Q_ARG(const QByteArray&, sessionToken),
         Q_ARG(const Callback&, Callback(_this,
-            "tokenValidated(SharedConnectionPointer,SessionRecord,UserRecord)",
+            "tokenValidated(SharedConnectionPointer,UserRecord)",
             Q_ARG(const SharedConnectionPointer&, connection->pointer()))));
 }
 
 void ConnectionManager::transferSession (const SessionTransfer& transfer)
 {
-    qDebug() << "Session transferred." << transfer.record.name;
+    qDebug() << "Session transferred." << transfer.user.name;
 
     // create and map the session
-    Session* session = new Session(
-        _app, SharedConnectionPointer(), transfer.record, transfer.user, transfer);
-    _sessions.insert(transfer.record.id, session);
-    _names.insert(transfer.record.name.toLower(), session);
+    Session* session = new Session(_app, SharedConnectionPointer(), transfer.user, transfer);
+    _sessions.insert(transfer.user.id, session);
+    _names.insert(transfer.user.name.toLower(), session);
 }
 
 void ConnectionManager::broadcast (const QString& speaker, const QString& message)
@@ -153,9 +152,12 @@ void ConnectionManager::summon (
     }
 }
 
-void ConnectionManager::sessionNameChanged (const QString& oldName, const QString& newName)
+void ConnectionManager::sessionChanged (
+    quint64 oldId, quint64 newId, const QString& oldName, const QString& newName)
 {
-    Session* session = _names.take(oldName.toLower());
+    Session* session = _sessions.take(oldId);
+    _sessions.insert(newId, session);
+    _names.remove(oldName.toLower());
     _names.insert(newName.toLower(), session);
 }
 
@@ -193,28 +195,27 @@ void ConnectionManager::connectionMaybeSet (const SharedConnectionPointer& connp
         return;
     }
 
-    // create a new token
-    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "validateToken",
-        Q_ARG(quint64, 0), Q_ARG(const QByteArray&, QByteArray()),
+    // create a new user
+    QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "createUser",
         Q_ARG(const Callback&, Callback(_this,
-            "tokenValidated(SharedConnectionPointer,SessionRecord,UserRecord)",
+            "tokenValidated(SharedConnectionPointer,UserRecord)",
             Q_ARG(const SharedConnectionPointer&, connptr))));
 }
 
 void ConnectionManager::tokenValidated (
-    const SharedConnectionPointer& connptr, const SessionRecord& record, const UserRecord& user)
+    const SharedConnectionPointer& connptr, const UserRecord& user)
 {
     // make sure the connection is still in business
     if (!connptr->isOpen()) {
         return;
     }
 
-    // set the session id and token cookies
-    connptr->setCookie("sessionId", QString::number(record.id, 16).rightJustified(16, '0'));
-    connptr->setCookie("sessionToken", record.token.toHex());
+    // set the user id and token cookies
+    connptr->setCookie("userId", QString::number(user.id, 16).rightJustified(16, '0'));
+    connptr->setCookie("sessionToken", user.sessionToken.toHex());
 
     // create and map the session
-    Session* session = new Session(_app, connptr, record, user, SessionTransfer());
-    _sessions.insert(record.id, session);
-    _names.insert(record.name.toLower(), session);
+    Session* session = new Session(_app, connptr, user, SessionTransfer());
+    _sessions.insert(user.id, session);
+    _names.insert(user.name.toLower(), session);
 }

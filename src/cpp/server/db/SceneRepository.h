@@ -37,7 +37,7 @@ public:
      * Inserts a new scene into the database.  The callback will receive the (quint32) scene id.
      */
     Q_INVOKABLE void insertScene (
-        const QString& name, quint32 creatorId, const Callback& callback);
+        const QString& name, quint64 creatorId, const Callback& callback);
 
     /**
      * Loads a scene.  The callback will receive the {@link SceneRecord}.
@@ -56,7 +56,7 @@ public:
      * @param creatorId the id of the creator whose scenes are desired, or 0 for all creators.
      */
     Q_INVOKABLE void findScenes (
-        const QString& prefix, quint32 creatorId, const Callback& callback);
+        const QString& prefix, quint64 creatorId, const Callback& callback);
 
     /**
      * Updates a scene record.
@@ -76,7 +76,7 @@ public:
     /**
      * Inserts a new zone into the database.  The callback will receive the (quint32) zone id.
      */
-    Q_INVOKABLE void insertZone (const QString& name, quint32 creatorId, const Callback& callback);
+    Q_INVOKABLE void insertZone (const QString& name, quint64 creatorId, const Callback& callback);
 
     /**
      * Loads a zone.  The callback will receive the {@link ZoneRecord}.
@@ -95,7 +95,7 @@ public:
      * @param creatorId the id of the creator whose zones are desired, or 0 for all creators.
      */
     Q_INVOKABLE void findZones (
-        const QString& prefix, quint32 creatorId, const Callback& callback);
+        const QString& prefix, quint64 creatorId, const Callback& callback);
 
     /**
      * Updates a zone record.
@@ -169,7 +169,7 @@ public:
     QString name;
 
     /** The user id of the scene creator. */
-    quint32 creatorId;
+    quint64 creatorId;
 
     /** The name of the scene creator. */
     QString creatorName;
@@ -231,7 +231,7 @@ public:
     STREAM QString name;
 
     /** The user id of the zone creator. */
-    STREAM quint32 creatorId;
+    STREAM quint64 creatorId;
 
     /** The name of the zone creator. */
     STREAM QString creatorName;

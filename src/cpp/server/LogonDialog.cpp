@@ -37,7 +37,7 @@ LogonDialog::LogonDialog (Session* parent, const QString& username, bool stayLog
     addChild(icont);
     icont->addChild(new Label(tr("Username:")));
     _username = new TextField(20, new RegExpDocument(PartialUsernameExp,
-        username.isEmpty() ? parent->record().name : username, MaxUsernameLength));
+        username.isEmpty() ? parent->user().name : username, MaxUsernameLength));
     icont->addChild(_username);
     connect(_username, SIGNAL(textChanged()), SLOT(updateLogon()));
 
@@ -135,6 +135,7 @@ void LogonDialog::updateLogon ()
 void LogonDialog::logon ()
 {
     // pass the request on to the database
+    Session* session = this->session();
     if (_createMode) {
         // check the passwords
         if (_password->text() != _confirmPassword->text()) {
@@ -154,23 +155,26 @@ void LogonDialog::logon ()
         }
 
         // send the request off to the database
-        Session* session = this->session();
+        UserRecord nrec = session->user();
+        nrec.name = _username->text();
+        nrec.setPassword(_password->text());
+        nrec.dateOfBirth = dob;
+        nrec.email = _email->text().trimmed();
         QMetaObject::invokeMethod(
-            session->app()->databaseThread()->userRepository(), "insertUser",
-            Q_ARG(quint64, session->record().id), Q_ARG(const QString&, _username->text()),
-            Q_ARG(const QString&, _password->text()), Q_ARG(const QDate&, dob),
-            Q_ARG(const QString&, _email->text().trimmed()),
-            Q_ARG(QChar, session->record().avatar), Q_ARG(const Callback&,
-                Callback(_this, "userMaybeInserted(UserRecord)")));
+            session->app()->databaseThread()->userRepository(), "updateUser",
+            Q_ARG(const UserRecord&, nrec), Q_ARG(const Callback&,
+                Callback(_this, "userMaybeUpdated(UserRecord,bool)",
+                    Q_ARG(const UserRecord&, nrec))));
 
     } else {
         // block logon and send off the request
         _logonBlocked = true;
         _logon->setEnabled(false);
         QMetaObject::invokeMethod(
-            session()->app()->databaseThread()->userRepository(), "validateLogon",
-            Q_ARG(const QString&, _username->text()), Q_ARG(const QString&, _password->text()),
-            Q_ARG(const Callback&, Callback(_this, "logonMaybeValidated(QVariant)")));
+            session->app()->databaseThread()->userRepository(), "validateLogon",
+            Q_ARG(const UserRecord&, session->user()), Q_ARG(const QString&, _username->text()),
+            Q_ARG(const QString&, _password->text()), Q_ARG(const Callback&,
+                Callback(_this, "logonMaybeValidated(QVariant)")));
     }
 }
 
@@ -190,18 +194,18 @@ void LogonDialog::forgotPassword ()
             new RegExpDocument(PartialUsernameExp, "", MaxUsernameLength), FullUsernameExp);
 }
 
-void LogonDialog::userMaybeInserted (const UserRecord& user)
+void LogonDialog::userMaybeUpdated (const UserRecord& user, bool success)
 {
-    if (user.id == 0) {
+    if (success) {
+        qDebug() << "Account created." << user.id << user.name << user.dateOfBirth << user.email;
+        session()->loggedOn(user, _stayLoggedIn->selected());
+        deleteLater();
+        
+    } else {
         flashStatus(tr("Sorry, that account name is already taken.  Please choose another."));
         _logonBlocked = false;
         updateLogon();
-        _username->requestFocus();
-    } else {
-        qDebug() << "Account created." << user.id << user.name << user.dateOfBirth << user.email;
-
-        session()->loggedOn(user, _stayLoggedIn->selected());
-        deleteLater();
+        _username->requestFocus();     
     }
 }
 
@@ -278,7 +282,7 @@ void LogonDialog::maybeSendPasswordEmail (const UserRecord& urec)
     // insert the reset
     QMetaObject::invokeMethod(
         session()->app()->databaseThread()->userRepository(), "insertPasswordReset",
-        Q_ARG(quint32, urec.id), Q_ARG(const Callback&, Callback(_this,
+        Q_ARG(quint64, urec.id), Q_ARG(const Callback&, Callback(_this,
             "sendPasswordEmail(QString,quint32,QByteArray)", Q_ARG(const QString&, urec.email))));
 }
 

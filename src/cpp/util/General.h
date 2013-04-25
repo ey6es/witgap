@@ -238,7 +238,7 @@ public:
     QString name;
 
     /** The user id of the resource creator. */
-    quint32 creatorId;
+    quint64 creatorId;
 
     /** The name of the resource creator. */
     QString creatorName;

@@ -13,7 +13,6 @@
 #include "db/PeerRepository.h"
 #include "db/PropertyRepository.h"
 #include "db/SceneRepository.h"
-#include "db/SessionRepository.h"
 #include "db/UserRepository.h"
 #include "util/General.h"
 
@@ -31,7 +30,6 @@ DatabaseThread::DatabaseThread (ServerApp* app) :
     _peerRepository(new PeerRepository()),
     _propertyRepository(new PropertyRepository(app)),
     _sceneRepository(new SceneRepository()),
-    _sessionRepository(new SessionRepository(app)),
     _userRepository(new UserRepository(app))
 {
     // move the repositories to this thread
@@ -39,7 +37,6 @@ DatabaseThread::DatabaseThread (ServerApp* app) :
     _peerRepository->moveToThread(this);
     _propertyRepository->moveToThread(this);
     _sceneRepository->moveToThread(this);
-    _sessionRepository->moveToThread(this);
     _userRepository->moveToThread(this);
 }
 
@@ -68,7 +65,6 @@ void DatabaseThread::run ()
             _peerRepository->init();
             _propertyRepository->init();
             _sceneRepository->init();
-            _sessionRepository->init();
             _userRepository->init();
 
             // enter event loop

@@ -9,7 +9,6 @@
 #include <QSize>
 
 #include "chat/ChatWindow.h"
-#include "db/SessionRepository.h"
 #include "db/UserRepository.h"
 #include "net/Connection.h"
 #include "peer/PeerManager.h"
@@ -45,17 +44,12 @@ public:
      * Initializes the session.
      */
     Session (ServerApp* app, const SharedConnectionPointer& connection,
-        const SessionRecord& record, const UserRecord& user, const SessionTransfer& transfer);
+        const UserRecord& user, const SessionTransfer& transfer);
 
     /**
      * Returns a pointer to the application object.
      */
     ServerApp* app () const { return _app; }
-
-    /**
-     * Returns a reference to the session record.
-     */
-    const SessionRecord& record () const { return _record; }
 
     /**
      * Returns a pointer to the connection, or zero if unconnected.
@@ -83,12 +77,12 @@ public:
     /**
      * Checks whether the session is associated with a logged-on user.
      */
-    bool loggedOn () const { return _user.id != 0; }
+    bool loggedOn () const { return _user.loggedOn(); }
 
     /**
      * Checks whether the session is associated with an admin.
      */
-    bool admin () const { return _user.id != 0 && _user.flags.testFlag(UserRecord::Admin); }
+    bool admin () const { return _user.flags.testFlag(UserRecord::Admin); }
 
     /**
      * Returns a reference to the user record.
@@ -519,12 +513,12 @@ protected:
      *
      * @param name the new session name.
      */
-    Q_INVOKABLE void loggedOff (const QString& name);
+    Q_INVOKABLE void loggedOff (const UserRecord& user);
 
     /**
-     * Handles a name change.
+     * Handles a user record change.
      */
-    void nameChanged (const QString& oldName);
+    void userChanged ();
 
     /**
      * Determines whether the specified window is beneath another, modal window.
@@ -539,9 +533,6 @@ protected:
 
     /** The timer that closes the session after extended disconnect. */
     QTimer* _closeTimer;
-
-    /** The session record. */
-    SessionRecord _record;
 
     /** The session info reported to peers. */
     SessionInfo _info;
@@ -612,9 +603,6 @@ class SessionTransfer
     STREAMABLE
 
 public:
-
-    /** The session record. */
-    STREAM SessionRecord record;
 
     /** The user record. */
     STREAM UserRecord user;

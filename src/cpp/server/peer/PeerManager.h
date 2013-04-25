@@ -236,14 +236,14 @@ public:
      * and instance id.
      */
     Q_INVOKABLE void reserveInstancePlace (
-        quint64 sessionId, const QString& region, quint32 zoneId, const Callback& callback);
+        quint64 userId, const QString& region, quint32 zoneId, const Callback& callback);
 
     /**
      * Reserves a place in the identified instance.  The callback will receive the peer name and
      * instance id, or the empty string and 0 if unsuccessful.
      */
     Q_INVOKABLE void reserveInstancePlace (
-        quint64 sessionId, quint64 instanceId, const Callback& callback);
+        quint64 userId, quint64 instanceId, const Callback& callback);
 
     /**
      * Executes an action on this peer and all others.
@@ -368,21 +368,21 @@ protected:
      * Notifies us of the result of an instance creation request.
      */
     Q_INVOKABLE void instanceMaybeCreated (
-        quint64 sessionId, const QString& region, quint32 zoneId,
+        quint64 userId, const QString& region, quint32 zoneId,
         const QString& peer, const Callback& callback, quint64 instanceId);
 
     /**
      * Notifies us of the result of an instance place request.
      */
     Q_INVOKABLE void instancePlaceMaybeReserved (
-        quint64 sessionId, const QString& region, const QString& peer,
+        quint64 userId, const QString& region, const QString& peer,
         quint64 instanceId, const Callback& callback, bool success);
 
     /**
      * Notifies us of the result of an instance place request.
      */
     Q_INVOKABLE void instancePlaceMaybeReserved (
-        quint64 sessionId, const QString& peer, quint64 instanceId,
+        quint64 userId, const QString& peer, quint64 instanceId,
         const Callback& callback, bool success);
 
     /**
@@ -559,6 +559,9 @@ public:
 
     /** The id of the occupied scene, if any. */
     STREAM quint32 sceneId;
+
+    /** Whether or not the session is connected. */
+    STREAM bool connected;
 };
 
 DECLARE_STREAMABLE_METATYPE(SessionInfo)

@@ -60,29 +60,29 @@ QThread* SceneManager::nextThread ()
     return _threads.at(_lastThreadIdx);
 }
 
-void SceneManager::createInstance (quint64 sessionId, quint32 zoneId, const Callback& callback)
+void SceneManager::createInstance (quint64 userId, quint32 zoneId, const Callback& callback)
 {
     resolveZone(zoneId, Callback(_this, "continueCreatingInstance(quint64,Callback,QObject*)",
-        Q_ARG(quint64, sessionId), Q_ARG(const Callback&, callback)));
+        Q_ARG(quint64, userId), Q_ARG(const Callback&, callback)));
 }
 
 void SceneManager::reserveInstancePlace (
-    quint64 sessionId, quint64 instanceId, const Callback& callback)
+    quint64 userId, quint64 instanceId, const Callback& callback)
 {
     Instance* instance = this->instance(instanceId);
     if (instance != 0) {
-        QMetaObject::invokeMethod(instance, "reservePlace", Q_ARG(quint64, sessionId),
+        QMetaObject::invokeMethod(instance, "reservePlace", Q_ARG(quint64, userId),
             Q_ARG(const Callback&, callback));
     } else {
         callback.invoke(Q_ARG(bool, false));
     }
 }
 
-void SceneManager::cancelInstancePlaceReservation (quint64 sessionId, quint64 instanceId)
+void SceneManager::cancelInstancePlaceReservation (quint64 userId, quint64 instanceId)
 {
     Instance* instance = this->instance(instanceId);
     if (instance != 0) {
-        QMetaObject::invokeMethod(instance, "cancelPlaceReservation", Q_ARG(quint64, sessionId));
+        QMetaObject::invokeMethod(instance, "cancelPlaceReservation", Q_ARG(quint64, userId));
     }
 }
 
@@ -171,11 +171,11 @@ void SceneManager::zoneMaybeLoaded (quint32 id, const ZoneRecord& record)
 }
 
 void SceneManager::continueCreatingInstance (
-    quint64 sessionId, const Callback& callback, QObject* zobj)
+    quint64 userId, const Callback& callback, QObject* zobj)
 {
     if (zobj == 0) {
         callback.invoke(Q_ARG(quint64, 0));
         return;
     }
-    static_cast<Zone*>(zobj)->createInstance(sessionId, callback);
+    static_cast<Zone*>(zobj)->createInstance(userId, callback);
 }

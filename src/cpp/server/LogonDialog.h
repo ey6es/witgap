@@ -70,9 +70,9 @@ protected slots:
 protected:
 
     /**
-     * If the record id is non-zero, the user was inserted with that record.
+     * Reports back from a user update request.
      */
-    Q_INVOKABLE void userMaybeInserted (const UserRecord& user);
+    Q_INVOKABLE void userMaybeUpdated (const UserRecord& user, bool success);
 
     /**
      * If the result contains a UserRecord, the user was logged on; otherwise, the result

@@ -45,11 +45,10 @@ int sessionPointerType = qRegisterMetaType<Session*>("Session*");
 static const int DisconnectTimeout = 5 * 60 * 1000;
 
 Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
-        const SessionRecord& record, const UserRecord& user, const SessionTransfer& transfer) :
+        const UserRecord& user, const SessionTransfer& transfer) :
     CallableObject(app->connectionManager()),
     _app(app),
     _closeTimer(new QTimer(this)),
-    _record(record),
     _lastWindowId(0),
     _cryptoCount(0),
     _evaluator(0),
@@ -64,7 +63,7 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
 {
     // add info on all peers
     const QString& peer = _app->peerManager()->record().name;
-    SessionInfo info = { _record.id, _record.name, peer };
+    SessionInfo info = { _user.id, _user.name, peer };
     _info = info;
     _app->peerManager()->invoke(_app->peerManager(), "sessionAdded(SessionInfo)",
         Q_ARG(const SessionInfo&, info));
@@ -87,7 +86,7 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
 
     // force logon if the server isn't open
     RuntimeConfig* runtimeConfig = _app->runtimeConfig();
-    if (user.id == 0 && runtimeConfig->logonPolicy() != RuntimeConfig::Everyone) {
+    if (!user.loggedOn() && runtimeConfig->logonPolicy() != RuntimeConfig::Everyone) {
         showLogonDialog();
         return;
     }
@@ -107,7 +106,7 @@ Session::Session (ServerApp* app, const SharedConnectionPointer& connection,
 void Session::maybeSetConnection (
     const SharedConnectionPointer& connection, const QByteArray& token, const Callback& callback)
 {
-    if (_connection || _record.token != token) {
+    if (_connection || _user.sessionToken != token) {
         callback.invoke(Q_ARG(bool, false));
         return;
     }
@@ -117,7 +116,7 @@ void Session::maybeSetConnection (
 
 QString Session::who () const
 {
-    return _record.name;
+    return _user.name;
 }
 
 QString Session::locale () const
@@ -302,12 +301,12 @@ void Session::showInputDialog (
 
 void Session::loggedOn (const UserRecord& user, bool stayLoggedIn)
 {
-    qDebug() << "Logged on." << _record.id << user.name;
-
     _user = user;
 
+    qDebug() << "Logged on." << user.id << user.name;
+    
     if (_connection) {
-        // set the username/stay logged in cookies on the client
+        // set the cookies on the client
         Connection::setCookieMetaMethod().invoke(_connection.data(),
             Q_ARG(const QString&, "username"), Q_ARG(const QString&, user.name));
         Connection::setCookieMetaMethod().invoke(_connection.data(),
@@ -315,29 +314,15 @@ void Session::loggedOn (const UserRecord& user, bool stayLoggedIn)
             Q_ARG(const QString&, stayLoggedIn ? "true" : "false"));
     }
 
-    // set the user id and name/avatar in the session record
-    _record.userId = user.id;
-    QString oname = _record.name;
-    _record.name = user.name;
-    _record.avatar = user.avatar;
-    _record.stayLoggedIn = stayLoggedIn;
-    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "updateSession",
-        Q_ARG(const SessionRecord&, _record));
-
     // update mappings
-    nameChanged(oname);
+    userChanged();
 }
 
 void Session::logoff ()
 {
-    qDebug() << "Logged off." << _record.id << _user.name;
-
-    _user = NoUser;
-
-    // clear the user id and name in the session record
-    _record.userId = 0;
-    QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "logoffSession",
-        Q_ARG(quint64, _record.id), Q_ARG(const Callback&, Callback(_this, "loggedOff(QString)")));
+    // request a new, anonymous user from the repository
+    QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "createUser",
+        Q_ARG(const Callback&, Callback(_this, "loggedOff(UserRecord)")));
 }
 
 void Session::moveToScene (const QString& prefix)
@@ -377,7 +362,7 @@ void Session::moveToZone (quint32 id, quint32 sceneId, const QVariant& portal)
 
     // reserve a place in an instance
     QMetaObject::invokeMethod(_app->peerManager(), "reserveInstancePlace",
-        Q_ARG(quint64, _record.id), Q_ARG(const QString&, _region), Q_ARG(quint32, id),
+        Q_ARG(quint64, _user.id), Q_ARG(const QString&, _region), Q_ARG(quint32, id),
         Q_ARG(const Callback&, Callback(_this,
             "continueMovingToZone(quint32,QVariant,QString,quint64)",
             Q_ARG(quint32, sceneId), Q_ARG(const QVariant&, portal))));
@@ -393,7 +378,7 @@ void Session::moveToInstance (quint64 id, quint32 sceneId, const QVariant& porta
 
     // reserve a place in an instance
     QMetaObject::invokeMethod(_app->peerManager(), "reserveInstancePlace",
-        Q_ARG(quint64, _record.id), Q_ARG(quint64, id),
+        Q_ARG(quint64, _user.id), Q_ARG(quint64, id),
         Q_ARG(const Callback&, Callback(_this,
             "continueMovingToZone(quint32,QVariant,QString,quint64)",
             Q_ARG(quint32, sceneId), Q_ARG(const QVariant&, portal))));
@@ -410,7 +395,7 @@ void Session::summonPlayer (const QString& name)
 {
     _app->peerManager()->invokeSession(name, _app->connectionManager(),
         "summon(QString,QString,Callback)", Q_ARG(const QString&, name),
-        Q_ARG(const QString&, _record.name), Q_ARG(const Callback&, Callback(
+        Q_ARG(const QString&, _user.name), Q_ARG(const Callback&, Callback(
             _this, "maybeSummoned(QString,bool)", Q_ARG(const QString&, name))));
 }
 
@@ -433,42 +418,33 @@ void Session::reconnect (const QString& host, quint16 portOffset)
 
 void Session::setSettings (const QString& password, const QString& email, QChar avatar)
 {
-    // set and persist avatar in session record
-    if (_record.avatar != avatar) {
-        _record.avatar = avatar;
-        QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "updateSession",
-            Q_ARG(const SessionRecord&, _record));
-    }
-
-    // if logged on, set and persist in user record
-    if (_user.id != 0) {
-        _user.setPassword(password);
-        _user.email = email;
-        _user.avatar = avatar;
-        QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "updateUser",
-            Q_ARG(const UserRecord&, _user), Q_ARG(const Callback&, Callback()));
-    }
+    // set and persist in user record
+    _user.setPassword(password);
+    _user.email = email;
+    _user.avatar = avatar;
+    QMetaObject::invokeMethod(_app->databaseThread()->userRepository(), "updateUser",
+        Q_ARG(const UserRecord&, _user), Q_ARG(const Callback&, Callback()));
 }
 
 void Session::say (const QString& message, ChatWindow::SpeakMode mode)
 {
     if (mode == ChatWindow::BroadcastMode) {
         _app->peerManager()->invoke(_app->connectionManager(), "broadcast(QString,QString)",
-            Q_ARG(const QString&, _record.name), Q_ARG(const QString&, message));
+            Q_ARG(const QString&, _user.name), Q_ARG(const QString&, message));
         return;
     }
     if (_scene != 0 && _pawn != 0) {
         // replace double with single quotes to prevent spoofing
         QString msg = message;
         msg.replace('\"', '\'');
-        _scene->say(_pawn->position(), _record.name, msg, mode);
+        _scene->say(_pawn->position(), _user.name, msg, mode);
     }
 }
 
 void Session::tell (const QString& recipient, const QString& message)
 {
     _app->peerManager()->invokeSession(recipient, _app->connectionManager(), "tell",
-        Q_ARG(const QString&, _record.name), Q_ARG(const QString&, message),
+        Q_ARG(const QString&, _user.name), Q_ARG(const QString&, message),
         Q_ARG(const QString&, recipient), Q_ARG(const Callback&, Callback(_this,
             "maybeTold(QString,QString,bool)", Q_ARG(const QString&, recipient),
             Q_ARG(const QString&, message))));
@@ -724,12 +700,6 @@ void Session::dispatchKeyReleased (int key, QChar ch, bool numpad)
 void Session::shutdown ()
 {
     close();
-
-    // if requested, log off
-    if (_record.userId != 0 && !_record.stayLoggedIn) {
-        QMetaObject::invokeMethod(_app->databaseThread()->sessionRepository(), "logoffSession",
-            Q_ARG(quint64, _record.id), Q_ARG(const Callback&, Callback()));
-    }
 }
 
 void Session::close ()
@@ -738,13 +708,13 @@ void Session::close ()
 
     // let the connection manager update its mappings
     QMetaObject::invokeMethod(_app->connectionManager(), "sessionClosed",
-        Q_ARG(quint64, _record.id), Q_ARG(const QString&, _record.name));
+        Q_ARG(quint64, _user.id), Q_ARG(const QString&, _user.name));
 
     // remove info on all peers
     _app->peerManager()->invoke(_app->peerManager(), "sessionRemoved(quint64,QString)",
-        Q_ARG(quint64, _record.id), Q_ARG(const QString&, _info.peer));
+        Q_ARG(quint64, _user.id), Q_ARG(const QString&, _info.peer));
 
-    qDebug() << "Session closed." << _record.id << _record.name;
+    qDebug() << "Session closed." << _user.id << _user.name;
 }
 
 void Session::evaluatorExited (const ScriptObjectPointer& result)
@@ -824,14 +794,14 @@ void Session::passwordResetMaybeValidated (const QVariant& result)
 
 void Session::sceneCreated (quint32 id)
 {
-    qDebug() << "Created scene." << _record.name << id;
+    qDebug() << "Created scene." << _user.name << id;
 
     moveToScene(id);
 }
 
 void Session::zoneCreated (quint32 id)
 {
-    qDebug() << "Created zone." << _record.name << id;
+    qDebug() << "Created zone." << _user.name << id;
 
     moveToZone(id);
 }
@@ -913,7 +883,6 @@ void Session::continueMovingToZone (
     if (peer != _app->peerManager()->record().name) {
         qDebug() << "Transferring session." << who() << peer;
         SessionTransfer transfer;
-        transfer.record = _record;
         transfer.user = _user;
         transfer.instanceId = instanceId;
         transfer.sceneId = sceneId;
@@ -992,14 +961,14 @@ void Session::maybeSummoned (const QString& name, bool success)
     }
 }
 
-void Session::loggedOff (const QString& name)
+void Session::loggedOff (const UserRecord& user)
 {
-    // set the name in the session record
-    QString oname = _record.name;
-    _record.name = name;
-
+    qDebug() << "Logged off." << _user.id << _user.name;
+   
+    _user = user;
+    
     // update mappings
-    nameChanged(oname);
+    userChanged();
 
     // force logon if the server isn't open
     if (_app->runtimeConfig()->logonPolicy() != RuntimeConfig::Everyone) {
@@ -1007,16 +976,30 @@ void Session::loggedOff (const QString& name)
     }
 }
 
-void Session::nameChanged (const QString& oldName)
+void Session::userChanged ()
 {
     // let the connection manager update its mappings
-    QMetaObject::invokeMethod(_app->connectionManager(), "sessionNameChanged",
-        Q_ARG(const QString&, oldName), Q_ARG(const QString&, _record.name));
+    QMetaObject::invokeMethod(_app->connectionManager(), "sessionChanged",
+        Q_ARG(quint64, _info.id), Q_ARG(quint64, _user.id),
+        Q_ARG(const QString&, _info.name), Q_ARG(const QString&, _user.name));
 
     // update the info on all peers
-    _info.name = _record.name;
-    _app->peerManager()->invoke(_app->peerManager(), "sessionUpdated(SessionInfo)",
+    _app->peerManager()->invoke(_app->peerManager(), "sessionRemoved(quint64,QString)",
+        Q_ARG(quint64, _info.id), Q_ARG(const QString&, _info.peer));
+    _info.id = _user.id;
+    _info.name = _user.name;
+    _app->peerManager()->invoke(_app->peerManager(), "sessionAdded(SessionInfo)",
         Q_ARG(const SessionInfo&, _info));
+
+    if (_connection) {
+        // set the cookies on the client
+        Connection::setCookieMetaMethod().invoke(_connection.data(),
+            Q_ARG(const QString&, "userId"), Q_ARG(const QString&,
+                QString::number(_user.id, 16).rightJustified(16, '0')));
+        Connection::setCookieMetaMethod().invoke(_connection.data(),
+            Q_ARG(const QString&, "sessionToken"), Q_ARG(const QString&,
+                _user.sessionToken.toHex()));
+    }
 
     // update the window title
     _mainWindow->updateTitle();

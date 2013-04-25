@@ -12,7 +12,6 @@ class PropertyRepository;
 class RuntimeConfig;
 class SceneRepository;
 class ServerApp;
-class SessionRepository;
 class UserRepository;
 
 /**
@@ -53,11 +52,6 @@ public:
      * Returns a pointer to the scene repository.
      */
     SceneRepository* sceneRepository () const { return _sceneRepository; }
-
-    /**
-     * Returns a pointer to the session repository.
-     */
-    SessionRepository* sessionRepository () const { return _sessionRepository; }
 
     /**
      * Returns a pointer to the user repository.
@@ -109,9 +103,6 @@ protected:
 
     /** The scene repository. */
     SceneRepository* _sceneRepository;
-
-    /** The session repository. */
-    SessionRepository* _sessionRepository;
 
     /** The user repository. */
     UserRepository* _userRepository;

@@ -23,7 +23,7 @@ void ActorRepository::init ()
                 "ID int unsigned not null auto_increment primary key,"
                 "NAME varchar(255) not null,"
                 "NAME_LOWER varchar(255) not null,"
-                "CREATOR_ID int unsigned not null,"
+                "CREATOR_ID bigint unsigned not null,"
                 "CREATED datetime not null,"
                 "CLASS varchar(255) not null,"
                 "CHARACTER int not null,"
@@ -38,6 +38,6 @@ void ActorRepository::init ()
 }
 
 void ActorRepository::findActors (
-    const QString& prefix, quint32 creatorId, const Callback& callback)
+    const QString& prefix, quint64 creatorId, const Callback& callback)
 {
 }

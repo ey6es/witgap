@@ -9,7 +9,7 @@
 #include "scene/Scene.h"
 
 Pawn::Pawn (Scene* scene, Session* session, const QPoint& position) :
-    Actor(scene, session->record().avatar.unicode(), session->record().name, position, 2, 1, 3),
+    Actor(scene, session->user().avatar.unicode(), session->user().name, position, 2, 1, 3),
     _session(session),
     _cursor(false)
 {
@@ -94,5 +94,5 @@ void Pawn::sceneChangedUnderneath (int character)
 void Pawn::updateCharacter ()
 {
     setCharacter(_cursor ? (_scene->record().get(_position) | REVERSE_FLAG) :
-        _session->record().avatar.unicode());
+        _session->user().avatar.unicode());
 }

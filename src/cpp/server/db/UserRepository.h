@@ -36,34 +36,38 @@ public:
     UserRepository (ServerApp* app);
 
     /**
-     * Returns a reference to the blocked name expression.
-     */
-    const QRegExp& blockedNameExp () const { return _blockedNameExp; }
-
-    /**
      * Initializes the repository, performing any necessary migrations.
      */
     void init ();
 
     /**
-     * Attempts to insert a new user record.
+     * Validates the specified session token.
      *
-     * @param callback the callback that will be invoked with (quint32) id of the newly inserted
-     * user, or 0 if the name was already taken.
+     * @param callback the callback that will be invoked with the {@link UserRecord} of the user
+     * associated with the session.
      */
-    Q_INVOKABLE void insertUser (
-        quint64 sessionId, const QString& name, const QString& password, const QDate& dob,
-        const QString& email, QChar avatar, const Callback& callback);
+    Q_INVOKABLE void validateSessionToken (
+        quint64 userId, const QByteArray& token, const Callback& callback);
+
+    /**
+     * Creates a new, passwordless user.
+     *
+     * @param callback the callback that will be invoked with the new {@link UserRecord} of the
+     * user associated with the session.
+     */
+    Q_INVOKABLE void createUser (const Callback& callback);
 
     /**
      * Attempts to validate a user logon.
      *
+     * @param orec the current, passwordless user record.
      * @param callback the callback that will be invoked with a QVariant containing either the
      * {@link #LogonError} indicating why the logon was denied, or a {@link UserRecord} containing
      * the user's information if successful.
      */
     Q_INVOKABLE void validateLogon (
-        const QString& name, const QString& password, const Callback& callback);
+        const UserRecord& orec, const QString& name,
+        const QString& password, const Callback& callback);
 
     /**
      * Loads the record for the named user and provides it to the specified callback.
@@ -77,11 +81,6 @@ public:
     Q_INVOKABLE void usernameForEmail (const QString& email, const Callback& callback);
 
     /**
-     * Loads the record for the identified user.
-     */
-    UserRecord loadUser (quint32 id);
-
-    /**
      * Updates a user record.  The callback will receive a bool indicating whether the update was
      * successful (failure may occur due to a username collision).
      */
@@ -90,31 +89,60 @@ public:
     /**
      * Deletes the identified user.
      */
-    Q_INVOKABLE void deleteUser (quint32 id);
+    Q_INVOKABLE void deleteUser (quint64 id);
 
     /**
      * Attempts to insert a password reset record for the identified user.  The callback will
      * receive the reset id and token.
      */
-    Q_INVOKABLE void insertPasswordReset (quint32 userId, const Callback& callback);
+    Q_INVOKABLE void insertPasswordReset (quint64 userId, const Callback& callback);
 
     /**
      * Attempts to validate a password reset.  The callback will receive a QVariant containing
      * either the UserRecord or the error code (as in {@link #validateLogon}).
+     *
+     * @param orec the current, most likely passwordless, user record.
      */
     Q_INVOKABLE void validatePasswordReset (
-        quint32 id, const QByteArray& token, const Callback& callback);
-
-    /**
-     * Helper function for logon methods; validates the logon for the specified user and returns
-     * the result to provide to the callbac.
-     */
-    QVariant validateLogon (const UserRecord& urec);
+        const UserRecord& orec, quint32 id, const QByteArray& token, const Callback& callback);
 
 protected:
 
+    /**
+     * Generates a random name that isn't used by any session/user.
+     */
+    QString uniqueRandomName () const;
+
+    /**
+     * Generates a random name using the loaded Markov chain probabilities.
+     */
+    QString randomName () const;
+
+    /**
+     * Helper function for logon methods; determines whether the described user can log on.
+     */
+    LogonError validateLogon (const UserRecord& urec);
+
+    /**
+     * Helper function for logon functions; deletes the old user if appropriate, updates the
+     * timestamp, invokes the callback.
+     */
+    void logon (const UserRecord& orec, UserRecord& nrec, const Callback& callback);
+
     /** The server application. */
     ServerApp* _app;
+
+    /** The minimum and maximum random name lengths. */
+    static const int MinNameLength = 4, MaxNameLength = 12;
+
+    /** Probabilities for each name length. */
+    double _nameLengths[MaxNameLength - MinNameLength + 1];
+
+    /** The number of states in the name chain (letters plus start/end). */
+    static const int NameChainStates = 26 + 1;
+
+    /** The Markov chain for random name letters. */
+    double _nameChain[NameChainStates][NameChainStates];
 
     /** The expression that matches blocked names. */
     QRegExp _blockedNameExp;
@@ -135,25 +163,13 @@ public:
     Q_DECLARE_FLAGS(Flags, Flag)
 
     /** The user id. */
-    STREAM quint32 id;
+    STREAM quint64 id;
+
+    /** The session token. */
+    STREAM QByteArray sessionToken;
 
     /** The cased username. */
     STREAM QString name;
-
-    /** The password hash. */
-    STREAM QByteArray passwordHash;
-
-    /** The password salt. */
-    STREAM QByteArray passwordSalt;
-
-    /** The user's date of birth. */
-    STREAM QDate dateOfBirth;
-
-    /** The user's email. */
-    STREAM QString email;
-
-    /** The user's flags. */
-    STREAM Flags flags;
 
     /** The user's avatar. */
     STREAM QChar avatar;
@@ -163,6 +179,21 @@ public:
 
     /** The time at which the user was last online. */
     STREAM QDateTime lastOnline;
+
+    /** The password salt. */
+    STREAM QByteArray passwordSalt;
+
+    /** The password hash. */
+    STREAM QByteArray passwordHash;
+
+    /** The user's date of birth. */
+    STREAM QDate dateOfBirth;
+
+    /** The user's email. */
+    STREAM QString email;
+
+    /** The user's flags. */
+    STREAM Flags flags;
 
     /** The zone occupied by the user. */
     STREAM quint32 lastZoneId;
@@ -174,6 +205,11 @@ public:
      * Sets the password hash.
      */
     void setPassword (const QString& password);
+
+    /**
+     * Checks whether the user is logged on (as opposed to an anonymous account).
+     */
+    bool loggedOn () const { return !passwordHash.isEmpty(); }
 
     /**
      * Checks whether the user is at least an insider.
