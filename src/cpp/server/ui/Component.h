@@ -339,9 +339,6 @@ protected:
 
     /** Whether or not the component is visible. */
     bool _visible;
-    
-    /** The cached session. */
-    Session* _session;
 };
 
 /**

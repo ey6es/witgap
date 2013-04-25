@@ -20,7 +20,7 @@ RuntimeConfig::RuntimeConfig (ServerApp* app) :
 
 RuntimeConfig::RuntimeConfig (QObject* parent) :
     QObject(parent),
-    _logonPolicy(AdminsOnly),
+    _logonPolicy(Everyone),
     _introZone(0),
     _introScene(0)
 {

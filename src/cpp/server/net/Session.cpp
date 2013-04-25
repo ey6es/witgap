@@ -549,7 +549,7 @@ void Session::createScene ()
 {
     // insert the scene into the database
     QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "insertScene",
-        Q_ARG(const QString&, tr("Untitled Scene")), Q_ARG(quint32, _user.id),
+        Q_ARG(const QString&, tr("Untitled Scene")), Q_ARG(quint64, _user.id),
         Q_ARG(const Callback&, Callback(_this, "sceneCreated(quint32)")));
 }
 
@@ -557,7 +557,7 @@ void Session::createZone ()
 {
     // insert the zone into the database
     QMetaObject::invokeMethod(_app->databaseThread()->sceneRepository(), "insertZone",
-        Q_ARG(const QString&, tr("Untitled Zone")), Q_ARG(quint32, _user.id),
+        Q_ARG(const QString&, tr("Untitled Zone")), Q_ARG(quint64, _user.id),
         Q_ARG(const Callback&, Callback(_this, "zoneCreated(quint32)")));
 }
 

@@ -117,7 +117,7 @@ void UserRepository::validateSessionToken (
 
     // try to update the timestamp if we were passed what looks like a valid id
     if (userId != 0) {
-        query.prepare("update USERS set LAST_ONLINE = ? where ID = ? and TOKEN = ?");
+        query.prepare("update USERS set LAST_ONLINE = ? where ID = ? and SESSION_TOKEN = ?");
         query.addBindValue(now);
         query.addBindValue(userId);
         query.addBindValue(token);
@@ -391,6 +391,11 @@ UserRepository::LogonError UserRepository::validateLogon (const UserRecord& urec
         return Banned;
     }
 
+    // guests can always "log on"
+    if (!urec.loggedOn()) {
+        return NoError;
+    }    
+    
     // make sure they're allowed on at present
     RuntimeConfig::LogonPolicy policy = _app->databaseThread()->runtimeConfig()->logonPolicy();
     if (policy == RuntimeConfig::AdminsOnly && !urec.flags.testFlag(UserRecord::Admin) ||

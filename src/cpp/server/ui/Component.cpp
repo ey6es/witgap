@@ -22,8 +22,7 @@ Component::Component (QObject* parent) :
     _valid(false),
     _focused(false),
     _enabled(true),
-    _visible(true),
-    _session(0)
+    _visible(true)
 {
     // connect slots
     connect(this, SIGNAL(boundsChanged()), SLOT(invalidate()));
@@ -49,13 +48,10 @@ Window* Component::window ()
 
 Session* Component::session ()
 {
-    if (_session != 0) {
-        return _session;
-    }
     for (QObject* obj = parent(); obj != 0; obj = obj->parent()) {
         Session* session = qobject_cast<Session*>(obj);
         if (session != 0) {
-            return _session = session;
+            return session;
         }
     }
     return 0;

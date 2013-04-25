@@ -851,77 +851,77 @@
 <context>
     <name>Session</name>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="226"/>
-        <location filename="../src/cpp/server/net/Session.cpp" line="242"/>
-        <location filename="../src/cpp/server/net/Session.cpp" line="289"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="227"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="243"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="290"/>
         <source>OK</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="239"/>
-        <location filename="../src/cpp/server/net/Session.cpp" line="286"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="240"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="287"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="340"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="341"/>
         <source>Not in an instance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="509"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="510"/>
         <source>Please enter a brief bug description.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="531"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="532"/>
         <source>Are you sure you want to log off?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="552"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="553"/>
         <source>Untitled Scene</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="560"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="561"/>
         <source>Untitled Zone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="812"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="813"/>
         <source>No such scene.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="822"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="823"/>
         <source>Failed to resolve scene.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="859"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="860"/>
         <source>No such zone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="869"/>
-        <location filename="../src/cpp/server/net/Session.cpp" line="954"/>
-        <location filename="../src/cpp/server/net/Session.cpp" line="960"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="870"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="955"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="961"/>
         <source>There is no one online named %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="873"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="874"/>
         <source>%1 is not in an instance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="909"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="910"/>
         <source>No such actor.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/cpp/server/net/Session.cpp" line="953"/>
+        <location filename="../src/cpp/server/net/Session.cpp" line="954"/>
         <source>You tell %1, &quot;%2&quot;</source>
         <translation type="unfinished"></translation>
     </message>
