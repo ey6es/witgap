@@ -3,7 +3,10 @@
 
 #include <QTranslator>
 
+#include "ServerApp.h"
 #include "admin/GenerateInvitesDialog.h"
+#include "db/DatabaseThread.h"
+#include "db/UserRepository.h"
 #include "net/Session.h"
 #include "ui/Border.h"
 #include "ui/Button.h"
@@ -50,5 +53,18 @@ GenerateInvitesDialog::GenerateInvitesDialog (Session* parent) :
 
 void GenerateInvitesDialog::generate ()
 {
+    // send the request off to the database
+    int flags = (_admin->selected() ? UserRecord::Admin : 0) |
+        (_insider->selected() ? UserRecord::Insider : 0);
+    QMetaObject::invokeMethod(
+        session()->app()->databaseThread()->userRepository(), "insertInvite",
+        Q_ARG(const QString&, _description->text()), Q_ARG(int, flags),
+        Q_ARG(int, _count->text().toInt()), Q_ARG(const Callback&,
+            Callback(_this, "showInviteUrl(QString)")));
+}
+
+void GenerateInvitesDialog::showInviteUrl (const QString& url)
+{
+    session()->showInfoDialog(tr("Invite URL: %1").arg(url));
     deleteLater();
 }

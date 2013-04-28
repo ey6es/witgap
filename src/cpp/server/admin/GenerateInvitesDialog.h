@@ -33,6 +33,11 @@ protected slots:
     void generate (); 
    
 protected:
+   
+    /**
+     * Displays the invite URL.
+     */
+    Q_INVOKABLE void showInviteUrl (const QString& url);
     
     /** The description field. */
     TextField* _description;

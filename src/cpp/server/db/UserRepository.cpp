@@ -107,7 +107,7 @@ void UserRepository::init ()
         
         // insert the initial admin invite
         insertInvite("Bootstrap admin invite.", UserRecord::Admin, 1, Callback(this,
-            "reportBootstrapInvite(quint32,QByteArray)"));
+            "reportBootstrapInvite(QString)"));
     }
 }
 
@@ -266,14 +266,9 @@ void UserRepository::loadUser (const QString& name, const Callback& callback)
     callback.invoke(Q_ARG(const UserRecord&, loadUserRecord("NAME_LOWER", name.toLower())));
 }
 
-void UserRepository::usernameForEmail (const QString& email, const Callback& callback)
+void UserRepository::loadUserByEmail (const QString& email, const Callback& callback)
 {
-    QSqlQuery query;
-    query.prepare("select NAME from USERS where EMAIL = ?");
-    query.addBindValue(email.toLower());
-    query.exec();
-
-    callback.invoke(Q_ARG(const QString&, query.next() ? query.value(0).toString() : ""));
+    callback.invoke(Q_ARG(const UserRecord&, loadUserRecord("EMAIL", email.toLower())));
 }
 
 void UserRepository::updateUser (const UserRecord& urec, const Callback& callback)
@@ -318,8 +313,9 @@ void UserRepository::insertPasswordReset (quint64 userId, const Callback& callba
     query.addBindValue(QDateTime::currentDateTime());
     query.exec();
 
-    callback.invoke(Q_ARG(quint32, query.lastInsertId().toUInt()),
-        Q_ARG(const QByteArray&, token));
+    QString url = _app->clientUrl() + "?resetId=" +
+        QString::number(query.lastInsertId().toUInt()) + "&resetToken=" + token.toHex();
+    callback.invoke(Q_ARG(const QString&, url));
 }
 
 void UserRepository::validatePasswordReset (
@@ -371,8 +367,9 @@ void UserRepository::insertInvite (const QString& description, int flags,
     query.addBindValue(QDateTime::currentDateTime());
     query.exec();
 
-    callback.invoke(Q_ARG(quint32, query.lastInsertId().toUInt()),
-        Q_ARG(const QByteArray&, token));
+    QString url = _app->clientUrl() + "?inviteId=" +
+        QString::number(query.lastInsertId().toUInt()) + "&inviteToken=" + token.toHex();
+    callback.invoke(Q_ARG(const QString&, url));
 }
 
 void UserRepository::validateInvite (quint32 id, const QByteArray& token, const Callback& callback)
@@ -385,10 +382,9 @@ void UserRepository::validateInvite (quint32 id, const QByteArray& token, const 
     callback.invoke(Q_ARG(bool, query.value(0).toUInt() > 0));
 }
 
-void UserRepository::reportBootstrapInvite (quint32 id, const QByteArray& token)
+void UserRepository::reportBootstrapInvite (const QString& url)
 {
-    qDebug() << "Bootstrap admin invite created." << (_app->clientUrl() + "?inviteId=" +
-        QString::number(id) + "&inviteToken=" + token.toHex());
+    qDebug() << "Bootstrap admin invite created." << url;
 }
 
 QString UserRepository::uniqueRandomName () const

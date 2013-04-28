@@ -773,8 +773,9 @@ void Session::setConnection (const SharedConnectionPointer& connection)
     if (resetId != 0) {
         QByteArray token = QByteArray::fromHex(conn->query().value("resetToken", "").toAscii());
         QMetaObject::invokeMethod(_app->databaseThread()->userRepository(),
-            "validatePasswordReset", Q_ARG(quint32, resetId), Q_ARG(const QByteArray&, token),
-            Q_ARG(const Callback&, Callback(_this, "passwordResetMaybeValidated(QVariant)")));
+            "validatePasswordReset", Q_ARG(const UserRecord&, _user), Q_ARG(quint32, resetId),
+            Q_ARG(const QByteArray&, token), Q_ARG(const Callback&, Callback(
+                _this, "passwordResetMaybeValidated(QVariant)")));
     }
     
     // ...or an invite redemption request

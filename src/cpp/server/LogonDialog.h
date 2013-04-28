@@ -88,12 +88,12 @@ protected:
     /**
      * Sends a username email if the provided address matches one in the database.
      */
-    Q_INVOKABLE void maybeSendUsernameEmail (const QString& email, const QString& username);
+    Q_INVOKABLE void maybeSendUsernameEmail (const UserRecord& urec);
 
     /**
-     * Sends a password email if the provided username matches one in the database.
+     * Sends a password email if the provided address matches one in the database.
      */
-    Q_INVOKABLE void maybeSendPasswordEmail (const QString& username);
+    Q_INVOKABLE void maybeSendPasswordEmail (const QString& email);
 
     /**
      * Sends a password email if the user record is valid and contains an email address.
@@ -103,8 +103,7 @@ protected:
     /**
      * Sends the password email.
      */
-    Q_INVOKABLE void sendPasswordEmail (
-        const QString& email, quint32 resetId, const QByteArray& resetToken);
+    Q_INVOKABLE void sendPasswordEmail (const QString& email, const QString& url);
 
     /**
      * Called to report the result of attempting to send the email.

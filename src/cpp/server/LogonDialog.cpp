@@ -188,10 +188,10 @@ void LogonDialog::forgotUsername ()
 
 void LogonDialog::forgotPassword ()
 {
-    session()->showInputDialog(tr("Enter your username.  If it has an email on record, we'll "
-        "send a message with a link allowing you to reset your password."), Callback(_this,
+    session()->showInputDialog(tr("Enter your email address.  If we have it on record, we'll send "
+        "a message with a link allowing you to reset your password."), Callback(_this,
             "maybeSendPasswordEmail(QString)"), "", "", "",
-            new RegExpDocument(PartialUsernameExp, "", MaxUsernameLength), FullUsernameExp);
+        new RegExpDocument(PartialEmailExp), FullEmailExp);
 }
 
 void LogonDialog::userMaybeUpdated (const UserRecord& user, bool success)
@@ -239,42 +239,38 @@ void LogonDialog::maybeSendUsernameEmail (const QString& email)
 {
     // look up the username
     QMetaObject::invokeMethod(
-        session()->app()->databaseThread()->userRepository(), "usernameForEmail",
+        session()->app()->databaseThread()->userRepository(), "loadUserByEmail",
         Q_ARG(const QString&, email), Q_ARG(const Callback&, Callback(_this,
-            "maybeSendUsernameEmail(QString,QString)", Q_ARG(const QString&, email))));
+            "maybeSendUsernameEmail(UserRecord)")));
 }
 
-void LogonDialog::maybeSendUsernameEmail (const QString& email, const QString& username)
+void LogonDialog::maybeSendUsernameEmail (const UserRecord& urec)
 {
-    if (username.isEmpty()) {
+    if (urec.id == 0) {
         flashStatus(tr("Sorry, that email was not in our database."));
         return;
     }
-    qDebug() << "Sending username reminder email." << username << email;
+    qDebug() << "Sending username reminder email." << urec.name << urec.email;
 
     // send off the email
-    session()->app()->sendMail(email, tr("Witgap username reminder"),
-        tr("Your username is %1.").arg(username),
-        Callback(_this, "emailMaybeSent(QString,QString)", Q_ARG(const QString&, email)));
+    session()->app()->sendMail(urec.email, tr("Witgap username reminder"),
+        tr("Your username is %1.").arg(urec.name),
+        Callback(_this, "emailMaybeSent(QString,QString)", Q_ARG(const QString&, urec.email)));
 }
 
-void LogonDialog::maybeSendPasswordEmail (const QString& username)
+void LogonDialog::maybeSendPasswordEmail (const QString& email)
 {
     // look up the user record
     QMetaObject::invokeMethod(
-        session()->app()->databaseThread()->userRepository(), "loadUser",
-        Q_ARG(const QString&, username), Q_ARG(const Callback&, Callback(_this,
+        session()->app()->databaseThread()->userRepository(), "loadUserByEmail",
+        Q_ARG(const QString&, email), Q_ARG(const Callback&, Callback(_this,
             "maybeSendPasswordEmail(UserRecord)")));
 }
 
 void LogonDialog::maybeSendPasswordEmail (const UserRecord& urec)
 {
     if (urec.id == 0) {
-        flashStatus(tr("No account exists with that username."));
-        return;
-
-    } else if (urec.email.isEmpty()) {
-        flashStatus(tr("There is no email address associated with that account."));
+        flashStatus(tr("Sorry, that email was not in our database."));
         return;
     }
     qDebug() << "Inserting password reset." << urec.name << urec.email;
@@ -283,16 +279,14 @@ void LogonDialog::maybeSendPasswordEmail (const UserRecord& urec)
     QMetaObject::invokeMethod(
         session()->app()->databaseThread()->userRepository(), "insertPasswordReset",
         Q_ARG(quint64, urec.id), Q_ARG(const Callback&, Callback(_this,
-            "sendPasswordEmail(QString,quint32,QByteArray)", Q_ARG(const QString&, urec.email))));
+            "sendPasswordEmail(QString,QString)", Q_ARG(const QString&, urec.email))));
 }
 
-void LogonDialog::sendPasswordEmail (
-    const QString& email, quint32 resetId, const QByteArray& resetToken)
+void LogonDialog::sendPasswordEmail (const QString& email, const QString& url)
 {
     ServerApp* app = session()->app();
     app->sendMail(email, tr("Witgap password reset"),
-        tr("To reset your password, visit %1?resetId=%2&resetToken=%3").arg(
-            app->clientUrl(), QString::number(resetId), resetToken.toHex()),
+        tr("To reset your password, visit %1").arg(url),
         Callback(_this, "emailMaybeSent(QString,QString)", Q_ARG(const QString&, email)));
 }
 

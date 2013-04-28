@@ -75,10 +75,10 @@ public:
     Q_INVOKABLE void loadUser (const QString& name, const Callback& callback);
 
     /**
-     * Attempts to find the username corresponding to the specified email.  Returns an empty string
-     * if not found.
+     * Loads the record for the user with the supplied address and provides it to the specified
+     * callback.
      */
-    Q_INVOKABLE void usernameForEmail (const QString& email, const Callback& callback);
+    Q_INVOKABLE void loadUserByEmail (const QString& email, const Callback& callback);
 
     /**
      * Updates a user record.  The callback will receive a bool indicating whether the update was
@@ -93,7 +93,7 @@ public:
 
     /**
      * Attempts to insert a password reset record for the identified user.  The callback will
-     * receive the reset id and token.
+     * receive the reset URL as a string.
      */
     Q_INVOKABLE void insertPasswordReset (quint64 userId, const Callback& callback);
 
@@ -107,7 +107,7 @@ public:
         const UserRecord& orec, quint32 id, const QByteArray& token, const Callback& callback);
 
     /**
-     * Inserts an invite.  The callback will receive the invite id and token.
+     * Inserts an invite.  The callback will receive the invite URL as a string.
      */
     Q_INVOKABLE void insertInvite (const QString& description, int flags,
         int count, const Callback& callback);
@@ -124,7 +124,7 @@ protected:
     /**
      * Logs a message with the initial admin bootstrap invite URL.
      */
-    Q_INVOKABLE void reportBootstrapInvite (quint32 id, const QByteArray& token);
+    Q_INVOKABLE void reportBootstrapInvite (const QString& url);
 
     /**
      * Generates a random name that isn't used by any session/user.
