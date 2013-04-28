@@ -91,6 +91,24 @@ void UserRepository::init ()
                 "index (CREATED),"
                 "index (USER_ID))");
     }
+    
+    if (!database.tables().contains("INVITES")) {
+        qDebug() << "Creating INVITES table.";
+        query.exec(
+            "create table INVITES ("
+                "ID int unsigned not null auto_increment primary key,"
+                "TOKEN binary(16) not null,"
+                "DESCRIPTION varchar(255) not null,"
+                "FLAGS int unsigned not null,"
+                "TOTAL int unsigned not null,"
+                "REDEEMED int unsigned not null,"
+                "CREATED datetime not null,"
+                "index (CREATED))");
+        
+        // insert the initial admin invite
+        insertInvite("Bootstrap admin invite.", UserRecord::Admin, 1, Callback(this,
+            "reportBootstrapInvite(quint32,QByteArray)"));
+    }
 }
 
 /**
@@ -337,6 +355,40 @@ void UserRepository::validatePasswordReset (
 
     // perform the logon
     logon(orec, nrec, callback);
+}
+
+void UserRepository::insertInvite (const QString& description, int flags,
+    int count, const Callback& callback)
+{
+    QSqlQuery query;
+    query.prepare("insert into INVITES (TOKEN, DESCRIPTION, FLAGS, TOTAL, CREATED) "
+        "values (?, ?, ?, ?, ?)");
+    QByteArray token = generateToken(16);
+    query.addBindValue(token);
+    query.addBindValue(description);
+    query.addBindValue(flags);
+    query.addBindValue(count);
+    query.addBindValue(QDateTime::currentDateTime());
+    query.exec();
+
+    callback.invoke(Q_ARG(quint32, query.lastInsertId().toUInt()),
+        Q_ARG(const QByteArray&, token));
+}
+
+void UserRepository::validateInvite (quint32 id, const QByteArray& token, const Callback& callback)
+{
+    QSqlQuery query;
+    query.prepare("select count(*) from INVITES where ID = ? and TOKEN = ? and REDEEMED < TOTAL");
+    query.exec();
+    query.next();
+    
+    callback.invoke(Q_ARG(bool, query.value(0).toUInt() > 0));
+}
+
+void UserRepository::reportBootstrapInvite (quint32 id, const QByteArray& token)
+{
+    qDebug() << "Bootstrap admin invite created." << (_app->clientUrl() + "?inviteId=" +
+        QString::number(id) + "&inviteToken=" + token.toHex());
 }
 
 QString UserRepository::uniqueRandomName () const

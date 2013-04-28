@@ -2,8 +2,6 @@
 Things to do, in no particular order:
 
 Invite system:
-- Invite codes with counts, flags (insider, etc.)
-- Text field in invite (e-mail address for personal invites)
 - See how many accounts created
 - Create: generic with N, list of e-mails
 
@@ -13,6 +11,7 @@ Script:
 - Hashtables
 - Ports
 
+Fix right-aligned text fields
 Multi-line text editing
 
 General mail system:
@@ -60,8 +59,3 @@ Scene persistence
 - Manual save?
 - Mark instance as definitive, save definitive instances on exit?
 - Broadcast changes to all instances?
-
-Anonymous users should be users, not just sessions
-- Create user on first connection
--- Logon: delete user
--- Create account: convert user

@@ -441,6 +441,11 @@ protected:
     Q_INVOKABLE void passwordResetMaybeValidated (const QVariant& result);
 
     /**
+     * Reports back with the result of an invite validation attempt.
+     */
+    Q_INVOKABLE void inviteMaybeValidated (quint32 inviteId, bool success);
+    
+    /**
      * Reports back with id of the newly created scene.
      */
     Q_INVOKABLE void sceneCreated (quint32 id);

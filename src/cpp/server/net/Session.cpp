@@ -776,6 +776,16 @@ void Session::setConnection (const SharedConnectionPointer& connection)
             "validatePasswordReset", Q_ARG(quint32, resetId), Q_ARG(const QByteArray&, token),
             Q_ARG(const Callback&, Callback(_this, "passwordResetMaybeValidated(QVariant)")));
     }
+    
+    // ...or an invite redemption request
+    quint32 inviteId = conn->query().value("inviteId", "0").toUInt();
+    if (inviteId != 0) {
+        QByteArray token = QByteArray::fromHex(conn->query().value("inviteToken", "").toAscii());
+        QMetaObject::invokeMethod(_app->databaseThread()->userRepository(),
+            "validateInvite", Q_ARG(quint32, inviteId), Q_ARG(const QByteArray&, token),
+            Q_ARG(const Callback&, Callback(_this, "inviteMaybeValidated(quint32,bool)",
+                Q_ARG(quint32, inviteId))));
+    }
 }
 
 void Session::passwordResetMaybeValidated (const QVariant& result)
@@ -790,6 +800,13 @@ void Session::passwordResetMaybeValidated (const QVariant& result)
 
     // open the settings dialog in order to change the password
     new SettingsDialog(this);
+}
+
+void Session::inviteMaybeValidated (quint32 inviteId, bool success)
+{
+    if (!success) {
+        return;
+    }
 }
 
 void Session::sceneCreated (quint32 id)

@@ -106,7 +106,25 @@ public:
     Q_INVOKABLE void validatePasswordReset (
         const UserRecord& orec, quint32 id, const QByteArray& token, const Callback& callback);
 
+    /**
+     * Inserts an invite.  The callback will receive the invite id and token.
+     */
+    Q_INVOKABLE void insertInvite (const QString& description, int flags,
+        int count, const Callback& callback);
+
+    /**
+     * Attempts to validate an invite.  The callback will receive a boolean indicating validity
+     * (or lack thereof).
+     */
+    Q_INVOKABLE void validateInvite (
+        quint32 id, const QByteArray& token, const Callback& callback);
+
 protected:
+
+    /**
+     * Logs a message with the initial admin bootstrap invite URL.
+     */
+    Q_INVOKABLE void reportBootstrapInvite (quint32 id, const QByteArray& token);
 
     /**
      * Generates a random name that isn't used by any session/user.

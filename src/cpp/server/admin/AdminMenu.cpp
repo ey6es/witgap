@@ -5,6 +5,7 @@
 
 #include "admin/AdminMenu.h"
 #include "admin/EditUserDialog.h"
+#include "admin/GenerateInvitesDialog.h"
 #include "admin/RuntimeConfigDialog.h"
 #include "net/Session.h"
 
@@ -16,6 +17,8 @@ AdminMenu::AdminMenu (Session* parent, int deleteOnReleaseKey) :
 {
     addButton(tr("Edit &User..."), &EditUserDialog::staticMetaObject, Q_ARG(Session*, parent));
     addButton(tr("Runtime &Config..."), &RuntimeConfigDialog::staticMetaObject,
+        Q_ARG(Session*, parent));
+    addButton(tr("Generate &Invites..."), &GenerateInvitesDialog::staticMetaObject,
         Q_ARG(Session*, parent));
 
     pack();
