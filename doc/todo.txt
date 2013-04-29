@@ -13,6 +13,7 @@ Script:
 - Hashtables
 - Ports
 
+Cut and paste (?)
 Multi-line text editing
 
 General mail system:

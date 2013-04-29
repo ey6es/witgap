@@ -386,7 +386,7 @@ QString TextField::insert (int idx, const QString& text, bool cursorAfter)
     int opos = _cursorPos;
     _cursorPos = idx + (cursorAfter ? delta : 0);
     if (!updateDocumentPos()) {
-        if (_rightAlign) {
+        if (_rightAlign && olen + delta < textAreaWidth()) {
             dirtyRest(qMax(idx + delta - 1, opos + delta), 0);
         } else {
             dirtyRest(qMin(opos, idx), 0);
@@ -408,7 +408,7 @@ void TextField::remove (int idx, int length)
     int opos = _cursorPos;
     _document->remove(_cursorPos = idx, length);
     if (!updateDocumentPos()) {
-        if (_rightAlign) {
+        if (_rightAlign && _document->text().length() < textAreaWidth()) {
             dirtyRest(qMax(idx, opos - length), length);
         } else {
             dirtyRest(qMin(opos, _cursorPos), length);
