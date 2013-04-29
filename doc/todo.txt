@@ -1,6 +1,8 @@
 
 Things to do, in no particular order:
 
+Close logon dialog on password reset, invite (?)
+
 Invite system:
 - See how many accounts created
 - Create: generic with N, list of e-mails
@@ -11,7 +13,6 @@ Script:
 - Hashtables
 - Ports
 
-Fix right-aligned text fields
 Multi-line text editing
 
 General mail system:

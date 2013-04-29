@@ -386,7 +386,11 @@ QString TextField::insert (int idx, const QString& text, bool cursorAfter)
     int opos = _cursorPos;
     _cursorPos = idx + (cursorAfter ? delta : 0);
     if (!updateDocumentPos()) {
-        dirtyRest(qMin(opos, idx), 0);
+        if (_rightAlign) {
+            dirtyRest(qMax(idx + delta - 1, opos + delta), 0);
+        } else {
+            dirtyRest(qMin(opos, idx), 0);
+        }
     }
     emit textChanged();
     if (_document->full()) {
@@ -404,7 +408,11 @@ void TextField::remove (int idx, int length)
     int opos = _cursorPos;
     _document->remove(_cursorPos = idx, length);
     if (!updateDocumentPos()) {
-        dirtyRest(qMin(opos, _cursorPos), length);
+        if (_rightAlign) {
+            dirtyRest(qMax(idx, opos - length), length);
+        } else {
+            dirtyRest(qMin(opos, _cursorPos), length);
+        }
     }
     maybeShowMatch();
     emit textChanged();
@@ -492,7 +500,7 @@ void TextField::dirtyRest (int idx, int deleted)
     int dlength = _document->text().length();
     int width = textAreaWidth();
     if (_rightAlign && dlength < width) {
-        dirty(-1, idx + deleted + 1);
+        dirty(-deleted, idx + deleted + 1);
     } else {
         dirty(idx, qMin(dlength - idx + deleted + 1, width - idx + _documentPos));
     }
@@ -503,7 +511,7 @@ void TextField::dirty (int idx, int length)
     int dlength = _document->text().length();
     int width = textAreaWidth();
     if (_rightAlign && dlength < width) {
-        Component::dirty(QRect(_margins.left() + width - dlength + idx,
+        Component::dirty(QRect(_margins.left() + 1 + width - (_focused ? 1 : 0) - dlength + idx,
             _margins.top(), length, 1));
     } else {
         Component::dirty(QRect(_margins.left() + 1 + idx - _documentPos,
