@@ -540,11 +540,13 @@ void CardLayout::apply (Container* container) const
         if (!comp->visible()) {
             continue;
         }
+        comp->setEnabled(true);
         comp->setBounds(container->innerRect());
         
         for (--ii; ii >= 0; ii--) {
             comp = container->children().at(ii);
             if (comp->visible()) {
+                comp->setEnabled(false);
                 comp->setBounds(QRect());
             }
         }
