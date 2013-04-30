@@ -213,4 +213,23 @@ public:
     virtual void apply (Container* container) const;
 };
 
+/**
+ * Displays only one child at a time.
+ */
+class CardLayout : public Layout
+{
+public:
+    
+    /**
+     * Computes the preferred size of the specified container.
+     */
+    virtual QSize computePreferredSize (
+        const Container* container, int whint, int hhint) const;
+
+    /**
+     * Applies the layout to the specified container.
+     */
+    virtual void apply (Container* container) const;
+};
+
 #endif // LAYOUT

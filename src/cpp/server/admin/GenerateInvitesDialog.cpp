@@ -27,8 +27,7 @@ GenerateInvitesDialog::GenerateInvitesDialog (Session* parent) :
     setBorder(new FrameBorder());
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
     
-    
-    addChild(_tabs = new TabbedPane(Qt::Vertical));
+    addChild(_tabs = new TabbedPane(Qt::Horizontal));
     
     Container* link = new Container(new TableLayout(2));
     static_cast<TableLayout*>(link->layout())->stretchColumns().insert(1);

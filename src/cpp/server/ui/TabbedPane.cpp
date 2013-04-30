@@ -18,6 +18,7 @@ TabbedPane::TabbedPane (Qt::Orientation orientation, QObject* parent) :
             BoxLayout::HStretch | BoxLayout::VStretch, Qt::AlignCenter, 1));
         addChild(_buttons = BoxLayout::createVBox(Qt::AlignTop), BoxLayout::Fixed);
     }
+    addChild(_tabs = new Container(new CardLayout()));
 }
 
 void TabbedPane::addTab (const QString& title, Component* comp)
@@ -28,14 +29,12 @@ void TabbedPane::addTab (const QString& title, Component* comp)
     connect(button, SIGNAL(pressed()), SLOT(switchToSenderTab()));
     _buttons->addChild(button);
     
-    if (_buttons->visibleChildCount() == 1) {
-        addChild(comp);
-    }
+    _tabs->addChild(comp);
 }
 
 void TabbedPane::switchToSenderTab ()
 {
     Component* comp = static_cast<Component*>(sender()->property("component").value<QObject*>());
-    removeChildAt(1, false);
-    addChild(comp);
+    _tabs->removeChild(comp, false);
+    _tabs->addChild(comp);
 }

@@ -518,3 +518,36 @@ void BorderLayout::apply (Container* container) const
         comps[Center]->setBounds(QRect(x + wwidth, y + nheight, width - wwidth - ewidth, mheight));
     }
 }
+
+QSize CardLayout::computePreferredSize (const Container* container, int whint, int hhint) const
+{
+    int maxWidth = 0, maxHeight = 0;
+    foreach (Component* comp, container->children()) {
+        if (!comp->visible()) {
+            continue;
+        }
+        QSize size = comp->preferredSize(whint, hhint);
+        maxWidth = qMax(maxWidth, size.width());
+        maxHeight = qMax(maxHeight, size.height());
+    }
+    return QSize(qMax(maxWidth, whint), qMax(maxHeight, hhint));
+}
+
+void CardLayout::apply (Container* container) const
+{
+    for (int ii = container->children().size() - 1; ii >= 0; ii--) {
+        Component* comp = container->children().at(ii);
+        if (!comp->visible()) {
+            continue;
+        }
+        comp->setBounds(container->innerRect());
+        
+        for (--ii; ii >= 0; ii--) {
+            comp = container->children().at(ii);
+            if (comp->visible()) {
+                comp->setBounds(QRect());
+            }
+        }
+        return;
+    }
+}

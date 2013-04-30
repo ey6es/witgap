@@ -36,6 +36,9 @@ protected:
 
     /** Holds the tab buttons. */
     Container* _buttons;
+    
+    /** Holds the tabs. */
+    Container* _tabs;
 };
 
 #endif // TABBED_PANE
