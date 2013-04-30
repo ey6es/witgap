@@ -76,6 +76,10 @@ void GenerateInvitesDialog::generate ()
 
 void GenerateInvitesDialog::showInviteUrl (const QString& url)
 {
-    session()->showInfoDialog(tr("Invite URL: %1").arg(url));
+    Connection* connection = session()->connection();
+    if (connection != 0) {
+        Connection::evaluateMetaMethod().invoke(connection, Q_ARG(const QString&,
+            "window.prompt('Invite URL:', '" + url + "')"));
+    }    
     deleteLater();
 }
