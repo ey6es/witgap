@@ -15,6 +15,7 @@ Script:
 
 Cut and paste (?)
 Multi-line text editing
+Tabs (?)
 
 General mail system:
 - Friend invites, guild invites, standard messages, etc.

@@ -9,6 +9,7 @@
 class Button;
 class CheckBox;
 class Session;
+class TabbedPane;
 class TextField;
 
 /**
@@ -41,6 +42,9 @@ protected:
     
     /** The description field. */
     TextField* _description;
+    
+    /** The tabs containing our bits. */
+    TabbedPane* _tabs;
     
     /** The count field. */
     TextField* _count;

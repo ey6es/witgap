@@ -12,6 +12,7 @@
 #include "ui/Button.h"
 #include "ui/Label.h"
 #include "ui/Layout.h"
+#include "ui/TabbedPane.h"
 #include "ui/TextField.h"
 
 // translate through the session
@@ -26,14 +27,25 @@ GenerateInvitesDialog::GenerateInvitesDialog (Session* parent) :
     setBorder(new FrameBorder());
     setLayout(new BoxLayout(Qt::Vertical, BoxLayout::HStretch, Qt::AlignCenter, 1));
     
-    TableLayout* layout = new TableLayout(2);
-    layout->stretchColumns().insert(1);
-    Container* cont = new Container(layout);
+    
+    addChild(_tabs = new TabbedPane(Qt::Vertical));
+    
+    Container* link = new Container(new TableLayout(2));
+    static_cast<TableLayout*>(link->layout())->stretchColumns().insert(1);
+    _tabs->addTab(tr("Link"), link);
+    link->addChild(new Label(tr("Description:")));
+    link->addChild(_description = new TextField());
+    link->addChild(new Label(tr("Count:")));
+    link->addChild(_count = new TextField(20, new RegExpDocument(UIntExp, "1", 10), true));
+    
+    Container* emails = new Container(new TableLayout(2));
+    static_cast<TableLayout*>(emails->layout())->stretchColumns().insert(1);
+    _tabs->addTab(tr("Emails"), emails);
+    
+    Container* cont = new Container(new TableLayout(2));
+    static_cast<TableLayout*>(cont->layout())->stretchColumns().insert(1);
     addChild(cont);
-    cont->addChild(new Label(tr("Description:")));
-    cont->addChild(_description = new TextField());
-    cont->addChild(new Label(tr("Count:")));
-    cont->addChild(_count = new TextField(20, new RegExpDocument(UIntExp, "1", 10), true));
+    
     cont->addChild(new Label(tr("Admin:")));
     cont->addChild(_admin = new CheckBox());
     cont->addChild(new Label(tr("Insider:")));
