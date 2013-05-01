@@ -6,7 +6,8 @@
 #include "ui/TabbedPane.h"
 
 TabbedPane::TabbedPane (Qt::Orientation orientation, QObject* parent) :
-    Container(0, parent)
+    Container(0, parent),
+    _group(new ButtonGroup(this))
 {
     if (orientation == Qt::Vertical) {
         setLayout(new BoxLayout(Qt::Vertical,
@@ -23,13 +24,13 @@ TabbedPane::TabbedPane (Qt::Orientation orientation, QObject* parent) :
 
 void TabbedPane::addTab (const QString& title, Component* comp)
 {
-    Button* button = new Button(title);
+    ToggleButton* button = new ToggleButton(title);
     button->setProperty("component", QVariant::fromValue<QObject*>(comp));
     comp->setParent(this);
     connect(button, SIGNAL(pressed()), SLOT(switchToSenderTab()));
     _buttons->addChild(button);
-    
-    _tabs->addChild(comp);
+    _tabs->addChild(0, comp);
+    _group->add(button);
 }
 
 void TabbedPane::switchToSenderTab ()

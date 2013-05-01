@@ -96,9 +96,52 @@ protected:
 };
 
 /**
+ * A toggle button.
+ */
+class ToggleButton : public Button
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Initializes the button.
+     */
+    ToggleButton (const QString& label = QString(), bool selected = false,
+        Qt::Alignment alignment = Qt::AlignLeft, QObject* parent = 0);
+    
+    /**
+     * Selects or deselects the button.
+     */
+    virtual void setSelected (bool selected);
+
+    /**
+     * Checks whether the button is selected.
+     */
+    bool selected () const { return _selected; }
+
+public slots:
+
+    /**
+     * Toggles the selected state.
+     */
+    void toggleSelected () { setSelected(!_selected); }
+    
+protected:
+
+    /**
+     * Draws the component.
+     */
+    virtual void draw (DrawContext* ctx);
+
+    /** Whether or not the button is selected. */
+    bool _selected;
+};
+
+/**
  * A check box.
  */
-class CheckBox : public Button
+class CheckBox : public ToggleButton
 {
     Q_OBJECT
 
@@ -113,19 +156,7 @@ public:
     /**
      * Selects or deselects the box.
      */
-    void setSelected (bool selected);
-
-    /**
-     * Checks whether the box is selected.
-     */
-    bool selected () const { return _selected; }
-
-public slots:
-
-    /**
-     * Toggles the selected state.
-     */
-    void toggleSelected () { setSelected(!_selected); }
+    virtual void setSelected (bool selected);
 
 protected:
 
@@ -153,9 +184,38 @@ protected:
      * Updates the button text based on the label and state.
      */
     virtual void updateText ();
+};
 
-    /** Whether or not the box is selected. */
-    bool _selected;
+/**
+ * A group of buttons of which only one may be selected at once.
+ */
+class ButtonGroup : public QObject
+{
+    Q_OBJECT
+    
+public:
+    
+    /**
+     * Creates a new button group.
+     */
+    ButtonGroup (QObject* parent = 0);
+    
+    /**
+     * Adds a button to the group.
+     */
+    void add (ToggleButton* button);
+
+protected slots:
+    
+    /**
+     * Called on button press to update the buttons' selection states.
+     */
+    void updateSelected ();
+        
+protected:
+    
+    /** The buttons in the group. */
+    QList<ToggleButton*> _buttons;
 };
 
 /**

@@ -458,7 +458,12 @@ void Container::setLayout (Layout* layout)
 
 void Container::addChild (Component* child, const QVariant& constraint)
 {
-    _children.append(child);
+    addChild(_children.size(), child, constraint);
+}
+
+void Container::addChild (int idx, Component* child, const QVariant& constraint)
+{
+    _children.insert(idx, child);
     child->setParent(this);
     child->setConstraint(constraint);
     dirty(child->bounds());

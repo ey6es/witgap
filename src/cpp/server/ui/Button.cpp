@@ -98,12 +98,40 @@ void Button::updateText ()
     setText(text);
 }
 
-CheckBox::CheckBox (
+ToggleButton::ToggleButton (
         const QString& label, bool selected, Qt::Alignment alignment, QObject* parent) :
     Button(label, alignment, parent),
     _selected(selected)
 {
     connect(this, SIGNAL(pressed()), SLOT(toggleSelected()));
+}
+
+void ToggleButton::setSelected (bool selected)
+{
+    if (_selected != selected) {
+        _selected = selected;
+        dirty();
+    }
+}
+
+void ToggleButton::draw (DrawContext* ctx)
+{
+    if (!_selected) {
+        Button::draw(ctx);
+        return;
+    }
+    Label::draw(ctx);
+
+    // draw the brackets
+    int flags = _enabled ? 0 : DIM_FLAG;
+    ctx->drawChar(_margins.left() - 1, _margins.top(), '<' | flags);
+    ctx->drawChar(_bounds.width() - _margins.right(), _margins.top(), '>' | flags);
+}
+
+CheckBox::CheckBox (
+        const QString& label, bool selected, Qt::Alignment alignment, QObject* parent) :
+    ToggleButton(label, selected, alignment, parent)
+{
     updateMargins();
 }
 
@@ -150,6 +178,27 @@ void CheckBox::focusOutEvent (QFocusEvent* e)
 void CheckBox::updateText ()
 {
     setText(QIntVector::createHighlighted(_label));
+}
+
+ButtonGroup::ButtonGroup (QObject* parent) :
+    QObject(parent)
+{
+}
+
+void ButtonGroup::add (ToggleButton* button)
+{
+    if (_buttons.isEmpty()) {
+        button->setSelected(true);
+    }
+    _buttons.append(button);
+    connect(button, SIGNAL(pressed()), SLOT(updateSelected()));
+}
+
+void ButtonGroup::updateSelected ()
+{
+    foreach (ToggleButton* button, _buttons) {
+        button->setSelected(button == sender());
+    }
 }
 
 ComboBox::ComboBox (const QStringList& items, Qt::Alignment alignment, QObject* parent) :

@@ -391,6 +391,11 @@ public:
     void addChild (Component* child, const QVariant& constraint = QVariant());
 
     /**
+     * Adds a child at the specified index.
+     */
+    void addChild (int idx, Component* child, const QVariant& constraint = QVariant());
+
+    /**
      * Removes a child from the container.
      *
      * @param destroy if true, delete the child.

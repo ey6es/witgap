@@ -6,6 +6,8 @@
 
 #include "ui/Component.h"
 
+class ButtonGroup;
+
 /**
  * A tabbed pane component.
  */
@@ -39,6 +41,9 @@ protected:
     
     /** Holds the tabs. */
     Container* _tabs;
+    
+    /** Handles toggle button switching behavior. */
+    ButtonGroup* _group;
 };
 
 #endif // TABBED_PANE
