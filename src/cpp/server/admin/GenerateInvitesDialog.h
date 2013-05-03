@@ -40,6 +40,16 @@ protected:
      */
     Q_INVOKABLE void showInviteUrl (const QString& url);
     
+    /**
+     * Mails a set of invites.
+     */
+    Q_INVOKABLE void mailInvites (const QStringList& emails, const QStringList& urls);
+    
+    /**
+     * Reports back from a single email request.
+     */
+    Q_INVOKABLE void emailMaybeSent (const QString& email, const QString& error);
+    
     /** The description field. */
     TextField* _description;
     
@@ -49,11 +59,17 @@ protected:
     /** The count field. */
     TextField* _count;
     
+    /** The emails field. */
+    TextField* _emails;
+    
     /** The flag check boxes. */
     CheckBox* _admin, *_insider;
     
     /** The OK button. */
     Button* _ok;
+    
+    /** The emails remaining to be sent. */
+    int _emailsRemaining;
 };
 
 #endif // GENERATE_INVITES_DIALOG

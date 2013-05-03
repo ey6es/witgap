@@ -113,6 +113,12 @@ public:
         int count, const Callback& callback);
 
     /**
+     * Inserts a set of invites.  The callback will receive the invite URLs as a string list.
+     */
+    Q_INVOKABLE void insertInvites (const QStringList& descriptions, int flags,
+        const Callback& callback);
+
+    /**
      * Attempts to validate an invite.  The callback will receive a boolean indicating validity
      * (or lack thereof).
      */
@@ -146,6 +152,12 @@ protected:
      * timestamp, invokes the callback.
      */
     void logon (const UserRecord& orec, UserRecord& nrec, const Callback& callback);
+
+    /**
+     * Helper function for invite functions: inserts a single invite into the database and returns
+     * the URL.
+     */
+    QString insertInvite (const QString& description, int flags, int count);
 
     /** The server application. */
     ServerApp* _app;

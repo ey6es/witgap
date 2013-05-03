@@ -201,6 +201,11 @@ public:
     ButtonGroup (QObject* parent = 0);
     
     /**
+     * Returns the index of the selected button.
+     */
+    int selectedIndex () const { return _selectedIndex; }
+    
+    /**
      * Adds a button to the group.
      */
     void add (ToggleButton* button);
@@ -216,6 +221,9 @@ protected:
     
     /** The buttons in the group. */
     QList<ToggleButton*> _buttons;
+    
+    /** The index of the selected button. */
+    int _selectedIndex;
 };
 
 /**

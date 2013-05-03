@@ -23,6 +23,16 @@ public:
     TabbedPane (Qt::Orientation orientation = Qt::Vertical, QObject* parent = 0);
     
     /**
+     * Returns a pointer to the currently selected tab.
+     */
+    Component* selectedTab () const;
+    
+    /**
+     * Returns the index of the currently selected tab.
+     */
+    int selectedIndex () const;
+    
+    /**
      * Adds a tab to the pane.
      */
     void addTab (const QString& title, Component* comp);

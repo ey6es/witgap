@@ -19,6 +19,15 @@ public:
      * Creates a new text area.
      */
     TextArea (QObject* parent = 0);
+    
+    /**
+     * Checks whether the component accepts input focus.
+     */
+    virtual bool acceptsFocus () const { return _enabled && _visible; }
+
+protected:
+    
+    
 };
 
 #endif // TEXT_AREA

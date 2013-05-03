@@ -37,9 +37,10 @@ GenerateInvitesDialog::GenerateInvitesDialog (Session* parent) :
     link->addChild(new Label(tr("Count:")));
     link->addChild(_count = new TextField(20, new RegExpDocument(UIntExp, "1", 10), true));
     
-    Container* emails = new Container(new TableLayout(2));
+    Container* emails = new Container(new TableLayout(1));
     static_cast<TableLayout*>(emails->layout())->stretchColumns().insert(1);
     _tabs->addTab(tr("Emails"), emails);
+    emails->addChild(_emails = new TextField());
     
     Container* cont = new Container(new TableLayout(2));
     static_cast<TableLayout*>(cont->layout())->stretchColumns().insert(1);
@@ -67,11 +68,21 @@ void GenerateInvitesDialog::generate ()
     // send the request off to the database
     int flags = (_admin->selected() ? UserRecord::Admin : 0) |
         (_insider->selected() ? UserRecord::Insider : 0);
-    QMetaObject::invokeMethod(
-        session()->app()->databaseThread()->userRepository(), "insertInvite",
-        Q_ARG(const QString&, _description->text()), Q_ARG(int, flags),
-        Q_ARG(int, _count->text().toInt()), Q_ARG(const Callback&,
-            Callback(_this, "showInviteUrl(QString)")));
+    if (_tabs->selectedIndex() == 0) {
+        QMetaObject::invokeMethod(
+            session()->app()->databaseThread()->userRepository(), "insertInvite",
+            Q_ARG(const QString&, _description->text()), Q_ARG(int, flags),
+            Q_ARG(int, _count->text().toInt()), Q_ARG(const Callback&,
+                Callback(_this, "showInviteUrl(QString)")));
+    
+    } else {
+        QStringList emails(_emails->text());
+        QMetaObject::invokeMethod(
+            session()->app()->databaseThread()->userRepository(), "insertInvites",
+            Q_ARG(const QStringList&, emails), Q_ARG(int, flags),
+            Q_ARG(const Callback&, Callback(_this, "mailInvites(QStringList,QStringList)",
+                Q_ARG(const QStringList&, emails))));
+    }
 }
 
 void GenerateInvitesDialog::showInviteUrl (const QString& url)
@@ -82,4 +93,27 @@ void GenerateInvitesDialog::showInviteUrl (const QString& url)
             "window.prompt('Invite URL:', '" + url + "')"));
     }    
     deleteLater();
+}
+
+void GenerateInvitesDialog::mailInvites (const QStringList& emails, const QStringList& urls)
+{
+    _emailsRemaining = emails.size();
+
+    Session* session = this->session();
+    for (int ii = 0, nn = emails.size(); ii < nn; ii++) {
+        session->app()->sendMail(emails.at(ii), tr("Invitation to Witgap"),
+            tr("Hey, come check out the magical world of Witgap!  %1").arg(urls.at(ii)),
+            Callback(_this, "emailMaybeSent(QString,QString)",
+                Q_ARG(const QString&, emails.at(ii))));
+    }    
+}
+
+void GenerateInvitesDialog::emailMaybeSent (const QString& email, const QString& error)
+{
+    if (!error.isEmpty()) {
+        session()->showInfoDialog(tr("Error sending to %1: %2.").arg(email, error));
+    }
+    if (--_emailsRemaining == 0) {
+        deleteLater();
+    }
 }

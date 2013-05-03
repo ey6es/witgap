@@ -356,20 +356,17 @@ void UserRepository::validatePasswordReset (
 void UserRepository::insertInvite (const QString& description, int flags,
     int count, const Callback& callback)
 {
-    QSqlQuery query;
-    query.prepare("insert into INVITES (TOKEN, DESCRIPTION, FLAGS, TOTAL, CREATED) "
-        "values (?, ?, ?, ?, ?)");
-    QByteArray token = generateToken(16);
-    query.addBindValue(token);
-    query.addBindValue(description);
-    query.addBindValue(flags);
-    query.addBindValue(count);
-    query.addBindValue(QDateTime::currentDateTime());
-    query.exec();
+    callback.invoke(Q_ARG(const QString&, insertInvite(description, flags, count)));
+}
 
-    QString url = _app->clientUrl() + "?inviteId=" +
-        QString::number(query.lastInsertId().toUInt()) + "&inviteToken=" + token.toHex();
-    callback.invoke(Q_ARG(const QString&, url));
+void UserRepository::insertInvites (const QStringList& descriptions, int flags,
+    const Callback& callback)
+{
+    QStringList urls;
+    foreach (const QString& description, descriptions) {
+        urls.append(insertInvite(description, flags, 1));
+    }
+    callback.invoke(Q_ARG(const QStringList&, urls));
 }
 
 void UserRepository::validateInvite (quint32 id, const QByteArray& token, const Callback& callback)
@@ -471,6 +468,23 @@ void UserRepository::logon (const UserRecord& orec, UserRecord& nrec, const Call
     }
 
     callback.invoke(Q_ARG(const QVariant&, QVariant::fromValue(nrec)));
+}
+
+QString UserRepository::insertInvite (const QString& description, int flags, int count)
+{
+    QSqlQuery query;
+    query.prepare("insert into INVITES (TOKEN, DESCRIPTION, FLAGS, TOTAL, CREATED) "
+        "values (?, ?, ?, ?, ?)");
+    QByteArray token = generateToken(16);
+    query.addBindValue(token);
+    query.addBindValue(description);
+    query.addBindValue(flags);
+    query.addBindValue(count);
+    query.addBindValue(QDateTime::currentDateTime());
+    query.exec();
+
+    return _app->clientUrl() + "?inviteId=" +
+        QString::number(query.lastInsertId().toUInt()) + "&inviteToken=" + token.toHex();
 }
 
 void UserRecord::setPassword (const QString& password)

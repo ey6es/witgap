@@ -22,6 +22,16 @@ TabbedPane::TabbedPane (Qt::Orientation orientation, QObject* parent) :
     addChild(_tabs = new Container(new CardLayout()));
 }
 
+Component* TabbedPane::selectedTab () const
+{
+    return _tabs->children().isEmpty() ? 0 : _tabs->children().last();
+}
+
+int TabbedPane::selectedIndex () const
+{
+    return _group->selectedIndex();    
+}
+
 void TabbedPane::addTab (const QString& title, Component* comp)
 {
     ToggleButton* button = new ToggleButton(title);

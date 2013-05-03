@@ -181,7 +181,8 @@ void CheckBox::updateText ()
 }
 
 ButtonGroup::ButtonGroup (QObject* parent) :
-    QObject(parent)
+    QObject(parent),
+    _selectedIndex(-1)
 {
 }
 
@@ -189,6 +190,7 @@ void ButtonGroup::add (ToggleButton* button)
 {
     if (_buttons.isEmpty()) {
         button->setSelected(true);
+        _selectedIndex = 0;
     }
     _buttons.append(button);
     connect(button, SIGNAL(pressed()), SLOT(updateSelected()));
@@ -196,8 +198,15 @@ void ButtonGroup::add (ToggleButton* button)
 
 void ButtonGroup::updateSelected ()
 {
-    foreach (ToggleButton* button, _buttons) {
-        button->setSelected(button == sender());
+    for (int ii = 0, nn = _buttons.size(); ii < nn; ii++) {
+        ToggleButton* button = _buttons.at(ii);
+        if (button == sender()) {
+            button->setSelected(true);
+            _selectedIndex = ii;
+            
+        } else {
+            button->setSelected(false);
+        }
     }
 }
 
