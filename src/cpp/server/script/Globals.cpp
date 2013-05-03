@@ -1627,6 +1627,21 @@ static ScriptObjectPointer stringCopy (Evaluator* eval, int argc, ScriptObjectPo
 }
 
 /**
+ * Returns the hash value of a string.
+ */
+static ScriptObjectPointer stringHash (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
+    String* string = static_cast<String*>(argv->data());
+    return Integer::instance(qHash(string->contents()));
+}
+
+/**
  * Converts a symbol to a string.
  */
 static ScriptObjectPointer symbolToString (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -1679,6 +1694,21 @@ static ScriptObjectPointer symbolsEqual (Evaluator* eval, int argc, ScriptObject
         }
     }
     return Boolean::instance(true);
+}
+
+/**
+ * Returns the hash value of a symbol.
+ */
+static ScriptObjectPointer symbolHash (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::SymbolType) {
+        throw QString("Invalid argument.");
+    }
+    Symbol* symbol = static_cast<Symbol*>(argv->data());
+    return Integer::instance(qHash(symbol->name()));
 }
 
 /**
@@ -2694,10 +2724,12 @@ static Scope createGlobalScope ()
     scope.addVariable("string->list", stringToList);
     scope.addVariable("list->string", listToString);
     scope.addVariable("string-copy", stringCopy);
+    scope.addVariable("string-hash", stringHash);
 
     scope.addVariable("symbol->string", symbolToString);
     scope.addVariable("string->symbol", stringToSymbol);
     scope.addVariable("symbol=?", symbolsEqual);
+    scope.addVariable("symbol-hash", symbolHash);
 
     scope.addVariable("cons", cons);
     scope.addVariable("car", car);
