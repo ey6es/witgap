@@ -13,7 +13,7 @@
 #include "ui/Label.h"
 #include "ui/Layout.h"
 #include "ui/TabbedPane.h"
-#include "ui/TextField.h"
+#include "ui/TextComponent.h"
 
 // translate through the session
 #define tr(...) this->session()->translator()->translate("GenerateInvitesDialog", __VA_ARGS__)

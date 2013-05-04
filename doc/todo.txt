@@ -12,6 +12,8 @@ Script:
 - Record serialization
 - Hashtables
 - Ports
+- Case syntax
+- Store in database, load from source
 
 Cut and paste (?)
 Multi-line text editing

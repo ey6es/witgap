@@ -14,7 +14,7 @@
 #include "ui/Layout.h"
 #include "ui/ObjectEditor.h"
 #include "ui/ResourceChooserDialog.h"
-#include "ui/TextField.h"
+#include "ui/TextComponent.h"
 
 // translate through the session
 #define tr(...) this->session()->translator()->translate("ObjectEditor", __VA_ARGS__)

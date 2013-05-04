@@ -78,33 +78,26 @@ protected:
 };
 
 /**
- * A text field.
+ * Base class for text editing components.
  */
-class TextField : public Component
+class TextComponent : public Component
 {
     Q_OBJECT
 
     friend class TextEditCommand;
-
+    
 public:
-
+    
     /**
-     * Creates a new text field.
+     * Creates a new text component.
      */
-    TextField (int minWidth = 20, Document* document = new Document(),
-        bool rightAlign = false, QObject* parent = 0);
-
+    TextComponent (int minWidth = 20, Document* document = new Document(), QObject* parent = 0);
+    
     /**
-     * Creates a new text field.
+     * Destroys the text component.
      */
-    TextField (int minWidth, const QString& text,
-        bool rightAlign = false, QObject* parent = 0);
-
-    /**
-     * Destroys the text field.
-     */
-    virtual ~TextField ();
-
+    virtual ~TextComponent ();
+    
     /**
      * Sets the text within the document.
      */
@@ -119,8 +112,8 @@ public:
      * Sets the document.
      */
     void setDocument (Document* document);
-
-    /**
+    
+     /**
      * Sets the position of the cursor within the document.
      */
     void setCursorPosition (int pos);
@@ -149,83 +142,53 @@ public:
      * Checks whether parenthesis matching is enabled.
      */
     bool matchParentheses () const { return _matchParentheses; }
-
+    
     /**
      * Checks whether the component accepts input focus.
      */
     virtual bool acceptsFocus () const { return _enabled && _visible; }
-
+    
 signals:
 
     /**
      * Emitted when the text has changed.
      */
     void textChanged ();
-
-    /**
-     * Emitted when the text is full (at maximum length).
-     */
-    void textFull ();
-
+    
     /**
      * Emitted when the enter key is pressed.
      */
     void enterPressed ();
-
+    
 protected slots:
 
     /**
      * Clears the currently displayed match.
      */
-    void clearMatch ();
-
+    virtual void clearMatch () = 0;
+    
 protected:
-
-    /**
-     * Computes and returns the preferred size.
-     */
-    virtual QSize computePreferredSize (int whint = -1, int hhint = -1) const;
-
+    
     /**
      * Validates the component.
      */
     virtual void validate ();
-
-    /**
-     * Draws the component.
-     */
-    virtual void draw (DrawContext* ctx);
-
+    
     /**
      * Draws part of the text.
      */
     virtual void drawText (DrawContext* ctx, int x, int y, int idx, int length, int flags) const;
-
+    
     /**
      * Returns the character to display for the specified index.
      */
     virtual int visibleChar (int idx) const;
-
-    /**
-     * Handles a focus in event.
-     */
-    virtual void focusInEvent (QFocusEvent* e);
-
-    /**
-     * Handles a focus out event.
-     */
-    virtual void focusOutEvent (QFocusEvent* e);
-
-    /**
-     * Handles a mouse press event.
-     */
-    virtual void mouseButtonPressEvent (QMouseEvent* e);
-
+    
     /**
      * Handles a key press event.
      */
     virtual void keyPressEvent (QKeyEvent* e);
-
+    
     /**
      * Inserts text into the document.
      *
@@ -233,64 +196,49 @@ protected:
      * its beginning).
      * @return the text that was actually inserted (i.e., after filtering).
      */
-    QString insert (int idx, const QString& text, bool cursorAfter);
-
+    virtual QString insert (int idx, const QString& text, bool cursorAfter) = 0;
+    
     /**
      * Removes text from the document.
      */
-    void remove (int idx, int length);
-
+    virtual void remove (int idx, int length) = 0;
+    
     /**
      * Depending on the cursor location and the character under the cursor, considers showing the
      * matching parenthesis.
      */
     void maybeShowMatch ();
-
+    
     /**
      * Considers showing the matched parenthesis for the character at the specified location.
      *
      * @return whether or not the location contained a parenthesis to match.
      */
     bool maybeShowMatch (int idx);
-
+    
     /**
      * Shows a match at the specified index.
      */
-    void showMatch (int idx);
-
+    virtual void showMatch (int idx) = 0;
+    
     /**
      * Updates the document position to match the cursor position.
      *
      * @return whether or not the component was dirtied as a result of the update.
      */
-    bool updateDocumentPos ();
-
-    /**
-     * Dirties the region starting at the supplied document index and including everything after.
-     *
-     * @param deleted the number of characters deleted from the document, if any.
-     */
-    void dirtyRest (int idx, int deleted);
+    virtual bool updateDocumentPos () = 0;
 
     /**
      * Dirties the region corresponding to the described document section.
      */
-    void dirty (int idx, int length);
-
-    /**
-     * Returns the width of the actual text area.
-     */
-    int textAreaWidth () const;
-
+    virtual void dirty (int idx, int length) = 0;
+    
     /** The minimum width. */
     int _minWidth;
 
     /** The document containing the contents. */
     Document* _document;
-
-    /** Whether or not to right-align the contents. */
-    bool _rightAlign;
-
+    
     /** The position in the document. */
     int _documentPos;
 
@@ -311,6 +259,113 @@ protected:
 
     /** The undo stack. */
     QUndoStack _undoStack;
+};
+
+/**
+ * A text field.
+ */
+class TextField : public TextComponent
+{
+    Q_OBJECT
+
+public:
+
+    /**
+     * Creates a new text field.
+     */
+    TextField (int minWidth = 20, Document* document = new Document(),
+        bool rightAlign = false, QObject* parent = 0);
+
+    /**
+     * Creates a new text field.
+     */
+    TextField (int minWidth, const QString& text,
+        bool rightAlign = false, QObject* parent = 0);
+
+signals:
+
+    /**
+     * Emitted when the text is full (at maximum length).
+     */
+    void textFull ();
+
+protected:
+    
+    /**
+     * Computes and returns the preferred size.
+     */
+    virtual QSize computePreferredSize (int whint = -1, int hhint = -1) const;
+
+    /**
+     * Draws the component.
+     */
+    virtual void draw (DrawContext* ctx);
+
+    /**
+     * Handles a focus in event.
+     */
+    virtual void focusInEvent (QFocusEvent* e);
+
+    /**
+     * Handles a focus out event.
+     */
+    virtual void focusOutEvent (QFocusEvent* e);
+
+    /**
+     * Handles a mouse press event.
+     */
+    virtual void mouseButtonPressEvent (QMouseEvent* e);
+
+    /**
+     * Inserts text into the document.
+     *
+     * @param cursorAfter whether to place the cursor after the inserted text (as opposed to at
+     * its beginning).
+     * @return the text that was actually inserted (i.e., after filtering).
+     */
+    virtual QString insert (int idx, const QString& text, bool cursorAfter);
+    
+    /**
+     * Removes text from the document.
+     */
+    virtual void remove (int idx, int length);
+    
+    /**
+     * Shows a match at the specified index.
+     */
+    virtual void showMatch (int idx);
+    
+    /**
+     * Clears the currently displayed match.
+     */
+    virtual void clearMatch ();
+    
+    /**
+     * Updates the document position to match the cursor position.
+     *
+     * @return whether or not the component was dirtied as a result of the update.
+     */
+    virtual bool updateDocumentPos ();
+
+    /**
+     * Dirties the region starting at the supplied document index and including everything after.
+     *
+     * @param deleted the number of characters deleted from the document, if any.
+     */
+    void dirtyRest (int idx, int deleted);
+
+    /**
+     * Dirties the region corresponding to the described document section.
+     */
+    virtual void dirty (int idx, int length);
+
+    /**
+     * Returns the width of the actual text area.
+     */
+    int textAreaWidth () const;
+
+    /** Whether or not to right-align the contents. */
+    bool _rightAlign;  
 };
 
 /**
@@ -395,14 +450,14 @@ public:
     /**
      * Creates a new insert command.
      */
-    TextEditCommand (TextField* field, int idx, const QString& text);
+    TextEditCommand (TextComponent* component, int idx, const QString& text);
 
     /**
      * Creates a new delete command.
      *
      * @param backspace whether the deletion was a result of backspacing.
      */
-    TextEditCommand (TextField* field, int idx, int length, bool backspace);
+    TextEditCommand (TextComponent* component, int idx, int length, bool backspace);
 
     /**
      * Undo the edit.
@@ -431,8 +486,8 @@ protected:
      */
     void apply (bool reverse);
 
-    /** The text field upon which the edit was performed. */
-    TextField* _field;
+    /** The text component upon which the edit was performed. */
+    TextComponent* _component;
 
     /** If true, the edit was an insertion; otherwise, a deletion. */
     bool _insertion;

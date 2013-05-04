@@ -13,7 +13,7 @@
 #include "net/Connection.h"
 #include "peer/PeerManager.h"
 #include "script/Evaluator.h"
-#include "ui/TextField.h"
+#include "ui/TextComponent.h"
 #include "util/Callback.h"
 #include "util/General.h"
 #include "util/Streaming.h"

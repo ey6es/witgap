@@ -14,7 +14,7 @@
 #include "scene/Scene.h"
 #include "ui/Label.h"
 #include "ui/Layout.h"
-#include "ui/TextField.h"
+#include "ui/TextComponent.h"
 #include "util/General.h"
 
 // translate through the session

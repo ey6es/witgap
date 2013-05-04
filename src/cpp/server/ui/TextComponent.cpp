@@ -6,7 +6,7 @@
 #include <QtDebug>
 
 #include "Protocol.h"
-#include "ui/TextField.h"
+#include "ui/TextComponent.h"
 
 Document::Document (const QString& text, int maxLength) :
     _text(text),
@@ -41,42 +41,25 @@ void RegExpDocument::insert (int idx, const QString& text)
     }
 }
 
-TextField::TextField (int minWidth, Document* document, bool rightAlign, QObject* parent) :
+TextComponent::TextComponent (int minWidth, Document* document, QObject* parent) :
     Component(parent),
     _minWidth(minWidth),
     _document(document),
-    _rightAlign(rightAlign),
     _documentPos(0),
     _cursorPos(document->text().length()),
     _matchParentheses(false),
     _matchPos(-1)
 {
-    connect(this, SIGNAL(enterPressed()), SLOT(transferFocus()));
     connect(&_matchTimer, SIGNAL(timeout()), SLOT(clearMatch()));
     _matchTimer.setSingleShot(true);
 }
 
-TextField::TextField (int minWidth, const QString& text, bool rightAlign, QObject* parent) :
-    Component(parent),
-    _minWidth(minWidth),
-    _document(new Document(text)),
-    _rightAlign(rightAlign),
-    _documentPos(0),
-    _cursorPos(text.length()),
-    _matchParentheses(false),
-    _matchPos(-1)
-{
-    connect(this, SIGNAL(enterPressed()), SLOT(transferFocus()));
-    connect(&_matchTimer, SIGNAL(timeout()), SLOT(clearMatch()));
-    _matchTimer.setSingleShot(true);
-}
-
-TextField::~TextField ()
+TextComponent::~TextComponent ()
 {
     delete _document;
 }
 
-void TextField::setText (const QString& text)
+void TextComponent::setText (const QString& text)
 {
     _document->remove(0, _document->text().length());
     _document->insert(0, text);
@@ -85,7 +68,7 @@ void TextField::setText (const QString& text)
     setDocument(_document);
 }
 
-void TextField::setDocument (Document* document)
+void TextComponent::setDocument (Document* document)
 {
     _document = document;
     _documentPos = 0;
@@ -97,7 +80,7 @@ void TextField::setDocument (Document* document)
     maybeShowMatch();
 }
 
-void TextField::setCursorPosition (int pos)
+void TextComponent::setCursorPosition (int pos)
 {
     if (_cursorPos != pos) {
         int opos = _cursorPos;
@@ -110,7 +93,7 @@ void TextField::setCursorPosition (int pos)
     }
 }
 
-void TextField::setLabel (const QString& label)
+void TextComponent::setLabel (const QString& label)
 {
     if (_label != label) {
         _label = label;
@@ -118,156 +101,27 @@ void TextField::setLabel (const QString& label)
     }
 }
 
-void TextField::setMatchParentheses (bool match)
+void TextComponent::setMatchParentheses (bool match)
 {
     _matchParentheses = match;
 }
 
-void TextField::clearMatch ()
-{
-    if (_matchPos != -1) {
-        if (_matchPos >= _documentPos && _matchPos < _documentPos + textAreaWidth()) {
-            dirty(_matchPos, 1);
-        } else {
-            Component::dirty();
-        }
-        _matchPos = -1;
-    }
-    _matchTimer.stop();
-}
-
-QSize TextField::computePreferredSize (int whint, int hhint) const
-{
-    return QSize(qMax(whint, _minWidth + 2), qMax(hhint, 1));
-}
-
-void TextField::validate ()
+void TextComponent::validate ()
 {
     updateDocumentPos();
 }
 
-void TextField::draw (DrawContext* ctx)
-{
-    Component::draw(ctx);
-
-    // find the area within the margins
-    int x = _margins.left() + 1, y = _margins.top(), width = textAreaWidth();
-
-    // draw the brackets
-    int flags = _enabled ? 0 : DIM_FLAG;
-    ctx->drawChar(x - 1, y, '[' | flags);
-    ctx->drawChar(x + width, y, ']' | flags);
-
-    // make sure the match is visible
-    int pos = _documentPos;
-    if (_focused && _matchPos != -1) {
-        if (_matchPos < _documentPos) {
-            pos = _matchPos;
-
-        } else if (_matchPos >= _documentPos + width) {
-            pos = _matchPos - width + 1;
-        }
-    }
-
-    // draw the visible portion of the contents or the label, if appropriate
-    int length = _document->text().length();
-    if (length == 0) {
-        int llength = _label.length();
-        if (!_focused && llength > 0) {
-            int dwidth = qMin(llength, width);
-            ctx->drawString(x + (_rightAlign ? width - dwidth : 0), y,
-                _label.constData(), dwidth, DIM_FLAG);
-        }
-    } else {
-        if (_rightAlign && length < width) {
-            // when focused, we allocate extra space for the cursor
-            drawText(ctx, x + width - (_focused ? 1 : 0) - length, y, 0, length, flags);
-        } else {
-            drawText(ctx, x, y, pos, qMin(length - pos, width), flags);
-        }
-    }
-
-    // draw the cursor and match if in focus
-    if (_focused) {
-        if (_rightAlign && length < width) {
-            ctx->drawChar(x + width - length - 1 + _cursorPos, y,
-                REVERSE_FLAG | (_cursorPos < length ? visibleChar(_cursorPos) : ' '));
-
-        } else if (_cursorPos >= pos && _cursorPos < pos + width) {
-            ctx->drawChar(x + (_cursorPos - pos), y,
-                REVERSE_FLAG | (_cursorPos < length ? visibleChar(_cursorPos) : ' '));
-        }
-
-        // draw the match if appropriate
-        if (_matchPos != -1) {
-            if (_rightAlign && length < width) {
-                ctx->drawChar(x + width - length - 1 + _matchPos, y,
-                    REVERSE_FLAG | visibleChar(_matchPos));
-
-            } else {
-                ctx->drawChar(x + (_matchPos - pos), y, REVERSE_FLAG | visibleChar(_matchPos));
-            }
-        }
-    }
-}
-
-void TextField::drawText (DrawContext* ctx, int x, int y, int idx, int length, int flags) const
+void TextComponent::drawText (DrawContext* ctx, int x, int y, int idx, int length, int flags) const
 {
     ctx->drawString(x, y, _document->text().constData() + idx, length, flags);
 }
 
-int TextField::visibleChar (int idx) const
+int TextComponent::visibleChar (int idx) const
 {
     return _document->text().at(idx).unicode();
 }
 
-void TextField::focusInEvent (QFocusEvent* e)
-{
-    Component::focusInEvent(e);
-
-    // if we're going to hide the label, we need to dirty the entire component
-    int dlength = _document->text().length();
-    if ((!_label.isEmpty() && dlength == 0) || (_rightAlign && dlength < textAreaWidth())) {
-        Component::dirty();
-    } else {
-        dirty(_cursorPos, 1);
-    }
-
-    maybeShowMatch();
-}
-
-void TextField::focusOutEvent (QFocusEvent* e)
-{
-    // likewise if we're going to show the label
-    int dlength = _document->text().length();
-    if ((!_label.isEmpty() && dlength == 0) || (_rightAlign && dlength < textAreaWidth())) {
-        Component::dirty();
-    } else {
-        dirty(_cursorPos, 1);
-    }
-
-    clearMatch();
-}
-
-void TextField::mouseButtonPressEvent (QMouseEvent* e)
-{
-    QRect inner = innerRect();
-    inner.setHeight(1);
-    inner.setX(inner.x() + 1);
-    inner.setWidth(inner.width() - 1);
-    if (inner.contains(e->pos())) {
-        int length = _document->text().length();
-        int fwidth = inner.width() - 1;
-        if (_rightAlign && length < fwidth) {
-            setCursorPosition(qMax(e->pos().x() - inner.x() - fwidth + length, 0));
-        } else {
-            setCursorPosition(qMin(_documentPos + e->pos().x() - inner.x(), length));
-        }
-    }
-    Component::mouseButtonPressEvent(e);
-}
-
-void TextField::keyPressEvent (QKeyEvent* e)
+void TextComponent::keyPressEvent (QKeyEvent* e)
 {
     int key = e->key();
     Qt::KeyboardModifiers modifiers = e->modifiers();
@@ -375,6 +229,185 @@ void TextField::keyPressEvent (QKeyEvent* e)
     }
 }
 
+void TextComponent::maybeShowMatch ()
+{
+    clearMatch();
+    if (!_matchParentheses) {
+        return;
+    }
+    if (!(_cursorPos < _document->text().length() && maybeShowMatch(_cursorPos)) &&
+            _cursorPos > 0) {
+        maybeShowMatch(_cursorPos - 1);
+    }
+}
+
+bool TextComponent::maybeShowMatch (int idx)
+{
+    const QString& text = _document->text();
+    QChar ch = text.at(idx);
+    if (ch == '(' || ch == '[') {
+        QChar open = ch, close = (ch == '(') ? ')' : ']';
+        int depth = 1;
+        for (int ii = idx + 1, nn = text.length(); ii < nn; ii++) {
+            QChar ch = text.at(ii);
+            if (ch == open) {
+                depth++;
+
+            } else if (ch == close && --depth == 0) {
+                showMatch(ii);
+                break;
+            }
+        }
+        return true;
+
+    } else if (ch == ')' || ch == ']') {
+        QChar open = (ch == ')') ? '(' : '[', close = ch;
+        int depth = 1;
+        for (int ii = idx - 1; ii >= 0; ii--) {
+            QChar ch = text.at(ii);
+            if (ch == close) {
+                depth++;
+
+            } else if (ch == open && --depth == 0) {
+                showMatch(ii);
+                break;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+TextField::TextField (int minWidth, Document* document, bool rightAlign, QObject* parent) :
+    TextComponent(minWidth, document, parent),
+    _rightAlign(rightAlign)
+{
+    connect(this, SIGNAL(enterPressed()), SLOT(transferFocus()));
+}
+
+TextField::TextField (int minWidth, const QString& text, bool rightAlign, QObject* parent) :
+    TextComponent(minWidth, new Document(text), parent),
+    _rightAlign(rightAlign)
+{
+    connect(this, SIGNAL(enterPressed()), SLOT(transferFocus()));
+}
+
+QSize TextField::computePreferredSize (int whint, int hhint) const
+{
+    return QSize(qMax(whint, _minWidth + 2), qMax(hhint, 1));
+}
+
+void TextField::draw (DrawContext* ctx)
+{
+    Component::draw(ctx);
+
+    // find the area within the margins
+    int x = _margins.left() + 1, y = _margins.top(), width = textAreaWidth();
+
+    // draw the brackets
+    int flags = _enabled ? 0 : DIM_FLAG;
+    ctx->drawChar(x - 1, y, '[' | flags);
+    ctx->drawChar(x + width, y, ']' | flags);
+
+    // make sure the match is visible
+    int pos = _documentPos;
+    if (_focused && _matchPos != -1) {
+        if (_matchPos < _documentPos) {
+            pos = _matchPos;
+
+        } else if (_matchPos >= _documentPos + width) {
+            pos = _matchPos - width + 1;
+        }
+    }
+
+    // draw the visible portion of the contents or the label, if appropriate
+    int length = _document->text().length();
+    if (length == 0) {
+        int llength = _label.length();
+        if (!_focused && llength > 0) {
+            int dwidth = qMin(llength, width);
+            ctx->drawString(x + (_rightAlign ? width - dwidth : 0), y,
+                _label.constData(), dwidth, DIM_FLAG);
+        }
+    } else {
+        if (_rightAlign && length < width) {
+            // when focused, we allocate extra space for the cursor
+            drawText(ctx, x + width - (_focused ? 1 : 0) - length, y, 0, length, flags);
+        } else {
+            drawText(ctx, x, y, pos, qMin(length - pos, width), flags);
+        }
+    }
+
+    // draw the cursor and match if in focus
+    if (_focused) {
+        if (_rightAlign && length < width) {
+            ctx->drawChar(x + width - length - 1 + _cursorPos, y,
+                REVERSE_FLAG | (_cursorPos < length ? visibleChar(_cursorPos) : ' '));
+
+        } else if (_cursorPos >= pos && _cursorPos < pos + width) {
+            ctx->drawChar(x + (_cursorPos - pos), y,
+                REVERSE_FLAG | (_cursorPos < length ? visibleChar(_cursorPos) : ' '));
+        }
+
+        // draw the match if appropriate
+        if (_matchPos != -1) {
+            if (_rightAlign && length < width) {
+                ctx->drawChar(x + width - length - 1 + _matchPos, y,
+                    REVERSE_FLAG | visibleChar(_matchPos));
+
+            } else {
+                ctx->drawChar(x + (_matchPos - pos), y, REVERSE_FLAG | visibleChar(_matchPos));
+            }
+        }
+    }
+}
+
+void TextField::focusInEvent (QFocusEvent* e)
+{
+    Component::focusInEvent(e);
+
+    // if we're going to hide the label, we need to dirty the entire component
+    int dlength = _document->text().length();
+    if ((!_label.isEmpty() && dlength == 0) || (_rightAlign && dlength < textAreaWidth())) {
+        Component::dirty();
+    } else {
+        dirty(_cursorPos, 1);
+    }
+
+    maybeShowMatch();
+}
+
+void TextField::focusOutEvent (QFocusEvent* e)
+{
+    // likewise if we're going to show the label
+    int dlength = _document->text().length();
+    if ((!_label.isEmpty() && dlength == 0) || (_rightAlign && dlength < textAreaWidth())) {
+        Component::dirty();
+    } else {
+        dirty(_cursorPos, 1);
+    }
+
+    clearMatch();
+}
+
+void TextField::mouseButtonPressEvent (QMouseEvent* e)
+{
+    QRect inner = innerRect();
+    inner.setHeight(1);
+    inner.setX(inner.x() + 1);
+    inner.setWidth(inner.width() - 1);
+    if (inner.contains(e->pos())) {
+        int length = _document->text().length();
+        int fwidth = inner.width() - 1;
+        if (_rightAlign && length < fwidth) {
+            setCursorPosition(qMax(e->pos().x() - inner.x() - fwidth + length, 0));
+        } else {
+            setCursorPosition(qMin(_documentPos + e->pos().x() - inner.x(), length));
+        }
+    }
+    Component::mouseButtonPressEvent(e);
+}
+
 QString TextField::insert (int idx, const QString& text, bool cursorAfter)
 {
     int olen = _document->text().length();
@@ -418,55 +451,6 @@ void TextField::remove (int idx, int length)
     emit textChanged();
 }
 
-void TextField::maybeShowMatch ()
-{
-    clearMatch();
-    if (!_matchParentheses) {
-        return;
-    }
-    if (!(_cursorPos < _document->text().length() && maybeShowMatch(_cursorPos)) &&
-            _cursorPos > 0) {
-        maybeShowMatch(_cursorPos - 1);
-    }
-}
-
-bool TextField::maybeShowMatch (int idx)
-{
-    const QString& text = _document->text();
-    QChar ch = text.at(idx);
-    if (ch == '(' || ch == '[') {
-        QChar open = ch, close = (ch == '(') ? ')' : ']';
-        int depth = 1;
-        for (int ii = idx + 1, nn = text.length(); ii < nn; ii++) {
-            QChar ch = text.at(ii);
-            if (ch == open) {
-                depth++;
-
-            } else if (ch == close && --depth == 0) {
-                showMatch(ii);
-                break;
-            }
-        }
-        return true;
-
-    } else if (ch == ')' || ch == ']') {
-        QChar open = (ch == ')') ? '(' : '[', close = ch;
-        int depth = 1;
-        for (int ii = idx - 1; ii >= 0; ii--) {
-            QChar ch = text.at(ii);
-            if (ch == close) {
-                depth++;
-
-            } else if (ch == open && --depth == 0) {
-                showMatch(ii);
-                break;
-            }
-        }
-        return true;
-    }
-    return false;
-}
-
 /** The number of milliseconds for which we show a parenthesis match. */
 static const int MatchDuration = 1000;
 
@@ -479,6 +463,19 @@ void TextField::showMatch (int idx)
     } else {
         Component::dirty();
     }
+}
+
+void TextField::clearMatch ()
+{
+    if (_matchPos != -1) {
+        if (_matchPos >= _documentPos && _matchPos < _documentPos + textAreaWidth()) {
+            dirty(_matchPos, 1);
+        } else {
+            Component::dirty();
+        }
+        _matchPos = -1;
+    }
+    _matchTimer.stop();
 }
 
 bool TextField::updateDocumentPos ()
@@ -572,20 +569,20 @@ void FieldExpEnabler::updateComponent ()
     _component->setEnabled(true);
 }
 
-TextEditCommand::TextEditCommand (TextField* field, int idx, const QString& text) :
-    _field(field),
+TextEditCommand::TextEditCommand (TextComponent* component, int idx, const QString& text) :
+    _component(component),
     _insertion(true),
     _idx(idx),
     _text(text)
 {
 }
 
-TextEditCommand::TextEditCommand (TextField* field, int idx, int length, bool backspace) :
-    _field(field),
+TextEditCommand::TextEditCommand (TextComponent* component, int idx, int length, bool backspace) :
+    _component(component),
     _insertion(false),
     _backspace(backspace),
     _idx(idx),
-    _text(field->text().mid(idx, length))
+    _text(component->text().mid(idx, length))
 {
 }
 
@@ -635,9 +632,9 @@ bool TextEditCommand::mergeWith (const QUndoCommand* command)
 void TextEditCommand::apply (bool reverse)
 {
     if (_insertion == reverse) {
-        _field->remove(_idx, _text.length());
+        _component->remove(_idx, _text.length());
 
     } else {
-        _text = _field->insert(_idx, _text, _insertion || _backspace);
+        _text = _component->insert(_idx, _text, _insertion || _backspace);
     }
 }
