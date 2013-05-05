@@ -10,6 +10,7 @@ class Button;
 class CheckBox;
 class Session;
 class TabbedPane;
+class TextArea;
 class TextField;
 
 /**
@@ -59,8 +60,8 @@ protected:
     /** The count field. */
     TextField* _count;
     
-    /** The emails field. */
-    TextField* _emails;
+    /** The emails area. */
+    TextArea* _emails;
     
     /** The flag check boxes. */
     CheckBox* _admin, *_insider;

@@ -140,7 +140,8 @@ public:
     /**
      * Creates a new table layout.
      */
-    TableLayout (int columns, int rows = -1, int columnGap = 1, int rowGap = 0);
+    TableLayout (int columns, int rows = -1, int columnGap = 1, int rowGap = 0,
+        Qt::Alignment alignment = Qt::AlignCenter);
 
     /**
      * Returns a reference to the set of columns to stretch.
@@ -187,6 +188,9 @@ protected:
 
     /** Indices of rows to stretch. */
     QSet<int> _stretchRows;
+    
+    /** The alignment flags. */
+    Qt::Alignment _alignment;
 };
 
 /**

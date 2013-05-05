@@ -6,6 +6,7 @@
 #include <QtDebug>
 
 #include "Protocol.h"
+#include "ui/Border.h"
 #include "ui/TextComponent.h"
 
 Document::Document (const QString& text, int maxLength) :
@@ -66,18 +67,6 @@ void TextComponent::setText (const QString& text)
 
     // "set" the document to update the positions and dirty
     setDocument(_document);
-}
-
-void TextComponent::setDocument (Document* document)
-{
-    _document = document;
-    _documentPos = 0;
-    _cursorPos = document->text().length();
-    if (!updateDocumentPos()) {
-        Component::dirty();
-    }
-    _undoStack.clear();
-    maybeShowMatch();
 }
 
 void TextComponent::setCursorPosition (int pos)
@@ -290,6 +279,18 @@ TextField::TextField (int minWidth, const QString& text, bool rightAlign, QObjec
     _rightAlign(rightAlign)
 {
     connect(this, SIGNAL(enterPressed()), SLOT(transferFocus()));
+}
+
+void TextField::setDocument (Document* document)
+{
+    _document = document;
+    _documentPos = 0;
+    _cursorPos = document->text().length();
+    if (!updateDocumentPos()) {
+        Component::dirty();
+    }
+    _undoStack.clear();
+    maybeShowMatch();
 }
 
 QSize TextField::computePreferredSize (int whint, int hhint) const
@@ -541,9 +542,180 @@ int PasswordField::visibleChar (int idx) const
     return '*';
 }
 
+Span::Span (int start, int length) :
+    start(start),
+    length(length)
+{
+}
+
+TextArea::TextArea (int minWidth, int minHeight, Document* document,
+        bool wordWrap, QObject* parent) :
+    TextComponent(minWidth, document, parent),
+    _minHeight(minHeight),
+    _wordWrap(wordWrap),
+    _cursorLine(0)
+{
+    setBorder(new FrameBorder());
+}
+
+TextArea::TextArea (int minWidth, int minHeight, const QString& text,
+        bool wordWrap, QObject* parent) :
+    TextComponent(minWidth, new Document(text, 1024), parent),
+    _minHeight(minHeight),
+    _wordWrap(wordWrap),
+    _cursorLine(0)
+{
+    setBorder(new FrameBorder());
+}
+
+void TextArea::setWordWrap (bool wrap)
+{
+    if (_wordWrap != wrap) {
+        _wordWrap = wrap;
+        invalidate();
+    }
+}
+
+void TextArea::setDocument (Document* document)
+{
+    _document = document;
+    _documentPos = 0;
+    _cursorPos = 0;
+    invalidate();
+    _undoStack.clear();
+    maybeShowMatch();
+}
+
+QSize TextArea::computePreferredSize (int whint, int hhint) const
+{
+    return QSize(qMax(whint, _minWidth), qMax(hhint, _minHeight));
+}
+
+void TextArea::validate ()
+{
+    // break the text up into lines and append to the list
+    int length = 0;
+    int wlimit = innerRect().width();
+    const QChar* start = _document->text().constData(), *whitespace = 0;
+    bool wrun = false;
+    _lines.resize(0);
+    for (const QChar* ptr = start, *end = ptr + _document->text().size(); ptr < end; ptr++) {
+        QChar value = *ptr;
+        if (value != '\n') {
+            if (value == ' ' && _wordWrap) {
+                if (!wrun) { // it's the start of a run of whitespace
+                    wrun = true;
+                    whitespace = ptr;
+                }
+            } else {
+                wrun = false;
+            }
+            if (++length <= wlimit) {
+                continue;
+            }
+            if (whitespace == 0) { // nowhere to break
+                length--;
+
+            } else {
+                length -= (ptr - whitespace + 1);
+
+                // consume any whitespace after the line
+                for (ptr = whitespace + 1; ptr < end && *ptr == ' '; ptr++);
+            }
+            ptr--;
+        }
+        _lines.append(Span(start - _document->text().constData(), length));
+        start = ptr + 1;
+        length = 0;
+        whitespace = 0;
+        wrun = false;
+    }
+    _lines.append(Span(start - _document->text().constData(), length));
+}
+
+void TextArea::draw (DrawContext* ctx)
+{
+    Component::draw(ctx);
+    
+    // find the area within the margins
+    QRect inner = innerRect();
+    int x = inner.x(), y = inner.y(), height = inner.height();
+    
+    // draw as many lines as are visible
+    int flags = _enabled ? 0 : DIM_FLAG;
+    for (int ii = _documentPos, nn = _lines.size(); ii < nn && height > 0; ii++, height--, y++) {
+        const Span& line = _lines.at(ii);
+        drawText(ctx, x, y, line.start, line.length, flags);
+        
+        if (ii == _cursorLine && _focused) {
+            ctx->drawChar(x + _cursorPos - line.start, y, visibleChar(_cursorPos) | REVERSE_FLAG);
+        }
+    }
+}
+
+void TextArea::focusInEvent (QFocusEvent* e)
+{
+    Component::focusInEvent(e);
+
+    // if we're going to hide the label, we need to dirty the entire component
+    if (!_label.isEmpty() && _document->text().isEmpty()) {
+        Component::dirty();
+    } else {
+        Component::dirty();
+    }
+
+    maybeShowMatch();
+}
+
+void TextArea::focusOutEvent (QFocusEvent* e)
+{
+    // likewise if we're going to show the label
+    int dlength = _document->text().length();
+    if (!_label.isEmpty() && _document->text().isEmpty()) {
+        Component::dirty();
+    } else {
+        Component::dirty();
+    }
+
+    clearMatch();
+}
+
+void TextArea::mouseButtonPressEvent (QMouseEvent* e)
+{
+    Component::mouseButtonPressEvent(e);
+}
+
+void TextArea::clearMatch ()
+{
+}
+
+QString TextArea::insert (int idx, const QString& text, bool cursorAfter)
+{
+    return QString();
+}
+
+void TextArea::remove (int idx, int length)
+{
+}
+
+void TextArea::showMatch (int idx)
+{
+}
+
+bool TextArea::updateDocumentPos ()
+{
+    
+    return false;
+}
+
+void TextArea::dirty (int idx, int length)
+{
+}
+
 FieldExpEnabler::FieldExpEnabler (
-        Component* component, TextField* f1, const QRegExp& e1, TextField* f2, const QRegExp& e2,
-        TextField* f3, const QRegExp& e3, TextField* f4, const QRegExp& e4) :
+        Component* component, TextComponent* f1, const QRegExp& e1,
+        TextComponent* f2, const QRegExp& e2, TextComponent* f3, const QRegExp& e3,
+        TextComponent* f4, const QRegExp& e4) :
     QObject(component),
     _component(component)
 {

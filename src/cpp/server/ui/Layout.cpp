@@ -286,11 +286,13 @@ void BoxLayout::apply (Container* container) const
     }
 }
 
-TableLayout::TableLayout (int columns, int rows, int columnGap, int rowGap) :
+TableLayout::TableLayout (
+        int columns, int rows, int columnGap, int rowGap, Qt::Alignment alignment) :
     _columns(columns),
     _rows(rows),
     _columnGap(columnGap),
-    _rowGap(rowGap)
+    _rowGap(rowGap),
+    _alignment(alignment)
 {
 }
 
@@ -360,7 +362,7 @@ void TableLayout::apply (Container* container) const
     int extraWidth = width - accumulate(widths.data(), widths.data() + ncols, cgap);
     int extraHeight = height - accumulate(heights.data(), heights.data() + nrows, rgap);
 
-    // add to stretch columns, if any; otherwise, center horizontally
+    // add to stretch columns, if any; otherwise, align as requested
     if (extraWidth != 0) {
         int nscols = _stretchColumns.size();
         if (nscols > 0) {
@@ -375,12 +377,15 @@ void TableLayout::apply (Container* container) const
                     wref = qMax(wref + per - (remainder++ < 0 ? 1 : 0), 0);
                 }
             }
-        } else {
+        } else if (_alignment & Qt::AlignHCenter) { 
             x += extraWidth/2;
+            
+        } else if (_alignment & Qt::AlignRight) {
+            x += extraWidth;
         }
     }
 
-    // add to stretch rows, if any; otherwise, center vertically
+    // add to stretch rows, if any; otherwise, align as requested
     if (extraHeight != 0) {
         int nsrows = _stretchRows.size();
         if (nsrows > 0) {
@@ -395,8 +400,11 @@ void TableLayout::apply (Container* container) const
                     href = qMax(href + per - (remainder++ < 0 ? 1 : 0), 0);
                 }
             }
-        } else {
+        } else if (_alignment & Qt::AlignVCenter) {
             y += extraHeight/2;
+        
+        } else if (_alignment & Qt::AlignBottom) {
+            y += extraHeight;
         }
     }
 

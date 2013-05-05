@@ -6,6 +6,7 @@
 
 #include <QPair>
 #include <QRegExp>
+#include <QStringList>
 #include <QTimer>
 #include <QUndoStack>
 
@@ -111,7 +112,7 @@ public:
     /**
      * Sets the document.
      */
-    void setDocument (Document* document);
+    virtual void setDocument (Document* document) = 0;
     
      /**
      * Sets the position of the cursor within the document.
@@ -282,6 +283,11 @@ public:
     TextField (int minWidth, const QString& text,
         bool rightAlign = false, QObject* parent = 0);
 
+    /**
+     * Sets the document.
+     */
+    virtual void setDocument (Document* document);
+    
 signals:
 
     /**
@@ -365,7 +371,7 @@ protected:
     int textAreaWidth () const;
 
     /** Whether or not to right-align the contents. */
-    bool _rightAlign;  
+    bool _rightAlign;
 };
 
 /**
@@ -400,11 +406,147 @@ protected:
     virtual int visibleChar (int idx) const;
 };
 
+/**
+ * Describes a span within a document.
+ */
+class Span
+{
+public:
+    
+    /**
+     * Creates a new span.
+     */
+    Span (int start = 0, int length = 0);
+    
+    /** The start of the span. */
+    int start;
+    
+    /** The length of the span. */
+    int length;
+};
+
+/**
+ * Allows editing multiple lines of text.
+ */
+class TextArea : public TextComponent
+{
+    Q_OBJECT
+
+public:
+    
+    /**
+     * Creates a new text area.
+     */
+    TextArea (int minWidth = 20, int minHeight = 3,  Document* document = new Document("", 1024),
+        bool wordWrap = true, QObject* parent = 0);
+    
+    /**
+     * Creates a new text area.
+     */
+    TextArea (int minWidth, int minHeight, const QString& text,
+        bool wordWrap = true, QObject* parent = 0);
+
+    /**
+     * Enables or disables word wrap.
+     */
+    void setWordWrap (bool wrap);
+
+    /**
+     * Checks whether word wrap is enabled.
+     */
+    bool wordWrap () const { return _wordWrap; }
+
+    /**
+     * Sets the document.
+     */
+    virtual void setDocument (Document* document);
+    
+protected:
+    
+    /**
+     * Computes and returns the preferred size.
+     */
+    virtual QSize computePreferredSize (int whint = -1, int hhint = -1) const;
+    
+    /**
+     * Validates the component.
+     */
+    virtual void validate ();
+    
+    /**
+     * Draws the component.
+     */
+    virtual void draw (DrawContext* ctx);
+    
+    /**
+     * Handles a focus in event.
+     */
+    virtual void focusInEvent (QFocusEvent* e);
+
+    /**
+     * Handles a focus out event.
+     */
+    virtual void focusOutEvent (QFocusEvent* e);
+    
+    /**
+     * Handles a mouse press event.
+     */
+    virtual void mouseButtonPressEvent (QMouseEvent* e);
+    
+    /**
+     * Clears the currently displayed match.
+     */
+    virtual void clearMatch ();
+    
+    /**
+     * Inserts text into the document.
+     *
+     * @param cursorAfter whether to place the cursor after the inserted text (as opposed to at
+     * its beginning).
+     * @return the text that was actually inserted (i.e., after filtering).
+     */
+    virtual QString insert (int idx, const QString& text, bool cursorAfter);
+    
+    /**
+     * Removes text from the document.
+     */
+    virtual void remove (int idx, int length);
+    
+    /**
+     * Shows a match at the specified index.
+     */
+    virtual void showMatch (int idx);
+    
+    /**
+     * Updates the document position to match the cursor position.
+     *
+     * @return whether or not the component was dirtied as a result of the update.
+     */
+    virtual bool updateDocumentPos ();
+
+    /**
+     * Dirties the region corresponding to the described document section.
+     */
+    virtual void dirty (int idx, int length);
+    
+    /** The minimum height of the component. */
+    int _minHeight;
+    
+    /** Whether or not to wrap at word boundaries. */
+    bool _wordWrap;
+    
+    /** The line spans. */
+    QVector<Span> _lines;
+    
+    /** The index of the line containing the cursor. */
+    int _cursorLine;
+};
+
 /** An expression that simply requires the text to contain something other than whitespace. */
 const QRegExp NonEmptyExp("\\s*\\S+.*");
 
 /**
- * Enables a component based on whether the contents of one or more text fields match regular
+ * Enables a component based on whether the contents of one or more text components match regular
  * expressions.
  */
 class FieldExpEnabler : public QObject
@@ -416,10 +558,10 @@ public:
     /**
      * Creates a new enabler.
      */
-    FieldExpEnabler (Component* component, TextField* f1, const QRegExp& e1 = NonEmptyExp,
-        TextField* f2 = 0, const QRegExp& e2 = NonEmptyExp,
-        TextField* f3 = 0, const QRegExp& e3 = NonEmptyExp,
-        TextField* f4 = 0, const QRegExp& e4 = NonEmptyExp);
+    FieldExpEnabler (Component* component, TextComponent* f1, const QRegExp& e1 = NonEmptyExp,
+        TextComponent* f2 = 0, const QRegExp& e2 = NonEmptyExp,
+        TextComponent* f3 = 0, const QRegExp& e3 = NonEmptyExp,
+        TextComponent* f4 = 0, const QRegExp& e4 = NonEmptyExp);
 
 public slots:
 
@@ -430,8 +572,8 @@ public slots:
 
 protected:
 
-    /** A text field and its corresponding expression. */
-    typedef QPair<TextField*, QRegExp> FieldExp;
+    /** A text component and its corresponding expression. */
+    typedef QPair<TextComponent*, QRegExp> FieldExp;
 
     /** The component to enable. */
     Component* _component;

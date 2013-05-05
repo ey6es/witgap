@@ -29,7 +29,7 @@ GenerateInvitesDialog::GenerateInvitesDialog (Session* parent) :
     
     addChild(_tabs = new TabbedPane(Qt::Horizontal));
     
-    Container* link = new Container(new TableLayout(2));
+    Container* link = new Container(new TableLayout(2, -1, 1, 0, Qt::AlignTop));
     static_cast<TableLayout*>(link->layout())->stretchColumns().insert(1);
     _tabs->addTab(tr("Link"), link);
     link->addChild(new Label(tr("Description:")));
@@ -37,10 +37,9 @@ GenerateInvitesDialog::GenerateInvitesDialog (Session* parent) :
     link->addChild(new Label(tr("Count:")));
     link->addChild(_count = new TextField(20, new RegExpDocument(UIntExp, "1", 10), true));
     
-    Container* emails = new Container(new TableLayout(1));
-    static_cast<TableLayout*>(emails->layout())->stretchColumns().insert(1);
-    _tabs->addTab(tr("Emails"), emails);
-    emails->addChild(_emails = new TextField());
+    _tabs->addTab(tr("Emails"), BoxLayout::createHStretchBox(2, _emails = new TextArea()));
+    
+    _emails->setText("Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
     
     Container* cont = new Container(new TableLayout(2));
     static_cast<TableLayout*>(cont->layout())->stretchColumns().insert(1);
@@ -76,7 +75,7 @@ void GenerateInvitesDialog::generate ()
                 Callback(_this, "showInviteUrl(QString)")));
     
     } else {
-        QStringList emails(_emails->text());
+        QStringList emails = _emails->text().split(QRegExp("\\s+"));
         QMetaObject::invokeMethod(
             session()->app()->databaseThread()->userRepository(), "insertInvites",
             Q_ARG(const QStringList&, emails), Q_ARG(int, flags),
