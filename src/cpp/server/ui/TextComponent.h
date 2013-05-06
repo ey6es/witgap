@@ -434,27 +434,30 @@ class TextArea : public TextComponent
 
 public:
     
+    /** The available wrap modes. */
+    enum Wrap { NoWrap, CharWrap, WordWrap };
+    
     /**
      * Creates a new text area.
      */
     TextArea (int minWidth = 20, int minHeight = 3,  Document* document = new Document("", 1024),
-        bool wordWrap = true, QObject* parent = 0);
+        Wrap wrap = WordWrap, QObject* parent = 0);
     
     /**
      * Creates a new text area.
      */
     TextArea (int minWidth, int minHeight, const QString& text,
-        bool wordWrap = true, QObject* parent = 0);
+        Wrap wrap = WordWrap, QObject* parent = 0);
 
     /**
-     * Enables or disables word wrap.
+     * Sets the wrap mode.
      */
-    void setWordWrap (bool wrap);
+    void setWrap (Wrap wrap);
 
     /**
-     * Checks whether word wrap is enabled.
+     * Returns the wrap mode.
      */
-    bool wordWrap () const { return _wordWrap; }
+    Wrap wrap () const { return _wrap; }
 
     /**
      * Sets the document.
@@ -487,6 +490,11 @@ protected:
      * Handles a focus out event.
      */
     virtual void focusOutEvent (QFocusEvent* e);
+    
+    /**
+     * Handles a key press event.
+     */
+    virtual void keyPressEvent (QKeyEvent* e);
     
     /**
      * Handles a mouse press event.
@@ -529,17 +537,22 @@ protected:
      */
     virtual void dirty (int idx, int length);
     
+    /**
+     * Returns the index of the line corresponding to the specified document position.
+     */
+    int getLineIndex (int pos) const;
+        
     /** The minimum height of the component. */
     int _minHeight;
     
-    /** Whether or not to wrap at word boundaries. */
-    bool _wordWrap;
+    /** The wrap mode. */
+    Wrap _wrap;
     
     /** The line spans. */
     QVector<Span> _lines;
     
-    /** The index of the line containing the cursor. */
-    int _cursorLine;
+    /** For each character in the document, the index of the line that contains it. */
+    QIntVector _lineIndices;
 };
 
 /** An expression that simply requires the text to contain something other than whitespace. */

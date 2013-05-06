@@ -1,6 +1,8 @@
 //
 // $Id$
 
+#include <limits>
+
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QtDebug>
@@ -8,6 +10,8 @@
 #include "Protocol.h"
 #include "ui/Border.h"
 #include "ui/TextComponent.h"
+
+using namespace std;
 
 Document::Document (const QString& text, int maxLength) :
     _text(text),
@@ -549,29 +553,27 @@ Span::Span (int start, int length) :
 }
 
 TextArea::TextArea (int minWidth, int minHeight, Document* document,
-        bool wordWrap, QObject* parent) :
+        Wrap wrap, QObject* parent) :
     TextComponent(minWidth, document, parent),
     _minHeight(minHeight),
-    _wordWrap(wordWrap),
-    _cursorLine(0)
+    _wrap(wrap)
 {
     setBorder(new FrameBorder());
 }
 
 TextArea::TextArea (int minWidth, int minHeight, const QString& text,
-        bool wordWrap, QObject* parent) :
+        Wrap wrap, QObject* parent) :
     TextComponent(minWidth, new Document(text, 1024), parent),
     _minHeight(minHeight),
-    _wordWrap(wordWrap),
-    _cursorLine(0)
+    _wrap(wrap)
 {
     setBorder(new FrameBorder());
 }
 
-void TextArea::setWordWrap (bool wrap)
+void TextArea::setWrap (Wrap wrap)
 {
-    if (_wordWrap != wrap) {
-        _wordWrap = wrap;
+    if (_wrap != wrap) {
+        _wrap = wrap;
         invalidate();
     }
 }
@@ -595,14 +597,15 @@ void TextArea::validate ()
 {
     // break the text up into lines and append to the list
     int length = 0;
-    int wlimit = innerRect().width();
+    int wlimit = (_wrap == NoWrap) ? numeric_limits<int>::max() : innerRect().width() - 1;
     const QChar* start = _document->text().constData(), *whitespace = 0;
     bool wrun = false;
     _lines.resize(0);
+    _lineIndices.resize(0);
     for (const QChar* ptr = start, *end = ptr + _document->text().size(); ptr < end; ptr++) {
         QChar value = *ptr;
         if (value != '\n') {
-            if (value == ' ' && _wordWrap) {
+            if (value == ' ' && _wrap == WordWrap) {
                 if (!wrun) { // it's the start of a run of whitespace
                     wrun = true;
                     whitespace = ptr;
@@ -611,18 +614,27 @@ void TextArea::validate ()
                 wrun = false;
             }
             if (++length <= wlimit) {
+                _lineIndices.append(_lines.size());
                 continue;
             }
             if (whitespace == 0) { // nowhere to break
                 length--;
 
             } else {
-                length -= (ptr - whitespace + 1);
+                int remove = ptr - whitespace;
+                length -= remove;
+                _lineIndices.remove(_lineIndices.size() - remove, remove);
 
                 // consume any whitespace after the line
-                for (ptr = whitespace + 1; ptr < end && *ptr == ' '; ptr++);
+                for (ptr = whitespace; ptr < end && *ptr == ' '; ptr++) {
+                    _lineIndices.append(_lines.size());
+                }
             }
             ptr--;
+        
+        } else {
+            length++;
+            _lineIndices.append(_lines.size());    
         }
         _lines.append(Span(start - _document->text().constData(), length));
         start = ptr + 1;
@@ -639,16 +651,22 @@ void TextArea::draw (DrawContext* ctx)
     
     // find the area within the margins
     QRect inner = innerRect();
-    int x = inner.x(), y = inner.y(), height = inner.height();
+    int x = inner.x(), y = inner.y(), width = inner.width(), height = inner.height();
     
     // draw as many lines as are visible
     int flags = _enabled ? 0 : DIM_FLAG;
-    for (int ii = _documentPos, nn = _lines.size(); ii < nn && height > 0; ii++, height--, y++) {
+    int documentLine = getLineIndex(_documentPos);
+    int cursorLine = getLineIndex(_cursorPos);
+    const Span& dspan = _lines.at(documentLine);
+    int offset = _documentPos - dspan.start;
+    for (int ii = documentLine, nn = _lines.size(); ii < nn && height > 0; ii++, height--, y++) {
         const Span& line = _lines.at(ii);
-        drawText(ctx, x, y, line.start, line.length, flags);
-        
-        if (ii == _cursorLine && _focused) {
-            ctx->drawChar(x + _cursorPos - line.start, y, visibleChar(_cursorPos) | REVERSE_FLAG);
+        if (line.length > offset) {
+            drawText(ctx, x, y, line.start + offset, qMin(width, line.length - offset), flags);
+        }
+        if (ii == cursorLine && _focused) {
+            ctx->drawChar(x + _cursorPos - line.start - offset, y,
+                visibleChar(_cursorPos) | REVERSE_FLAG);
         }
     }
 }
@@ -680,9 +698,85 @@ void TextArea::focusOutEvent (QFocusEvent* e)
     clearMatch();
 }
 
+void TextArea::keyPressEvent (QKeyEvent* e)
+{
+    Qt::KeyboardModifiers modifiers = e->modifiers(); 
+    if (modifiers == Qt::ShiftModifier || modifiers == Qt::NoModifier) {
+        switch (e->key()) {
+            case Qt::Key_Up: {
+                int cursorLine = getLineIndex(_cursorPos);
+                if (cursorLine > 0) {
+                    const Span& ospan = _lines.at(cursorLine);
+                    const Span& nspan = _lines.at(cursorLine - 1);
+                    setCursorPosition(nspan.start +
+                        qMin(nspan.length - 1, _cursorPos - ospan.start));
+                    return;
+                }
+                break;
+            }
+            case Qt::Key_Down: {
+                int cursorLine = getLineIndex(_cursorPos);
+                if (cursorLine < _lines.size() - 1) {
+                    const Span& ospan = _lines.at(cursorLine);
+                    const Span& nspan = _lines.at(cursorLine + 1);
+                    setCursorPosition(nspan.start +
+                        qMin(nspan.length - 1, _cursorPos - ospan.start));
+                    return;
+                }
+                break;
+            }
+            case Qt::Key_PageUp: {
+                int cursorLine = getLineIndex(_cursorPos);
+                if (cursorLine > 0) {
+                    const Span& ospan = _lines.at(cursorLine);
+                    const Span& nspan = _lines.at(qMax(cursorLine - innerRect().height() + 1, 0));
+                    setCursorPosition(nspan.start +
+                        qMin(nspan.length - 1, _cursorPos - ospan.start));
+                    return;
+                }
+                break;
+            }
+            case Qt::Key_PageDown: {
+                int cursorLine = getLineIndex(_cursorPos);
+                if (cursorLine < _lines.size() - 1) {
+                    const Span& ospan = _lines.at(cursorLine);
+                    const Span& nspan = _lines.at(qMin(cursorLine + innerRect().height() - 1,
+                        _lines.size() - 1));
+                    setCursorPosition(nspan.start +
+                        qMin(nspan.length - 1, _cursorPos - ospan.start));
+                    return;
+                }
+                break;
+            }
+            case Qt::Key_Home: {
+                const Span& cspan = _lines.at(getLineIndex(_cursorPos));
+                setCursorPosition(cspan.start);
+                return;
+            }
+            case Qt::Key_End: {
+                const Span& cspan = _lines.at(getLineIndex(_cursorPos));
+                setCursorPosition(cspan.start + cspan.length - 1);
+                return;
+            }
+        }
+    }
+    TextComponent::keyPressEvent(e);
+}
+
 void TextArea::mouseButtonPressEvent (QMouseEvent* e)
 {
-    Component::mouseButtonPressEvent(e);
+    QRect inner = innerRect();
+    if (inner.contains(e->pos())) {
+        int documentLine = getLineIndex(_documentPos);
+        const Span& dspan = _lines.at(documentLine);
+        int offset = _documentPos - dspan.start;
+    
+        int cursorLine = qMin(documentLine + e->pos().y() - inner.y(), _lines.size() - 1);
+        const Span& cspan = _lines.at(cursorLine);
+        setCursorPosition(qMin(cspan.start + offset + e->pos().x() - inner.x(),
+            cspan.start + qMax(0, cspan.length - 1)));
+    }
+    Component::mouseButtonPressEvent(e);    
 }
 
 void TextArea::clearMatch ()
@@ -704,12 +798,39 @@ void TextArea::showMatch (int idx)
 
 bool TextArea::updateDocumentPos ()
 {
+    QRect inner = innerRect();
+    int cursorLine = getLineIndex(_cursorPos);
+    const Span& cspan = _lines.at(cursorLine);
+    int documentLine = getLineIndex(_documentPos);
+    const Span& dspan = _lines.at(documentLine);
+    if (cursorLine < documentLine) {
+        _documentPos = cspan.start + qMin(cspan.length - 1, _documentPos - dspan.start);
     
-    return false;
+    } else if (cursorLine >= documentLine + inner.height()) {
+        const Span& nspan = _lines.at(cursorLine - inner.height() + 1);
+        _documentPos = nspan.start + qMin(nspan.length - 1, _documentPos - dspan.start);
+        
+    } else if (_cursorPos - cspan.start < _documentPos - dspan.start) {
+        _documentPos = dspan.start + (_cursorPos - cspan.start);
+        
+    } else if (_cursorPos - cspan.start >= _documentPos - dspan.start + inner.width()) {
+        _documentPos = dspan.start + (_cursorPos - cspan.start - inner.width() + 1);
+    
+    } else {
+        return false;
+    }
+    Component::dirty();
+    return true;
 }
 
 void TextArea::dirty (int idx, int length)
 {
+    Component::dirty();
+}
+
+int TextArea::getLineIndex (int pos) const
+{
+    return pos < _lineIndices.size() ? _lineIndices.at(pos) : _lines.size() - 1;
 }
 
 FieldExpEnabler::FieldExpEnabler (
