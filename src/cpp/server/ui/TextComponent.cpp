@@ -785,11 +785,59 @@ void TextArea::clearMatch ()
 
 QString TextArea::insert (int idx, const QString& text, bool cursorAfter)
 {
-    return QString();
+    int olen = _document->text().length();
+    _document->insert(idx, text);
+    int delta = _document->text().length() - olen;
+    if (delta == 0) {
+        return QString();
+    }
+    int opos = _cursorPos;
+    _cursorPos = idx + (cursorAfter ? delta : 0);
+    int lidx = getLineIndex(idx);
+    _lineIndices.insert(idx, delta, lidx);
+    _lines[lidx].length += delta;
+    
+    int wlimit = (_wrap == NoWrap) ? numeric_limits<int>::max() : innerRect().width() - 1;
+    for (int nn = _lines.size(); lidx < nn; lidx++) {
+        Span& line = _lines[lidx];
+        if (line.length <= wlimit) {
+            break;
+        }
+        int widx = line.start + wlimit;
+        for (int ii = widx - 1; ii >= line.start; ii--) {
+            if (_document->text().at(ii) == ' ') {
+                widx = ii + 1;
+                break;
+            }
+        }
+        
+    }
+    
+    if (!updateDocumentPos()) {
+        Component::dirty();
+    }
+    maybeShowMatch();
+    emit textChanged();
+    return _document->text().mid(idx, delta);
 }
 
 void TextArea::remove (int idx, int length)
 {
+    if (length == 0) {
+        return;
+    }
+    int opos = _cursorPos;
+    _document->remove(_cursorPos = idx, length);
+    int lidx = getLineIndex(idx);
+    _lineIndices.remove(idx, length);
+    
+    
+    
+    if (!updateDocumentPos()) {
+        Component::dirty();
+    }
+    maybeShowMatch();
+    emit textChanged();
 }
 
 void TextArea::showMatch (int idx)
