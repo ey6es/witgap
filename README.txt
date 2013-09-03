@@ -29,10 +29,11 @@ necessary.  Then run "./bin/witgap-server etc/server.ini".
 Distribution
 ------------
 
-All code is proprietary.  Please do not share without permission of the author.
+All code is freely distributable under the BSD license.  See 'LICENSE.txt'.
 
 
-Contact Information
--------------------
+Contributions and Contact Information
+-------------------------------------
 
-Send questions/comments to Andrzej Kapolka <drzej.k@gmail.com>.
+Send questions/comments to Andrzej Kapolka <drzej.k@gmail.com>.  Latest source available at
+https://github.com/ey6es/witgap.
