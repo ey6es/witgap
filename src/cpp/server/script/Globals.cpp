@@ -1642,6 +1642,21 @@ static ScriptObjectPointer stringHash (Evaluator* eval, int argc, ScriptObjectPo
 }
 
 /**
+ * Returns the case-insensitive hash value of a string.
+ */
+static ScriptObjectPointer stringCiHash (Evaluator* eval, int argc, ScriptObjectPointer* argv)
+{
+    if (argc != 1) {
+        throw QString("Requires exactly one argument.");
+    }
+    if ((*argv)->type() != ScriptObject::StringType) {
+        throw QString("Invalid argument.");
+    }
+    String* string = static_cast<String*>(argv->data());
+    return Integer::instance(qHash(string->contents().toLower()));
+}
+
+/**
  * Converts a symbol to a string.
  */
 static ScriptObjectPointer symbolToString (Evaluator* eval, int argc, ScriptObjectPointer* argv)
@@ -2725,6 +2740,7 @@ static Scope createGlobalScope ()
     scope.addVariable("list->string", listToString);
     scope.addVariable("string-copy", stringCopy);
     scope.addVariable("string-hash", stringHash);
+    scope.addVariable("string-ci-hash", stringCiHash);
 
     scope.addVariable("symbol->string", symbolToString);
     scope.addVariable("string->symbol", stringToSymbol);

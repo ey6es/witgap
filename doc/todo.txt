@@ -14,6 +14,7 @@ Script:
 - Ports
 - Case syntax
 - Store in database, load from source
+- Port macro processing to Scheme, allow Scheme code in macros
 
 Cut and paste (?)
 Multi-line text editing
