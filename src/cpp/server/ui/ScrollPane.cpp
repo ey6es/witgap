@@ -113,7 +113,7 @@ Component* ScrollPane::transferFocus (Component* from, Direction dir)
         return Component::transferFocus(from, dir);
     }
     if (!(_enabled && _visible)) {
-        return false;
+        return 0;
     }
     return (from == 0) ? _component->transferFocus(0, dir) : Component::transferFocus(this, dir);
 }

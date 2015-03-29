@@ -401,7 +401,7 @@ template<class T> inline T* SynchronizedStorage<T>::local ()
 {
     T* data = QThreadStorage<T*>::localData();
     if (data == 0) {
-        setLocalData(data = new T());
+        this->setLocalData(data = new T());
         new ObjectSynchronizer(_original, data, true);
     }
     return data;
